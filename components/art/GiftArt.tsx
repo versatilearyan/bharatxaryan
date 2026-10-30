@@ -38,6 +38,9 @@ export function GiftArt({ id, className = "h-full w-full" }: { id: GiftId; class
 
 function art(id: GiftId, u: (n: string) => string) {
   switch (id) {
+    case "neon-racer":
+      // The car picture with blurred edges, no round frame
+      return <image href="/gifts/neon-racer-icon.png" x="1" y="1" width="62" height="62" mask={u("soft")} preserveAspectRatio="xMidYMid slice" />;
     case "crystal-palace":
       // The palace's own picture (transparent background), a little larger than the box like the other legendary art
       return <image href="/gifts/crystal-palace-icon.png" x="-3" y="-3" width="70" height="70" preserveAspectRatio="xMidYMid meet" />;

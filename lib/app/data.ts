@@ -129,6 +129,15 @@ export const GIFTS: Gift[] = [
     video: { src: "/gifts/god-of-wealth.mp4", poster: "/gifts/god-of-wealth-poster.jpg", icon: "/gifts/god-of-wealth-icon.png" },
   },
   {
+    id: "neon-racer",
+    name: "Neon Racer",
+    cost: 30_000,
+    categories: ["Popular", "Royal", "Legendary"],
+    tier: "legendary",
+    blurb: "A neon supercar races through the city, skids to a stop, then blasts past.",
+    video: { src: "/gifts/neon-racer.mp4?v=2", poster: "/gifts/neon-racer-poster.jpg?v=2", icon: "/gifts/neon-racer-icon.png", floating: true, ratio: "494 / 438" },
+  },
+  {
     id: "crystal-palace",
     name: "Crystal Palace",
     cost: 100_000,

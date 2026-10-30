@@ -99,7 +99,8 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
                   <span className={`${vipName(p.vip)} truncate`} style={nameFace(p.nameFont)}>{p.name}</span> {cardFx.badge ? <VipBadge set={cardFx.badge} level={p.vip} size={18} animated /> : null} {role ? <RoleBadge role={role} /> : null}
                 </p>
                 <div className="mt-0.5 flex items-center gap-1">
-                  <LevelPill level={p.level} gender={p.gender} size="sm" />
+                  {/* Backend room users: their level isn't sent by the participants API, so none is shown */}
+                  {p.id.startsWith("srv-user:") ? null : <LevelPill level={p.level} gender={p.gender} size="sm" />}
                   <CharmBadge personId={id} light showCount />
                   <span className={`rounded px-1.5 text-[10px] font-bold ${membership.joined ? "bg-[#fff3e6] text-[#f08a24]" : "bg-[#f1edf4] text-[#a5a3bd] line-through"}`}>Member</span>
                   <span className={`rounded px-1.5 text-[10px] font-bold ${membership.followed ? "bg-[#ffe9ea] text-[#f0505c]" : "bg-[#f1edf4] text-[#a5a3bd] line-through"}`}>Fan</span>

@@ -26,6 +26,8 @@ export type VoicePerson = {
   isLocal: boolean;
   speaking: boolean;
   micOn: boolean;
+  /** The published microphone track's SID, needed for a moderator mute. */
+  micSid?: string;
 };
 
 export type LiveVoice = {
@@ -81,6 +83,7 @@ function snapshot(room: Room): VoicePerson[] {
     isLocal: p.isLocal,
     speaking: p.isSpeaking,
     micOn: p.isMicrophoneEnabled,
+    micSid: p.getTrackPublication(Track.Source.Microphone)?.trackSid,
   }));
 }
 

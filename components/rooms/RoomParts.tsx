@@ -81,13 +81,13 @@ export function RoomTopBar({ s, onMenu, onLeave }: { s: RoomSession; onMenu: () 
               >
                 ID {s.room.code} {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
               </span>
-              {/* Backend rooms: only the real number of people in the voice call, once connected */}
-              {s.room.server && s.voice?.status !== "connected" ? null : (
+              {/* Backend rooms: the backend's participant count (GET /participants/count); hidden until it loads */}
+              {s.room.server && s.participants?.count == null ? null : (
                 <>
                   <span aria-hidden>·</span>
-                  <span className="inline-flex items-center gap-0.5">
+                  <span className="inline-flex items-center gap-0.5" title={s.room.server ? "People in this room" : undefined}>
                     <UsersRound className="h-2.5 w-2.5" aria-hidden />
-                    {s.room.server ? s.voice?.people.length : formatCount(s.room.members + (joined ? 1 : 0))}
+                    {s.room.server ? s.participants?.count : formatCount(s.room.members + (joined ? 1 : 0))}
                   </span>
                 </>
               )}

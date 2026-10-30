@@ -24,8 +24,22 @@ const PREFS_KEY = "panchayat-server-room-prefs-v1";
 /** Room ids in the app are prefixed so they never clash with the sample rooms. */
 export const SERVER_ROOM_PREFIX = "srv-";
 export const serverRoomAppId = (id: string) => `${SERVER_ROOM_PREFIX}${id}`;
-/** A placeholder person id for an owner we only know by backend id. */
-export const ownerPersonId = (ownerId?: string) => `srv-owner:${ownerId ?? "unknown"}`;
+/** The app's person id for a backend user, e.g. "srv-user:42". */
+export const userPersonId = (userId: string) => `srv-user:${userId}`;
+export const SERVER_USER_PREFIX = "srv-user:";
+/** The person id for a room's owner, known only by backend id. */
+export const ownerPersonId = (ownerId?: string) => userPersonId(ownerId ?? "unknown");
+/**
+ * The backend user id inside a LiveKit identity. The backend sets the identity
+ * when it makes the token; both "42" and "user-42" are understood.
+ */
+export const identityUserId = (identity: string) => identity.replace(/^user[-_:]/i, "");
+
+/** Names and pictures for backend users, from the participants API (or LiveKit), keyed by person id. */
+export type ServerPerson = { name?: string; avatarUrl?: string };
+const PeopleCtx = createContext<Record<string, ServerPerson>>({});
+/** Read-only lookup used by usePeople(). Empty outside the provider. */
+export const useServerPeople = () => useContext(PeopleCtx);
 
 /** What you picked on the create screen that the backend doesn't store. */
 export type ServerRoomPrefs = { cover?: Cover; category?: string; seats?: number; permanent?: boolean };
@@ -85,6 +99,8 @@ type ServerRoomsValue = ListState & {
    */
   closeActive: () => Promise<boolean>;
   closing: boolean;
+  /** Remember names and pictures for backend users so every screen can show them. */
+  rememberPeople: (people: Record<string, ServerPerson>) => void;
 };
 
 const Ctx = createContext<ServerRoomsValue | null>(null);
@@ -217,11 +233,33 @@ export function ServerRoomsProvider({ children }: { children: ReactNode }) {
     }
   }, [activeServerId, toast, exitRoom]);
 
+  const [people, setPeople] = useState<Record<string, ServerPerson>>({});
+  const rememberPeople = useCallback((add: Record<string, ServerPerson>) => {
+    setPeople((all) => {
+      let changed = false;
+      const next = { ...all };
+      for (const [id, p] of Object.entries(add)) {
+        const old = all[id];
+        // Keep a known name when a later source has none
+        const merged = { name: p.name ?? old?.name, avatarUrl: p.avatarUrl ?? old?.avatarUrl };
+        if (old?.name !== merged.name || old?.avatarUrl !== merged.avatarUrl) {
+          next[id] = merged;
+          changed = true;
+        }
+      }
+      return changed ? next : all;
+    });
+  }, []);
+
   const value = useMemo<ServerRoomsValue>(
-    () => ({ ...list, refresh, rememberPrefs, addCreated, myId, closeActive, closing }),
-    [list, refresh, rememberPrefs, addCreated, myId, closeActive, closing],
+    () => ({ ...list, refresh, rememberPrefs, addCreated, myId, closeActive, closing, rememberPeople }),
+    [list, refresh, rememberPrefs, addCreated, myId, closeActive, closing, rememberPeople],
   );
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  return (
+    <Ctx.Provider value={value}>
+      <PeopleCtx.Provider value={people}>{children}</PeopleCtx.Provider>
+    </Ctx.Provider>
+  );
 }
 
 export function useServerRooms() {

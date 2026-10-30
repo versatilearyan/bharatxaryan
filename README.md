@@ -190,6 +190,10 @@ Signed-in users get real rooms from `/api/v1/voice-rooms` (see `lib/api/voice-ro
 - **Entering a room** calls `POST /voice-rooms/{id}/join`, then connects to the LiveKit URL and token from that answer with `livekit-client`. The browser never makes tokens and never sees the LiveKit secret. The mic is only requested when you tap Unmute (you need a seat first).
 - **Leaving** disconnects LiveKit first, then calls `POST /leave` once. Leaving your own temporary room calls `POST /close` instead.
 - **Close room** (room ⋯ menu, owner only) calls `POST /close` after a confirmation. This closes the room in the backend; whether people already in the LiveKit call are disconnected is up to the backend.
-- Seats, chat, gifts and room mode are still local to each device.
+- **Who's in the room** comes from two sources, merged by user id so nobody shows twice: `GET /voice-rooms/{id}/participants` (names, roles, stored mute flag) and LiveKit (who is connected now, mic and speaking). The list reloads when LiveKit reports a join or leave; there is no polling. Seats show these real people: the owner on seat 0 while present, then everyone else in join order.
+- **Header count** is `GET /voice-rooms/{id}/participants/count` (database records). The voice bar's number is people connected to LiveKit right now. They can differ.
+- **Moderator mute** (owner/admin, from a person's card) sends `PATCH /voice-rooms/{id}/mute` with `userId`, `trackSid` (their LiveKit mic track) and `muted`. Your own mic button only uses LiveKit.
+- The LiveKit identity must be the backend user id (`42` or `user-42`) so the two sources line up. Participant field names accepted are in `PARTICIPANT_FIELDS` in `lib/api/voice-rooms.ts`.
+- Chat, gifts and room mode are still local to each device.
 
 If the join answer uses other field names than `serverUrl`/`token`, add them to `JOIN_FIELDS` in `lib/api/voice-rooms.ts`. The LiveKit server must be reachable from the browser (`wss://` on an https site).

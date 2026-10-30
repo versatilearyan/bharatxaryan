@@ -74,7 +74,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         <MusicPill className="absolute right-2 top-6 z-20" onOpen={() => setSheet("music")} />
         <SeatLayout s={s} gold={vip} />
         {s.voice ? (
-          <LiveVoiceBar voice={s.voice} />
+          <LiveVoiceBar voice={s.voice} participants={s.participants} />
         ) : (
           <p className="mt-2 text-center text-[10.5px] text-cream/45">Voice isn&apos;t connected in this web preview. Mic and speaker are local controls.</p>
         )}

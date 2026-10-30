@@ -6,7 +6,9 @@ import { ME_ID, settingsOf, useApp } from "@/lib/app/store";
 import { usePeople } from "@/lib/app/people";
 import { relationshipById, tagLevel } from "@/lib/app/tags";
 import { charmFromCoins, giftEarnings, voiceExpForMinute } from "@/lib/app/progress";
-import { ownerPersonId } from "@/lib/app/server-rooms";
+import { useServerRooms } from "@/lib/app/server-rooms";
+import { muteParticipant, roomErrorText } from "@/lib/api/voice-rooms";
+import { useRoomParticipants } from "./useRoomParticipants";
 import { useLiveVoice } from "./useLiveVoice";
 import type { GiftId, Room, RoomMessage, RoomRole, RoomSettings } from "@/lib/app/types";
 
@@ -50,11 +52,28 @@ export function useRoomSession(room: Room) {
   /** Backend rooms have real voice over LiveKit, and no simulated crowd. */
   const live = Boolean(room.server);
   const voice = useLiveVoice(room.server?.id ?? null);
+  const { myId: myServerId } = useServerRooms();
+  /** Backend rooms: who is in the room (participants API) merged with who is connected (LiveKit). */
+  const participants = useRoomParticipants(room.server?.id ?? null, voice, myServerId);
 
-  const [seats, setSeats] = useState<(string | null)[]>(() => {
+  const [localSeats, setSeats] = useState<(string | null)[]>(() => {
     const others = room.seated.filter((id) => id !== room.hostId);
     return Array.from({ length: room.seats }, (_, i) => (i === 0 ? room.hostId : (others[i - 1] ?? null)));
   });
+  /**
+   * Backend rooms have no seat API, so the seats show the real people in the
+   * room: the owner on seat 0 (only while they're in the room), then everyone
+   * else in the order they joined. You are always shown.
+   */
+  const liveSeats = useMemo(() => {
+    if (!participants) return null;
+    const ids = participants.members.map((m) => m.personId);
+    if (!ids.includes(ME_ID)) ids.push(ME_ID);
+    const others = ids.filter((id) => id !== room.hostId);
+    const length = Math.max(room.seats, others.length + 1);
+    return Array.from({ length }, (_, i) => (i === 0 ? (ids.includes(room.hostId) ? room.hostId : null) : (others[i - 1] ?? null)));
+  }, [participants, room.hostId, room.seats]);
+  const seats = liveSeats ?? localSeats;
   const [mode, setModeState] = useState<RoomMode>(() => modeFor(room));
   const [closedSeats, setClosedSeats] = useState<number[]>([]);
   /** People an owner or admin muted. */
@@ -185,6 +204,10 @@ export function useRoomSession(room: Room) {
 
   const takeSeat = useCallback(
     (index: number) => {
+      if (live) {
+        toast("In a live room everyone has a seat. Tap the mic to talk.");
+        return;
+      }
       if (isOwner) {
         toast("Your owner seat is fixed at the top");
         return;
@@ -209,10 +232,15 @@ export function useRoomSession(room: Room) {
       setHandRaised(false);
       toast(`You took seat ${index + 1}. Tap the mic to unmute.`);
     },
-    [seats, toast, isOwner, closedSeats, room, vip.level],
+    [seats, toast, isOwner, closedSeats, room, vip.level, live],
   );
 
   const leaveSeat = useCallback(() => {
+    if (live) {
+      if (voice?.micOn) void voice.setMic(false);
+      toast("Your mic is off. Leave the room to leave the call.");
+      return;
+    }
     if (isOwner) {
       toast("The owner's seat is fixed. Mute your mic instead.");
       return;
@@ -222,10 +250,10 @@ export function useRoomSession(room: Room) {
     // Live rooms: stop sending your voice too
     if (voice?.micOn) void voice.setMic(false);
     toast("You left the mic. You're still in the room, listening.");
-  }, [toast, isOwner, voice]);
+  }, [toast, isOwner, voice, live]);
 
   const toggleMute = useCallback(() => {
-    if (!seated) {
+    if (!seated && !live) {
       toast("Take an empty seat to use the mic");
       return;
     }
@@ -238,7 +266,7 @@ export function useRoomSession(room: Room) {
       return;
     }
     setMuted((m) => !m);
-  }, [seated, toast, voice]);
+  }, [seated, toast, voice, live]);
 
   const toggleHand = useCallback(() => {
     setHandRaised((h) => {
@@ -270,11 +298,27 @@ export function useRoomSession(room: Room) {
   const toggleForceMute = useCallback(
     (id: string) => {
       if (!canManage(id)) return;
+      if (participants && room.server) {
+        // Live rooms: the backend mutes their published mic track (it checks you're allowed to)
+        const m = participants.members.find((x) => x.personId === id);
+        if (!m?.connected || !m.micSid) {
+          toast(`${person(id).name} has no mic turned on to mute`);
+          return;
+        }
+        const muted = m.micOn;
+        void muteParticipant(room.server.id, { userId: /^\d+$/.test(m.userId) ? Number(m.userId) : m.userId, trackSid: m.micSid, muted })
+          .then(() => {
+            addSystem(`${actor} ${muted ? "muted" : "unmuted"} ${person(id).name}`);
+            participants.refresh();
+          })
+          .catch((e) => toast(roomErrorText(e, "mute"), "error"));
+        return;
+      }
       const on = !forceMuted.includes(id);
       setForceMuted((m) => (on ? [...m, id] : m.filter((x) => x !== id)));
       addSystem(`${actor} ${on ? "muted" : "unmuted"} ${person(id).name}`);
     },
-    [canManage, forceMuted, actor, addSystem, person],
+    [canManage, forceMuted, actor, addSystem, person, participants, room.server, toast],
   );
 
   const inviteToSeat = useCallback(
@@ -469,11 +513,9 @@ export function useRoomSession(room: Room) {
   );
 
   // Live rooms: speaking comes from LiveKit's active speakers. You are "me"; the owner's seat lights up when the owner speaks.
-  const liveSpeaking = useMemo(() => {
-    if (!voice) return null;
-    const ownerId = room.server?.ownerId;
-    return voice.people.filter((p) => p.speaking).map((p) => (p.isLocal ? ME_ID : ownerId && p.identity === ownerId ? ownerPersonId(ownerId) : p.identity));
-  }, [voice, room.server?.ownerId]);
+  const liveSpeaking = useMemo(() => (participants ? participants.members.filter((m) => m.speaking).map((m) => m.personId) : null), [participants]);
+  // Live rooms: a seat shows a muted mic when that person's LiveKit mic is off
+  const liveMuted = useMemo(() => (participants ? participants.members.filter((m) => m.personId !== ME_ID && !m.micOn).map((m) => m.personId) : null), [participants]);
   const mySpeaking = seated && !muted;
   const speakingIds = liveSpeaking ?? (mySpeaking ? [...speaking, ME_ID] : speaking);
   // Live rooms: the mic state shown is the SDK's
@@ -500,7 +542,7 @@ export function useRoomSession(room: Room) {
     leaveSeat,
     closedSeats,
     setSeatClosed,
-    forceMuted,
+    forceMuted: liveMuted ?? forceMuted,
     toggleForceMute,
     removeFromMic,
     inviteToSeat,
@@ -518,6 +560,7 @@ export function useRoomSession(room: Room) {
         return !s;
       }),
     voice,
+    participants,
     handRaised,
     toggleHand,
     speakingIds,

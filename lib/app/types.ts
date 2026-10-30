@@ -130,6 +130,7 @@ export type Game = {
 export type GiftCategory = "Popular" | "Cute" | "Romantic" | "Celebration" | "Royal" | "Legendary";
 
 export type GiftId =
+  | "neon-racer"
   | "rose"
   | "heart"
   | "bear"

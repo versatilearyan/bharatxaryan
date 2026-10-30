@@ -59,6 +59,35 @@ export const JOIN_FIELDS = {
   ttlSeconds: ["tokenTtlSeconds", "ttlSeconds", "tokenTtl", "ttl", "expiresIn"],
 } as const;
 
+/** One person in a room, from GET /voice-rooms/{id}/participants (application data, not live connection state). */
+export type VoiceRoomParticipant = {
+  userId: string;
+  /** Display name, when the backend sends one. Never invented. */
+  name?: string;
+  avatarUrl?: string;
+  /** e.g. OWNER, ADMIN, SPEAKER, LISTENER, as the backend sends it. */
+  role?: string;
+  /** Muted by a moderator, as stored by the backend. */
+  muted?: boolean;
+  /** e.g. ACTIVE or LEFT, as the backend sends it. */
+  status?: string;
+  joinedAt?: string;
+};
+
+/** What PATCH /voice-rooms/{id}/mute takes. */
+export type MuteParticipantRequest = { userId: string | number; trackSid: string; muted: boolean };
+
+/** Accepted JSON names for participant fields, first match wins. Add the backend's names here if they differ. */
+export const PARTICIPANT_FIELDS = {
+  userId: ["userId", "user_id", "participantId", "id"],
+  name: ["displayName", "fullName", "name", "username", "userName", "nickname"],
+  avatarUrl: ["avatarUrl", "avatar", "profileImageUrl", "photoUrl", "imageUrl"],
+  role: ["role", "participantRole"],
+  muted: ["muted", "isMuted"],
+  status: ["status", "participantStatus"],
+  joinedAt: ["joinedAt", "createdAt"],
+} as const;
+
 /** Accepted JSON names for room fields that vary between DTO styles. */
 export const ROOM_FIELDS = {
   isPrivate: ["isPrivate", "private", "privateRoom"],
@@ -114,6 +143,31 @@ export function readVoiceRoom(raw: unknown): VoiceRoom | null {
     createdAt: str(r.createdAt),
   };
 }
+
+export function readParticipant(raw: unknown): VoiceRoomParticipant | null {
+  if (!raw || typeof raw !== "object") return null;
+  const r = raw as Record<string, unknown>;
+  // A nested user object is common in Spring DTOs: { user: { id, fullName } }
+  const u = r.user && typeof r.user === "object" ? (r.user as Record<string, unknown>) : {};
+  const pick = (keys: readonly string[]) => firstOf(r, keys) ?? firstOf(u, keys);
+  const userId = str(firstOf(r, PARTICIPANT_FIELDS.userId.filter((k) => k !== "id")) ?? u.id ?? r.id);
+  if (!userId) return null;
+  const muted = pick(PARTICIPANT_FIELDS.muted);
+  const avatar = str(pick(PARTICIPANT_FIELDS.avatarUrl));
+  return {
+    userId,
+    name: str(pick(PARTICIPANT_FIELDS.name)),
+    // Only real web addresses are used as pictures
+    avatarUrl: avatar && /^https:\/\//i.test(avatar) ? avatar : undefined,
+    role: str(pick(PARTICIPANT_FIELDS.role))?.toUpperCase(),
+    muted: muted === true || muted === "true" ? true : muted === false || muted === "false" ? false : undefined,
+    status: str(pick(PARTICIPANT_FIELDS.status))?.toUpperCase(),
+    joinedAt: str(pick(PARTICIPANT_FIELDS.joinedAt)),
+  };
+}
+
+/** Participants who have left are not shown as in the room. */
+export const isPresent = (p: VoiceRoomParticipant) => !p.status || !["LEFT", "REMOVED", "KICKED", "INACTIVE", "DISCONNECTED"].includes(p.status);
 
 /** Closed rooms never show as active ones. */
 export const isOpenRoom = (r: VoiceRoom) => !r.status || !["CLOSED", "ENDED", "INACTIVE", "DELETED"].includes(r.status);
@@ -187,14 +241,38 @@ export async function closeRoom(roomId: string): Promise<void> {
   await api<unknown>(`${path(roomId)}/close`, { method: "POST", auth: true, forbiddenIsAccess: true });
 }
 
+export async function getParticipants(roomId: string): Promise<VoiceRoomParticipant[]> {
+  const d = await api<unknown>(`${path(roomId)}/participants`, { auth: true, forbiddenIsAccess: true });
+  return list(d).map(readParticipant).filter((p): p is VoiceRoomParticipant => p !== null && isPresent(p));
+}
+
+/** The backend's participant count (database records), not the number of people connected to LiveKit. */
+export async function getParticipantCount(roomId: string): Promise<number> {
+  const d = await api<unknown>(`${path(roomId)}/participants/count`, { auth: true, forbiddenIsAccess: true });
+  const n = num(d) ?? (d && typeof d === "object" ? num(firstOf(d as Record<string, unknown>, ["count", "participantCount", "total", "data"])) : undefined);
+  if (n === undefined) throw new ApiError("The participant count couldn't be read.", 200, "http");
+  return n;
+}
+
+/** Owner/admin only: mute or unmute someone else's microphone track. Not for your own mic. */
+export async function muteParticipant(roomId: string, body: MuteParticipantRequest): Promise<void> {
+  await api<unknown>(`${path(roomId)}/mute`, { method: "PATCH", auth: true, body, forbiddenIsAccess: true });
+}
+
 /** A short, user-facing explanation for room errors (403/404/409 get their own wording). */
-export function roomErrorText(e: unknown, action: "load" | "join" | "create" | "leave" | "close"): string {
+export function roomErrorText(e: unknown, action: "load" | "join" | "create" | "leave" | "close" | "participants" | "mute"): string {
   if (e instanceof ApiError) {
     if (e.code === "network" || e.code === "timeout" || e.code === "ngrok_interstitial" || e.code === "config" || e.code === "unauthorized") return e.message;
     if (e.status === 404) return "This room doesn't exist any more.";
     if (e.status === 409) return action === "close" ? "This room is already closed." : e.message;
     if (e.status === 403 || e.code === "forbidden")
-      return action === "close" ? "Only the room's owner can close it." : action === "join" ? "You don't have access to this room." : e.message;
+      return action === "close"
+        ? "Only the room's owner can close it."
+        : action === "mute"
+          ? "Only the owner or an admin can mute people."
+          : action === "join" || action === "participants"
+            ? "You don't have access to this room."
+            : e.message;
     return e.message;
   }
   return "Something went wrong. Try again.";

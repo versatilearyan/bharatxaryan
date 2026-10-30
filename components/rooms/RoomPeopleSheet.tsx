@@ -84,13 +84,31 @@ function OnlineList({ s, ids }: { s: RoomSession; ids: string[] }) {
     <div className="pb-4 pt-2">
       {ids.map((id) => {
         const onMic = s.seatedIds.includes(id);
+        // Live rooms: connection and mic state from LiveKit, role from the backend
+        const m = s.participants?.members.find((x) => x.personId === id);
+        const sub = s.participants
+          ? !m?.connected
+            ? "Not connected to voice"
+            : m.speaking
+              ? "Talking now"
+              : m.micOn
+                ? "Mic on"
+                : "Mic off"
+          : onMic
+            ? s.forceMuted.includes(id)
+              ? "Muted by admin"
+              : s.speakingIds.includes(id)
+                ? "Talking now"
+                : "On mic"
+            : "Listening";
+        const backendRole = m?.role && m.role !== "OWNER" ? m.role.charAt(0) + m.role.slice(1).toLowerCase() : null;
         return (
           <Row
             key={id}
             p={person(id)}
-            sub={onMic ? (s.forceMuted.includes(id) ? "Muted by admin" : s.speakingIds.includes(id) ? "Talking now" : "On mic") : "Listening"}
+            sub={sub}
             onClick={() => id !== ME_ID && s.openCard(id)}
-            right={id === s.room.hostId ? <Pill tone="vip">Owner</Pill> : s.admins.includes(id) ? <Pill>Admin</Pill> : onMic ? <Pill>Mic</Pill> : null}
+            right={id === s.room.hostId ? <Pill tone="vip">Owner</Pill> : s.admins.includes(id) ? <Pill>Admin</Pill> : backendRole ? <Pill>{backendRole}</Pill> : onMic ? <Pill>Mic</Pill> : null}
           />
         );
       })}
