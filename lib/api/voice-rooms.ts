@@ -72,6 +72,16 @@ export type VoiceRoomParticipant = {
   /** e.g. ACTIVE or LEFT, as the backend sends it. */
   status?: string;
   joinedAt?: string;
+  /**
+   * The participant's own VIP level and cosmetics, as the backend sends them for
+   * this person (never the viewer's). null when they have none. Links are kept
+   * only when they are https; anything else counts as missing.
+   */
+  vipLevel: number | null;
+  badgeUrl: string | null;
+  frameUrl: string | null;
+  bubbleUrl: string | null;
+  entryAnimationUrl: string | null;
 };
 
 /** What PATCH /voice-rooms/{id}/mute takes. */
@@ -87,6 +97,16 @@ export const PARTICIPANT_FIELDS = {
   status: ["status", "participantStatus"],
   joinedAt: ["joinedAt", "createdAt"],
 } as const;
+
+/** Only https links are used for pictures and animations. */
+const httpsUrl = (v: unknown) => {
+  const u = str(v);
+  return u && /^https:\/\//i.test(u) ? u : null;
+};
+const vipLevelOf = (v: unknown) => {
+  const n = num(v);
+  return n !== undefined && Number.isInteger(n) && n >= 1 ? n : null;
+};
 
 /** Accepted JSON names for room fields that vary between DTO styles. */
 export const ROOM_FIELDS = {
@@ -155,6 +175,11 @@ export function readParticipant(raw: unknown): VoiceRoomParticipant | null {
   const muted = pick(PARTICIPANT_FIELDS.muted);
   const avatar = str(pick(PARTICIPANT_FIELDS.avatarUrl));
   return {
+    vipLevel: vipLevelOf(r.vipLevel),
+    badgeUrl: httpsUrl(r.badgeUrl),
+    frameUrl: httpsUrl(r.frameUrl),
+    bubbleUrl: httpsUrl(r.bubbleUrl),
+    entryAnimationUrl: httpsUrl(r.entryAnimationUrl),
     userId,
     name: str(pick(PARTICIPANT_FIELDS.name)),
     // Only real web addresses are used as pictures

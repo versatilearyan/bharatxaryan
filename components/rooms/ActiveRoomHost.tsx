@@ -5,6 +5,7 @@ import { RoomCover } from "@/components/rooms/RoomCover";
 import { VipEntryBanner } from "@/components/effects/VipFx";
 import { preloadSvga } from "@/components/effects/SvgaAnim";
 import { useMarket } from "@/lib/app/market-store";
+import { useEntryQueue, type EntryItem } from "./useRoomFx";
 import { AnimatePresence, motion } from "framer-motion";
 import { Gavel, Mic, MicOff, MonitorPlay, X } from "lucide-react";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
@@ -56,7 +57,7 @@ function ActiveRoom({ room }: { room: Room }) {
         <PkContext.Provider value={pk}>{mode === "youtube" ? <WatchTogetherRoom s={s} /> : mode === "kharidari" ? <KharidariRoom s={s} a={auction} /> : <VoiceRoom s={s} />}</PkContext.Provider>
         <RoomRedPacket s={s} />
         <RoomOverlays s={s} />
-        <EntryEffect />
+        <EntryEffect s={s} />
       </motion.section>
       <AnimatePresence>{!roomOpen ? <MiniRoom s={s} mode={mode} a={auction} /> : null}</AnimatePresence>
     </>
@@ -64,19 +65,39 @@ function ActiveRoom({ room }: { room: Room }) {
 }
 
 /**
- * Your entry banner (SVGA) with your name, played once when you enter the room.
- * It slides in from the right and sits on the right, just below the last row of seats.
+ * Entry banners (SVGA) with the person's name, each played once.
+ * Rooms on the backend announce you and everyone who joins after you, with
+ * the entry animation from each person's own participants record (see
+ * useEntryQueue). Other rooms play yours from the Bag, once, as before.
+ * Banners play one at a time.
  */
-function EntryEffect() {
+function EntryEffect({ s }: { s: RoomSession }) {
+  const mine = useMarket().effectsFor(ME_ID).entry;
+  const live = useEntryQueue(s, ME_ID);
+  const [local, setLocal] = useState<EntryItem[]>(() => (!s.participants && mine ? [{ key: "me", personId: ME_ID, set: mine }] : []));
+  const item = s.participants ? live.queue[0] : local[0];
+  const done = s.participants ? live.done : () => setLocal([]);
+  return item ? <EntryBanner key={item.key} item={item} onDone={done} /> : null;
+}
+
+/**
+ * One entry banner: it slides in from the right and sits on the right, just below the last row of seats.
+ * A file that can't be loaded is skipped.
+ */
+function EntryBanner({ item, onDone }: { item: EntryItem; onDone: () => void }) {
   const { profile, vip } = useApp();
-  const src = useMarket().effectsFor(ME_ID).entry;
+  const person = usePeople();
   const [show, setShow] = useState(false);
   const [top, setTop] = useState(0);
   const box = useRef<HTMLDivElement>(null);
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+  const src = item.set;
+  const me = item.personId === ME_ID;
+  const p = me ? null : person(item.personId);
   // Wait until the banner file is loaded and the seats have settled, place it once, then slide it in.
   // (Showing it earlier made the art pop in late and the banner jump when the seats moved.)
   useEffect(() => {
-    if (!src) return;
     let cancelled = false;
     Promise.all([preloadSvga(src.entry), new Promise((r) => window.setTimeout(r, 600))])
       .then(() => {
@@ -87,13 +108,11 @@ function EntryEffect() {
         setTop(seats.length ? Math.max(...seats.map((el) => el.getBoundingClientRect().bottom)) - roomTop - 8 : room.clientHeight * 0.46);
         setShow(true);
       })
-      .catch(() => undefined);
+      .catch(() => !cancelled && doneRef.current());
     return () => {
       cancelled = true;
     };
-    // Plays once, when you enter the room
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [src.entry]);
   useEffect(() => {
     if (!show) return;
     const t = window.setTimeout(() => setShow(false), 4800);
@@ -101,8 +120,8 @@ function EntryEffect() {
   }, [show]);
   return (
     <div ref={box} className="pointer-events-none absolute inset-0 z-30 overflow-hidden" aria-hidden={!show}>
-      <AnimatePresence>
-        {show && src ? (
+      <AnimatePresence onExitComplete={() => doneRef.current()}>
+        {show ? (
           <motion.div
             className="absolute right-2 w-[60%] max-w-[240px]"
             style={{ top }}
@@ -112,8 +131,11 @@ function EntryEffect() {
             transition={{ type: "spring", stiffness: 200, damping: 28 }}
             role="status"
           >
-            <VipEntryBanner set={src} avatar={<PersonAvatar person={{ id: ME_ID, look: profile.look, photo: profile.photo, frame: "none" }} size={64} className="!h-full !w-full" />}>
-              <span className={nameTone(vip.level, "text-[#ffe08a]", "room")}>{profile.name}</span> entered
+            <VipEntryBanner
+              set={src}
+              avatar={<PersonAvatar person={me ? { id: ME_ID, look: profile.look, photo: profile.photo, frame: "none" } : { ...p!, frame: "none" }} size={64} className="!h-full !w-full" />}
+            >
+              <span className={me ? nameTone(vip.level, "text-[#ffe08a]", "room") : "text-[#ffe08a]"}>{me ? profile.name : p!.name}</span> entered
             </VipEntryBanner>
           </motion.div>
         ) : null}

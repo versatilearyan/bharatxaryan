@@ -13,6 +13,8 @@ import type { Person } from "@/lib/app/types";
 import type { RoomSession } from "./useRoomSession";
 import { LevelPill, VipBadgeFor } from "@/components/profile/IdTags";
 import { nameTone } from "@/lib/app/fonts";
+import { VipBadge } from "@/components/effects/VipFx";
+import { useRoomFx } from "./useRoomFx";
 
 type Tab = "online" | "members" | "contribution";
 type Period = "Daily" | "Weekly" | "Total";
@@ -61,14 +63,14 @@ export function RoomPeopleSheet({ s }: { s: RoomSession }) {
   );
 }
 
-function Row({ p, right, sub, onClick }: { p: Person; right?: React.ReactNode; sub?: React.ReactNode; onClick?: () => void }) {
+function Row({ p, right, sub, onClick, badge }: { p: Person; right?: React.ReactNode; sub?: React.ReactNode; onClick?: () => void; badge?: React.ReactNode }) {
   return (
     <button type="button" onClick={onClick} className="flex w-full items-center gap-3 px-5 py-2.5 text-left hover:bg-cream/[0.03]">
       <PersonAvatar person={p} size={44} />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className={`truncate text-[15px] font-semibold ${nameTone(p.vip)}`}>{p.id === ME_ID ? `${p.name} (you)` : p.name}</span>
-          <VipBadgeFor personId={p.id} vip={p.vip} size={16} />
+          {badge !== undefined ? badge : <VipBadgeFor personId={p.id} vip={p.vip} size={16} />}
           <LevelPill level={p.level} gender={p.gender} size="sm" />
         </span>
         {sub ? <span className="block truncate text-[11.5px] text-muted">{sub}</span> : null}
@@ -80,6 +82,7 @@ function Row({ p, right, sub, onClick }: { p: Person; right?: React.ReactNode; s
 
 function OnlineList({ s, ids }: { s: RoomSession; ids: string[] }) {
   const person = usePeople();
+  const { serverFx } = useRoomFx(s);
   return (
     <div className="pb-4 pt-2">
       {ids.map((id) => {
@@ -107,6 +110,8 @@ function OnlineList({ s, ids }: { s: RoomSession; ids: string[] }) {
             key={id}
             p={person(id)}
             sub={sub}
+            // Backend rooms: the badge from this person's own record (none when they have none)
+            badge={serverFx(id) ? (serverFx(id)?.badge ? <VipBadge set={serverFx(id)!.badge!} level={serverFx(id)!.badge!.level || undefined} size={16} /> : null) : undefined}
             onClick={() => id !== ME_ID && s.openCard(id)}
             right={id === s.room.hostId ? <Pill tone="vip">Owner</Pill> : s.admins.includes(id) ? <Pill>Admin</Pill> : backendRole ? <Pill>{backendRole}</Pill> : onMic ? <Pill>Mic</Pill> : null}
           />

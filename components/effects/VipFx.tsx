@@ -21,19 +21,19 @@ export function frameFit(set: EffectSet, box: number, k = 1.45) {
  * A VIP animated frame around an avatar. `size` is the avatar's size; the
  * frame is drawn bigger around it, with the avatar in the frame's window.
  */
-export function VipFrame({ set, size, children, className = "" }: { set: EffectSet; size: number; children: ReactNode; className?: string }) {
+export function VipFrame({ set, size, children, className = "", onError }: { set: EffectSet; size: number; children: ReactNode; className?: string; onError?: () => void }) {
   const w = size * set.frameScale;
   return (
     <span className={`relative grid place-items-center ${className}`} style={{ width: size, height: size }}>
       {children}
-      <SvgaAnim src={set.frame} className="pointer-events-none absolute left-1/2 top-1/2 z-[1] max-w-none" style={{ width: w, height: w, transform: `translate(-50%, -${set.frameY * 100}%)` }} />
+      <SvgaAnim src={set.frame} className="pointer-events-none absolute left-1/2 top-1/2 z-[1] max-w-none" style={{ width: w, height: w, transform: `translate(-50%, -${set.frameY * 100}%)` }} onError={onError} />
     </span>
   );
 }
 
 /** The VIP chat bubble art stretched behind a box of text. */
-export function VipBubbleArt({ set }: { set: EffectSet }) {
-  return <SvgaAnim src={set.bubble} className="pointer-events-none absolute max-w-none" style={bubbleFit(set.bubbleBox)} />;
+export function VipBubbleArt({ set, onError }: { set: EffectSet; onError?: () => void }) {
+  return <SvgaAnim src={set.bubble} className="pointer-events-none absolute max-w-none" style={bubbleFit(set.bubbleBox)} onError={onError} />;
 }
 
 /**
@@ -81,20 +81,26 @@ export function VipEntryBanner({ set, avatar: avatarIn, children, className = ""
 /**
  * The VIP badge next to a name, `size` px tall (the art is about 1.5× as wide).
  * Lists (room chat, cards) use the still image so dozens of lines don't each
- * run an animation; `animated` plays the SVGA.
+ * run an animation; `animated` plays the SVGA. A badge with no still copy
+ * (an SVGA badge from the server) always plays, and one with only a still copy
+ * (a picture badge from the server) always shows the picture.
  */
 export function VipBadge({ set, size = 18, animated = false, level, className = "" }: { set: VipSet; size?: number; animated?: boolean; level?: number; className?: string }) {
   // The badge file is a square canvas with the art in a band across the middle (set.badgeBand)
   const [top, bottom] = set.badgeBand;
   const k = size / (bottom - top);
   const canvas = (set.badgeCanvas ?? 320) * k;
+  const play = set.badgeStill ? animated && Boolean(set.badge) : Boolean(set.badge);
+  // A file that can't be loaded leaves no gap or broken picture next to the name
+  const [failed, setFailed] = useState("");
+  if ((!set.badge && !set.badgeStill) || failed === (play ? set.badge : set.badgeStill)) return null;
   return (
     <span className={`relative inline-flex shrink-0 items-center align-middle ${className}`} style={{ height: size, width: canvas }} title={level ? `VIP ${level}` : "VIP"} aria-label={level ? `VIP ${level}` : "VIP"} role="img">
-      {animated ? (
-        <SvgaAnim src={set.badge} className="pointer-events-none absolute left-0 max-w-none" style={{ width: canvas, height: canvas, top: -top * k }} />
+      {play ? (
+        <SvgaAnim src={set.badge} className="pointer-events-none absolute left-0 max-w-none" style={{ width: canvas, height: canvas, top: -top * k }} onError={() => setFailed(set.badge)} />
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={set.badgeStill} alt="" width={Math.round(canvas)} height={size} className="object-contain" style={{ width: canvas, height: size }} />
+        <img src={set.badgeStill} alt="" width={Math.round(canvas)} height={size} className="object-contain" style={{ width: canvas, height: size }} onError={() => setFailed(set.badgeStill)} />
       )}
     </span>
   );

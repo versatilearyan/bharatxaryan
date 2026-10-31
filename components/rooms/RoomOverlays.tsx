@@ -1,7 +1,7 @@
 "use client";
 
 import { VipBadge } from "@/components/effects/VipFx";
-import { useMarket } from "@/lib/app/market-store";
+import { useRoomFx } from "./useRoomFx";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -48,7 +48,8 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
   const person = usePeople();
   const id = s.cardId;
   const p = id ? person(id) : null;
-  const cardFx = useMarket().effectsFor(id ?? "", p?.vip);
+  // Backend rooms: the badge from this person's own participants record
+  const cardFx = useRoomFx(s).fxFor(id ?? "", p?.vip);
   const close = () => s.openCard(null);
 
   useEffect(() => {
@@ -97,7 +98,7 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
               </button>
               <div className="min-w-0">
                 <p className="flex items-center gap-1.5 truncate text-[19px] font-extrabold text-[#1c1820]">
-                  <span className={`${vipName(p.vip)} truncate`} style={nameFace(p.nameFont)}>{p.name}</span> {cardFx.badge ? <VipBadge set={cardFx.badge} level={p.vip} size={18} animated /> : null} {role ? <RoleBadge role={role} /> : null}
+                  <span className={`${vipName(p.vip)} truncate`} style={nameFace(p.nameFont)}>{p.name}</span> {cardFx.badge ? <VipBadge set={cardFx.badge} level={p.vip ?? (cardFx.badge.level || undefined)} size={18} animated /> : null} {role ? <RoleBadge role={role} /> : null}
                 </p>
                 <div className="mt-0.5 flex items-center gap-1">
                   {/* Backend room users: their level isn't sent by the participants API, so none is shown */}
