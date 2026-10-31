@@ -19,6 +19,7 @@ const FONT_IDS = new Set<string>(NAME_FONTS.map((f) => f.id));
  * banner and bio. Demo people (no backend id) are left alone.
  */
 export function usePublicProfile(personId: string) {
+  // (personId "" = nobody: does nothing)
   const { rememberPeople } = useServerRooms();
   const userId = personId.startsWith(SERVER_USER_PREFIX) ? personId.slice(SERVER_USER_PREFIX.length) : null;
   const usable = userId !== null && /^\d+$/.test(userId);
@@ -51,6 +52,8 @@ export function usePublicProfile(personId: string) {
             nameFont: r.nameFont && FONT_IDS.has(r.nameFont) ? (r.nameFont as NameFont) : undefined,
             gender: genderFromApi(r.gender),
             look: Object.keys(look).length ? look : undefined,
+            // This person's own VIP status and links, always replaced (never kept from an older load)
+            vip: { vipActive: r.vipActive, vipLevel: r.vipLevel ?? null, vipExpiresAt: r.vipExpiresAt ?? null, badgeUrl: r.badgeUrl ?? null, frameUrl: r.frameUrl ?? null, bubbleUrl: r.bubbleUrl ?? null, entryAnimationUrl: r.entryAnimationUrl ?? null },
           },
         });
         setStatus("ready");

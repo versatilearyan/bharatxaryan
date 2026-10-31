@@ -38,8 +38,25 @@ export const API_GAMES = Object.values(GAME_TO_API);
 
 /* ---------- Types ---------- */
 
+/**
+ * VIP status and cosmetics, sent with both GET /users/me and GET /users/{id}/profile.
+ * The server decides who is VIP: the app never works it out itself. `vipActive`
+ * is undefined only when the response had no vipActive field at all.
+ * Links are https or null; null means that cosmetic isn't available.
+ */
+export type VipProfileFields = {
+  vipActive?: boolean;
+  vipLevel: number | null;
+  /** ISO date-time, or null (no end date given). Never an invalid date. */
+  vipExpiresAt: string | null;
+  badgeUrl: string | null;
+  frameUrl: string | null;
+  bubbleUrl: string | null;
+  entryAnimationUrl: string | null;
+};
+
 /** GET /users/me and the answer to PATCH /users/me. */
-export type UserProfileResponse = {
+export type UserProfileResponse = Partial<VipProfileFields> & {
   id?: string | number;
   email?: string;
   fullName?: string;
@@ -64,7 +81,7 @@ export type UserProfileResponse = {
 };
 
 /** GET /users/{id}/profile. Only what the backend sends; never assumed to have private fields. */
-export type PublicUserProfile = {
+export type PublicUserProfile = Partial<VipProfileFields> & {
   id?: string | number;
   fullName?: string;
   bio?: string;
@@ -148,6 +165,22 @@ function readLook(d: Record<string, unknown>) {
   };
 }
 
+/** The VIP fields, read defensively. */
+export function readVip(d: Record<string, unknown>): VipProfileFields {
+  const lvl = typeof d.vipLevel === "number" ? d.vipLevel : typeof d.vipLevel === "string" && /^\d+$/.test(d.vipLevel.trim()) ? Number(d.vipLevel) : NaN;
+  const exp = typeof d.vipExpiresAt === "string" && !Number.isNaN(Date.parse(d.vipExpiresAt)) ? d.vipExpiresAt : null;
+  const link = (v: unknown) => httpsUrl(v) ?? null;
+  return {
+    vipActive: typeof d.vipActive === "boolean" ? d.vipActive : d.vipActive === "true" ? true : d.vipActive === "false" ? false : undefined,
+    vipLevel: Number.isInteger(lvl) && lvl >= 1 ? lvl : null,
+    vipExpiresAt: exp,
+    badgeUrl: link(d.badgeUrl),
+    frameUrl: link(d.frameUrl),
+    bubbleUrl: link(d.bubbleUrl),
+    entryAnimationUrl: link(d.entryAnimationUrl),
+  };
+}
+
 function readProfile(r: unknown): UserProfileResponse {
   const d = obj(r);
   return {
@@ -165,6 +198,7 @@ function readProfile(r: unknown): UserProfileResponse {
     ...readLook(d),
     profileCompleted: typeof d.profileCompleted === "boolean" ? d.profileCompleted : undefined,
     updatedAt: str(d.updatedAt),
+    ...readVip(d),
   };
 }
 
@@ -180,6 +214,7 @@ function readPublicProfile(r: unknown): PublicUserProfile {
     avatarUrl: httpsUrl(d.avatarUrl),
     bannerUrl: httpsUrl(d.bannerUrl),
     ...readLook(d),
+    ...readVip(d),
   };
 }
 

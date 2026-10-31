@@ -138,13 +138,12 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
   const closed = s.closedSeats.includes(index);
   const seatMuted = s.mutedSeats.includes(index);
   const muted = id ? (id === ME_ID ? s.muted : s.forceMuted.includes(id) || seatMuted) : false;
-  const { fxFor, serverFx } = useRoomFx(s);
-  // Backend rooms: this person's own frame and badge from their participants record, seen the same by everyone
+  const { fxFor } = useRoomFx(s);
+  // Backend rooms: this person's own frame from their participants record, seen the same by everyone
   const fx = id ? fxFor(id) : {};
   const [failedFrame, setFailedFrame] = useState("");
   // A frame file that can't be played falls back to the normal avatar
   const frame = fx.frame && fx.frame.frame !== failedFrame ? fx.frame : undefined;
-  const badge = id ? serverFx(id)?.badge : undefined;
   const pkNow = usePkState()?.pk;
   const pkSide = pkNow ? sideOfSeat(pkNow.mode, index) : null;
 
@@ -223,9 +222,8 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
         </span>
       ) : null}
       {/* Empty seats have no label (as in the reference); the space is kept so rows don't jump */}
-      <span className={`relative z-[2] mt-1 flex items-center gap-0.5 font-bold ${(p && vipName(p.vip, "room")) || "text-cream"} ${p ? "" : numbered ? "hidden" : "invisible"}`} style={{ ...nameFace(p?.nameFont), maxWidth: Math.max(72, size * 1.3), fontSize: size >= 70 ? 15 : size < 50 ? 11 : 12.5, marginTop: frame ? size * 0.14 : undefined }}>
-        <span className="min-w-0 truncate">{p ? (p.id === ME_ID ? "You" : p.name) : "Empty"}</span>
-        {p && badge ? <VipBadge set={badge} level={badge.level || undefined} size={size < 50 ? 12 : 14} /> : null}
+      <span className={`relative z-[2] mt-1 truncate font-bold ${(p && vipName(p.vip, "room")) || "text-cream"} ${p ? "" : numbered ? "hidden" : "invisible"}`} style={{ ...nameFace(p?.nameFont), maxWidth: Math.max(72, size * 1.3), fontSize: size >= 70 ? 15 : size < 50 ? 11 : 12.5, marginTop: frame ? size * 0.14 : undefined }}>
+        {p ? (p.id === ME_ID ? "You" : p.name) : "Empty"}
       </span>
       {id && s.giftCounts[id] ? (
         <span className="-mt-0.5 rounded-full bg-gold/15 px-1.5 text-[9.5px] font-bold text-gold">♥ {formatCount(s.giftCounts[id])}</span>

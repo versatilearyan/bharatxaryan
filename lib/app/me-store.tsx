@@ -61,6 +61,8 @@ function toLocal(r: UserProfileResponse, current: Profile): Partial<Profile> {
   return patch;
 }
 
+const vipOf = (p: UserProfileResponse) => ({ vipActive: p.vipActive, vipLevel: p.vipLevel, vipExpiresAt: p.vipExpiresAt, badgeUrl: p.badgeUrl, frameUrl: p.frameUrl, bubbleUrl: p.bubbleUrl, entryAnimationUrl: p.entryAnimationUrl });
+
 const message = (e: unknown, fallback: string) => (e instanceof ApiError || e instanceof Error ? e.message || fallback : fallback);
 
 export function MeProvider({ children }: { children: ReactNode }) {
@@ -72,6 +74,8 @@ export function MeProvider({ children }: { children: ReactNode }) {
   const signedIn = Boolean(session?.profileCompleted);
   const localRef = useRef(localProfile);
   localRef.current = localProfile;
+  const profileRef = useRef<UserProfileResponse | null>(null);
+  profileRef.current = profile.data;
 
   const loadProfile = useCallback(async () => {
     if (inFlight.current.profile) return;
@@ -168,7 +172,10 @@ export function MeProvider({ children }: { children: ReactNode }) {
     async (patch: UpdateProfileRequest) => {
       const r = await updateMyProfile(patch);
       // Some backends answer a PATCH with an empty body: then load it again to show what was saved
-      const fresh = r.fullName !== undefined || r.bio !== undefined || r.email !== undefined ? r : await getMyProfile();
+      const answer = r.fullName !== undefined || r.bio !== undefined || r.email !== undefined ? r : await getMyProfile();
+      // A PATCH answer without the VIP fields doesn't change your VIP: keep what GET /users/me said
+      const prev = profileRef.current;
+      const fresh = answer.vipActive === undefined && prev?.vipActive !== undefined ? { ...answer, ...vipOf(prev) } : answer;
       fetchedAt.current.profile = Date.now();
       setProfile({ data: fresh, loading: false, error: "" });
       updateProfile(toLocal(fresh, localRef.current));

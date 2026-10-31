@@ -2,6 +2,9 @@
 
 import { VipBadge } from "@/components/effects/VipFx";
 import { useRoomFx } from "./useRoomFx";
+import { usePublicProfile } from "@/components/profile/usePublicProfile";
+import { useServerPeople } from "@/lib/app/server-rooms";
+import { profileEffects } from "@/lib/app/vip-cosmetics";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -48,8 +51,12 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
   const person = usePeople();
   const id = s.cardId;
   const p = id ? person(id) : null;
-  // Backend rooms: the badge from this person's own participants record
-  const cardFx = useRoomFx(s).fxFor(id ?? "", p?.vip);
+  // Backend users: their public profile (GET /users/{id}/profile) is loaded when the card opens,
+  // and its VIP fields win; until then (or if it fails) their participants record is used
+  usePublicProfile(id && id !== ME_ID ? id : "");
+  const roomFx = useRoomFx(s).fxFor(id ?? "", p?.vip);
+  const theirVip = useServerPeople()[id ?? ""]?.vip;
+  const cardFx = (id && id !== ME_ID && profileEffects(theirVip)) || roomFx;
   const close = () => s.openCard(null);
 
   useEffect(() => {

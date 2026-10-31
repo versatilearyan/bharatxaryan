@@ -31,6 +31,7 @@ import { PARIVAR_ENABLED, ROLE_LABEL, parivarLevel } from "@/lib/app/parivar";
 import { useParivar } from "@/lib/app/parivar-store";
 import { LevelPill } from "@/components/profile/IdTags";
 import { usePublicProfile } from "@/components/profile/usePublicProfile";
+import { useProfileFx } from "@/components/profile/useProfileFx";
 
 const THEMES = ["dusk", "rose", "night", "ember", "gold", "monsoon"] as const;
 
@@ -57,7 +58,11 @@ export function ProfileHero({ personId, topLeft, topRight }: { personId: string;
   const { profile, toast } = useApp();
   const person = usePeople();
   const p = person(personId);
-  const fx = useMarket().effectsFor(personId, p.vip);
+  // VIP cosmetics from this person's own profile response (yours: GET /users/me; theirs: GET /users/{id}/profile)
+  const fx = useProfileFx(personId, p.vip);
+  // A frame file that can't be played falls back to the normal avatar
+  const [brokenFrame, setBrokenFrame] = useState("");
+  const frame = fx.frame && fx.frame.frame !== brokenFrame ? fx.frame : undefined;
   const mine = personId === ME_ID;
   // A banner that fails to load falls back to the illustration
   const [brokenBanner, setBrokenBanner] = useState<string | null>(null);
@@ -85,10 +90,10 @@ export function ProfileHero({ personId, topLeft, topRight }: { personId: string;
         </div>
       </div>
       <div className="relative -mt-14 px-4">
-        {fx.frame ? (
-          <span className="grid place-items-center" style={{ width: 96, height: 96, marginLeft: 24, marginBottom: frameFit(fx.frame, 96).drop + 8 }}>
-            <VipFrame set={fx.frame} size={frameFit(fx.frame, 96).avatar}>
-              <PersonAvatar person={{ ...p, frame: "none" }} size={frameFit(fx.frame, 96).avatar} className="rounded-full" />
+        {frame ? (
+          <span className="grid place-items-center" style={{ width: 96, height: 96, marginLeft: 24, marginBottom: frameFit(frame, 96).drop + 8 }}>
+            <VipFrame set={frame} size={frameFit(frame, 96).avatar} onError={() => setBrokenFrame(frame.frame)}>
+              <PersonAvatar person={{ ...p, frame: "none" }} size={frameFit(frame, 96).avatar} className="rounded-full" />
             </VipFrame>
           </span>
         ) : (
@@ -96,7 +101,7 @@ export function ProfileHero({ personId, topLeft, topRight }: { personId: string;
         )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <h1 className={`font-display text-[26px] font-extrabold ${nameTone(p.vip)}`} style={nameFace(p.nameFont)}>{p.name}</h1>
-          {fx.badge ? <VipBadge set={fx.badge} level={p.vip} size={22} animated /> : null}
+          {fx.badge ? <VipBadge set={fx.badge} level={p.vip ?? (fx.badge.level || undefined)} size={22} animated /> : null}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {level !== null ? <LevelPill level={level} gender={p.gender} exact={mine} /> : null}

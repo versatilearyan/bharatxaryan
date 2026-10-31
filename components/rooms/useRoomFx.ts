@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { VIP_SETS, type EffectSet, type VipSet } from "@/lib/app/effects";
+import type { EffectSet } from "@/lib/app/effects";
 import { useMarket, type Effects } from "@/lib/app/market-store";
+import { serverEffects } from "@/lib/app/vip-cosmetics";
 import type { RoomMember } from "./useRoomParticipants";
 import type { RoomSession } from "./useRoomSession";
 
@@ -20,45 +21,6 @@ import type { RoomSession } from "./useRoomSession";
  * level (VIP 8 and up use the VIP 7 ones). Only the links come from the server.
  */
 export type ServerVip = NonNullable<RoomMember["vip"]>;
-
-/**
- * Whether a link is an SVGA animation or an ordinary picture. Cloudinary keeps
- * SVGA files as "raw" uploads, often with no extension, so anything that isn't
- * clearly a picture is treated as SVGA and handed to the SVGA player. If the
- * player can't read it, the cosmetic is left out (see onError in VipFx).
- */
-export function assetKind(url: string): "svga" | "image" {
-  const path = url.split(/[?#]/)[0].toLowerCase();
-  if (/\.svga$/.test(path) || /[_.-]svga$/.test(path)) return "svga";
-  if (/\.(png|jpe?g|webp|gif|avif)$/.test(path) || /\/image\/upload\//.test(path)) return "image";
-  return "svga";
-}
-
-const layoutFor = (level: number | null): VipSet => {
-  const l = Math.min(Math.max(level ?? 1, 1), 7);
-  return VIP_SETS.find((s) => s.level === l) ?? VIP_SETS[0];
-};
-
-/** The Effects for one person from their participants record. Pictures are only used where a picture works (the badge). */
-export function serverEffects(v: ServerVip): Effects {
-  const base = layoutFor(v.vipLevel);
-  const svga = (url: string | null) => (url && assetKind(url) === "svga" ? url : null);
-  const as = (patch: Partial<EffectSet>): EffectSet => ({ ...base, frame: "", bubble: "", entry: "", ...patch });
-  const fx: Effects = {};
-  // The frame needs both a VIP level and a frame
-  const frame = v.vipLevel ? svga(v.frameUrl) : null;
-  if (frame) fx.frame = as({ frame });
-  const bubble = svga(v.bubbleUrl);
-  if (bubble) fx.bubble = as({ bubble });
-  const entry = svga(v.entryAnimationUrl);
-  if (entry) fx.entry = as({ entry });
-  if (v.badgeUrl) {
-    // An SVGA badge plays; a picture badge shows as an <img>. `level` is the person's real VIP level (0 when the server sent none), for the label.
-    const level = v.vipLevel ?? 0;
-    fx.badge = assetKind(v.badgeUrl) === "svga" ? { ...base, level, badge: v.badgeUrl, badgeStill: "" } : { ...base, level, badge: "", badgeStill: v.badgeUrl };
-  }
-  return fx;
-}
 
 /**
  * fxFor(personId, vip) gives the effects to draw for someone in this room:

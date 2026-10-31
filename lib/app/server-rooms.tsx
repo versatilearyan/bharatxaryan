@@ -14,6 +14,7 @@
  *   room calls POST /close instead), then refreshes the list. The LiveKit
  *   connection itself is closed by the room screen (useLiveVoice).
  */
+import type { VipProfileFields } from "@/lib/api/users";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { closeRoom, getPublicRooms, leaveRoom, roomErrorText, type VoiceRoom, type VoiceRoomType } from "@/lib/api/voice-rooms";
 import { useMe } from "./me-store";
@@ -49,6 +50,8 @@ export type ServerPerson = {
   nameFont?: NameFont;
   gender?: Gender;
   look?: Partial<AvatarLook>;
+  /** VIP status and cosmetics from their public profile (GET /users/{id}/profile). Replaced on every load. */
+  vip?: Partial<VipProfileFields>;
 };
 const PeopleCtx = createContext<Record<string, ServerPerson>>({});
 /** Read-only lookup used by usePeople(). Empty outside the provider. */
