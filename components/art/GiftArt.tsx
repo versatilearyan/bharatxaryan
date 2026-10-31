@@ -38,6 +38,18 @@ export function GiftArt({ id, className = "h-full w-full" }: { id: GiftId; class
 
 function art(id: GiftId, u: (n: string) => string) {
   switch (id) {
+    case "love-fireworks":
+      // The gift's own picture with blurred edges, no round frame
+      return <image href="/gifts/love-fireworks-icon.png" x="1" y="1" width="62" height="62" mask={u("soft")} preserveAspectRatio="xMidYMid slice" />;
+    case "city-fireworks":
+      // The gift's own picture with blurred edges, no round frame
+      return <image href="/gifts/city-fireworks-icon.png" x="1" y="1" width="62" height="62" mask={u("soft")} preserveAspectRatio="xMidYMid slice" />;
+    case "savanna-king":
+      // The lion picture with blurred edges, no round frame
+      return <image href="/gifts/savanna-king-icon.png" x="1" y="1" width="62" height="62" mask={u("soft")} preserveAspectRatio="xMidYMid slice" />;
+    case "star-prince":
+      // The prince's own picture (soft round edge already in it), a little larger than the box like the other legendary art
+      return <image href="/gifts/star-prince-icon.png" x="-3" y="-3" width="70" height="70" preserveAspectRatio="xMidYMid meet" />;
     case "neon-racer":
       // The car picture with blurred edges, no round frame
       return <image href="/gifts/neon-racer-icon.png" x="1" y="1" width="62" height="62" mask={u("soft")} preserveAspectRatio="xMidYMid slice" />;

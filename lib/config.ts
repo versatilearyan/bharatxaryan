@@ -11,7 +11,7 @@
  * NEXT_PUBLIC_API_BASE_URL is only used when NEXT_PUBLIC_USE_API_PROXY=false,
  * for hosting where there's no Next.js server to forward requests.
  */
-export const DEFAULT_BACKEND_URL = "https://7fab-2401-4900-8913-7e7f-edbd-ec4a-ff05-9abf.ngrok-free.app";
+export const DEFAULT_BACKEND_URL = "https://f829-2401-4900-8913-7e7f-edbd-ec4a-ff05-9abf.ngrok-free.app";
 const DEFAULT_GOOGLE_CLIENT_ID = "688204337983-ao5gnds2t1p6tq0qn5m9p53ttoo9t1mt.apps.googleusercontent.com";
 
 /** The path in this app that forwards to the backend. */
