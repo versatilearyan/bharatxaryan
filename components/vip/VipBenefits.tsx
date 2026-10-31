@@ -12,6 +12,7 @@ import { formatInr } from "@/lib/app/redpacket";
 import { VIP_TIERS } from "@/lib/app/data";
 import { VIP_SETS } from "@/lib/app/effects";
 import { VIP_DAYS, useApp } from "@/lib/app/store";
+import { VipCosmeticsPreview } from "./VipCosmeticsPreview";
 
 const PERK_ICONS = [BadgeCheck, MessageSquareQuote, DoorOpen, Armchair, Palette, Gem, Sparkles, Crown, Crown, Crown, Crown];
 
@@ -166,6 +167,9 @@ export function VipBenefits() {
           </AnimatePresence>
         </div>
       </section>
+
+      {/* What the previewed level comes with, from the server */}
+      <VipCosmeticsPreview level={tier} />
 
       {/* How growth works */}
       <section className="mt-7 px-4" aria-labelledby="grow-h">

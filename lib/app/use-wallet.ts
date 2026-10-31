@@ -30,7 +30,7 @@ function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
 
 export type Loaded<T> = { data: T | null; error: string | null; loading: boolean; retry: () => void };
 
-function useCachedLoad<T>(key: string | null, load: () => Promise<T>): Loaded<T> {
+export function useCachedLoad<T>(key: string | null, load: () => Promise<T>): Loaded<T> {
   const [state, setState] = useState<{ key: string | null; data: T | null; error: string | null }>({ key: null, data: null, error: null });
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
