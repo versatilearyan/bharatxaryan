@@ -18,7 +18,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { closeRoom, getPublicRooms, leaveRoom, roomErrorText, type VoiceRoom, type VoiceRoomType } from "@/lib/api/voice-rooms";
 import { useMe } from "./me-store";
 import { ME_ID, useApp } from "./store";
-import type { Cover, CoverMotif, CoverTheme, Room, RoomType } from "./types";
+import type { Cover, CoverMotif, CoverTheme, Gender, NameFont, Room, RoomType } from "./types";
+import type { AvatarLook } from "@/components/mock/Avatar";
 
 const PREFS_KEY = "panchayat-server-room-prefs-v1";
 /** Room ids in the app are prefixed so they never clash with the sample rooms. */
@@ -36,7 +37,19 @@ export const ownerPersonId = (ownerId?: string) => userPersonId(ownerId ?? "unkn
 export const identityUserId = (identity: string) => identity.replace(/^user[-_:]/i, "");
 
 /** Names and pictures for backend users, from the participants API (or LiveKit), keyed by person id. */
-export type ServerPerson = { name?: string; avatarUrl?: string };
+/**
+ * What the backend told us about a user: from room participants (name, picture)
+ * and, once their profile is opened, GET /users/{id}/profile.
+ */
+export type ServerPerson = {
+  name?: string;
+  avatarUrl?: string;
+  bannerUrl?: string;
+  bio?: string;
+  nameFont?: NameFont;
+  gender?: Gender;
+  look?: Partial<AvatarLook>;
+};
 const PeopleCtx = createContext<Record<string, ServerPerson>>({});
 /** Read-only lookup used by usePeople(). Empty outside the provider. */
 export const useServerPeople = () => useContext(PeopleCtx);
@@ -240,9 +253,10 @@ export function ServerRoomsProvider({ children }: { children: ReactNode }) {
       const next = { ...all };
       for (const [id, p] of Object.entries(add)) {
         const old = all[id];
-        // Keep a known name when a later source has none
-        const merged = { name: p.name ?? old?.name, avatarUrl: p.avatarUrl ?? old?.avatarUrl };
-        if (old?.name !== merged.name || old?.avatarUrl !== merged.avatarUrl) {
+        // Keep what's known when a later source doesn't have it
+        const merged: ServerPerson = { ...old };
+        for (const [k, v] of Object.entries(p)) if (v !== undefined) (merged as Record<string, unknown>)[k] = v;
+        if (JSON.stringify(old ?? {}) !== JSON.stringify(merged)) {
           next[id] = merged;
           changed = true;
         }

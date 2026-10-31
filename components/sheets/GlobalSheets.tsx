@@ -287,7 +287,7 @@ function CoinsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 function GameSheet({ gameId, onClose }: { gameId: GameId | null; onClose: () => void }) {
-  const { createRoom, profile, addExp, expToday, toast } = useApp();
+  const { createRoom, profile, addExp, expToday, toast, push } = useApp();
   const [playing, setPlaying] = useState(false);
   /** A quick demo match: about 3 seconds, a win earns 20 EXP (up to the daily cap). */
   const quickMatch = () => {
@@ -335,7 +335,23 @@ function GameSheet({ gameId, onClose }: { gameId: GameId | null; onClose: () => 
               {formatCount(g.online)} playing (sample)
             </span>
           </p>
-          <Button size="lg" className="mt-5 w-full" onClick={quickMatch} disabled={playing}>
+          {g.id === "chess" ? (
+            <>
+              <Button
+                size="lg"
+                variant="gold"
+                className="mt-5 w-full"
+                onClick={() => {
+                  onClose();
+                  push({ kind: "chess" });
+                }}
+              >
+                Play online chess
+              </Button>
+              <p className="mt-1.5 text-center text-[11px] text-muted">A real game against another player. No EXP yet.</p>
+            </>
+          ) : null}
+          <Button size="lg" className={`${g.id === "chess" ? "mt-3" : "mt-5"} w-full`} onClick={quickMatch} disabled={playing}>
             {playing ? "Playing a quick match…" : "Quick match (demo)"}
           </Button>
           <p className="mt-1.5 text-center text-[11px] text-muted">
@@ -344,7 +360,7 @@ function GameSheet({ gameId, onClose }: { gameId: GameId | null; onClose: () => 
           <Button size="lg" variant="soft" className="mt-3 w-full" onClick={start}>
             Open a {g.name} room
           </Button>
-          <p className="mt-2 text-center text-[11px] text-muted">Game boards arrive in a later version. For now you get a voice room to play together.</p>
+          {g.id === "chess" ? null : <p className="mt-2 text-center text-[11px] text-muted">Game boards arrive in a later version. For now you get a voice room to play together.</p>}
         </div>
       ) : null}
     </BottomSheet>

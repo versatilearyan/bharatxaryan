@@ -30,6 +30,7 @@ import { ParivarEmblem, ParivarTag } from "@/components/parivar/ParivarScreens";
 import { PARIVAR_ENABLED, ROLE_LABEL, parivarLevel } from "@/lib/app/parivar";
 import { useParivar } from "@/lib/app/parivar-store";
 import { LevelPill } from "@/components/profile/IdTags";
+import { usePublicProfile } from "@/components/profile/usePublicProfile";
 
 const THEMES = ["dusk", "rose", "night", "ember", "gold", "monsoon"] as const;
 
@@ -70,6 +71,8 @@ export function ProfileHero({ personId, topLeft, topRight }: { personId: string;
       <div className="relative h-[168px]">
         {mine && profile.banner ? (
           <img src={profile.banner} alt="Your banner" className="h-full w-full object-cover" />
+        ) : !mine && p.banner ? (
+          <img src={p.banner} alt={`${p.name}'s banner`} className="h-full w-full object-cover" />
         ) : (
           <SunsetScene theme={mine ? "dusk" : THEMES[Math.floor(seeded(`${personId}:banner`) * THEMES.length)]} motif={mine ? "banyan" : "lanterns"} />
         )}
@@ -535,6 +538,7 @@ export function UserProfileScreen({ personId }: { personId: string }) {
     recordVisit(personId);
   }, [personId, recordVisit]);
   const [gift, setGift] = useState(false);
+  const pub = usePublicProfile(personId);
   return (
     <div className="relative flex h-full flex-col bg-ink">
       <div className="app-scroll min-h-0 flex-1 pb-4">
@@ -546,6 +550,18 @@ export function UserProfileScreen({ personId }: { personId: string }) {
             </button>
           }
         />
+        {pub.isBackendUser && pub.status !== "ready" ? (
+          <div role={pub.status === "loading" ? "status" : "alert"} className={`mx-4 mt-3 flex items-center gap-3 rounded-2xl px-4 py-3 ring-1 ${pub.status === "loading" ? "bg-surface ring-line" : "bg-[#ff8a8f]/10 ring-[#ff8a8f]/30"}`}>
+            <p className={`flex-1 text-[12.5px] font-semibold ${pub.status === "loading" ? "text-muted" : "text-[#ff8a8f]"}`}>
+              {pub.status === "loading" ? "Loading profile…" : pub.status === "not-found" ? "This user wasn't found. They may have deleted their account." : pub.error}
+            </p>
+            {pub.status === "error" ? (
+              <button type="button" onClick={pub.retry} className="rounded-full bg-cream/[0.08] px-3 py-1.5 text-[12px] font-bold text-cream">
+                Retry
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         <UserProfileBody personId={personId} />
       </div>
       <div className="pb-safe flex gap-2.5 border-t border-line bg-ink-2 px-4 py-3">

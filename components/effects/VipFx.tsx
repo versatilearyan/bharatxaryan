@@ -40,7 +40,8 @@ export function VipBubbleArt({ set }: { set: EffectSet }) {
  * The entry banner, with a line of text where the art leaves room for it.
  * The text shrinks to fit the bar (down to 60%), so long names still show in full.
  */
-export function VipEntryBanner({ set, avatar, children, className = "", style }: { set: EffectSet; avatar?: ReactNode; children?: ReactNode; className?: string; style?: CSSProperties }) {
+export function VipEntryBanner({ set, avatar: avatarIn, children, className = "", style }: { set: EffectSet; avatar?: ReactNode; children?: ReactNode; className?: string; style?: CSSProperties }) {
+  const avatar = set.entryNoAvatar ? undefined : avatarIn;
   const box = useRef<HTMLDivElement>(null);
   const row = useRef<HTMLSpanElement>(null);
   const [scale, setScale] = useState(1);

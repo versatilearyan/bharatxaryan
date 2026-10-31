@@ -30,6 +30,8 @@ export type EffectSet = {
   entryText: [string, string];
   /** Where the avatar starts when the banner shows one (just after the left ornament). */
   entryAvatarAt: string;
+  /** Show only the name on the entry banner, no avatar. */
+  entryNoAvatar?: boolean;
 };
 
 export type VipSet = EffectSet & {
@@ -220,9 +222,9 @@ export const GIFT_SETS: GiftSet[] = [
     frame: "/gifts/storm-guardian/frame.svga",
     bubble: "/gifts/storm-guardian/bubble.svga",
     entry: "/gifts/storm-guardian/entry.svga",
-    // 510×1104, like the gift itself; the guardian stands in the top-right, the rest is clear
-    page: "/gifts/storm-guardian/page.svga",
-    pageRatio: "510 / 1104",
+    // 1080×2340 (aryan's new home page effect), 20 fps, 40 frames
+    page: "/gifts/storm-guardian/page.svga?v=2",
+    pageRatio: "1080 / 2340",
     tint: "from-[#16306b] to-[#0b1433]",
     // 260×260 canvas: the ring's opening is about 182 px wide, centred at (136, 126).
     // The guardian stands on the left of the ring and a platform sits under it.
@@ -234,6 +236,7 @@ export const GIFT_SETS: GiftSet[] = [
     entryRatio: "660 / 132",
     entryText: ["27%", "11%"],
     entryAvatarAt: "26%",
+    entryNoAvatar: true,
   },
 ];
 

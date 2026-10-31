@@ -113,6 +113,23 @@ Music never autoplays (browsers block it, and visitors should choose); it fades 
 To use a different track, replace the mp3 (keep the name, or change `TRACK` in `components/MusicToggle.tsx`).
 Only use music you own or have a licence for.
 
+## Online chess
+
+Home → Game Modes → Chess → **Play online chess** opens a real game against
+another player (`components/games/ChessScreen.tsx`). It comes from
+[DevChess](https://github.com/DevdharManpuria/devchess) (MIT): the game server
+is in `chess-server/`, and the board uses chess.js and DevChess's piece
+pictures (`public/chess/`).
+
+- Start the server: `cd chess-server && npm install && PORT=8090 npm run dev`.
+- The app connects to `NEXT_PUBLIC_CHESS_WS_URL` (default `ws://localhost:8090`).
+  On an https site this must be a `wss://` address.
+- Find a match pairs you with the next player who taps it. Moves are checked by
+  the server. Leaving mid-game (or losing the connection) loses the game.
+- Pawns promote to a queen automatically.
+- The chess server has no accounts, so the opponent shows as "Opponent" and wins
+  give no EXP.
+
 ## Things to set before going public
 
 | What | Where |
@@ -165,10 +182,11 @@ Endpoints used: `POST /api/v1/auth/send-otp {email}`, `POST /api/v1/auth/verify-
 
 ### Your profile and stats
 
-- `GET /api/v1/users/me` loads when you sign in and each time you open the Profile tab (skipped if it loaded in the last 30 seconds). Its name, bio, gender, date of birth and http(s) avatar replace the demo profile's values. `PATCH /api/v1/users/me` saves name and bio from Edit profile (and the picture, but only when it's a web address). Only changed fields are sent.
+- `GET /api/v1/users/me` loads when you sign in and each time you open the Profile tab (skipped if it loaded in the last 30 seconds). Name, bio, gender, date of birth, name font, favorite games and the cartoon-avatar look replace the demo profile's values. `avatarUrl`/`bannerUrl` (https only) are shown when this device has no picture of its own. When `profileCompleted` is false, the Profile tab shows a "Complete" prompt.
 - `GET /api/v1/users/me/stats` (`level`, `expPoints`, `charmPoints`, `vipPoints`) feeds your Profile tab: the level pill, charm badge and count, the level card, and VIP status. These numbers are display-only. VIP level is read off the app's VIP thresholds, and the EXP bar off the app's level curve, because the backend sends only totals.
-- Code: `lib/api/users.ts` (`getMyProfile`, `updateMyProfile`, `getMyStats`), `lib/app/me-store.tsx` (`useMe`).
-- Edit profile → Save sends only changed fields to `PATCH /api/v1/users/me`: `fullName`, `gender`, `dateOfBirth`, `bio` (120 max), `nameFont`, `favoriteGames` (4 max), `avatarBackground`, `avatarSkinTone`, `avatarOutfit`, `avatarHairStyle`. Never images.
+- Edit profile → Save sends only changed fields to `PATCH /api/v1/users/me`: `fullName` (1–100), `gender` (`MALE`, `FEMALE`, `OTHER`, `PREFER_NOT_TO_SAY`), `dateOfBirth` (past, 18+), `bio` (120 max), `nameFont` (30 max), `favoriteGames` (up to 4, no repeats, `CHESS` `LUDO` `MIC_GRAB` `CARROM` `POOL` `DRAW_AND_GUESS` `ANTAKSHARI` `CARD_NIGHT`), `avatarBackground`/`avatarSkinTone`/`avatarOutfit` (hex colours) and `avatarHair` (`"0"`–`"3"`). The same rules are checked before sending (`validateProfileUpdate`). Never `avatarUrl` or `bannerUrl`.
+- Other people's profiles: opening a backend user's profile (someone from a voice room) calls `GET /api/v1/users/{id}/profile` and shows only what it returns (name, bio, picture, banner, font, look). "User not found" on 404, error with Retry otherwise. Code: `components/profile/usePublicProfile.ts`.
+- Code: `lib/api/users.ts` (`getMyProfile`, `getPublicProfile`, `updateMyProfile`, `getMyStats`, `validateProfileUpdate`), `lib/app/me-store.tsx` (`useMe`).
 - **Profile picture and banner (temporary, this device only)**: cropped in the browser and stored as JPEG Blobs in IndexedDB (`panchayat-profile-images`), one record per user (`id:<backend user id>`, or `email:<email>` until the ID has loaded). Another account on the same browser never sees them, and logging out only hides them. They don't sync across devices or browsers, and clearing site data deletes them. JPG, PNG, WebP or GIF up to 8 MB. Code: `lib/app/local-images.ts`. Replace with real uploads (e.g. Cloudinary) when the backend has an upload endpoint.
 - Level, charm and VIP shown elsewhere (rooms, chat, ranking, VIP effects) still use the demo numbers.
 

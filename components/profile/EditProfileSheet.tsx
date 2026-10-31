@@ -11,9 +11,9 @@ import { useApp } from "@/lib/app/store";
 import { useMe, type ImageChange } from "@/lib/app/me-store";
 import { imageFileError } from "@/lib/app/local-images";
 import { ApiError } from "@/lib/api/client";
-import { BIO_MAX, FAVORITE_GAMES_MAX, genderToApi, type UpdateProfileRequest } from "@/lib/api/users";
+import { API_GENDERS, BIO_MAX, FAVORITE_GAMES_MAX, GENDER_LABELS, genderFromApi, validateProfileUpdate, type ApiGender, type UpdateProfileRequest } from "@/lib/api/users";
 import { MIN_AGE, ageOn } from "@/components/auth/AuthFlow";
-import type { GameId, Gender, Profile } from "@/lib/app/types";
+import type { GameId, Profile } from "@/lib/app/types";
 
 const BGS = ["#3a2f55", "#7a2f45", "#2f4a63", "#2f5a49", "#7a5a2a", "#5a2f63"];
 const OUTFITS = ["#f4515b", "#e7bc72", "#ff687c", "#8fa8ff", "#6fe0a6", "#fff1d5"];
@@ -80,6 +80,9 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
   const { profile, updateProfile, toast } = useApp();
   const me = useMe();
   const [draft, setDraft] = useState<Profile>(profile);
+  // The backend's four genders; the app's own profile only knows male/female (for the ♂/♀ icon)
+  const savedGender: ApiGender | undefined = me.profile.data?.gender ?? (profile.gender === "male" ? "MALE" : profile.gender === "female" ? "FEMALE" : undefined);
+  const [gender, setGender] = useState<ApiGender | undefined>(savedGender);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -96,13 +99,14 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
   useEffect(() => {
     if (open && !wasOpen.current) {
       setDraft(profile);
+      setGender(savedGender);
       setPending({});
       setError("");
       setFieldErrors({});
     }
     if (!open && wasOpen.current) dropPreviews();
     wasOpen.current = open;
-  }, [open, profile]);
+  }, [open, profile, savedGender]);
   useEffect(() => dropPreviews, []);
 
   const look = (patch: Partial<Profile["look"]>) => setDraft((d) => ({ ...d, look: { ...d.look, ...patch } }));
@@ -131,14 +135,21 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
     const patch: UpdateProfileRequest = {};
     if (name !== (server?.fullName ?? profile.name)) patch.fullName = name;
     if (bio !== (server?.bio ?? profile.bio)) patch.bio = bio;
-    if (draft.gender && draft.gender !== profile.gender) patch.gender = genderToApi(draft.gender);
+    if (gender && gender !== savedGender) patch.gender = gender;
     if (draft.dob && draft.dob !== profile.dob) patch.dateOfBirth = draft.dob;
     if ((draft.nameFont ?? "default") !== (profile.nameFont ?? "default")) patch.nameFont = draft.nameFont ?? "default";
     if (!sameList(draft.favoriteGames, profile.favoriteGames)) patch.favoriteGames = draft.favoriteGames.slice(0, FAVORITE_GAMES_MAX);
     if (draft.look.bg !== profile.look.bg) patch.avatarBackground = draft.look.bg;
     if (draft.look.skin !== profile.look.skin) patch.avatarSkinTone = draft.look.skin;
     if (draft.look.outfit !== profile.look.outfit) patch.avatarOutfit = draft.look.outfit;
-    if (draft.look.hairStyle !== profile.look.hairStyle) patch.avatarHairStyle = draft.look.hairStyle;
+    if (draft.look.hairStyle !== profile.look.hairStyle) patch.avatarHair = String(draft.look.hairStyle);
+    // Same rules as the backend's UpdateProfileRequest, checked before anything is sent
+    const invalid = validateProfileUpdate(patch);
+    if (Object.keys(invalid).length) {
+      setFieldErrors(invalid);
+      setError(Object.values(invalid)[0]);
+      return;
+    }
     const imagesChanged = pending.photo !== undefined || pending.banner !== undefined;
 
     setSaving(true);
@@ -165,8 +176,8 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
     }
     try {
       // Fields the backend owns are only applied from its answer (me.save); the rest is local
-      const { name: _n, bio: _bio, gender: _g, dob: _d, ...localOnly } = local;
-      void [_n, _bio, _g, _d];
+      const { name: _n, bio: _bio, gender: _g, dob: _d, nameFont: _f, favoriteGames: _fg, look: _l, ...localOnly } = local;
+      void [_n, _bio, _g, _d, _f, _fg, _l];
       updateProfile(localOnly);
       const saved = await me.save(patch);
       updateProfile({ handle: handleFor(saved.fullName ?? name) });
@@ -271,16 +282,11 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
         <div>
           <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Gender</p>
           <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Gender">
-            {(
-              [
-                ["male", "Male"],
-                ["female", "Female"],
-              ] as [Gender, string][]
-            ).map(([id, label]) => {
-              const on = draft.gender === id;
+            {API_GENDERS.map((id) => {
+              const on = gender === id;
               return (
-                <button key={id} type="button" role="radio" aria-checked={on} onClick={() => setDraft((d) => ({ ...d, gender: id }))} className={`h-11 rounded-2xl text-[14px] font-semibold ring-1 ${on ? "bg-gold/15 text-cream ring-gold/60" : "bg-surface text-cream/75 ring-line"}`}>
-                  {label}
+                <button key={id} type="button" role="radio" aria-checked={on} onClick={() => { setGender(id); setDraft((d) => ({ ...d, gender: genderFromApi(id) })); }} className={`h-11 rounded-2xl text-[14px] font-semibold ring-1 ${on ? "bg-gold/15 text-cream ring-gold/60" : "bg-surface text-cream/75 ring-line"}`}>
+                  {GENDER_LABELS[id]}
                 </button>
               );
             })}
@@ -333,6 +339,7 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
 
         <div>
           <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Favorite games (up to 4)</p>
+          {fieldErrors.favoriteGames ? <p role="alert" className="-mt-1 mb-2 text-[11.5px] font-semibold text-[#ff8a8f]">{fieldErrors.favoriteGames}</p> : null}
           <div className="flex flex-wrap gap-2">
             {GAMES.map((g) => {
               const on = draft.favoriteGames.includes(g.id);

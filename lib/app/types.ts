@@ -16,6 +16,8 @@ export type Person = {
   name: string;
   /** Uploaded profile picture (data URL). Falls back to the illustrated avatar. */
   photo?: string;
+  /** Profile banner (https URL from the backend). Falls back to an illustration. */
+  banner?: string;
   handle: string;
   look: AvatarLook;
   frame: Frame;

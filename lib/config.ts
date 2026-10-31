@@ -24,3 +24,10 @@ export const backendOrigin = (url: string) => url.trim().replace(/\/+$/, "").rep
 const USE_PROXY = process.env.NEXT_PUBLIC_USE_API_PROXY !== "false";
 export const API_BASE_URL_SETTING = USE_PROXY ? API_PROXY_PATH : process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || DEFAULT_BACKEND_URL;
 export const GOOGLE_CLIENT_ID_SETTING = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim() || DEFAULT_GOOGLE_CLIENT_ID;
+
+/**
+ * The chess game server (chess-server/ in this project, from DevChess). The
+ * browser talks to it directly over WebSocket. On an https site it must be a
+ * wss:// URL. Locally run it with `PORT=8090 npm run dev` inside chess-server/.
+ */
+export const CHESS_WS_URL = process.env.NEXT_PUBLIC_CHESS_WS_URL?.trim() || "ws://localhost:8090";

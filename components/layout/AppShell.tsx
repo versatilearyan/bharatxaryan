@@ -27,6 +27,7 @@ import { IntimateSpace } from "@/components/profile/IntimateSpace";
 import { GiftWallScreen, GuardScreen, UserProfileScreen, UserRoomsScreen } from "@/components/profile/UserProfile";
 import { StatsScreen } from "@/components/profile/StatsScreen";
 import { VisitorsScreen } from "@/components/profile/VisitorsScreen";
+import { ChessScreen } from "@/components/games/ChessScreen";
 import { ActiveRoomHost } from "@/components/rooms/ActiveRoomHost";
 import { CreateRoom } from "@/components/rooms/CreateRoom";
 import { VipEntry } from "@/components/vip/VipEntry";
@@ -175,5 +176,7 @@ function ScreenView({ screen }: { screen: Screen }) {
       return <ParivarCreateScreen />;
     case "parivar":
       return <ParivarHome id={screen.id} />;
+    case "chess":
+      return <ChessScreen />;
   }
 }

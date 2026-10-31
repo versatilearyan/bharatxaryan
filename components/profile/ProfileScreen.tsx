@@ -47,6 +47,12 @@ export function ProfileScreen() {
           </button>
         </div>
       ) : null}
+      {!loadError && me.profile.data?.profileCompleted === false ? (
+        <button type="button" onClick={() => setSheet({ kind: "edit-profile" })} className="mx-4 mt-3 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-gold/10 px-4 py-3 text-left ring-1 ring-gold/30">
+          <span className="flex-1 text-[12.5px] font-semibold text-cream">Your profile isn&apos;t complete yet. Add your details so people can find you.</span>
+          <span className="shrink-0 rounded-full bg-gold/20 px-3 py-1.5 text-[12px] font-bold text-cream">Complete</span>
+        </button>
+      ) : null}
 
       {/* Visitors, Shop, Bag and Ranking */}
       <div className="mx-4 mt-4 grid grid-cols-4 gap-2.5">

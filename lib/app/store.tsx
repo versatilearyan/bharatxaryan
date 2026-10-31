@@ -44,7 +44,8 @@ export type Screen =
   | { kind: "visitors" }
   | { kind: "parivar-list" }
   | { kind: "parivar-create" }
-  | { kind: "parivar"; id: string };
+  | { kind: "parivar"; id: string }
+  | { kind: "chess" };
 
 export type Sheet =
   | { kind: "person"; personId: string }

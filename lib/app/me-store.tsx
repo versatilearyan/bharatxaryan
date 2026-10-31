@@ -11,13 +11,12 @@
  * avatarUrl included) replaces them. Stats are display-only.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { getMyProfile, getMyStats, genderFromApi, updateMyProfile, type UpdateProfileRequest, type UserProfileResponse, type UserStats } from "@/lib/api/users";
+import { getMyProfile, getMyStats, genderFromApi, readHair, updateMyProfile, type UpdateProfileRequest, type UserProfileResponse, type UserStats } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/client";
 import { dataUrlToBlob, imageOwner, loadImages, moveImages, saveImages, type LocalImages } from "./local-images";
-import { GAMES } from "./data";
 import { NAME_FONTS } from "./fonts";
 import { useApp } from "./store";
-import type { GameId, NameFont, Profile } from "./types";
+import type { NameFont, Profile } from "./types";
 
 type Load<T> = { data: T | null; loading: boolean; error: string };
 /** Open the Profile tab again within this time and nothing is re-fetched. */
@@ -41,24 +40,24 @@ const MeContext = createContext<MeValue | null>(null);
 
 const HEX = /^#[0-9a-f]{3,8}$/i;
 const FONT_IDS = new Set<string>(NAME_FONTS.map((f) => f.id));
-const GAME_IDS = new Set<string>(GAMES.map((g) => g.id));
 
 /** The backend's fields, as demo-profile fields. Images are deliberately not touched. */
 function toLocal(r: UserProfileResponse, current: Profile): Partial<Profile> {
   const patch: Partial<Profile> = {};
   if (r.fullName) patch.name = r.fullName.slice(0, 24);
   if (r.bio !== undefined) patch.bio = r.bio ?? "";
-  const g = genderFromApi(r.gender);
-  if (g) patch.gender = g;
+  // Other / Prefer not to say: no ♂/♀ icon
+  if (r.gender) patch.gender = genderFromApi(r.gender);
   if (r.dateOfBirth && /^\d{4}-\d{2}-\d{2}$/.test(r.dateOfBirth)) patch.dob = r.dateOfBirth;
   if (r.nameFont && FONT_IDS.has(r.nameFont)) patch.nameFont = r.nameFont as NameFont;
-  if (r.favoriteGames) patch.favoriteGames = r.favoriteGames.filter((id) => GAME_IDS.has(id)).slice(0, 4) as GameId[];
+  if (r.favoriteGames) patch.favoriteGames = r.favoriteGames.slice(0, 4);
   const look = { ...current.look };
   let lookChanged = false;
   if (r.avatarBackground && HEX.test(r.avatarBackground)) (look.bg = r.avatarBackground), (lookChanged = true);
   if (r.avatarSkinTone && HEX.test(r.avatarSkinTone)) (look.skin = r.avatarSkinTone), (lookChanged = true);
   if (r.avatarOutfit && HEX.test(r.avatarOutfit)) (look.outfit = r.avatarOutfit), (lookChanged = true);
-  if (typeof r.avatarHairStyle === "number" && [0, 1, 2, 3].includes(r.avatarHairStyle)) (look.hairStyle = r.avatarHairStyle as Profile["look"]["hairStyle"]), (lookChanged = true);
+  const hair = readHair(r.avatarHair);
+  if (hair !== undefined) (look.hairStyle = hair), (lookChanged = true);
   if (lookChanged) patch.look = look;
   return patch;
 }
@@ -132,6 +131,11 @@ export function MeProvider({ children }: { children: ReactNode }) {
   const owner = session ? imageOwner({ id: userId, email }) : "";
   const blobs = useRef<LocalImages>({});
   const urls = useRef<{ photo?: string; banner?: string }>({});
+  // avatarUrl/bannerUrl from the backend, shown when this device has no picture of its own
+  const serverAvatar = profile.data?.avatarUrl;
+  const serverBanner = profile.data?.bannerUrl;
+  const serverImages = useRef({ photo: serverAvatar, banner: serverBanner });
+  serverImages.current = { photo: serverAvatar, banner: serverBanner };
 
   /** Show these blobs (or nothing) as the profile's photo and banner. */
   const show = useCallback(
@@ -142,10 +146,16 @@ export function MeProvider({ children }: { children: ReactNode }) {
         photo: images.photo ? URL.createObjectURL(images.photo) : undefined,
         banner: images.banner ? URL.createObjectURL(images.banner) : undefined,
       };
-      updateProfile({ photo: urls.current.photo, banner: urls.current.banner });
+      updateProfile({ photo: urls.current.photo ?? serverImages.current.photo, banner: urls.current.banner ?? serverImages.current.banner });
     },
     [updateProfile],
   );
+
+  // A new avatarUrl/bannerUrl from the backend shows up unless the device has its own picture
+  useEffect(() => {
+    if (!session) return;
+    updateProfile({ photo: urls.current.photo ?? serverAvatar, banner: urls.current.banner ?? serverBanner });
+  }, [serverAvatar, serverBanner, session, updateProfile]);
 
   useEffect(() => {
     let live = true;
