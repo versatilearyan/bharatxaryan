@@ -3,7 +3,8 @@
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, ChevronDown, ClipboardList, Crown, Flame, MonitorPlay, Plus, Trophy, UsersRound } from "lucide-react";
+import { Bell, ChevronDown, Crown, Flame, MonitorPlay, Plus, UsersRound } from "lucide-react";
+import { ShortcutIcon } from "@/components/art/ShortcutIcon";
 import { Logo } from "@/components/brand/Logo";
 import { GameArt } from "@/components/art/GameArt";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
@@ -85,33 +86,25 @@ function Shortcuts() {
     {
       label: "Ranking",
       onClick: () => push({ kind: "ranking" }),
-      art: (
-        <span className="grid h-full w-full place-items-center rounded-full bg-gradient-to-b from-[#5a3a14] to-[#2a1a0c] ring-2 ring-gold/70">
-          <Trophy className="h-7 w-7 text-gold" aria-hidden />
-        </span>
-      ),
+      art: <ShortcutIcon kind="ranking" />,
     },
     {
       label: "Tasks",
       onClick: () => setSheet({ kind: "tasks" }),
-      art: (
-        <span className="grid h-full w-full place-items-center rounded-full bg-gradient-to-b from-[#3a2f6e] to-[#1f1a3d] ring-2 ring-[#8f7ae0]/60">
-          <ClipboardList className="h-7 w-7 text-[#c9b8ff]" aria-hidden />
-        </span>
-      ),
+      art: <ShortcutIcon kind="tasks" />,
       dot: true,
     },
     {
       label: "Friends",
       onClick: () => setSheet({ kind: "friends" }),
       art: (
-        <span className="relative grid h-full w-full place-items-center rounded-full bg-gradient-to-b from-[#1f4a3f] to-[#0f241e] ring-2 ring-speak/50">
+        <ShortcutIcon kind="friends">
           <span className="flex -space-x-3">
             {(online.length ? online : PEOPLE).slice(0, 2).map((p) => (
-              <PersonAvatar key={p.id} person={{ ...person(p.id), frame: "none" }} size={30} className="ring-2 ring-[#163028] rounded-full" />
+              <PersonAvatar key={p.id} person={{ ...person(p.id), frame: "none" }} size={26} className="rounded-full ring-2 ring-[#e7bc72]" />
             ))}
           </span>
-        </span>
+        </ShortcutIcon>
       ),
     },
   ];
@@ -121,7 +114,7 @@ function Shortcuts() {
         <motion.button key={it.label} type="button" whileTap={{ scale: 0.92 }} onClick={it.onClick} className="flex flex-col items-center gap-2">
           <span className="relative h-[66px] w-[66px]">
             {it.art}
-            {it.dot ? <span className="absolute right-0.5 top-0.5 h-3 w-3 rounded-full bg-coral ring-2 ring-ink" /> : null}
+            {it.dot ? <span className="absolute right-0 top-0 h-3 w-3 rounded-full bg-coral ring-2 ring-ink" /> : null}
           </span>
           <span className="text-[13px] font-semibold text-cream">{it.label}</span>
         </motion.button>

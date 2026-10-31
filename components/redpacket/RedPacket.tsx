@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Lock } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -12,6 +12,8 @@ import { useRedPackets } from "@/lib/app/redpacket-store";
 import { ME_ID, useApp } from "@/lib/app/store";
 import type { Room } from "@/lib/app/types";
 import type { RoomSession } from "@/components/rooms/useRoomSession";
+import { walletImageSrc, type RedPacketInventory, type WalletRedPacket } from "@/lib/api/wallet";
+import type { Loaded } from "@/lib/app/use-wallet";
 
 const TONES = {
   red: { body: ["#ff5a4e", "#d81f2a"], flap: "#b3121f", trim: "#f6d899" },
@@ -169,33 +171,87 @@ export function Marquee({ children, className = "" }: { children: React.ReactNod
 }
 
 /** Red packets in the wallet. They're paid in rupees, so buying opens checkout in the Shop. */
-export function RedPacketShop() {
-  const { owned } = useRedPackets();
-  const { push, setSheet } = useApp();
+/** An image from the server that falls back (or shows nothing) if it's missing or fails to load. */
+export function WalletImage({ src, alt, className = "", fallback }: { src?: string; alt: string; className?: string; fallback: ReactNode }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [src]);
+  if (!src || failed) return <>{fallback}</>;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt={alt} className={className} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
+}
+
+/**
+ * The red packets in the wallet: products from GET /api/v1/wallet/red-packets, and
+ * "You have N" from the signed-in person's inventory (GET /api/v1/wallet/me/red-packets/inventory),
+ * matched by product id. Nothing here is sample data.
+ */
+export function RedPacketShop({
+  products,
+  inventory,
+  signedIn,
+  onBuy,
+}: {
+  products: Loaded<WalletRedPacket[]>;
+  inventory: Loaded<RedPacketInventory>;
+  signedIn: boolean;
+  onBuy: () => void;
+}) {
+  const list = products.data ?? [];
+  const owned = (id: string) => (!signedIn ? null : inventory.loading ? "…" : inventory.error ? "?" : String(inventory.data?.[id] ?? 0));
   return (
     <div>
       <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">🧧 Red packets</p>
       <p className="mt-1 text-[11.5px] text-muted">Red packets you buy wait in your Bag. Send one from the red packet button in any room: everyone in Panchayat sees it, and the room taps the rain to loot the coins.</p>
-      <div className="mt-2 grid grid-cols-3 gap-2">
-        {RED_PACKETS.map((p) => (
-          <div key={p.id} className="flex flex-col items-center rounded-2xl bg-surface px-1.5 pb-2 pt-2.5 ring-1 ring-line">
-            <RedPacketArt id={p.id} size={44} />
-            <span className="mt-1 text-center text-[11px] font-bold leading-tight text-cream">{p.name}</span>
-            <span className="text-[10.5px] text-muted">You have {owned[p.id] ?? 0}</span>
-            <button
-              type="button"
-              onClick={() => {
-                setSheet(null);
-                push({ kind: "shop", tab: "packets", pay: p.id });
-              }}
-              aria-label={`Buy ${p.label} red packet for ${formatInr(p.inr)}`}
-              className="mt-1.5 flex h-8 w-full items-center justify-center rounded-full bg-gradient-to-r from-[#ff7a1a] to-[#e2242f] text-[11.5px] font-bold text-white"
-            >
-              {formatInr(p.inr)}
-            </button>
-          </div>
-        ))}
-      </div>
+      {products.error ? (
+        <RetryNote message={products.error} onRetry={products.retry} />
+      ) : products.loading ? (
+        <div className="mt-2 grid grid-cols-3 gap-2" aria-busy="true" aria-label="Loading red packets">
+          {[0, 1, 2].map((k) => (
+            <span key={k} className="h-[152px] animate-pulse rounded-2xl bg-surface ring-1 ring-line" />
+          ))}
+        </div>
+      ) : !list.length ? (
+        <p className="mt-2 rounded-2xl bg-surface px-4 py-6 text-center text-[12.5px] text-muted ring-1 ring-line">No red packets are on sale right now.</p>
+      ) : (
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          {list.map((p) => {
+            const have = owned(p.id);
+            return (
+              <div key={p.id} className="flex flex-col items-center rounded-2xl bg-surface px-1.5 pb-2 pt-2.5 ring-1 ring-line">
+                <span className="grid h-[55px] place-items-center">
+                  <WalletImage src={walletImageSrc(p.imageUrl)} alt="" className="h-[55px] w-[55px] object-contain" fallback={<RedPacketArt id="rp-10k" cover="red" size={44} label={false} />} />
+                </span>
+                <span className="mt-1 text-center text-[11px] font-bold leading-tight text-cream">{p.name}</span>
+                <span className="flex items-center gap-0.5 text-[10.5px] font-semibold text-gold">
+                  <Coin className="h-3 w-3" /> {p.coinValue.toLocaleString("en-IN")}
+                </span>
+                {have !== null ? <span className="text-[10.5px] text-muted">You have {have}</span> : null}
+                <button
+                  type="button"
+                  onClick={onBuy}
+                  aria-label={`${p.name}, ${p.coinValue.toLocaleString("en-IN")} coins, ${formatInr(p.priceInRupees)}`}
+                  className="mt-1.5 flex h-8 w-full items-center justify-center rounded-full bg-gradient-to-r from-[#ff7a1a] to-[#e2242f] text-[11.5px] font-bold text-white"
+                >
+                  {formatInr(p.priceInRupees)}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {signedIn && inventory.error && !products.error ? <RetryNote message={`Couldn't load your red packets. ${inventory.error}`} onRetry={inventory.retry} /> : null}
+      {!signedIn && list.length ? <p className="mt-2 text-[11px] text-muted">Sign in to see how many you have.</p> : null}
+    </div>
+  );
+}
+
+function RetryNote({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div role="alert" className="mt-2 flex items-center gap-3 rounded-2xl bg-[#3a1418] px-3.5 py-3 text-[12.5px] text-[#ffb0b4] ring-1 ring-coral/25">
+      <span className="min-w-0 flex-1">{message}</span>
+      <button type="button" onClick={onRetry} className="shrink-0 rounded-full bg-coral/20 px-3 py-1.5 text-[12px] font-bold text-[#ffd0d3]">
+        Retry
+      </button>
     </div>
   );
 }
