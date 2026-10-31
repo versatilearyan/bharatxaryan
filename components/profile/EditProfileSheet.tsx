@@ -9,6 +9,7 @@ import { GAMES } from "@/lib/app/data";
 import { NAME_FONTS, nameFace } from "@/lib/app/fonts";
 import { useApp } from "@/lib/app/store";
 import { useMe } from "@/lib/app/me-store";
+import { shrinkForUpload } from "@/lib/app/shrink-image";
 import { ApiError } from "@/lib/api/client";
 import { API_GENDERS, MEDIA_MAX_MB, mediaFileError, type MediaKind, BIO_MAX, FAVORITE_GAMES_MAX, GENDER_LABELS, genderFromApi, validateProfileUpdate, type ApiGender, type UpdateProfileRequest } from "@/lib/api/users";
 import { MIN_AGE, ageOn } from "@/components/auth/AuthFlow";
@@ -165,22 +166,24 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
     void _b;
     // 1. Upload the new picture and banner (POST /users/me/avatar, /users/me/banner).
     // Each one is shown only once the backend has saved it; a failed one stays picked so Save can retry it.
+    // Picture and banner upload at the same time
+    const jobs = ([["photo", "avatar", "Profile picture"], ["banner", "banner", "Banner"]] as const).filter(([kind]) => pending[kind]);
+    if (jobs.length) setSavingStep(jobs.length === 2 ? "Uploading pictures…" : `Uploading ${jobs[0][2].toLowerCase()}…`);
+    const results = await Promise.allSettled(jobs.map(([kind, media]) => me.uploadImage(media, pending[kind] as File)));
     const uploaded: string[] = [];
-    for (const [kind, media, label] of [["photo", "avatar", "Profile picture"], ["banner", "banner", "Banner"]] as const) {
-      const file = pending[kind];
-      if (!file) continue;
-      setSavingStep(`Uploading ${label.toLowerCase()}…`);
-      try {
-        await me.uploadImage(media, file);
+    const failed: string[] = [];
+    results.forEach((r, i) => {
+      const [kind, , label] = jobs[i];
+      if (r.status === "fulfilled") {
         uploaded.push(label);
         setPending((p) => ({ ...p, [kind]: undefined }));
-      } catch (e) {
-        setSaving(false);
-        setSavingStep("");
-        const why = e instanceof Error && e.message ? e.message : "Try again.";
-        setError(`${label} wasn't uploaded: ${why}${uploaded.length ? ` (${uploaded.join(" and ")} saved.)` : ""}`);
-        return;
-      }
+      } else failed.push(`${label} wasn't uploaded: ${r.reason instanceof Error && r.reason.message ? r.reason.message : "Try again."}`);
+    });
+    if (failed.length) {
+      setSaving(false);
+      setSavingStep("");
+      setError(failed.join(" ") + (uploaded.length ? ` (${uploaded.join(" and ")} saved.)` : ""));
+      return;
     }
     setSavingStep("");
     const imagesDone = uploaded.length ? `${uploaded.join(" and ").replace(" and Banner", " and banner")} updated` : "";
@@ -214,12 +217,19 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
   const mediaOf = (kind: "photo" | "banner"): MediaKind => (kind === "photo" ? "avatar" : "banner");
   const savedUrl = (kind: "photo" | "banner") => (kind === "photo" ? me.profile.data?.avatarUrl : me.profile.data?.bannerUrl);
 
-  /** Check the file and show it as a preview; it's uploaded on Save. */
-  const pickImage = (file: File | undefined, kind: "photo" | "banner") => {
-    if (!file) return;
-    const bad = mediaFileError(file, mediaOf(kind));
+  /** Check the file, make it small (lib/app/shrink-image.ts) and show it as a preview; it's uploaded on Save. */
+  const pickImage = async (picked: File | undefined, kind: "photo" | "banner") => {
+    if (!picked) return;
+    const bad = mediaFileError(picked, mediaOf(kind));
     if (bad) {
       toast(bad, "error");
+      return;
+    }
+    let file: File;
+    try {
+      file = await shrinkForUpload(picked, mediaOf(kind));
+    } catch {
+      toast("Couldn't read that image. Try another JPG, PNG or WebP.", "error");
       return;
     }
     const url = URL.createObjectURL(file);
@@ -305,8 +315,8 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
             </div>
           ) : null}
           <p className="mt-2 text-[11px] text-muted">Tap the picture or banner to choose an image. JPG, PNG or WebP: picture up to {MEDIA_MAX_MB.avatar} MB, banner up to {MEDIA_MAX_MB.banner} MB. They upload when you tap Save.</p>
-          <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Upload profile picture" data-testid="photo-input" onChange={(e) => { pickImage(e.target.files?.[0], "photo"); e.target.value = ""; }} />
-          <input ref={bannerInput} type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Upload banner" data-testid="banner-input" onChange={(e) => { pickImage(e.target.files?.[0], "banner"); e.target.value = ""; }} />
+          <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Upload profile picture" data-testid="photo-input" onChange={(e) => { void pickImage(e.target.files?.[0], "photo"); e.target.value = ""; }} />
+          <input ref={bannerInput} type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Upload banner" data-testid="banner-input" onChange={(e) => { void pickImage(e.target.files?.[0], "banner"); e.target.value = ""; }} />
         </div>
 
         <p className="!mt-6 text-[12px] font-bold text-cream">
