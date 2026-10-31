@@ -13,7 +13,7 @@ import { setUnauthorizedHandler } from "@/lib/api/client";
 import { msUntilExpiry, readToken } from "@/lib/auth/token";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CONVERSATIONS, INITIAL_COINS, INITIAL_PROFILE, NOTICES, PEOPLE, ROOMS } from "./data";
-import { GOLD_NAME_VIP, POINTS_PER_COIN, VIP_THRESHOLDS, roomLevel, vipLevel } from "./levels";
+import { GOLD_NAME_VIP, POINTS_PER_COIN, growthFor, roomLevel, vipLevel } from "./levels";
 import { EXP_SOURCES, FRIEND_EXP, TASK_EXP, charmFromCoins, charmInfo, giftEarnings, dayKey, expToNext, sampleCharm, type ExpSource } from "./progress";
 import { GUARD_PER_DAY, MY_SAMPLE_RECEIVED, sampleGuardians, sampleReceived } from "./social";
 import { SAMPLE_TAGS, TAG_SLOTS, pairKey, relationshipById, tagLevel, tokenFor, type RelationshipId, type Tag } from "./tags";
@@ -62,7 +62,16 @@ export type Sheet =
 
 export type Toast = { id: number; text: string; tone: "default" | "gold" | "error" };
 
-export type GiftFx = { id: number; giftId: GiftId; fromName: string; toName: string; count: number };
+/**
+ * A gift animation on screen. combo: how many times in a row it was sent with
+ * the Combo button (1 = a single send). earned / charm: coins and charm the
+ * receiver got, shown in the gold coin burst when the animation ends.
+ */
+export type GiftFx = { id: number; giftId: GiftId; fromName: string; toName: string; count: number; combo?: number; earned?: number; charm?: number };
+
+/** The Combo button after you send a gift: tap within COMBO_MS to send the same gift again. */
+export type GiftCombo = { giftId: GiftId; n: number; key: number; send: () => boolean };
+export const COMBO_MS = 5000;
 
 export type NewRoom = {
   name: string;
@@ -98,8 +107,9 @@ type Saved = {
   myRooms: Room[];
   claimed: string[];
   giftsSent: number;
-  vipPoints: number;
-  /** Which VIP reset the saved vipPoints come from (see VIP_RESET). */
+  /** Coins spent while VIP (growth is 1 point per COINS_PER_GROWTH). */
+  vipCoins?: number;
+  /** Which VIP reset the saved VIP data comes from (see VIP_RESET). */
   vipReset?: number;
   /** When the VIP subscription ends (ms), or 0 when you're not subscribed. */
   vipUntil?: number;
@@ -123,9 +133,9 @@ const EMPTY_EXP: ExpLog = { day: "", today: {}, total: {} };
 const MY_BASE_CHARM = 0;
 /**
  * Everyone starts as a non-VIP and buys VIP 1 from VIP Benefits. Bump this to
- * reset VIP on devices that saved a higher level (the test account was VIP 10).
+ * reset VIP on devices that saved a higher level. 2: growth became 1 point per 100 coins.
  */
-const VIP_RESET = 1;
+const VIP_RESET = 2;
 /** VIP is a subscription: each purchase lasts this many days. */
 export const VIP_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -180,7 +190,9 @@ function useAppState() {
   const [giftsSent, setGiftsSent] = useState(0);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [giftFx, setGiftFx] = useState<GiftFx | null>(null);
-  const [vipPoints, setVipPoints] = useState(0);
+  const [giftCombo, setGiftCombo] = useState<GiftCombo | null>(null);
+  /** Coins spent while VIP. Growth points = growthFor(vipCoins). */
+  const [vipCoins, setVipCoins] = useState(0);
   const [vipUntil, setVipUntil] = useState(0);
   const [roomPoints, setRoomPoints] = useState<Record<string, number>>({});
   const [myContrib, setMyContrib] = useState<Record<string, number>>({});
@@ -225,10 +237,9 @@ function useAppState() {
     if (Array.isArray(s.myRooms)) setMyRooms(s.myRooms);
     if (Array.isArray(s.claimed)) setClaimed(s.claimed);
     if (typeof s.giftsSent === "number") setGiftsSent(s.giftsSent);
-    if (typeof s.vipPoints === "number" && s.vipReset === VIP_RESET) {
-      setVipPoints(s.vipPoints);
-      // Saves from before subscriptions: a VIP keeps it for a fresh VIP_DAYS
-      setVipUntil(typeof s.vipUntil === "number" ? s.vipUntil : s.vipPoints > 0 ? Date.now() + VIP_DAYS * DAY_MS : 0);
+    if (s.vipReset === VIP_RESET) {
+      if (typeof s.vipCoins === "number") setVipCoins(s.vipCoins);
+      if (typeof s.vipUntil === "number") setVipUntil(s.vipUntil);
     }
     if (s.roomPoints) setRoomPoints(s.roomPoints);
     if (s.myContrib) setMyContrib(s.myContrib);
@@ -297,13 +308,13 @@ function useAppState() {
     if (!hydrated) return;
     try {
       // Temporary rooms end with the session, so only permanent rooms are saved
-      const data: Saved = { profile, coins, myRooms: myRooms.filter((r) => r.permanent), claimed, giftsSent, vipPoints, vipReset: VIP_RESET, vipUntil, roomPoints, myContrib, roomMeta, tags, charm, exp, received, guards, lastProtect };
+      const data: Saved = { profile, coins, myRooms: myRooms.filter((r) => r.permanent), claimed, giftsSent, vipCoins, vipReset: VIP_RESET, vipUntil, roomPoints, myContrib, roomMeta, tags, charm, exp, received, guards, lastProtect };
       // The picture and banner are the backend's URLs (lib/app/me-store.tsx), never saved in localStorage
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, profile: { ...profile, photo: undefined, banner: undefined } }));
     } catch {
       /* storage full or unavailable (private mode): the demo still works for this session */
     }
-  }, [hydrated, profile, coins, myRooms, claimed, giftsSent, vipPoints, vipUntil, roomPoints, myContrib, roomMeta, tags, charm, exp, received, guards, lastProtect]);
+  }, [hydrated, profile, coins, myRooms, claimed, giftsSent, vipCoins, vipUntil, roomPoints, myContrib, roomMeta, tags, charm, exp, received, guards, lastProtect]);
 
   /**
    * VIP only counts while the subscription runs. When it ends, the level and
@@ -311,7 +322,9 @@ function useAppState() {
    * disappear (they all follow vip.level).
    */
   const vipActive = vipUntil > 0;
-  const vip = useMemo(() => vipLevel(vipActive ? vipPoints : 0), [vipActive, vipPoints]);
+  /** VIP growth points: 1 per 100 coins spent while VIP. */
+  const vipPoints = growthFor(vipCoins);
+  const vip = useMemo(() => vipLevel(vipPoints, vipActive), [vipActive, vipPoints]);
   const roomPointsOf = useCallback((room: Room) => room.basePoints + (roomPoints[room.id] ?? 0), [roomPoints]);
   const roomLevelOf = useCallback((room: Room) => roomLevel(roomPointsOf(room)), [roomPointsOf]);
 
@@ -515,7 +528,7 @@ function useAppState() {
       return false;
     }
     setCoins((c) => c - PERMANENT_ROOM_COST);
-    if (vipActive) setVipPoints((p) => p + PERMANENT_ROOM_COST * POINTS_PER_COIN);
+    if (vipActive) setVipCoins((c) => c + PERMANENT_ROOM_COST);
     return true;
   }, [myPermanentRoom, coins, toast, vipActive]);
 
@@ -531,7 +544,7 @@ function useAppState() {
           return false;
         }
         setCoins((c) => c - PERMANENT_ROOM_COST);
-        if (vipActive) setVipPoints((p) => p + PERMANENT_ROOM_COST * POINTS_PER_COIN);
+        if (vipActive) setVipCoins((c) => c + PERMANENT_ROOM_COST);
       }
       const id = `my-${uid()}`;
       const room: Room = {
@@ -565,38 +578,32 @@ function useAppState() {
 
   const deleteMyRoom = useCallback((id: string) => setMyRooms((r) => r.filter((x) => x.id !== id)), []);
 
-  /** Spend demo coins. While you're VIP, every coin spent adds VIP growth points. */
+  /** Spend coins. While you're VIP, every 100 coins spent adds 1 VIP growth point. */
   const spend = useCallback(
     (amount: number) => {
       if (amount > coins) return false;
       setCoins((c) => c - amount);
       if (!vipActive) return true;
-      const before = vipLevel(vipPoints).level;
-      const after = vipLevel(vipPoints + amount * POINTS_PER_COIN).level;
-      setVipPoints((p) => p + amount * POINTS_PER_COIN);
+      const before = vipLevel(growthFor(vipCoins)).level;
+      const after = vipLevel(growthFor(vipCoins + amount)).level;
+      setVipCoins((c) => c + amount);
       if (after > before) window.setTimeout(() => toast(`You reached VIP ${after}!`, "gold"), 2600);
       return true;
     },
-    [coins, vipPoints, vipActive, toast],
+    [coins, vipCoins, vipActive, toast],
   );
 
   /**
-   * Buy VIP 1, or the next level while you're VIP: pay the coins that level
-   * needs and the subscription runs for VIP_DAYS from now. Returns the new
-   * level, or 0 if you don't have the coins.
+   * The monthly VIP subscription was paid (₹VIP_PRICE_INR at checkout): become
+   * VIP 1, or renew while you're VIP, for VIP_DAYS more. Paying doesn't add
+   * growth; higher levels come only from spending coins while you're VIP.
+   * Returns your VIP level.
    */
-  const buyNextVip = useCallback(() => {
-    const base = vipActive ? vipPoints : 0;
-    const level = vipLevel(base).level + 1;
-    const goal = VIP_THRESHOLDS[level - 1];
-    if (goal === undefined) return 0;
-    const cost = Math.ceil((goal - base) / POINTS_PER_COIN);
-    if (cost > coins) return 0;
-    setCoins((c) => c - cost);
-    setVipPoints(base + cost * POINTS_PER_COIN);
-    setVipUntil(Date.now() + VIP_DAYS * DAY_MS);
-    return level;
-  }, [vipActive, vipPoints, coins]);
+  const buyVip = useCallback(() => {
+    if (!vipActive) setVipCoins(0);
+    setVipUntil(Math.max(Date.now(), vipUntil) + VIP_DAYS * DAY_MS);
+    return vipLevel(vipActive ? vipPoints : 0).level;
+  }, [vipActive, vipUntil, vipPoints]);
   /** Demo only: end the subscription now, to see the VIP rewards removed. */
   const endVip = useCallback(() => setVipUntil(Date.now()), []);
   // When the subscription runs out, VIP ends and everything it gave goes away
@@ -604,7 +611,7 @@ function useAppState() {
     if (!vipUntil) return;
     const end = () => {
       setVipUntil(0);
-      setVipPoints(0);
+      setVipCoins(0);
       toast("Your VIP subscription ended. The badge, frame, chat bubble and entry were removed.", "error");
     };
     const left = vipUntil - Date.now();
@@ -685,10 +692,21 @@ function useAppState() {
     [claimed, toast, addExp],
   );
 
+  /**
+   * Show a gift. A combo send of the gift that's still playing doesn't restart
+   * it: the animation keeps going and its combo count (×2, ×3, ...) goes up.
+   */
   const playGift = useCallback((fx: Omit<GiftFx, "id">) => {
     setGiftsSent((n) => n + fx.count);
-    setGiftFx({ ...fx, id: seq++ });
+    setGiftFx((cur) =>
+      (fx.combo ?? 1) > 1 && cur && cur.giftId === fx.giftId && cur.toName === fx.toName
+        ? { ...cur, combo: fx.combo, earned: (cur.earned ?? 0) + (fx.earned ?? 0), charm: (cur.charm ?? 0) + (fx.charm ?? 0) }
+        : { ...fx, id: seq++ },
+    );
   }, []);
+  /** Offer the Combo button for the gift just sent (n = sends so far in this combo). */
+  const armCombo = useCallback((c: Omit<GiftCombo, "key">) => setGiftCombo({ ...c, key: seq++ }), []);
+  const clearCombo = useCallback(() => setGiftCombo(null), []);
   const clearGiftFx = useCallback(() => setGiftFx(null), []);
 
   const resetDemo = useCallback(() => {
@@ -702,7 +720,7 @@ function useAppState() {
     setMyRooms([]);
     setClaimed([]);
     setGiftsSent(0);
-    setVipPoints(0);
+    setVipCoins(0);
     setVipUntil(0);
     setRoomPoints({});
     setMyContrib({});
@@ -874,11 +892,11 @@ function useAppState() {
     coins, spend, addCoins,
     rooms, myRooms: ownedRooms, serverRooms, setServerRooms, payForPermanentRoom, roomById, updateMyRoom, unlockRoom, openRoom, enterRoom, createRoom, deleteMyRoom, myPermanentRoom,
     activeRoomId, roomOpen, minimizeRoom, expandRoom, leaveRoom,
-    vipPoints, vip, vipUntil, buyNextVip, endVip, roomPointsOf, roomLevelOf, addRoomGift, myContrib,
+    vipPoints, vip, vipUntil, buyVip, endVip, roomPointsOf, roomLevelOf, addRoomGift, myContrib,
     conversations, openConversation, sendMessage, typing,
     notices, markNoticesRead,
     claimed, claimTask,
-    giftsSent, giftFx, playGift, clearGiftFx,
+    giftsSent, giftFx, playGift, clearGiftFx, giftCombo, armCombo, clearCombo,
     toasts, toast,
     resetDemo, resetCount, giftHook, parivarHook, session, signedIn, signIn, completeProfile, signOut,
   };

@@ -220,7 +220,7 @@ export const GIFT_SETS: GiftSet[] = [
     name: "Storm Guardian",
     giftId: "storm-guardian",
     frame: "/gifts/storm-guardian/frame.svga",
-    bubble: "/gifts/storm-guardian/bubble.svga",
+    bubble: "/gifts/storm-guardian/bubble.svga?v=2",
     entry: "/gifts/storm-guardian/entry.svga",
     // 1080×2340 (aryan's new home page effect), 20 fps, 40 frames
     page: "/gifts/storm-guardian/page.svga?v=2",
@@ -230,8 +230,8 @@ export const GIFT_SETS: GiftSet[] = [
     // The guardian stands on the left of the ring and a platform sits under it.
     frameScale: 1.43,
     frameY: 0.485,
-    // 198×144 canvas: the dark screen inside the blue border runs 22–78% across and 25–76% down
-    bubbleBox: [0.23, 0.27, 0.77, 0.74],
+    // 750×240 canvas (aryan's new chat bubble): the dark screen inside the blue border runs 10–90% across and 26–63% down
+    bubbleBox: [0.11, 0.27, 0.89, 0.63],
     // 660×132 canvas: the guardian's round emblem fills the left quarter, the bar fades out on the right
     entryRatio: "660 / 132",
     entryText: ["27%", "11%"],

@@ -9,7 +9,7 @@ import { useApp } from "@/lib/app/store";
 import { AddVideoModal } from "./AddVideoModal";
 import { VipDecor } from "./VoiceRoom";
 import { YouTubeMark, YouTubePlayer } from "./YouTubePlayer";
-import { ChatInput, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, RoomTopBar, SeatLayout } from "./RoomParts";
+import { ChatInput, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomTopBar, SeatLayout } from "./RoomParts";
 import type { RoomSession } from "./useRoomSession";
 
 /** YouTube Watch Together. This is the room's "video" mode: there are no video calls. */
@@ -88,6 +88,7 @@ export function WatchTogetherRoom({ s }: { s: RoomSession }) {
       {/* Seats */}
       <div className="relative z-10 mt-3 px-1">
         <SeatLayout s={s} gold={vip} scale={0.68} />
+        <MicOrderBar s={s} />
       </div>
 
       <RoomChat s={s} className="relative z-10 mt-2 min-h-0 flex-1 pb-2" />

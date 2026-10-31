@@ -10,7 +10,7 @@ import { usePkState } from "./usePk";
 import { IconButton } from "@/components/ui/kit";
 import { GiftPanel } from "@/components/gifts/GiftPanel";
 import { useApp } from "@/lib/app/store";
-import { ChatInput, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, RoomTopBar, SeatLayout } from "./RoomParts";
+import { ChatInput, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomTopBar, SeatLayout } from "./RoomParts";
 import { YouTubeMark } from "./YouTubePlayer";
 import { LiveVoiceBar } from "./LiveVoiceBar";
 import { BACKGROUNDS } from "./RoomSettings";
@@ -71,8 +71,9 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
 
       {/* Seats: the owner's fixed seat + intimacy seat on top, then linked pairs */}
       <div className={`relative z-10 ${pkOn ? "mt-3" : "mt-5"}`}>
-        <MusicPill className="absolute right-2 top-6 z-20" onOpen={() => setSheet("music")} />
+        <MusicPill className="absolute right-2 top-6 z-20" onlyMe={s.musicOnlyMe} onOpen={() => setSheet("music")} />
         <SeatLayout s={s} gold={vip} />
+        <MicOrderBar s={s} />
         {s.voice ? (
           <LiveVoiceBar voice={s.voice} participants={s.participants} />
         ) : (

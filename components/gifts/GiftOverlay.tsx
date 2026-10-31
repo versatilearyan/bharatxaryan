@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { GiftArt } from "@/components/art/GiftArt";
 import { SvgaAnim } from "@/components/effects/SvgaAnim";
 import { giftById } from "@/lib/app/data";
-import { useApp, type GiftFx } from "@/lib/app/store";
+import { Coin } from "@/components/ui/kit";
+import { COMBO_MS, useApp, type GiftCombo, type GiftFx } from "@/lib/app/store";
 
 /**
  * Plays the gift animation above everything in the app.
@@ -13,30 +14,164 @@ import { useApp, type GiftFx } from "@/lib/app/store";
  * screen with golden rays, a burst of particles and a royal banner.
  */
 export function GiftOverlay() {
-  const { giftFx, clearGiftFx } = useApp();
+  const { giftFx, clearGiftFx, giftCombo, clearCombo } = useApp();
+  /** The gold coin burst shown when a gift's animation ends. */
+  const [burst, setBurst] = useState<GiftFx | null>(null);
+  const fxRef = useRef(giftFx);
+  fxRef.current = giftFx;
+  const finish = useCallback(() => {
+    const fx = fxRef.current;
+    if (fx && (fx.earned || fx.charm)) setBurst({ ...fx });
+    clearGiftFx();
+  }, [clearGiftFx]);
 
   useEffect(() => {
     if (!giftFx) return;
     const g = giftById(giftFx.giftId);
     // Video and SVGA gifts close when they end; this is only a safety net (an SVGA may still be downloading)
-    const t = window.setTimeout(clearGiftFx, g.svga ? 30000 : g.video ? 16000 : g.tier === "legendary" ? 3800 : 2400);
+    const t = window.setTimeout(finish, g.svga ? 30000 : g.video ? 16000 : g.tier === "legendary" ? 3800 : 2400);
     return () => window.clearTimeout(t);
-  }, [giftFx, clearGiftFx]);
+    // A combo updates the gift on screen; that mustn't restart the safety timer
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [giftFx?.id, finish]);
 
   return (
-    <AnimatePresence>
-      {giftFx ? (
-        giftById(giftFx.giftId).svga ? (
-          <SvgaGift key={giftFx.id} fx={giftFx} onDone={clearGiftFx} />
-        ) : giftById(giftFx.giftId).video ? (
-          <VideoGift key={giftFx.id} fx={giftFx} onDone={clearGiftFx} />
-        ) : giftById(giftFx.giftId).tier === "legendary" ? (
-          <Legendary key={giftFx.id} fx={giftFx} />
-        ) : (
-          <Ordinary key={giftFx.id} fx={giftFx} />
-        )
-      ) : null}
-    </AnimatePresence>
+    <>
+      <AnimatePresence>
+        {giftFx ? (
+          giftById(giftFx.giftId).svga ? (
+            <SvgaGift key={giftFx.id} fx={giftFx} onDone={finish} />
+          ) : giftById(giftFx.giftId).video ? (
+            <VideoGift key={giftFx.id} fx={giftFx} onDone={finish} />
+          ) : giftById(giftFx.giftId).tier === "legendary" ? (
+            <Legendary key={giftFx.id} fx={giftFx} />
+          ) : (
+            <Ordinary key={giftFx.id} fx={giftFx} />
+          )
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>{burst && !giftFx ? <CoinBurst key={burst.id} fx={burst} onDone={() => setBurst(null)} /> : null}</AnimatePresence>
+      <AnimatePresence>{giftCombo ? <ComboButton key="combo" combo={giftCombo} onExpire={clearCombo} /> : null}</AnimatePresence>
+    </>
+  );
+}
+
+/** "COMBO ×2" over a gift that was sent again with the Combo button. */
+function ComboTag({ fx }: { fx: GiftFx }) {
+  if ((fx.combo ?? 1) < 2) return null;
+  return (
+    <motion.p
+      key={fx.combo}
+      className="pointer-events-none absolute inset-x-0 top-[22%] z-[2] text-center font-display text-[44px] font-extrabold italic leading-none text-gold [text-shadow:0_0_24px_rgb(231_188_114/0.85),0_3px_0_#7a4a12]"
+      initial={{ scale: 2.4, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 420, damping: 18 }}
+      aria-live="polite"
+    >
+      <span className="mr-2 align-middle text-[18px] tracking-[0.2em] text-cream">COMBO</span>×{fx.combo}
+    </motion.p>
+  );
+}
+
+/**
+ * The Combo button after you send a gift with coins: tap it to send the same
+ * gift again (to the same person, same amount). The ring runs down over
+ * COMBO_MS; each tap starts it again. It sits above the gift animation so
+ * you can keep tapping while it plays.
+ */
+function ComboButton({ combo, onExpire }: { combo: GiftCombo; onExpire: () => void }) {
+  useEffect(() => {
+    const t = window.setTimeout(onExpire, COMBO_MS);
+    return () => window.clearTimeout(t);
+  }, [combo.key, onExpire]);
+  const R = 34;
+  const C = 2 * Math.PI * R;
+  return (
+    <motion.div
+      className="absolute bottom-[calc(env(safe-area-inset-bottom)+150px)] right-4 z-[70]"
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      exit={{ scale: 0, opacity: 0 }}
+      transition={{ type: "spring", stiffness: 380, damping: 22 }}
+    >
+      <motion.button
+        type="button"
+        whileTap={{ scale: 0.86 }}
+        onClick={() => {
+          if (!combo.send()) onExpire();
+        }}
+        className="relative grid h-[84px] w-[84px] place-items-center rounded-full"
+        aria-label={`Combo: send ${giftById(combo.giftId).name} again (×${combo.n + 1})`}
+      >
+        <svg viewBox="0 0 84 84" className="absolute inset-0 -rotate-90" aria-hidden>
+          <circle cx="42" cy="42" r={R} fill="none" stroke="rgb(255 255 255 / 0.15)" strokeWidth="5" />
+          <motion.circle
+            key={combo.key}
+            cx="42"
+            cy="42"
+            r={R}
+            fill="none"
+            stroke="#f6d899"
+            strokeWidth="5"
+            strokeLinecap="round"
+            strokeDasharray={C}
+            initial={{ strokeDashoffset: 0 }}
+            animate={{ strokeDashoffset: C }}
+            transition={{ duration: COMBO_MS / 1000, ease: "linear" }}
+          />
+        </svg>
+        <span className="grid h-[66px] w-[66px] place-items-center rounded-full bg-gradient-to-b from-[#ffcf6b] via-[#f29b38] to-[#e2552f] shadow-[0_6px_24px_rgb(242_155_56/0.6)]">
+          <span className="flex flex-col items-center leading-none">
+            <GiftArt id={combo.giftId} className="h-7 w-7" />
+            <span className="mt-0.5 font-display text-[13px] font-extrabold italic text-white [text-shadow:0_1px_0_#8a3a12]">COMBO</span>
+          </span>
+        </span>
+        <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-[#2a1205] px-2 py-0.5 font-display text-[12px] font-extrabold text-gold ring-1 ring-gold/60">×{combo.n}</span>
+      </motion.button>
+    </motion.div>
+  );
+}
+
+/** Gold coins burst out when a gift ends, with what the receiver got. */
+function CoinBurst({ fx, onDone }: { fx: GiftFx; onDone: () => void }) {
+  const reduce = useReducedMotion();
+  useEffect(() => {
+    const t = window.setTimeout(onDone, 2200);
+    return () => window.clearTimeout(t);
+  }, [onDone]);
+  return (
+    <motion.div className="pointer-events-none absolute inset-0 z-[61] overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} role="status">
+      {!reduce
+        ? Array.from({ length: 22 }).map((_, i) => {
+            const a = (i / 22) * Math.PI * 2;
+            const d = 110 + (i % 4) * 34;
+            return (
+              <motion.span
+                key={i}
+                className="absolute left-1/2 top-[46%]"
+                initial={{ x: -12, y: -12, scale: 0.4, opacity: 1, rotate: 0 }}
+                animate={{ x: Math.cos(a) * d - 12, y: [Math.sin(a) * d * 0.6 - 12, Math.sin(a) * d - 12 + 260], scale: 1, opacity: [1, 1, 0], rotate: 360 }}
+                transition={{ duration: 1.6, delay: (i % 5) * 0.04, ease: "easeOut" }}
+              >
+                <Coin className="h-6 w-6 drop-shadow-[0_0_8px_rgb(231_188_114/0.9)]" />
+              </motion.span>
+            );
+          })
+        : null}
+      <motion.div
+        className="absolute left-1/2 top-[46%] -translate-x-1/2 -translate-y-1/2 rounded-3xl bg-gradient-to-b from-[#4a3214]/95 to-[#1a1008]/95 px-5 py-3 text-center ring-1 ring-gold/60 shadow-[0_10px_40px_rgb(0_0_0/0.5)]"
+        initial={{ scale: 0.4, opacity: 0 }}
+        animate={{ scale: [0.4, 1.12, 1], opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <p className="flex items-center justify-center gap-1.5 font-display text-[26px] font-extrabold text-gold">
+          <Coin className="h-6 w-6" /> +{(fx.earned ?? 0).toLocaleString("en-IN")}
+        </p>
+        <p className="mt-0.5 text-[12px] font-semibold text-cream/85">
+          {fx.toName} got {(fx.earned ?? 0).toLocaleString("en-IN")} coins · +{(fx.charm ?? 0).toLocaleString("en-IN")} charm
+        </p>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -74,6 +209,7 @@ function Ordinary({ fx }: { fx: GiftFx }) {
   return (
     <motion.div className="pointer-events-none absolute inset-0 z-[60]" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} aria-hidden={false}>
       <Banner fx={fx} />
+      <ComboTag fx={fx} />
       <div className="absolute inset-0 grid place-items-center">
         <motion.div
           className="relative h-36 w-36"
@@ -123,6 +259,7 @@ function Legendary({ fx }: { fx: GiftFx }) {
         transition={{ duration: 14, ease: "linear", repeat: Infinity }}
       />
       <Banner fx={fx} legendary />
+      <ComboTag fx={fx} />
       <div className="absolute inset-x-0 top-[45%] flex -translate-y-1/2 flex-col items-center">
         <motion.div
           className="relative h-52 w-52"
@@ -223,6 +360,7 @@ function VideoGift({ fx, onDone }: { fx: GiftFx; onDone: () => void }) {
         />
       </motion.div>
       {/* No banner here: the gift news ribbon (GiftBanner) announces big gifts */}
+      <ComboTag fx={fx} />
       <button type="button" onClick={onDone} className="absolute right-3 top-[calc(env(safe-area-inset-top)+16px)] rounded-full bg-black/45 px-3 py-1 text-[12px] font-bold text-white backdrop-blur">
         Skip
       </button>
@@ -232,7 +370,7 @@ function VideoGift({ fx, onDone }: { fx: GiftFx; onDone: () => void }) {
 
 /**
  * SVGA gifts (Storm Guardian) play once across the whole app frame. The file is
- * phone-shaped (510×1104), so it's drawn to cover the screen and only the
+ * phone-shaped (1080×2340), so it's drawn to cover the screen and only the
  * edges are trimmed on wider screens. Its sound is a separate file that starts
  * with the first frame; if the browser blocks sound, the animation plays
  * silently. With reduced motion, or if the file can't load, the gift's picture
@@ -281,6 +419,7 @@ function SvgaGift({ fx, onDone }: { fx: GiftFx; onDone: () => void }) {
         </>
       )}
       {/* No banner here: the gift news ribbon (GiftBanner) announces big gifts */}
+      <ComboTag fx={fx} />
       <button type="button" onClick={onDone} className="absolute right-3 top-[calc(env(safe-area-inset-top)+16px)] rounded-full bg-black/45 px-3 py-1 text-[12px] font-bold text-white backdrop-blur">
         Skip
       </button>

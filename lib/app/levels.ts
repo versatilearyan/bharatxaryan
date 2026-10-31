@@ -1,15 +1,25 @@
 /**
  * Growth rules.
  *
- * VIP: every 1 coin you spend (gifts, permanent rooms) adds 100 VIP growth points.
+ * VIP: a monthly subscription (VIP_PRICE_INR, paid at checkout) makes you VIP 1. While you're VIP,
+ * every 100 coins you spend (gifts, shop, permanent rooms, draws, ...) adds 1
+ * growth point, and your VIP level is read off your growth: VIP 2 at 1,000,
+ * up to VIP 11 at 4,800,000. Coins spent while you're not VIP add nothing.
  * Room level: every 1 coin gifted inside a permanent room adds 100 room points.
  * Thresholds are the total points needed to reach each level.
  */
 
+/** Room points per coin gifted in a room. */
 export const POINTS_PER_COIN = 100;
 
-/** Points needed for VIP 1 … VIP 10 (VIP 1 = 100 coins spent, VIP 10 = 500,000 coins). */
-export const VIP_THRESHOLDS = [10_000, 50_000, 150_000, 400_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 20_000_000, 50_000_000];
+/** Coins to spend for 1 VIP growth point. */
+export const COINS_PER_GROWTH = 100;
+
+/** The monthly VIP subscription price in rupees (incl. GST), for VIP_DAYS. */
+export const VIP_PRICE_INR = 299;
+
+/** Growth points needed for VIP 1 … VIP 11. VIP 1 needs none: you get it by becoming VIP. */
+export const VIP_THRESHOLDS = [0, 1_000, 5_000, 25_000, 60_000, 140_000, 300_000, 600_000, 1_080_000, 2_000_000, 4_800_000];
 
 /** Points needed for room level 1 … 10. Level 1 is free. */
 export const ROOM_THRESHOLDS = [0, 10_000, 50_000, 150_000, 400_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000];
@@ -36,7 +46,17 @@ export function levelFor(points: number, thresholds: number[]): LevelInfo {
   return { level, points, floor, next, progress: Math.max(0, Math.min(1, progress)) };
 }
 
-export const vipLevel = (points: number) => levelFor(points, VIP_THRESHOLDS);
+/** Growth from coins spent while VIP. Whole points only: 150 coins is 1 point. */
+export const growthFor = (coins: number) => Math.floor(coins / COINS_PER_GROWTH);
+
+/**
+ * VIP level from growth points. Not a member: level 0, whatever the growth.
+ * A member is at least VIP 1.
+ */
+export function vipLevel(growth: number, member = true): LevelInfo {
+  if (!member) return { level: 0, points: 0, floor: 0, next: null, progress: 0 };
+  return levelFor(Math.max(0, Math.floor(growth)), VIP_THRESHOLDS);
+}
 export const roomLevel = (points: number) => levelFor(points, ROOM_THRESHOLDS);
 
 export const formatPoints = (n: number) =>

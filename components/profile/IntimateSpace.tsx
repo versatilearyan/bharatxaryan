@@ -127,7 +127,7 @@ function TagCard({ tag, viewer }: { tag: Tag; viewer: string }) {
     if (!GIFTS_LIVE) return toast(GIFTS_SOON_TEXT);
     const g = giftById(id);
     if (!spend(g.cost)) {
-      toast("Not enough demo coins", "error");
+      toast("Not enough coins", "error");
       return;
     }
     addIntimacy(ME_ID, otherOfMine, g.cost);

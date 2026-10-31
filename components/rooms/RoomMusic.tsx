@@ -11,11 +11,11 @@ import { usePeople } from "@/lib/app/people";
 import { ME_ID } from "@/lib/app/store";
 
 /** The spinning-disc pill beside the top seats: what's playing in the room. Tap for the songs. */
-export function MusicPill({ className = "", onOpen }: { className?: string; onOpen: () => void }) {
+export function MusicPill({ className = "", onOpen, onlyMe = false }: { className?: string; onOpen: () => void; onlyMe?: boolean }) {
   const { current, playing, queue } = useMusic();
   return (
     <>
-      <button type="button" onClick={onOpen} aria-label={current ? `Now playing ${current.title}. Open songs` : "Songs. Open songs"} className={`flex h-9 max-w-[96px] items-center gap-1.5 rounded-full bg-black/45 py-1 pl-1 pr-2.5 ring-1 ring-white/15 backdrop-blur ${className}`}>
+      <button type="button" onClick={onOpen} aria-label={current ? `Now playing ${current.title}. Open songs` : "Songs. Open songs"} className={`relative flex h-9 max-w-[96px] items-center gap-1.5 rounded-full bg-black/45 py-1 pl-1 pr-2.5 ring-1 ring-white/15 backdrop-blur ${className}`}>
         <motion.span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#3a2d6b] to-[#111] ring-1 ring-white/20" animate={playing ? { rotate: 360 } : { rotate: 0 }} transition={playing ? { duration: 4, repeat: Infinity, ease: "linear" } : { duration: 0.3 }}>
           <Disc3 className="h-4 w-4 text-cream/85" aria-hidden />
         </motion.span>
@@ -30,6 +30,7 @@ export function MusicPill({ className = "", onOpen }: { className?: string; onOp
             "No songs"
           )}
         </span>
+        {onlyMe ? <span className="absolute -bottom-2 right-1 rounded-full bg-[#e2242f] px-1.5 text-[9px] font-extrabold text-white">Only you</span> : null}
       </button>
     </>
   );

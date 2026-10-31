@@ -600,7 +600,7 @@ export function ProfileGiftSheet({ open, onClose, toId }: { open: boolean; onClo
     if (!GIFTS_LIVE) return toast(GIFTS_SOON_TEXT);
     const g = giftById(sel);
     if (!spend(g.cost)) {
-      toast("Not enough demo coins", "error");
+      toast("Not enough coins", "error");
       return;
     }
     addCharm(toId, g.cost);
@@ -635,7 +635,7 @@ export function ProfileGiftSheet({ open, onClose, toId }: { open: boolean; onClo
             <ComingSoonBadge className="border-0 bg-transparent">{GIFTS_SOON_TEXT}</ComingSoonBadge>
           </div>
         )}
-        <p className="mt-2 text-center text-[11px] text-muted">Balance {coins.toLocaleString("en-IN")} demo coins</p>
+        <p className="mt-2 text-center text-[11px] text-muted">Balance {coins.toLocaleString("en-IN")} coins</p>
       </div>
     </BottomSheet>
   );

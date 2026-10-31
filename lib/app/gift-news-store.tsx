@@ -6,9 +6,9 @@ import { ME_ID, useApp } from "./store";
 import type { GiftId } from "./types";
 
 /**
- * Server-wide gift news: when anyone sends a big video gift (Cupid Heart,
- * Dragon, Princess or God of Wealth), a
- * banner announces it across the whole app with the sender's own message.
+ * Server-wide gift news: when anyone sends Sunset Romance, Crystal Palace or
+ * Storm Guardian (gifts marked `news`), a banner announces it across the
+ * whole app with the sender's own message.
  */
 export type GiftNews = { id: string; fromId: string; toId: string; giftId: GiftId; count: number; roomId: string; message: string; at: number };
 
@@ -52,7 +52,7 @@ function useGiftNewsState() {
     roomsRef.current = rooms;
   }, [rooms]);
   useEffect(() => {
-    const big = GIFTS.filter((g) => (g.video || g.svga) && !g.packageOnly).map((g) => g.id);
+    const big = GIFTS.filter((g) => g.news && !g.packageOnly).map((g) => g.id);
     if (!big.length) return;
     let t = 0;
     const next = (ms: number) => {

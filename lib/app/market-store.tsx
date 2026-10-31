@@ -164,8 +164,9 @@ function useMarketState() {
     const set = giftById(giftFx.giftId).reward;
     if (!set) return;
     setGiftSets((list) => (list.includes(set) ? list : [...list, set]));
-    setEquip((e) => ({ ...e, animFrame: set, bubble: set, entry: set, page: set }));
-    toast(`${giftSetById(set).name} frame, chat bubble, entry and profile effect are on. Find them in your Bag.`, "gold");
+    // Sending it turns on the frame and the profile page effect; the bubble and entry wait in your Bag
+    setEquip((e) => ({ ...e, animFrame: set, page: set }));
+    toast(`${giftSetById(set).name} frame and profile effect are on. Find them in your Bag.`, "gold");
   }, [hydrated, giftFx, toast]);
   /**
    * Effects to draw for a person. Yours follow what you wear from the Bag.

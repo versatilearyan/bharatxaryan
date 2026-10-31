@@ -164,6 +164,8 @@ export type Gift = {
   cost: number;
   categories: GiftCategory[];
   tier: "ordinary" | "legendary";
+  /** Announced to all of Panchayat with a server notification (Sunset Romance, Crystal Palace, Storm Guardian). */
+  news?: boolean;
   /** Only comes in packages (rewards in your Bag), never sold in the gift store. */
   packageOnly?: boolean;
   /** One line shown on the gift card in room chat. */

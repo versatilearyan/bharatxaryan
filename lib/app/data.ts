@@ -86,7 +86,7 @@ export const GIFTS: Gift[] = [
   {
     id: "cupid-heart",
     name: "Cupid Heart",
-    cost: 1314,
+    cost: 18_888,
     categories: ["Popular", "Cute", "Romantic", "Legendary"],
     tier: "legendary",
     blurb: "Cupid's arrow, straight to the heart.",
@@ -95,7 +95,8 @@ export const GIFTS: Gift[] = [
   {
     id: "sunset-romance",
     name: "Sunset Romance",
-    cost: 5200,
+    cost: 52_013,
+    news: true,
     categories: ["Popular", "Romantic", "Legendary"],
     tier: "legendary",
     blurb: "A drive to the beach at sunset, and a kiss as the sun goes down.",
@@ -104,7 +105,7 @@ export const GIFTS: Gift[] = [
   {
     id: "dragon",
     name: "Dragon",
-    cost: 8888,
+    cost: 19_999,
     categories: ["Popular", "Royal", "Legendary"],
     tier: "legendary",
     blurb: "Saddle up: a fire-winged dragon carries you over the hills.",
@@ -113,7 +114,7 @@ export const GIFTS: Gift[] = [
   {
     id: "princess-flower",
     name: "Princess Flower",
-    cost: 9999,
+    cost: 39_999,
     categories: ["Popular", "Romantic", "Legendary"],
     tier: "legendary",
     blurb: "A garden of flowers, only for a princess.",
@@ -131,7 +132,7 @@ export const GIFTS: Gift[] = [
   {
     id: "god-of-wealth",
     name: "God of Wealth",
-    cost: 18888,
+    cost: 18_888,
     categories: ["Popular", "Celebration", "Royal", "Legendary"],
     tier: "legendary",
     blurb: "The God of Wealth arrives with a bowl of gold. Fortune for everyone here!",
@@ -140,7 +141,7 @@ export const GIFTS: Gift[] = [
   {
     id: "city-fireworks",
     name: "City Fireworks",
-    cost: 20_000,
+    cost: 2_000,
     categories: ["Popular", "Celebration", "Legendary"],
     tier: "legendary",
     blurb: "Rockets fly over the city at sunset and the whole sky bursts into fireworks.",
@@ -149,7 +150,7 @@ export const GIFTS: Gift[] = [
   {
     id: "neon-racer",
     name: "Neon Racer",
-    cost: 30_000,
+    cost: 9_999,
     categories: ["Popular", "Royal", "Legendary"],
     tier: "legendary",
     blurb: "A neon supercar races through the city, skids to a stop, then blasts past.",
@@ -158,7 +159,7 @@ export const GIFTS: Gift[] = [
   {
     id: "star-prince",
     name: "Star Prince",
-    cost: 50_000,
+    cost: 19_999,
     categories: ["Popular", "Royal", "Legendary"],
     tier: "legendary",
     blurb: "A golden scepter descends through a magic circle and the Star Prince appears in a flash of light.",
@@ -167,7 +168,7 @@ export const GIFTS: Gift[] = [
   {
     id: "savanna-king",
     name: "Savanna King",
-    cost: 75_000,
+    cost: 39_999,
     categories: ["Popular", "Royal", "Legendary"],
     tier: "legendary",
     blurb: "The king of the savanna races across the plains and lets out a mighty roar.",
@@ -176,7 +177,8 @@ export const GIFTS: Gift[] = [
   {
     id: "crystal-palace",
     name: "Crystal Palace",
-    cost: 100_000,
+    cost: 131_420,
+    news: true,
     categories: ["Popular", "Royal", "Legendary"],
     tier: "legendary",
     blurb: "A phoenix flies through the clouds to a palace of ice and crystal.",
@@ -185,11 +187,12 @@ export const GIFTS: Gift[] = [
   {
     id: "storm-guardian",
     name: "Storm Guardian",
-    cost: 132_900,
+    cost: 131_420,
+    news: true,
     categories: ["Popular", "Legendary"],
     tier: "legendary",
     blurb: "The Storm Guardian lands in a flash of blue lightning.",
-    svga: { src: "/gifts/storm-guardian/gift.svga", sound: "/gifts/storm-guardian/gift.mp3", icon: "/gifts/storm-guardian/icon-small.png", still: "/gifts/storm-guardian/icon.png" },
+    svga: { src: "/gifts/storm-guardian/gift.svga?v=2", sound: "/gifts/storm-guardian/gift.mp3", icon: "/gifts/storm-guardian/icon-small.png", still: "/gifts/storm-guardian/icon.png" },
     reward: "storm-guardian",
   },
 ];
@@ -345,6 +348,7 @@ export const VIP_TIERS = [
   { tier: 8, name: "VIP 8", perks: ["Legendary gift discounts"] },
   { tier: 9, name: "VIP 9", perks: ["Invite-only Darbar rooms"] },
   { tier: 10, name: "VIP 10", perks: ["Crown next to your name"] },
+  { tier: 11, name: "VIP 11", perks: ["Top of the VIP ranking"] },
 ];
 
 /** Room level perks (levels 1–10). */

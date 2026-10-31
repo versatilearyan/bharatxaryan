@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PEOPLE, ROOM_CHATTER, giftById, GIFTS_LIVE, GIFTS_SOON_TEXT } from "@/lib/app/data";
 import { ME_ID, settingsOf, useApp } from "@/lib/app/store";
 import { usePeople } from "@/lib/app/people";
+import { useMusic } from "@/lib/app/music-store";
 import { relationshipById, tagLevel } from "@/lib/app/tags";
 import { charmFromCoins, giftEarnings, voiceExpForMinute } from "@/lib/app/progress";
 import { useServerRooms } from "@/lib/app/server-rooms";
@@ -47,7 +48,7 @@ const modeFor = (room: Room): RoomMode => (room.type === "watch" ? "youtube" : r
  * Seat 0 is always the owner's seat and never moves.
  */
 export function useRoomSession(room: Room) {
-  const { profile, vip, spend, playGift, toast, addRoomGift, addIntimacy, tagsOf, addCharm, trackReceived, addExp, roleIn, adminsOf, setRoomAdmin, updateMyRoom, membershipOf } = useApp();
+  const { profile, vip, spend, playGift, armCombo, clearCombo, toast, addRoomGift, addIntimacy, tagsOf, addCharm, trackReceived, addExp, roleIn, adminsOf, setRoomAdmin, updateMyRoom, membershipOf } = useApp();
   const person = usePeople();
   /** Backend rooms have real voice over LiveKit, and no simulated crowd. */
   const live = Boolean(room.server);
@@ -78,6 +79,15 @@ export function useRoomSession(room: Room) {
   const [closedSeats, setClosedSeats] = useState<number[]>([]);
   /** People an owner or admin muted. */
   const [forceMuted, setForceMuted] = useState<string[]>([]);
+  /** Seats an owner or admin muted: whoever sits there can't talk. */
+  const [mutedSeats, setMutedSeats] = useState<number[]>([]);
+  /** Mic order: when on, people ask the owner or an admin before taking a seat. */
+  // Demo: about half the sample rooms other people own start with mic order on
+  const [micOrder, setMicOrderState] = useState(() => !room.server && room.hostId !== ME_ID && room.seated.length % 2 === 0);
+  /** People waiting for the owner or an admin to let them on the mic, oldest first. */
+  const [micRequests, setMicRequests] = useState<{ id: string; seat: number }[]>([]);
+  /** The "Waiting" (mic queue) sheet is open. */
+  const [queueOpen, setQueueOpen] = useState(false);
   /** People removed from the room this session. */
   const [kicked, setKicked] = useState<string[]>([]);
   const [muted, setMuted] = useState(true);
@@ -142,6 +152,8 @@ export function useRoomSession(room: Room) {
         : PEOPLE.filter((p) => p.online && !seatedIds.includes(p.id) && !kicked.includes(p.id) && p.id !== room.hostId).slice(0, 5).map((p) => p.id),
     [live, seatedIds, kicked, room.hostId],
   );
+  const listenersRef = useRef<string[]>([]);
+  listenersRef.current = listenerIds;
   const onlineIds = useMemo(() => [...seatedIds, ...(seated ? [] : [ME_ID]), ...listenerIds], [seatedIds, seated, listenerIds]);
 
   /** Can you moderate this person? The owner can act on anyone; admins only on members and guests. */
@@ -161,12 +173,14 @@ export function useRoomSession(room: Room) {
   closedRef.current = closedSeats;
   const mutedRef = useRef(forceMuted);
   mutedRef.current = forceMuted;
+  const mutedSeatsRef = useRef(mutedSeats);
+  mutedSeatsRef.current = mutedSeats;
   const kickedRef = useRef(kicked);
   kickedRef.current = kicked;
   useEffect(() => {
     if (live) return;
     const t = window.setInterval(() => {
-      const others = seatsRef.current.filter((s): s is string => s !== null && s !== ME_ID && !mutedRef.current.includes(s));
+      const others = seatsRef.current.filter((s, i): s is string => s !== null && s !== ME_ID && !mutedRef.current.includes(s) && !mutedSeatsRef.current.includes(i));
       const count = Math.min(others.length, 1 + Math.floor(Math.random() * 2));
       setSpeaking([...others].sort(() => Math.random() - 0.5).slice(0, count));
     }, 2600);
@@ -227,13 +241,116 @@ export function useRoomSession(room: Room) {
         toast(`Only VIP ${need}+ members can take a seat in this VIP room`, "error");
         return;
       }
+      if (micOrder && !canModerate) {
+        requestSeat(index);
+        return;
+      }
       setSeats((s) => s.map((x, i) => (x === ME_ID ? null : i === index ? ME_ID : x)));
       setMuted(true);
       setHandRaised(false);
       toast(`You took seat ${index + 1}. Tap the mic to unmute.`);
     },
-    [seats, toast, isOwner, closedSeats, room, vip.level, live],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [seats, toast, isOwner, closedSeats, room, vip.level, live, micOrder, canModerate],
   );
+
+  /* ---- Mic order: ask before taking a seat ---- */
+
+  const requestsRef = useRef(micRequests);
+  requestsRef.current = micRequests;
+  /** First open, empty seat (not the owner's), or -1. */
+  const freeSeat = useCallback(
+    (prefer?: number) => {
+      const ok = (i: number) => i > 0 && seatsRef.current[i] === null && !closedRef.current.includes(i);
+      if (prefer !== undefined && ok(prefer)) return prefer;
+      return seatsRef.current.findIndex((_, i) => ok(i));
+    },
+    [],
+  );
+  const requestSeat = useCallback(
+    (index: number) => {
+      if (requestsRef.current.some((r) => r.id === ME_ID)) {
+        toast("Your mic request is waiting for the owner or an admin");
+        return;
+      }
+      setMicRequests((q) => [...q, { id: ME_ID, seat: index }]);
+      toast("Mic order is on. Your request went to the owner and admins.");
+      // Demo: the owner answers after a moment (a real room would wait for them)
+      window.setTimeout(() => {
+        const req = requestsRef.current.find((r) => r.id === ME_ID);
+        if (!req) return;
+        setMicRequests((q) => q.filter((r) => r.id !== ME_ID));
+        const at = freeSeat(req.seat);
+        if (at < 0) {
+          toast("The owner approved, but every seat is taken now. Ask again when one opens.", "error");
+          return;
+        }
+        setSeats((s) => s.map((x, i) => (x === ME_ID ? null : i === at ? ME_ID : x)));
+        setMuted(true);
+        setHandRaised(false);
+        addSystem(`${person(room.hostId).name} approved ${profile.name}'s mic request`);
+        toast(`Approved! You're on seat ${at + 1}. Tap the mic to unmute.`, "gold");
+      }, 3500);
+    },
+    [toast, freeSeat, addSystem, person, room.hostId, profile.name],
+  );
+  const cancelMicRequest = useCallback(() => {
+    setMicRequests((q) => q.filter((r) => r.id !== ME_ID));
+    toast("Mic request cancelled");
+  }, [toast]);
+  const approveMicRequest = useCallback(
+    (id: string) => {
+      if (!canModerate) return;
+      const req = requestsRef.current.find((r) => r.id === id);
+      if (!req) return;
+      const at = freeSeat(req.seat);
+      if (at < 0) {
+        toast("No open seat. Open or free a seat first.");
+        return;
+      }
+      setMicRequests((q) => q.filter((r) => r.id !== id));
+      setSeats((s) => s.map((x, i) => (x === id ? null : i === at ? id : x)));
+      addSystem(`${actor} approved ${person(id).name}'s mic request · seat No.${at + 1}`);
+    },
+    [canModerate, freeSeat, toast, addSystem, actor, person],
+  );
+  const declineMicRequest = useCallback(
+    (id: string) => {
+      if (!canModerate) return;
+      setMicRequests((q) => q.filter((r) => r.id !== id));
+      toast(`Declined ${person(id).name}'s mic request`);
+    },
+    [canModerate, toast, person],
+  );
+  const setMicOrder = useCallback(
+    (on: boolean) => {
+      if (!canModerate) {
+        toast("Only the owner or an admin can change the mic order");
+        return;
+      }
+      setMicOrderState(on);
+      if (!on) setMicRequests([]);
+      addSystem(on ? `${actor} turned on mic order: ask the owner or an admin to take a seat` : `${actor} turned off mic order: anyone can take an empty seat`);
+    },
+    [canModerate, toast, addSystem, actor],
+  );
+  // Demo: with mic order on in your room, listeners ask to come on the mic now and then
+  useEffect(() => {
+    if (!micOrder || !canModerate || live) return;
+    const ask = () => {
+      const waiting = requestsRef.current.map((r) => r.id);
+      const who = listenersRef.current.filter((id) => !waiting.includes(id) && !seatsRef.current.includes(id));
+      if (!who.length || waiting.length >= 4) return;
+      const id = who[Math.floor(Math.random() * who.length)];
+      setMicRequests((q) => [...q, { id, seat: -1 }]);
+    };
+    const first = window.setTimeout(ask, 2500);
+    const t = window.setInterval(ask, 14000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(t);
+    };
+  }, [micOrder, canModerate, live]);
 
   const leaveSeat = useCallback(() => {
     if (live) {
@@ -252,9 +369,15 @@ export function useRoomSession(room: Room) {
     toast("You left the mic. You're still in the room, listening.");
   }, [toast, isOwner, voice, live]);
 
+  /** Muted by the owner or an admin: you, or the seat you're on. */
+  const adminMutedMe = forceMuted.includes(ME_ID) || (mySeat >= 0 && mutedSeats.includes(mySeat));
   const toggleMute = useCallback(() => {
     if (!seated && !live) {
       toast("Take an empty seat to use the mic");
+      return;
+    }
+    if (adminMutedMe && muted) {
+      toast("The owner or an admin muted your seat", "error");
       return;
     }
     if (voice) {
@@ -266,7 +389,29 @@ export function useRoomSession(room: Room) {
       return;
     }
     setMuted((m) => !m);
-  }, [seated, toast, voice, live]);
+  }, [seated, toast, voice, live, adminMutedMe, muted]);
+  // Being muted by the owner or an admin turns your mic off
+  useEffect(() => {
+    if (adminMutedMe) setMuted(true);
+  }, [adminMutedMe]);
+
+  /*
+   * Music in the room goes out through the mic of whoever started it. If the
+   * owner or an admin mutes that person, the song keeps playing only for them.
+   * Songs are played from this device, so the starter is always you.
+   */
+  const music = useMusic();
+  const musicOnlyMe = Boolean(music.playing && music.current) && adminMutedMe;
+  const wasOnlyMe = useRef(false);
+  useEffect(() => {
+    if (musicOnlyMe && !wasOnlyMe.current) {
+      addSystem(`🎵 ${profile.name} was muted, so their song now plays only for them`);
+      toast("You were muted. Your song keeps playing, but only you can hear it.", "error");
+    } else if (!musicOnlyMe && wasOnlyMe.current && music.playing) {
+      addSystem(`🎵 ${profile.name} was unmuted, so everyone hears their song again`);
+    }
+    wasOnlyMe.current = musicOnlyMe;
+  }, [musicOnlyMe, music.playing, addSystem, toast, profile.name]);
 
   const toggleHand = useCallback(() => {
     setHandRaised((h) => {
@@ -284,6 +429,20 @@ export function useRoomSession(room: Room) {
       addSystem(`${actor} ${closed ? "closed" : "opened"} seat No.${index + 1}`);
     },
     [canModerate, actor, addSystem],
+  );
+
+  const setSeatMuted = useCallback(
+    (index: number, on: boolean) => {
+      if (!canModerate || index === 0) return;
+      const id = seats[index];
+      if (id && id !== ME_ID && !canManage(id)) {
+        toast("Admins can't mute the owner or another admin");
+        return;
+      }
+      setMutedSeats((m) => (on ? [...new Set([...m, index])] : m.filter((x) => x !== index)));
+      addSystem(`${actor} ${on ? "muted" : "unmuted"} seat No.${index + 1}${id ? ` (${person(id).name})` : ""}`);
+    },
+    [canModerate, seats, canManage, toast, addSystem, actor, person],
   );
 
   const removeFromMic = useCallback(
@@ -435,32 +594,45 @@ export function useRoomSession(room: Room) {
   }, []);
 
   /** Send a gift; package gifts (free) come out of your Bag instead of your coins. */
+  /**
+   * Send a gift. combo: which send this is in a row from the Combo button
+   * (1 for a normal send). Coin sends offer the Combo button afterwards.
+   */
   const sendGift = useCallback(
-    (giftId: GiftId, toId: string, count: number, free = false) => {
+    (giftId: GiftId, toId: string, count: number, free = false, combo = 1): boolean => {
       if (!GIFTS_LIVE) {
         toast(GIFTS_SOON_TEXT);
         return false;
       }
       const gift = giftById(giftId);
       if (!free && !spend(gift.cost * count)) {
-        toast("Not enough demo coins. Tap your coin balance to add more.", "error");
+        toast("Not enough coins. Tap your coin balance to recharge.", "error");
+        clearCombo();
         return false;
       }
-      add({ id: mid(), kind: "gift", fromId: ME_ID, toId, giftId, count, charm: Math.floor(charmFromCoins(gift.cost * count)), earned: giftEarnings(gift.cost * count) });
-      addRoomGift(room, gift.cost * count);
+      const value = gift.cost * count;
+      const charm = Math.floor(charmFromCoins(value));
+      const earned = giftEarnings(value);
+      add({ id: mid(), kind: "gift", fromId: ME_ID, toId, giftId, count, charm, earned });
+      addRoomGift(room, value);
       // Gifts to someone you're tagged with raise your tag's intimacy
-      addIntimacy(ME_ID, toId, gift.cost * count);
+      addIntimacy(ME_ID, toId, value);
       // The receiver earns charm: 1 point per 5 coins
-      addCharm(toId, gift.cost * count);
+      addCharm(toId, value);
       trackReceived(toId, giftId, count);
-      setGiftCounts((g) => ({ ...g, [toId]: (g[toId] ?? 0) + gift.cost * count }));
-      playGift({ giftId, fromName: profile.name, toName: person(toId).name, count });
-      giftListener.current?.(ME_ID, toId, gift.cost * count);
-      pkListener.current?.(ME_ID, toId, gift.cost * count);
+      setGiftCounts((g) => ({ ...g, [toId]: (g[toId] ?? 0) + value }));
+      playGift({ giftId, fromName: profile.name, toName: person(toId).name, count, combo, charm, earned });
+      giftListener.current?.(ME_ID, toId, value);
+      pkListener.current?.(ME_ID, toId, value);
+      if (!free) armCombo({ giftId, n: combo, send: () => sendGiftRef.current(giftId, toId, count, false, combo + 1) });
       return true;
     },
-    [spend, toast, add, playGift, profile.name, person, addRoomGift, addIntimacy, addCharm, trackReceived, room],
+    [spend, toast, add, playGift, profile.name, person, addRoomGift, addIntimacy, addCharm, trackReceived, room, armCombo, clearCombo],
   );
+  const sendGiftRef = useRef(sendGift);
+  sendGiftRef.current = sendGift;
+  // Leaving the room ends any combo
+  useEffect(() => clearCombo, [clearCombo]);
 
   /** A simulated gift from someone else in the room (no coins of yours are used). */
   const simGift = useCallback(
@@ -541,6 +713,19 @@ export function useRoomSession(room: Room) {
     takeSeat,
     leaveSeat,
     closedSeats,
+    mutedSeats,
+    setSeatMuted,
+    adminMutedMe,
+    micOrder,
+    setMicOrder,
+    micRequests,
+    requestSeat,
+    queueOpen,
+    setQueueOpen,
+    cancelMicRequest,
+    approveMicRequest,
+    declineMicRequest,
+    musicOnlyMe,
     setSeatClosed,
     forceMuted: liveMuted ?? forceMuted,
     toggleForceMute,

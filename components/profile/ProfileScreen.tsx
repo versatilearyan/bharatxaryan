@@ -15,7 +15,7 @@ import { useApp } from "@/lib/app/store";
 import { useMe } from "@/lib/app/me-store";
 
 export function ProfileScreen() {
-  const { profile, coins, setSheet, push, toast, resetDemo, signOut, session } = useApp();
+  const { profile, coins, setSheet, push, toast, resetDemo, signOut, session, vip: appVip } = useApp();
   const [notify, setNotify] = useState(true);
   const [sounds, setSounds] = useState(true);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -27,7 +27,8 @@ export function ProfileScreen() {
   const loadError = me.profile.error || me.stats.error;
   const loading = me.profile.loading || me.stats.loading;
   // VIP points come from the server; the level is read off the app's VIP thresholds
-  const serverVip = me.stats.data ? vipLevel(me.stats.data.vipPoints) : null;
+  // Growth only counts while you're VIP; the server's vipPoints are growth points (1 per 100 coins)
+  const serverVip = me.stats.data ? vipLevel(me.stats.data.vipPoints, appVip.level > 0 || me.stats.data.vipPoints > 0) : null;
 
   return (
     <div className="app-scroll h-full bg-ink pb-[calc(84px+var(--mini,0px)+env(safe-area-inset-bottom))]">
@@ -82,7 +83,7 @@ export function ProfileScreen() {
       <div className="mx-4 mt-3 grid grid-cols-2 gap-3">
         <button type="button" onClick={() => setSheet({ kind: "coins" })} className="rounded-2xl bg-surface p-4 text-left ring-1 ring-line">
           <span className="flex items-center gap-1.5 text-[11.5px] text-muted">
-            <Coin className="h-4 w-4" /> Demo coins
+            <Coin className="h-4 w-4" /> Coins
           </span>
           <span className="mt-1 block font-display text-[22px] font-extrabold text-cream">{formatCoins(coins)}</span>
           <span className="text-[11px] font-semibold text-gold">Open wallet</span>

@@ -12,9 +12,12 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { CharmBadge } from "@/components/ui/CharmBadge";
 import { TagStrip, TagTitleChip } from "@/components/rooms/TagParts";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
-import { Button, Coin, DemoNote, formatCoins, formatCount } from "@/components/ui/kit";
+import { Button, Coin, DemoNote, formatCount } from "@/components/ui/kit";
 import { EditProfileSheet } from "@/components/profile/EditProfileSheet";
 import { RedPacketShop } from "@/components/redpacket/RedPacket";
+import { CheckoutSheet } from "@/components/market/CheckoutSheet";
+import { COIN_PACKS, coinPackById, packBonus, type CoinPack } from "@/lib/app/coin-packs";
+import { formatInr } from "@/lib/app/redpacket";
 import { CATEGORIES, PEOPLE, TASKS, gameById } from "@/lib/app/data";
 import { RoomTypeBadge } from "@/components/rooms/RoomCards";
 import { useApp } from "@/lib/app/store";
@@ -246,43 +249,76 @@ function FriendsSheet({ open, onClose }: { open: boolean; onClose: () => void })
 }
 
 function CoinsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { coins, addCoins, toast, addExp } = useApp();
+  const { coins, addCoins, toast, addExp, setSheet } = useApp();
+  // Checkout outlives this sheet: the wallet closes and the gateway slides up
+  const [buying, setBuying] = useState<CoinPack | null>(null);
   return (
-    <BottomSheet open={open} onClose={onClose} title="Demo wallet">
-      <div className="px-5 pb-6">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#4a3214] via-[#2a1a0c] to-[#1a1008] p-5 ring-1 ring-gold/40">
-          <span className="foil-shimmer animate-shimmer pointer-events-none absolute inset-0 opacity-40" aria-hidden />
-          <p className="relative text-[12px] text-gold/80">Balance</p>
-          <p className="relative mt-1 flex items-center gap-2 font-display text-[34px] font-extrabold text-cream">
-            <Coin className="h-8 w-8" /> {coins.toLocaleString("en-IN")}
-          </p>
-          <p className="relative mt-1 text-[11.5px] text-cream/60">≈ {formatCoins(coins)} demo coins</p>
+    <>
+      <BottomSheet open={open} onClose={onClose} title="Wallet" tall>
+        <div className="px-5 pb-6">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#4a3214] via-[#2a1a0c] to-[#1a1008] p-5 ring-1 ring-gold/40">
+            <span className="foil-shimmer animate-shimmer pointer-events-none absolute inset-0 opacity-40" aria-hidden />
+            <p className="relative text-[12px] text-gold/80">Coin balance</p>
+            <p className="relative mt-1 flex items-center gap-2 font-display text-[34px] font-extrabold text-cream">
+              <Coin className="h-8 w-8" /> {coins.toLocaleString("en-IN")}
+            </p>
+            <p className="relative mt-1 text-[11.5px] text-cream/60">Send gifts, red packets and more in any room</p>
+          </div>
+          <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Recharge coins</p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {COIN_PACKS.map((p, i) => {
+              const bonus = packBonus(p);
+              const wide = i === COIN_PACKS.length - 1 && COIN_PACKS.length % 2 === 1;
+              return (
+                <motion.button
+                  key={p.id}
+                  type="button"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setSheet(null);
+                    setBuying(p);
+                  }}
+                  aria-label={`Buy ${p.coins.toLocaleString("en-IN")} coins for ${formatInr(p.inr)}`}
+                  className={`relative flex flex-col items-center gap-1 rounded-2xl bg-surface px-2 pb-2.5 pt-3.5 ring-1 hover:ring-gold/50 ${p.tag ? "ring-gold/50" : "ring-line"} ${wide ? "col-span-2" : ""}`}
+                >
+                  {p.tag ? <span className="absolute -top-2 rounded-full bg-gold px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider text-ink">{p.tag}</span> : null}
+                  <span className="flex items-center gap-1.5 font-display text-[18px] font-extrabold text-cream">
+                    <Coin className="h-5 w-5" /> {p.coins.toLocaleString("en-IN")}
+                  </span>
+                  <span className={`text-[10.5px] font-semibold ${bonus ? "text-speak" : "text-muted"}`}>{bonus ? `+${bonus}% more coins` : "Starter pack"}</span>
+                  <span className="mt-1 flex h-8 w-full max-w-[160px] items-center justify-center rounded-full bg-gold text-[13px] font-bold text-ink">{formatInr(p.inr)}</span>
+                </motion.button>
+              );
+            })}
+          </div>
+          <p className="mt-2 text-[11px] text-muted">Prices include GST. Every pack also earns EXP; 10,000+ coins gives 5,000–10,000 EXP at once.</p>
+          <RedPacketShop />
         </div>
-        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Add free demo coins</p>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {[1000, 5000, 10000, 20000].map((n) => (
-            <motion.button
-              key={n}
-              type="button"
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                addCoins(n);
-                // Coin packs earn EXP; 10,000+ in one pack gives the big instant boost
-                const xp = addExp(purchaseExp(n), "purchase");
-                toast(`+${n.toLocaleString("en-IN")} demo coins · +${xp.toLocaleString("en-IN")} EXP`, "gold");
-              }}
-              className="flex flex-col items-center gap-1 rounded-2xl bg-surface py-3 ring-1 ring-line hover:ring-gold/40"
-            >
-              <Coin className="h-6 w-6" />
-              <span className="text-[14px] font-bold text-cream">+{formatCoins(n)}</span>
-              <span className={`text-[10.5px] font-semibold ${n >= 10000 ? "text-gold" : "text-speak"}`}>Free · +{formatCount(purchaseExp(n))} EXP</span>
-            </motion.button>
-          ))}
-        </div>
-        <RedPacketShop />
-        <DemoNote className="mt-4">Coins in this preview are pretend. There are no purchases, payments or real-money value.</DemoNote>
-      </div>
-    </BottomSheet>
+      </BottomSheet>
+      <CheckoutSheet
+        item={
+          buying
+            ? {
+                id: buying.id,
+                name: `${buying.coins.toLocaleString("en-IN")} coins`,
+                note: "Added to your wallet right after payment",
+                art: <Coin className="h-12 w-12" />,
+                inr: buying.inr,
+                tone: "gold",
+                successText: `${buying.coins.toLocaleString("en-IN")} coins are in your wallet.`,
+              }
+            : null
+        }
+        onClose={() => setBuying(null)}
+        onPaid={(id) => {
+          const p = coinPackById(id);
+          if (!p) return;
+          addCoins(p.coins);
+          const xp = addExp(purchaseExp(p.coins), "purchase");
+          toast(`+${p.coins.toLocaleString("en-IN")} coins · +${xp.toLocaleString("en-IN")} EXP`, "gold");
+        }}
+      />
+    </>
   );
 }
 

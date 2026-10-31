@@ -46,7 +46,7 @@ export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onCl
 
   const isPkg = cat === "Package";
   const owned = (Object.keys(pkg) as GiftId[]).filter((id) => (pkg[id] ?? 0) > 0);
-  const list = isPkg ? owned.map(giftById) : GIFTS.filter((g) => !g.packageOnly && g.categories.includes(cat));
+  const list = isPkg ? owned.map(giftById) : GIFTS.filter((g) => !g.packageOnly && g.categories.includes(cat)).sort((a, b) => a.cost - b.cost);
   const selected = giftById(gift);
   // Big SVGA gifts start downloading as soon as they're picked, so they play straight away when sent
   const svgaSrc = selected.svga?.src;
@@ -57,8 +57,8 @@ export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onCl
   const have = pkg[gift] ?? 0;
   const canAfford = isPkg ? have >= qty : total <= coins;
 
-  // Only the big animated gifts get a server banner
-  const big = Boolean(selected.video || selected.svga);
+  // Only Sunset Romance, Crystal Palace and Storm Guardian get a server notification
+  const big = Boolean(selected.news);
   const sent = () => {
     if (big) announce({ fromId: ME_ID, toId: to, giftId: gift, count: qty, roomId: s.room.id, message });
     setMessage("");
@@ -165,10 +165,9 @@ export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onCl
           </label>
         ) : null}
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setSheet({ kind: "coins" })} className="flex items-center gap-1 rounded-full bg-cream/[0.06] px-2.5 py-1.5 text-[12px] font-bold text-cream" aria-label="Demo wallet">
+          <button type="button" onClick={() => setSheet({ kind: "coins" })} className="flex items-center gap-1 rounded-full bg-cream/[0.06] px-2.5 py-1.5 text-[12px] font-bold text-cream" aria-label="Wallet">
             <Coin className="h-4 w-4" />
             {formatCoins(coins)}
-            <span className="text-[10px] font-semibold text-muted">demo</span>
           </button>
           <div className="ml-auto flex rounded-full bg-cream/[0.06] p-0.5" role="radiogroup" aria-label="Quantity">
             {QTY.map((q) => (
@@ -203,7 +202,7 @@ export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onCl
           )}
         </motion.button>
         )}
-        <p className="mt-2 text-center text-[10.5px] text-muted">{GIFTS_LIVE ? "Demo coins only. No real purchases or transfers." : "You can look around now. Sending gifts opens soon."}</p>
+        <p className="mt-2 text-center text-[10.5px] text-muted">{GIFTS_LIVE ? (big ? "Everyone in Panchayat sees a server notification for this gift." : "Tap Combo after sending to send it again.") : "You can look around now. Sending gifts opens soon."}</p>
       </div>
     </BottomSheet>
   );

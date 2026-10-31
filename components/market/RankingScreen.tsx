@@ -10,7 +10,7 @@ import { PEOPLE } from "@/lib/app/data";
 import { RANK_PERIODS, RANK_TABS, periodShare, sampleScore, type RankPeriod, type RankTab, type RingId } from "@/lib/app/market";
 import { useMarket } from "@/lib/app/market-store";
 import { usePeople } from "@/lib/app/people";
-import { POINTS_PER_COIN, vipName } from "@/lib/app/levels";
+import { COINS_PER_GROWTH, vipName } from "@/lib/app/levels";
 import { seeded } from "@/lib/app/social";
 import { nameFace } from "@/lib/app/fonts";
 import { ME_ID, useApp } from "@/lib/app/store";
@@ -43,7 +43,7 @@ export function RankingScreen() {
     const myToday = (v: number) => (period === "yesterday" ? 0 : v);
     if (tab === "popularity" || tab === "vip") {
       const list: Row[] = PEOPLE.map((p) => ({ key: p.id, people: [p], title: p.name, value: sampleScore(p.id, tab, period), mine: false, open: () => openProfile(p.id) }));
-      const mine = tab === "popularity" ? charmOf(ME_ID).points : Math.round(vipPoints / POINTS_PER_COIN);
+      const mine = tab === "popularity" ? charmOf(ME_ID).points : vipPoints * COINS_PER_GROWTH;
       list.push({ key: ME_ID, people: [person(ME_ID)], title: person(ME_ID).name, value: myToday(mine), mine: true, open: () => setTab("profile") });
       return list.sort((a, b) => b.value - a.value);
     }

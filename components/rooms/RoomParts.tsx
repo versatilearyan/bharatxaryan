@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AudioLines, Bell, Check, ChevronDown, Copy, Gavel, Gift, Hand, Heart, Lock, LogOut, Megaphone, MonitorPlay, MoreHorizontal, Plus, Power, Send, Share2, Smile, UserPlus, UsersRound, Volume2 } from "lucide-react";
+import { Armchair, AudioLines, Bell, Check, ChevronDown, Copy, Gavel, Gift, Hand, Heart, ListOrdered, Lock, LogOut, Megaphone, MicOff, MonitorPlay, MoreHorizontal, Plus, Power, Send, Share2, Smile, UserPlus, UsersRound, Volume2, X } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { EmojiPicker } from "@/components/ui/EmojiPicker";
@@ -136,7 +136,8 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
   const reactions = s.reactions.filter((r) => id && r.personId === id);
   const p = id ? person(id) : null;
   const closed = s.closedSeats.includes(index);
-  const muted = id ? (id === ME_ID ? s.muted : s.forceMuted.includes(id)) : false;
+  const seatMuted = s.mutedSeats.includes(index);
+  const muted = id ? (id === ME_ID ? s.muted : s.forceMuted.includes(id) || seatMuted) : false;
   const { effectsFor } = useMarket();
   const frame = id ? effectsFor(id).frame : undefined;
   const pkNow = usePkState()?.pk;
@@ -206,6 +207,11 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
           )}
         </motion.button>
       )}
+      {seatMuted ? (
+        <span className="pointer-events-none absolute right-0 top-0 z-[3] grid h-5 w-5 place-items-center rounded-full bg-[#e2242f] text-white ring-2 ring-[#1a1018]" title="Seat muted by the owner or an admin" aria-label="Seat muted">
+          <MicOff className="h-3 w-3" aria-hidden />
+        </span>
+      ) : null}
       {pkSide ? (
         <span className="pointer-events-none absolute left-1/2 -translate-x-1/2" style={{ top: size - 4, width: 0 }}>
           <PkSeatTag side={pkSide} />
@@ -643,6 +649,31 @@ export function RoomMenuSheet({ open, onClose, s, extra, onInvite }: { open: boo
             </p>
           )}
         </div>
+        <div className="mt-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Mic order</p>
+          {s.canModerate ? (
+            <button
+              type="button"
+              role="switch"
+              aria-checked={s.micOrder}
+              onClick={() => s.setMicOrder(!s.micOrder)}
+              className="mt-2 flex w-full items-center gap-3 rounded-2xl bg-cream/[0.05] px-3.5 py-3 text-left ring-1 ring-line"
+            >
+              <ListOrdered className="h-5 w-5 shrink-0 text-cream/80" aria-hidden />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[13.5px] font-bold text-cream">Ask before taking a seat</span>
+                <span className="block text-[11px] text-muted">People request a seat; the owner or an admin approves.</span>
+              </span>
+              <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${s.micOrder ? "bg-speak" : "bg-cream/15"}`}>
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${s.micOrder ? "left-[22px]" : "left-0.5"}`} />
+              </span>
+            </button>
+          ) : (
+            <p className="mt-1.5 text-[12.5px] text-cream/80">
+              {s.micOrder ? "On: ask the owner or an admin for a seat" : "Off: take any empty seat"} <span className="text-muted">· the owner and admins set this</span>
+            </p>
+          )}
+        </div>
         <RoomLevelCard room={s.room} className="mt-4" />
         <div className="mt-4 grid grid-cols-4 gap-2">
           {extra}
@@ -735,5 +766,92 @@ export function EmojiButton({ onClick }: { onClick: () => void }) {
     <IconButton label="Emoji and reactions" onClick={onClick}>
       <Smile className="h-5 w-5" />
     </IconButton>
+  );
+}
+
+/**
+ * Mic order queue. With mic order on, a "Waiting" pill under the seats opens
+ * the queue (MicQueueSheet): everyone can see who's waiting and in what order,
+ * join or leave it, and the owner and admins approve or decline from it.
+ */
+export function MicOrderBar({ s }: { s: RoomSession }) {
+  const mine = s.micRequests.some((r) => r.id === ME_ID);
+  const myPlace = s.micRequests.findIndex((r) => r.id === ME_ID) + 1;
+  if (!s.micOrder && !mine) return null;
+  const count = s.micRequests.length;
+  return (
+    <div className="mt-2 flex justify-center">
+      <button
+        type="button"
+        onClick={() => s.setQueueOpen(true)}
+        className="flex h-8 items-center gap-1.5 rounded-full bg-black/45 px-3.5 text-[12px] font-bold text-cream ring-1 ring-white/15 backdrop-blur"
+        aria-label={`Mic queue, ${count} waiting`}
+      >
+        <ListOrdered className="h-4 w-4" aria-hidden />
+        {mine ? `You're No.${myPlace} in the queue` : "Waiting"}
+        <span className={`grid h-5 min-w-5 place-items-center rounded-full px-1 text-[11px] ${count ? "bg-coral text-white" : "bg-cream/15 text-cream/70"}`}>{count}</span>
+      </button>
+    </div>
+  );
+}
+
+/** The "Waiting" sheet: the mic queue. Rendered at room level so it covers the whole room. */
+export function MicQueueSheet({ s }: { s: RoomSession }) {
+  const person = usePeople();
+  const { profile } = useApp();
+  const mine = s.micRequests.some((r) => r.id === ME_ID);
+  const count = s.micRequests.length;
+  return (
+    <BottomSheet open={s.queueOpen} onClose={() => s.setQueueOpen(false)} title="Waiting" tall>
+      <div className="flex min-h-[46vh] flex-col px-5 pb-5">
+        {count === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center py-10 text-center">
+            <span className="relative">
+              <Armchair className="h-16 w-16 text-gold/35" strokeWidth={1.6} aria-hidden />
+              <span className="absolute -right-1 -top-2 h-3 w-0.5 rotate-[30deg] rounded-full bg-gold/35" aria-hidden />
+              <span className="absolute -right-3.5 top-0 h-0.5 w-3 -rotate-[25deg] rounded-full bg-gold/35" aria-hidden />
+            </span>
+            <p className="mt-3 text-[15px] font-bold text-muted">None queuing</p>
+          </div>
+        ) : (
+          <ul className="flex-1">
+            {s.micRequests.map((r, i) => {
+              const me = r.id === ME_ID;
+              const p = person(r.id);
+              return (
+                <li key={r.id} className={`flex items-center gap-3 border-b border-line py-2.5 ${me ? "-mx-2 rounded-xl bg-gold/10 px-2 ring-1 ring-gold/40" : ""}`}>
+                  <span className={`w-6 text-center font-display text-[15px] font-extrabold ${i < 3 ? "text-foil" : "text-muted"}`}>{i + 1}</span>
+                  <PersonAvatar person={me ? { id: ME_ID, look: profile.look, photo: profile.photo, frame: "none" } : { ...p, frame: "none" }} size={42} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[14.5px] font-bold text-cream">{me ? `${profile.name} (you)` : p.name}</span>
+                    <span className="block text-[11.5px] text-muted">{r.seat > 0 ? `Asked for seat No.${r.seat + 1}` : "Any seat"}</span>
+                  </span>
+                  {s.canModerate && !me ? (
+                    <>
+                      <button type="button" onClick={() => s.declineMicRequest(r.id)} className="h-8 rounded-full bg-cream/10 px-3 text-[12px] font-bold text-cream">
+                        Decline
+                      </button>
+                      <button type="button" onClick={() => s.approveMicRequest(r.id)} className="h-8 rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] px-3 text-[12px] font-bold text-[#2a1a0c]">
+                        Approve
+                      </button>
+                    </>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {!s.canModerate && !s.seated ? (
+          <button
+            type="button"
+            onClick={() => (mine ? s.cancelMicRequest() : s.requestSeat(-1))}
+            className={`mt-4 h-12 w-full rounded-full text-[15px] font-bold ${mine ? "bg-cream/10 text-cream ring-1 ring-line" : "bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] text-[#2a1a0c]"}`}
+          >
+            {mine ? "Leave the queue" : "Join the queue"}
+          </button>
+        ) : null}
+        {s.canModerate ? <p className="mt-3 text-center text-[11.5px] text-muted">Approve puts them on the seat they asked for, or the next free one.</p> : null}
+      </div>
+    </BottomSheet>
   );
 }

@@ -178,7 +178,7 @@ export function CreateRoom() {
           </div>
           <p className="mt-2 text-[11.5px] text-muted">
             Your balance: <span className="font-semibold text-cream">{coins.toLocaleString("en-IN")}</span> coins
-            {!myPermanentRoom && coins < PERMANENT_ROOM_COST ? ". Add demo coins from your profile to unlock a permanent room." : "."}
+            {!myPermanentRoom && coins < PERMANENT_ROOM_COST ? ". Recharge coins from your profile to unlock a permanent room." : "."}
           </p>
         </Field>
 
@@ -265,12 +265,12 @@ export function CreateRoom() {
         {online ? (
           <DemoNote>
             The room, its name, type, privacy and size are saved on the server and voice is live. Seats, chat, gifts, cover and category stay on this device for now.
-            {permanent ? " Permanent-room coins are pretend." : " A temporary room closes when you leave it."}
+            {permanent ? "" : " A temporary room closes when you leave it."}
           </DemoNote>
         ) : (
         <DemoNote>
           {permanent
-            ? "Your permanent room is saved on this device and stays in your Rooms list. Coins are pretend."
+            ? "Your permanent room is saved on this device and stays in your Rooms list."
             : "A temporary room isn't saved. It closes when you leave it."}{" "}
           Other people can't see it in this preview.
         </DemoNote>

@@ -15,7 +15,7 @@ import { Button, formatCount } from "@/components/ui/kit";
 import { usePeople } from "@/lib/app/people";
 import { vipName } from "@/lib/app/levels";
 import { ME_ID, useApp } from "@/lib/app/store";
-import { RoleBadge } from "./RoomParts";
+import { MicQueueSheet, RoleBadge } from "./RoomParts";
 import { RoomPeopleSheet } from "./RoomPeopleSheet";
 import { TagStrip, TagTitleChip } from "./TagParts";
 import { RoomInfoSheet, RoomSettingsScreen } from "./RoomSettings";
@@ -33,6 +33,7 @@ export function RoomOverlays({ s }: { s: RoomSession }) {
       <RoomInfoSheet s={s} />
       <RoomSettingsScreen s={s} />
       <RoomPeopleSheet s={s} />
+      <MicQueueSheet s={s} />
       <GiftPanel open={Boolean(giftTo)} onClose={() => setGiftTo(null)} s={s} initialTo={giftTo ?? undefined} />
     </>
   );
@@ -321,6 +322,13 @@ function SeatMenuSheet({ s }: { s: RoomSession }) {
                   label={closed ? "Open seat" : "Close seat"}
                   onClick={() => {
                     s.setSeatClosed(index, !closed);
+                    close();
+                  }}
+                />
+                <Line
+                  label={s.mutedSeats.includes(index) ? "Unmute seat" : "Mute seat"}
+                  onClick={() => {
+                    s.setSeatMuted(index, !s.mutedSeats.includes(index));
                     close();
                   }}
                 />

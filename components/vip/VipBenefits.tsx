@@ -6,12 +6,14 @@ import { BadgeCheck, Crown, Gem, MessageSquareQuote, Palette, Sparkles, Armchair
 import { SunsetScene } from "@/components/art/SunsetScene";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, DemoNote, ScreenHeader } from "@/components/ui/kit";
-import { POINTS_PER_COIN, VIP_THRESHOLDS, formatPoints } from "@/lib/app/levels";
+import { COINS_PER_GROWTH, VIP_PRICE_INR, VIP_THRESHOLDS, formatPoints } from "@/lib/app/levels";
+import { CheckoutSheet } from "@/components/market/CheckoutSheet";
+import { formatInr } from "@/lib/app/redpacket";
 import { VIP_TIERS } from "@/lib/app/data";
 import { VIP_SETS } from "@/lib/app/effects";
 import { VIP_DAYS, useApp } from "@/lib/app/store";
 
-const PERK_ICONS = [BadgeCheck, MessageSquareQuote, DoorOpen, Armchair, Palette, Gem, Sparkles, Crown, Crown, Crown];
+const PERK_ICONS = [BadgeCheck, MessageSquareQuote, DoorOpen, Armchair, Palette, Gem, Sparkles, Crown, Crown, Crown, Crown];
 
 const THEMES = [
   { name: "Darbar Gold", cover: { theme: "gold", motif: "temple" } as const },
@@ -19,28 +21,24 @@ const THEMES = [
   { name: "Ember Palace", cover: { theme: "ember", motif: "river" } as const },
 ];
 
-/** VIP benefits and tiers. Sample membership data only, no payments. */
+/** VIP benefits and tiers. VIP is a monthly subscription paid at checkout; levels grow with coins spent while VIP. */
 export function VipBenefits() {
-  const { pop, profile, vip, vipUntil, buyNextVip, endVip, setTab, coins, toast } = useApp();
+  const { pop, profile, vip, vipUntil, buyVip, endVip, setTab, toast } = useApp();
   const [tier, setTier] = useState(Math.max(1, vip.level));
+  const [paying, setPaying] = useState(false);
   // Follow your level when it changes (bought or ended)
   useEffect(() => setTier(Math.max(1, vip.level)), [vip.level]);
   const current = VIP_TIERS.find((t) => t.tier === tier)!;
   const unlocked = VIP_TIERS.filter((t) => t.tier <= tier).flatMap((t) => t.perks);
-  /** Coins that take you straight to the next level (spending is what grows VIP). */
-  const nextCost = vip.next === null ? 0 : Math.ceil((vip.next - vip.points) / POINTS_PER_COIN);
-  const buyNext = () => {
-    if (vip.next === null) return;
-    const to = buyNextVip();
-    if (!to) return toast(`You need ${nextCost.toLocaleString("en-IN")} coins for VIP ${vip.level + 1}`, "error");
-    setTier(to);
-    const set = VIP_SETS.find((x) => x.level === to);
+  /** Coins still to spend for the next level. */
+  const coinsToNext = vip.next === null ? 0 : (vip.next - vip.points) * COINS_PER_GROWTH;
+  const subscribed = () => {
+    const wasVip = vip.level > 0;
+    const to = buyVip();
     toast(
-      to === 1
-        ? `Welcome to VIP 1 for ${VIP_DAYS} days! Your badge, frame, chat bubble and entry are on.`
-        : set
-          ? `You're now VIP ${to}! The VIP ${to} badge, frame, chat bubble and entry are unlocked and on.`
-          : `You're now VIP ${to}! Your VIP runs ${VIP_DAYS} days from today.`,
+      wasVip
+        ? `VIP renewed for ${VIP_DAYS} more days. You're VIP ${to}.`
+        : `Welcome to VIP 1 for ${VIP_DAYS} days! Your badge, frame, chat bubble and entry are on. Spend coins to grow to VIP 2.`,
       "gold",
     );
   };
@@ -76,24 +74,24 @@ export function VipBenefits() {
               <motion.div className="h-full rounded-full bg-gradient-to-r from-[#f6d899] to-[#c9954a]" initial={{ width: 0 }} animate={{ width: `${vip.progress * 100}%` }} transition={{ duration: 0.8, ease: "easeOut" }} />
             </div>
             <p className="mt-1.5 text-[11px] text-cream/65">
-              {vip.next
-                ? `${(vip.next - vip.points).toLocaleString("en-IN")} pts (${Math.ceil((vip.next - vip.points) / POINTS_PER_COIN).toLocaleString("en-IN")} coins) to VIP ${vip.level + 1}`
-                : "You've reached the top VIP level"}
+              {!vip.level
+                ? `Subscribe to become VIP 1, then every ${COINS_PER_GROWTH} coins you spend adds 1 growth point.`
+                : vip.next
+                  ? `${(vip.next - vip.points).toLocaleString("en-IN")} pts (spend ${coinsToNext.toLocaleString("en-IN")} coins) to VIP ${vip.level + 1}`
+                  : "You've reached the top VIP level"}
             </p>
           </div>
 
-          {vip.next !== null ? (
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.97 }}
-              onClick={buyNext}
-              className="relative mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14.5px] font-extrabold text-[#2a1a0c]"
-            >
-              {vip.level ? `Get VIP ${vip.level + 1}` : "Buy VIP 1"} ·<Coin className="h-4 w-4" /> {nextCost.toLocaleString("en-IN")}
-            </motion.button>
-          ) : null}
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.97 }}
+            onClick={() => setPaying(true)}
+            className="relative mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14.5px] font-extrabold text-[#2a1a0c]"
+          >
+            {vip.level ? "Renew VIP" : "Become VIP"} · {formatInr(VIP_PRICE_INR)}/month
+          </motion.button>
           <p className="relative mt-1.5 text-center text-[11px] text-cream/55">
-            {vip.level ? `VIP ends ${until}. ` : `Lasts ${VIP_DAYS} days. `}Demo coins: you have {coins.toLocaleString("en-IN")}.
+            {vip.level ? `VIP ends ${until}. Renewing adds ${VIP_DAYS} days.` : `${VIP_DAYS} days of VIP 1. Higher levels come from growth.`}
           </p>
           {vip.level ? (
             <button type="button" onClick={endVip} className="relative mx-auto mt-1 block text-[11.5px] font-bold text-cream/60 underline underline-offset-2 hover:text-cream">
@@ -102,7 +100,7 @@ export function VipBenefits() {
           ) : null}
 
           <p className="relative mt-4 text-[10.5px] font-bold uppercase tracking-[0.16em] text-cream/55">Preview a level</p>
-          <div className="relative mt-2 grid grid-cols-5 gap-2" role="radiogroup" aria-label="Preview VIP tier">
+          <div className="relative mt-2 grid grid-cols-6 gap-1.5" role="radiogroup" aria-label="Preview VIP tier">
             {VIP_TIERS.map((t) => (
               <button
                 key={t.tier}
@@ -121,12 +119,30 @@ export function VipBenefits() {
         </div>
       </div>
 
+      <CheckoutSheet
+        item={
+          paying
+            ? {
+                id: "vip-month",
+                name: vip.level ? "Renew VIP · 1 month" : "VIP · 1 month",
+                note: `${VIP_DAYS} days of VIP. Spend coins to grow your level.`,
+                art: <Crown className="h-11 w-11 text-gold" aria-hidden />,
+                inr: VIP_PRICE_INR,
+                tone: "gold",
+                successText: vip.level ? `Your VIP now runs ${VIP_DAYS} days longer.` : "You're VIP 1! Your badge, frame, chat bubble and entry are on.",
+              }
+            : null
+        }
+        onClose={() => setPaying(false)}
+        onPaid={subscribed}
+      />
+
       {/* Perks */}
       <section className="mt-6 px-4">
         <h2 className="font-display text-lg font-bold text-cream">
           {current.name} privileges <span className="text-sm font-semibold text-muted">· {unlocked.length}</span>
         </h2>
-        <p className="mt-0.5 text-[12px] text-muted">{tier <= vip.level ? "Unlocked" : `Unlocks at ${VIP_THRESHOLDS[tier - 1].toLocaleString("en-IN")} growth points`}</p>
+        <p className="mt-0.5 text-[12px] text-muted">{tier <= vip.level ? "Unlocked" : tier === 1 ? `Unlocks when you subscribe (${formatInr(VIP_PRICE_INR)}/month)` : `Unlocks at ${VIP_THRESHOLDS[tier - 1].toLocaleString("en-IN")} growth points`}</p>
         <div className="mt-3 grid grid-cols-3 gap-2">
           <AnimatePresence initial={false}>
             {unlocked.map((perk, i) => {
@@ -156,21 +172,33 @@ export function VipBenefits() {
         <h2 id="grow-h" className="font-display text-lg font-bold text-cream">How to grow</h2>
         <div className="mt-3 flex items-center gap-3 rounded-2xl bg-wine/60 p-4 ring-1 ring-gold/20">
           <span className="flex items-center gap-1 font-display text-[18px] font-extrabold text-cream">
-            <Coin className="h-5 w-5" /> 1
+            <Coin className="h-5 w-5" /> {COINS_PER_GROWTH}
           </span>
           <span className="text-cream/50">=</span>
-          <span className="font-display text-[18px] font-extrabold text-foil">{POINTS_PER_COIN} pts</span>
-          <span className="ml-auto max-w-[45%] text-right text-[11.5px] text-cream/70">While you&apos;re VIP, every coin you spend on gifts or a permanent room</span>
+          <span className="font-display text-[18px] font-extrabold text-foil">1 pt</span>
+          <span className="ml-auto max-w-[50%] text-right text-[11.5px] text-cream/70">Coins you spend while you&apos;re VIP</span>
         </div>
+        <ul className="mt-3 space-y-1 rounded-2xl bg-black/15 p-4 text-[12.5px] text-cream/80 ring-1 ring-gold/15">
+          <li>• Sending gifts</li>
+          <li>• Shopping in the Shop</li>
+          <li>• Permanent rooms, red packets and anything else paid with coins</li>
+          <li className="pt-1 text-[11.5px] text-muted">When you&apos;re not VIP, coins you spend don&apos;t add growth.</li>
+        </ul>
         <ol className="mt-3 overflow-hidden rounded-2xl ring-1 ring-gold/15">
           {VIP_THRESHOLDS.map((pts, i) => {
             const reached = vip.level >= i + 1;
             return (
               <li key={pts} className={`flex items-center justify-between px-4 py-2.5 text-[13px] ${i % 2 ? "bg-black/15" : "bg-black/5"} ${vip.level === i + 1 ? "!bg-gold/15" : ""}`}>
                 <span className={`font-display font-extrabold ${reached ? "text-foil" : "text-cream/70"}`}>VIP {i + 1}</span>
-                <span className="text-cream/80">{formatPoints(pts)} pts</span>
-                <span className="flex w-24 items-center justify-end gap-1 text-muted">
-                  <Coin className="h-3.5 w-3.5" /> {(pts / POINTS_PER_COIN).toLocaleString("en-IN")}
+                <span className="text-cream/80">{i === 0 ? "Subscribe" : `${pts.toLocaleString("en-IN")} pts`}</span>
+                <span className="flex w-28 items-center justify-end gap-1 text-muted">
+                  {i === 0 ? (
+                    `${formatInr(VIP_PRICE_INR)}/month`
+                  ) : (
+                    <>
+                      <Coin className="h-3.5 w-3.5" /> {formatPoints(pts * COINS_PER_GROWTH)}
+                    </>
+                  )}
                 </span>
               </li>
             );
@@ -195,7 +223,7 @@ export function VipBenefits() {
       </section>
 
       <div className="space-y-3 px-4 pb-10 pt-7">
-        <DemoNote>Coins in this preview are pretend demo coins. VIP growth is saved on this device, and nothing is charged.</DemoNote>
+        <DemoNote>VIP growth is saved on this device.</DemoNote>
         <motion.button
           type="button"
           whileTap={{ scale: 0.97 }}
