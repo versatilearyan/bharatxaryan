@@ -61,7 +61,9 @@ export async function api<T>(path: string, { method = "GET", body, auth = false,
   if (!API_BASE_URL) throw new ApiError("The app isn't connected to a server yet. Set BACKEND_URL in .env.local.", 0, "config");
 
   const headers: Record<string, string> = { Accept: "application/json" };
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  // FormData (file uploads): the browser sets multipart/form-data with its boundary
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+  if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
   if (SKIP_NGROK_WARNING) headers["ngrok-skip-browser-warning"] = "1";
   if (auth) {
     const token = readToken();
@@ -76,7 +78,7 @@ export async function api<T>(path: string, { method = "GET", body, auth = false,
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: ctrl.signal });
+    res = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body), signal: ctrl.signal });
   } catch (e) {
     if (ctrl.signal.aborted) throw new ApiError("The server is taking too long to answer. Try again.", 0, "timeout");
     // fetch rejects without detail for offline, DNS, a stopped ngrok tunnel and CORS blocks alike
@@ -136,6 +138,8 @@ function readError(data: unknown): { message: string; fields: Record<string, str
 function friendly(status: number, message: string) {
   const internal = !message || message.length > 160 || /exception|stack|sql|jdbc|hibernate|smtp|at [\w.$]+\(|org\.|java\./i.test(message);
   if (status >= 500) return "Something went wrong on our side. Try again in a moment.";
+  if (status === 413) return "That file is too large for the server. Choose a smaller image.";
+  if (status === 415) return "The server doesn't accept that file type. Use a JPG, PNG or WebP image.";
   if (status === 429) return internal ? "Too many attempts. Wait a little and try again." : message;
   if (internal) return status === 404 ? "That service isn't available right now." : "That didn't work. Check your details and try again.";
   return message;

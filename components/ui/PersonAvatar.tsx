@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Crown as CrownIcon, MicOff } from "lucide-react";
 import { AvatarArt } from "@/components/mock/Avatar";
@@ -17,6 +18,9 @@ type Props = {
 /** Illustrated avatar (or photo) with speaking ring and status badges. Frames are the animated VIP ones, drawn around it by VipFrame. */
 export function PersonAvatar({ person, size = 48, speaking = false, muted = false, host = false, className = "" }: Props) {
   const gid = `${person.id}-${person.look.bg.slice(1)}-${person.look.outfit.slice(1)}-${person.look.hairStyle}`;
+  // A picture that fails to load falls back to the illustrated avatar (no broken-image icon)
+  const [broken, setBroken] = useState<string | null>(null);
+  const photo = person.photo && person.photo !== broken ? person.photo : undefined;
 
   return (
     <span className={`relative inline-block shrink-0 ${className}`} style={{ width: size, height: size }}>
@@ -33,9 +37,9 @@ export function PersonAvatar({ person, size = 48, speaking = false, muted = fals
         </>
       ) : null}
       <span className="relative block h-full w-full rounded-full">
-        {person.photo ? (
+        {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={person.photo} alt="" className="h-full w-full rounded-full object-cover" draggable={false} />
+          <img src={photo} alt="" className="h-full w-full rounded-full object-cover" draggable={false} onError={() => setBroken(photo)} />
         ) : (
           <AvatarArt look={person.look} gid={gid} />
         )}

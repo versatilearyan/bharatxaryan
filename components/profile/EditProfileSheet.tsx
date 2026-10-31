@@ -8,10 +8,9 @@ import { Button } from "@/components/ui/kit";
 import { GAMES } from "@/lib/app/data";
 import { NAME_FONTS, nameFace } from "@/lib/app/fonts";
 import { useApp } from "@/lib/app/store";
-import { useMe, type ImageChange } from "@/lib/app/me-store";
-import { imageFileError } from "@/lib/app/local-images";
+import { useMe } from "@/lib/app/me-store";
 import { ApiError } from "@/lib/api/client";
-import { API_GENDERS, BIO_MAX, FAVORITE_GAMES_MAX, GENDER_LABELS, genderFromApi, validateProfileUpdate, type ApiGender, type UpdateProfileRequest } from "@/lib/api/users";
+import { API_GENDERS, MEDIA_MAX_MB, mediaFileError, type MediaKind, BIO_MAX, FAVORITE_GAMES_MAX, GENDER_LABELS, genderFromApi, validateProfileUpdate, type ApiGender, type UpdateProfileRequest } from "@/lib/api/users";
 import { MIN_AGE, ageOn } from "@/components/auth/AuthFlow";
 import type { GameId, Profile } from "@/lib/app/types";
 
@@ -86,8 +85,12 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  /** Picture and banner picked in this sheet: a Blob to keep, null to remove. Saved on Save. */
-  const [pending, setPending] = useState<ImageChange>({});
+  /** Picture and banner picked in this sheet, uploaded on Save. */
+  const [pending, setPending] = useState<{ photo?: File; banner?: File }>({});
+  /** Which saved image is waiting for "Remove?" confirmation, and which one is being removed. */
+  const [confirmRemove, setConfirmRemove] = useState<"photo" | "banner" | null>(null);
+  const [removing, setRemoving] = useState<"photo" | "banner" | null>(null);
+  const [savingStep, setSavingStep] = useState("");
   const previews = useRef<string[]>([]);
   const dropPreviews = () => {
     for (const u of previews.current) URL.revokeObjectURL(u);
@@ -101,6 +104,7 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
       setDraft(profile);
       setGender(savedGender);
       setPending({});
+      setConfirmRemove(null);
       setError("");
       setFieldErrors({});
     }
@@ -155,21 +159,34 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
     setSaving(true);
     setError("");
     setFieldErrors({});
-    // Everything else in the form (and the handle) stays local, as before; images are handled by saveLocalImages
+    // Everything else in the form (and the handle) stays local, as before; images go to their own endpoints
     const { photo: _p, banner: _b, ...local } = draft;
     void _p;
     void _b;
-    try {
-      if (imagesChanged) await me.saveLocalImages(pending);
-      setPending({});
-    } catch (e) {
-      setSaving(false);
-      setError(e instanceof Error && e.message ? e.message : "Couldn't save your pictures on this device.");
-      return;
+    // 1. Upload the new picture and banner (POST /users/me/avatar, /users/me/banner).
+    // Each one is shown only once the backend has saved it; a failed one stays picked so Save can retry it.
+    const uploaded: string[] = [];
+    for (const [kind, media, label] of [["photo", "avatar", "Profile picture"], ["banner", "banner", "Banner"]] as const) {
+      const file = pending[kind];
+      if (!file) continue;
+      setSavingStep(`Uploading ${label.toLowerCase()}…`);
+      try {
+        await me.uploadImage(media, file);
+        uploaded.push(label);
+        setPending((p) => ({ ...p, [kind]: undefined }));
+      } catch (e) {
+        setSaving(false);
+        setSavingStep("");
+        const why = e instanceof Error && e.message ? e.message : "Try again.";
+        setError(`${label} wasn't uploaded: ${why}${uploaded.length ? ` (${uploaded.join(" and ")} saved.)` : ""}`);
+        return;
+      }
     }
+    setSavingStep("");
+    const imagesDone = uploaded.length ? `${uploaded.join(" and ").replace(" and Banner", " and banner")} updated` : "";
     if (Object.keys(patch).length === 0) {
       updateProfile({ ...local, name, bio, handle: handleFor(name) });
-      toast(imagesChanged ? "Pictures saved on this device" : "No changes to save");
+      toast(imagesDone || "No changes to save");
       setSaving(false);
       onClose();
       return;
@@ -181,40 +198,61 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
       updateProfile(localOnly);
       const saved = await me.save(patch);
       updateProfile({ handle: handleFor(saved.fullName ?? name) });
-      toast("Profile saved");
+      toast(imagesDone ? `Profile saved · ${imagesDone}` : "Profile saved");
       setSaving(false);
       onClose();
     } catch (e) {
       setSaving(false);
       if (e instanceof ApiError) setFieldErrors(e.fields);
       const why = e instanceof Error && e.message ? e.message : "Couldn't save your profile. Try again.";
-      setError(imagesChanged ? `Your pictures are saved on this device, but the profile wasn't saved: ${why}` : why);
+      setError(imagesDone ? `${imagesDone}, but the other changes weren't saved: ${why}` : why);
     }
   };
   const photoInput = useRef<HTMLInputElement>(null);
   const bannerInput = useRef<HTMLInputElement>(null);
 
-  const pickImage = async (file: File | undefined, kind: "photo" | "banner") => {
+  const mediaOf = (kind: "photo" | "banner"): MediaKind => (kind === "photo" ? "avatar" : "banner");
+  const savedUrl = (kind: "photo" | "banner") => (kind === "photo" ? me.profile.data?.avatarUrl : me.profile.data?.bannerUrl);
+
+  /** Check the file and show it as a preview; it's uploaded on Save. */
+  const pickImage = (file: File | undefined, kind: "photo" | "banner") => {
     if (!file) return;
-    const bad = imageFileError(file);
+    const bad = mediaFileError(file, mediaOf(kind));
     if (bad) {
       toast(bad, "error");
       return;
     }
-    try {
-      const blob = kind === "photo" ? await cropImageBlob(file, 320, 320) : await cropImageBlob(file, 1200, 400, 0.8);
-      const url = URL.createObjectURL(blob);
-      previews.current.push(url);
-      setDraft((d) => ({ ...d, [kind]: url }));
-      setPending((p) => ({ ...p, [kind]: blob }));
-    } catch {
-      toast("Couldn't read that image. Try a JPG or PNG.", "error");
+    const url = URL.createObjectURL(file);
+    previews.current.push(url);
+    setConfirmRemove(null);
+    setDraft((d) => ({ ...d, [kind]: url }));
+    setPending((p) => ({ ...p, [kind]: file }));
+  };
+
+  /** An unsaved pick is just dropped; a saved image needs confirmation, then DELETE. */
+  const askRemove = (kind: "photo" | "banner") => {
+    if (pending[kind]) {
+      setPending((p) => ({ ...p, [kind]: undefined }));
+      setDraft((d) => ({ ...d, [kind]: savedUrl(kind) }));
+      return;
     }
+    setConfirmRemove(kind);
   };
-  const removeImage = (kind: "photo" | "banner") => {
-    setDraft((d) => ({ ...d, [kind]: undefined }));
-    setPending((p) => ({ ...p, [kind]: null }));
+  const removeSaved = async (kind: "photo" | "banner") => {
+    if (removing) return;
+    setRemoving(kind);
+    setError("");
+    try {
+      await me.removeImage(mediaOf(kind));
+      setDraft((d) => ({ ...d, [kind]: undefined }));
+      toast(kind === "photo" ? "Profile picture removed" : "Banner removed");
+      setConfirmRemove(null);
+    } catch (e) {
+      setError(`${kind === "photo" ? "Profile picture" : "Banner"} wasn't removed: ${e instanceof Error && e.message ? e.message : "Try again."}`);
+    }
+    setRemoving(null);
   };
+  const busy = saving || removing !== null;
 
   return (
     <BottomSheet open={open} onClose={onClose} title="Edit profile" tall>
@@ -222,13 +260,13 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
         {/* Banner + profile picture */}
         <div>
           <div className="relative">
-            <button type="button" onClick={() => bannerInput.current?.click()} className="group relative block aspect-[3/1] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-wine to-surface-2 ring-1 ring-line" aria-label={draft.banner ? "Change banner" : "Add banner"}>
+            <button type="button" disabled={busy} onClick={() => bannerInput.current?.click()} className="group relative block aspect-[3/1] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-wine to-surface-2 ring-1 ring-line" aria-label={draft.banner ? "Change banner" : "Add banner"}>
               {draft.banner ? <img src={draft.banner} alt="" className="h-full w-full object-cover" /> : null}
               <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-cream backdrop-blur">
                 <ImagePlus className="h-3.5 w-3.5" aria-hidden /> {draft.banner ? "Change banner" : "Add banner"}
               </span>
             </button>
-            <button type="button" onClick={() => photoInput.current?.click()} className="absolute -bottom-10 left-4 rounded-full ring-4 ring-ink-2" aria-label={draft.photo ? "Change profile picture" : "Add profile picture"}>
+            <button type="button" disabled={busy} onClick={() => photoInput.current?.click()} className="absolute -bottom-10 left-4 rounded-full ring-4 ring-ink-2" aria-label={draft.photo ? "Change profile picture" : "Add profile picture"}>
               <PersonAvatar person={{ id: "me", look: draft.look, frame: draft.frame, photo: draft.photo }} size={84} />
               <span className="absolute bottom-0 right-0 grid h-7 w-7 place-items-center rounded-full bg-coral text-white ring-2 ring-ink-2">
                 <Camera className="h-3.5 w-3.5" aria-hidden />
@@ -237,19 +275,38 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
           </div>
           <div className="mt-2 flex min-h-8 justify-end gap-2 pl-28">
             {draft.photo ? (
-              <button type="button" onClick={() => removeImage("photo")} className="flex items-center gap-1 rounded-full bg-cream/[0.07] px-2.5 py-1 text-[11px] font-semibold text-cream/80">
-                <Trash2 className="h-3 w-3" aria-hidden /> Remove photo
+              <button type="button" disabled={busy} onClick={() => askRemove("photo")} className="flex items-center gap-1 rounded-full bg-cream/[0.07] px-2.5 py-1 text-[11px] font-semibold text-cream/80 disabled:opacity-50">
+                <Trash2 className="h-3 w-3" aria-hidden /> {pending.photo ? "Undo new photo" : "Remove photo"}
               </button>
             ) : null}
             {draft.banner ? (
-              <button type="button" onClick={() => removeImage("banner")} className="flex items-center gap-1 rounded-full bg-cream/[0.07] px-2.5 py-1 text-[11px] font-semibold text-cream/80">
-                <Trash2 className="h-3 w-3" aria-hidden /> Remove banner
+              <button type="button" disabled={busy} onClick={() => askRemove("banner")} className="flex items-center gap-1 rounded-full bg-cream/[0.07] px-2.5 py-1 text-[11px] font-semibold text-cream/80 disabled:opacity-50">
+                <Trash2 className="h-3 w-3" aria-hidden /> {pending.banner ? "Undo new banner" : "Remove banner"}
               </button>
             ) : null}
           </div>
-          <p className="mt-2 text-[11px] text-muted">Tap the picture or banner to upload from your device. JPG, PNG, WebP or GIF up to 8 MB. Pictures are saved on this device only for now.</p>
-          <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden aria-label="Upload profile picture" data-testid="photo-input" onChange={(e) => { void pickImage(e.target.files?.[0], "photo"); e.target.value = ""; }} />
-          <input ref={bannerInput} type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden aria-label="Upload banner" data-testid="banner-input" onChange={(e) => { void pickImage(e.target.files?.[0], "banner"); e.target.value = ""; }} />
+          {confirmRemove ? (
+            <div role="alertdialog" aria-label={confirmRemove === "photo" ? "Remove profile picture?" : "Remove banner?"} className="mt-2 rounded-2xl bg-[#3a1418] p-3 ring-1 ring-[#ff8a8f]/30">
+              <p className="text-[12.5px] text-cream">{confirmRemove === "photo" ? "Remove your profile picture? Your cartoon avatar shows instead." : "Remove your banner? The default banner shows instead."}</p>
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" variant="danger" disabled={removing !== null} onClick={() => void removeSaved(confirmRemove)}>
+                  {removing ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Removing…
+                    </>
+                  ) : (
+                    "Remove"
+                  )}
+                </Button>
+                <Button size="sm" variant="soft" disabled={removing !== null} onClick={() => setConfirmRemove(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          <p className="mt-2 text-[11px] text-muted">Tap the picture or banner to choose an image. JPG, PNG or WebP: picture up to {MEDIA_MAX_MB.avatar} MB, banner up to {MEDIA_MAX_MB.banner} MB. They upload when you tap Save.</p>
+          <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Upload profile picture" data-testid="photo-input" onChange={(e) => { pickImage(e.target.files?.[0], "photo"); e.target.value = ""; }} />
+          <input ref={bannerInput} type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Upload banner" data-testid="banner-input" onChange={(e) => { pickImage(e.target.files?.[0], "banner"); e.target.value = ""; }} />
         </div>
 
         <p className="!mt-6 text-[12px] font-bold text-cream">
@@ -358,10 +415,10 @@ export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: ()
             {error}
           </p>
         ) : null}
-        <Button size="lg" className="w-full" disabled={!valid || saving} aria-busy={saving || undefined} onClick={() => void save()}>
+        <Button size="lg" className="w-full" disabled={!valid || busy} aria-busy={saving || undefined} onClick={() => void save()}>
           {saving ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Saving…
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> {savingStep || "Saving…"}
             </>
           ) : (
             "Save changes"

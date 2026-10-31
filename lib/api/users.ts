@@ -8,10 +8,10 @@
  * anything missing stays undefined and isn't shown. If the DTOs differ, change
  * the types, the read* functions and UPDATABLE_FIELDS below only.
  *
- * Images are never sent with PATCH /users/me. There are no image upload or
- * delete endpoints yet, so a picture you pick stays on this device
- * (lib/app/local-images.ts); avatarUrl/bannerUrl from the backend are shown
- * when the device has none.
+ * Images are never sent with PATCH /users/me. They have their own endpoints:
+ * POST/DELETE /users/me/avatar and /users/me/banner (multipart field "file").
+ * The backend uploads to Cloudinary and returns the URL; the browser never
+ * talks to Cloudinary.
  */
 import { api } from "./client";
 import type { GameId } from "@/lib/app/types";
@@ -256,3 +256,51 @@ export async function getMyStats(): Promise<UserStats> {
 
 /** Backend gender → the app's ♂/♀ icon (none for Other / Prefer not to say). */
 export const genderFromApi = (g?: ApiGender) => (g === "MALE" ? "male" : g === "FEMALE" ? "female" : undefined);
+
+/* ---------- Avatar and banner (Cloudinary, through the backend) ---------- */
+
+export type MediaKind = "avatar" | "banner";
+export const MEDIA_TYPES = ["image/png", "image/jpeg", "image/webp"];
+export const MEDIA_MAX_MB: Record<MediaKind, number> = { avatar: 5, banner: 8 };
+/** Uploads can be slow on mobile data. */
+const UPLOAD_TIMEOUT_MS = 60_000;
+
+/** "" if the file can be uploaded, otherwise a message to show. */
+export function mediaFileError(file: File, kind: MediaKind) {
+  if (!MEDIA_TYPES.includes(file.type)) return "Choose a JPG, PNG or WebP image.";
+  const max = MEDIA_MAX_MB[kind];
+  if (file.size > max * 1024 * 1024) return `That image is over ${max} MB. Choose a smaller one.`;
+  return "";
+}
+
+/**
+ * The image URL from an upload answer. Accepts { avatarUrl } / { bannerUrl },
+ * the same nested in { data } (or a full profile), or { url } / { secureUrl }.
+ * Public IDs are never used as URLs. undefined if there is no https URL.
+ */
+export function readMediaUrl(r: unknown, kind: MediaKind): string | undefined {
+  const d = obj(r);
+  const inner = obj(d.data);
+  const key = kind === "avatar" ? "avatarUrl" : "bannerUrl";
+  for (const v of [d[key], inner[key], d.url, d.secureUrl, d.secure_url, inner.url, inner.secureUrl, inner.secure_url]) {
+    const u = httpsUrl(v);
+    if (u) return u;
+  }
+  return typeof r === "string" ? httpsUrl(r) : undefined;
+}
+
+/** POST /users/me/{avatar|banner} with the file. Resolves with the saved https URL (undefined if the answer had none). */
+export async function uploadProfileImage(kind: MediaKind, file: Blob, name = "image"): Promise<string | undefined> {
+  const form = new FormData();
+  form.append("file", file, file instanceof File ? file.name : name);
+  const r = await api<unknown>(`/api/v1/users/me/${kind}`, { method: "POST", auth: true, body: form, forbiddenIsAccess: true, timeoutMs: UPLOAD_TIMEOUT_MS });
+  const d = obj(r);
+  if (d.success === false) throw new Error(str(d.message) || "The upload didn't go through. Try again.");
+  return readMediaUrl(r, kind);
+}
+
+/** DELETE /users/me/{avatar|banner}. */
+export async function deleteProfileImage(kind: MediaKind): Promise<void> {
+  const r = await api<unknown>(`/api/v1/users/me/${kind}`, { method: "DELETE", auth: true, forbiddenIsAccess: true });
+  if (obj(r).success === false) throw new Error(str(obj(r).message) || "Couldn't remove it. Try again.");
+}

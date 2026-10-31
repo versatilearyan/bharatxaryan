@@ -298,7 +298,7 @@ function useAppState() {
     try {
       // Temporary rooms end with the session, so only permanent rooms are saved
       const data: Saved = { profile, coins, myRooms: myRooms.filter((r) => r.permanent), claimed, giftsSent, vipPoints, vipReset: VIP_RESET, vipUntil, roomPoints, myContrib, roomMeta, tags, charm, exp, received, guards, lastProtect };
-      // The picture and banner live in IndexedDB per user (lib/app/local-images.ts), never in localStorage
+      // The picture and banner are the backend's URLs (lib/app/me-store.tsx), never saved in localStorage
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, profile: { ...profile, photo: undefined, banner: undefined } }));
     } catch {
       /* storage full or unavailable (private mode): the demo still works for this session */

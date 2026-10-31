@@ -59,6 +59,10 @@ export function ProfileHero({ personId, topLeft, topRight }: { personId: string;
   const p = person(personId);
   const fx = useMarket().effectsFor(personId, p.vip);
   const mine = personId === ME_ID;
+  // A banner that fails to load falls back to the illustration
+  const [brokenBanner, setBrokenBanner] = useState<string | null>(null);
+  const bannerUrl = mine ? profile.banner : p.banner;
+  const bannerSrc = bannerUrl && bannerUrl !== brokenBanner ? bannerUrl : undefined;
   // Your level and charm are the backend's (GET /users/me/stats) once loaded: usePeople and CharmBadge read them
   const level = p.level;
   return (
@@ -69,10 +73,8 @@ export function ProfileHero({ personId, topLeft, topRight }: { personId: string;
         <SvgaAnim src={fx.page.page} className="pointer-events-none absolute inset-x-0 top-0 z-[5] w-full" style={{ aspectRatio: fx.page.pageRatio }} />
       ) : null}
       <div className="relative h-[168px]">
-        {mine && profile.banner ? (
-          <img src={profile.banner} alt="Your banner" className="h-full w-full object-cover" />
-        ) : !mine && p.banner ? (
-          <img src={p.banner} alt={`${p.name}'s banner`} className="h-full w-full object-cover" />
+        {bannerSrc ? (
+          <img src={bannerSrc} alt={mine ? "Your banner" : `${p.name}'s banner`} className="h-full w-full object-cover" onError={() => setBrokenBanner(bannerSrc)} />
         ) : (
           <SunsetScene theme={mine ? "dusk" : THEMES[Math.floor(seeded(`${personId}:banner`) * THEMES.length)]} motif={mine ? "banyan" : "lanterns"} />
         )}
