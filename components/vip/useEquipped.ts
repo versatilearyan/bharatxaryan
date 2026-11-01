@@ -1,28 +1,43 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { equipErrorText, getEquippedCosmetics, takeOffCosmetic, wearCosmetic, type EquippedCosmetic } from "@/lib/api/vip-equipment";
+import { equipErrorText, getCosmeticInventory, getEquippedCosmetics, takeOffCosmetic, wearCosmetic, type EquippedCosmetic, type OwnedCosmetic } from "@/lib/api/vip-equipment";
 import { useMe } from "@/lib/app/me-store";
 import { readToken } from "@/lib/auth/token";
 
-/** One GET at a time across the app: callers that ask while one is running share it. */
-let inFlight: Promise<EquippedCosmetic[]> | null = null;
-const loadEquipped = () => {
-  inFlight ??= getEquippedCosmetics().finally(() => {
-    inFlight = null;
+/** One request of each kind at a time across the app: callers that ask while one is running share it. */
+let inventoryInFlight: Promise<OwnedCosmetic[]> | null = null;
+let equippedInFlight: Promise<EquippedCosmetic[]> | null = null;
+const loadInventory = () => {
+  inventoryInFlight ??= getCosmeticInventory().finally(() => {
+    inventoryInFlight = null;
   });
-  return inFlight;
+  return inventoryInFlight;
+};
+const loadEquipped = () => {
+  equippedInFlight ??= getEquippedCosmetics().finally(() => {
+    equippedInFlight = null;
+  });
+  return equippedInFlight;
 };
 
 /**
- * Your equipped VIP cosmetics, and wearing / taking one off. Loads once while
- * `enabled` (and signed in); after a change the list is loaded again and your
- * profile (GET /users/me) is refreshed, so its frame, badge and the rest update
- * without a page reload.
+ * Your VIP cosmetics: what you own and what you're wearing, kept separate.
+ *
+ * When `enabled` (and signed in) it loads once: first the inventory
+ * (GET /vip/cosmetics/inventory, which also lets the backend unlock what your
+ * VIP is eligible for), then, once that succeeded, the equipped list
+ * (GET /vip/cosmetics/equipped). A failure stops there and offers Retry; there
+ * are no automatic retries. A 401 goes through the app's normal sign-out.
+ *
+ * Wear / take off go to POST / DELETE /vip/cosmetics/{id}/wear (the backend
+ * checks VIP and inventory). After a change the equipped list is loaded again
+ * and your profile (GET /users/me) refreshed. Nothing is worn automatically.
  */
 export function useEquipped(enabled: boolean) {
   const signedIn = enabled && Boolean(readToken());
   const { refresh: refreshMe } = useMe();
+  const [owned, setOwned] = useState<OwnedCosmetic[] | null>(null);
   const [items, setItems] = useState<EquippedCosmetic[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -36,18 +51,26 @@ export function useEquipped(enabled: boolean) {
     };
   }, []);
 
+  const reloadEquipped = useCallback(async () => {
+    const list = await loadEquipped();
+    if (live.current) setItems(list);
+  }, []);
+
+  /** Inventory, then equipped. */
   const reload = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const list = await loadEquipped();
-      if (live.current) setItems(list);
+      const inv = await loadInventory();
+      if (!live.current) return;
+      setOwned(inv);
+      await reloadEquipped();
     } catch (e) {
-      if (live.current) setError(equipErrorText(e, "wear").replace("Couldn't put it on.", "Couldn't load what you're wearing."));
+      if (live.current) setError(`Couldn't load your VIP cosmetics. ${equipErrorText(e, "load")}`);
     } finally {
       if (live.current) setLoading(false);
     }
-  }, []);
+  }, [reloadEquipped]);
 
   useEffect(() => {
     if (signedIn) void reload();
@@ -60,7 +83,11 @@ export function useEquipped(enabled: boolean) {
       setActionError("");
       try {
         await (wear ? wearCosmetic(cosmeticId) : takeOffCosmetic(cosmeticId));
-        await reload();
+        try {
+          await reloadEquipped();
+        } catch (e) {
+          if (live.current) setError(`Couldn't load what you're wearing. ${equipErrorText(e, "load")}`);
+        }
         refreshMe(true);
       } catch (e) {
         if (live.current) setActionError(equipErrorText(e, wear ? "wear" : "remove"));
@@ -68,9 +95,10 @@ export function useEquipped(enabled: boolean) {
         if (live.current) setBusyId(null);
       }
     },
-    [busyId, reload, refreshMe],
+    [busyId, reloadEquipped, refreshMe],
   );
 
   const isWorn = useCallback((cosmeticId: string) => Boolean(items?.some((c) => c.cosmeticId === cosmeticId)), [items]);
-  return { signedIn, items, loading, error, reload, busyId, actionError, isWorn, wear: (id: string) => change(id, true), takeOff: (id: string) => change(id, false) };
+  const isOwned = useCallback((cosmeticId: string) => Boolean(owned?.some((c) => c.cosmeticId === cosmeticId)), [owned]);
+  return { signedIn, owned, items, loading, error, reload, busyId, actionError, isWorn, isOwned, wear: (id: string) => change(id, true), takeOff: (id: string) => change(id, false) };
 }

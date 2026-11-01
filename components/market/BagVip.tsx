@@ -136,7 +136,13 @@ export function useBagServer(enabled: boolean, me: Person, now: number) {
 
   const slot = (s: (typeof BAG_SLOTS)[number]): BagEntry => {
     const worn: EquippedCosmetic | undefined = eq.items?.find((c) => c.cosmeticType === s.type);
-    const offer: VipCosmetic | undefined = !worn ? catalogue.data?.find((c) => c.cosmeticType === s.type) : undefined;
+    // Wear is offered only for something in your inventory (GET /vip/cosmetics/inventory), never just because the catalogue lists it.
+    // Prefer your current level's item; the catalogue only fills in art the inventory row lacks.
+    const ownedOfType = !worn ? (eq.owned ?? []).filter((c) => c.cosmeticType === s.type) : [];
+    const own = ownedOfType.find((c) => lvl !== null && c.vipLevel === lvl) ?? ownedOfType[0];
+    const art = own && !own.url ? catalogue.data?.find((c) => c.id === own.cosmeticId) : undefined;
+    const offer = own ? { id: own.cosmeticId, vipLevel: own.vipLevel ?? art?.vipLevel ?? null, url: own.url ?? art?.url ?? null, format: own.url ? own.format : (art?.format ?? own.format) } : undefined;
+    const locked: VipCosmetic | undefined = !worn && !own && eq.owned ? catalogue.data?.find((c) => c.cosmeticType === s.type) : undefined;
     const busy = eq.busyId !== null;
     if (worn) {
       const level = worn.vipLevel;
@@ -155,16 +161,28 @@ export function useBagServer(enabled: boolean, me: Person, now: number) {
       };
     }
     if (offer) {
+      const lv = offer.vipLevel ? ` ${offer.vipLevel}` : "";
       return {
         key: `srv-${s.type}`,
-        name: `VIP ${offer.vipLevel} ${s.name}`,
+        name: `VIP${lv} ${s.name}`,
         kind: s.kind,
-        art: <CosmeticArt key={offer.url} type={s.type} url={offer.url} format={offer.format} level={offer.vipLevel} me={me} />,
-        badge: vipTime,
-        source: `VIP ${offer.vipLevel} reward`,
+        art: offer.url ? <CosmeticArt key={offer.url} type={s.type} url={offer.url} format={offer.format} level={offer.vipLevel} me={me} /> : <EmptySlot />,
+        badge: active ? vipTime : undefined,
+        source: `VIP${lv} reward`,
         tint: VIP_TINT,
-        note: `Not worn. Part of your VIP ${offer.vipLevel}${until}.`,
+        note: active ? `In your inventory, not worn${until}.` : known ? "In your inventory, but your VIP isn't active." : "In your inventory, not worn.",
         action: { label: eq.busyId === offer.id ? "Putting on…" : "Wear", run: () => void eq.wear(offer.id), disabled: busy },
+      };
+    }
+    if (locked) {
+      return {
+        key: `srv-${s.type}`,
+        name: `VIP ${locked.vipLevel} ${s.name}`,
+        kind: s.kind,
+        art: <CosmeticArt key={locked.url} type={s.type} url={locked.url} format={locked.format} level={locked.vipLevel} me={me} />,
+        source: `VIP ${locked.vipLevel} reward`,
+        tint: VIP_TINT,
+        note: "Not in your inventory yet, so it can't be worn. Open the Bag again later, or contact support if this stays.",
       };
     }
     return {
@@ -178,7 +196,7 @@ export function useBagServer(enabled: boolean, me: Person, now: number) {
   };
 
   const decorStatus: SectionStatus = {
-    loading: signedIn && ((eq.items === null && !eq.error) || (Boolean(lvl) && catalogue.loading) || (!known && profile.loading)),
+    loading: signedIn && (((eq.items === null || eq.owned === null) && !eq.error) || (Boolean(lvl) && catalogue.loading) || (!known && profile.loading)),
     error: eq.error || (lvl && catalogue.error ? `Couldn't load your VIP cosmetics. ${catalogue.error}` : ""),
     retry: eq.error ? eq.reload : catalogue.retry,
   };

@@ -1,6 +1,8 @@
 /**
  * Your equipped VIP cosmetics (VipCosmeticEquipmentController):
  *
+ *   GET    /api/v1/vip/cosmetics/inventory         → what you own (unlocked). The backend
+ *                                                     also unlocks what your VIP is eligible for here.
  *   GET    /api/v1/vip/cosmetics/equipped          → what you're wearing
  *   POST   /api/v1/vip/cosmetics/{cosmeticId}/wear → put one on
  *   DELETE /api/v1/vip/cosmetics/{cosmeticId}/wear → take it off (204, no body)
@@ -49,6 +51,32 @@ export async function getEquippedCosmetics(): Promise<EquippedCosmetic[]> {
   return list.map(readEquipped).filter((c): c is EquippedCosmetic => c !== null);
 }
 
+/** One cosmetic you own, from the inventory. Its own type: the inventory DTO may differ from the equipped one. */
+export type OwnedCosmetic = EquippedCosmetic & { unlockedAt?: string };
+
+/**
+ * Your inventory: the cosmetics you've unlocked and may wear. Calling it also
+ * lets the backend unlock what your active VIP is eligible for, so it's loaded
+ * before the equipped list. Rows are read with the same accepted names as the
+ * equipped list (cosmeticId / id, type / cosmeticType, url / secureUrl), plus
+ * unlockedAt; a row may also nest the cosmetic as `cosmetic`.
+ */
+export async function getCosmeticInventory(): Promise<OwnedCosmetic[]> {
+  const body = await api<unknown>("/api/v1/vip/cosmetics/inventory", { auth: true, forbiddenIsAccess: true });
+  if (body === null || body === undefined) return [];
+  const list = Array.isArray(body) ? body : body && typeof body === "object" && Array.isArray((body as Record<string, unknown>).data) ? ((body as Record<string, unknown>).data as unknown[]) : null;
+  if (!list) throw new ApiError("The server sent your VIP cosmetics inventory in a shape the app couldn't read.", 200, "http");
+  const out: OwnedCosmetic[] = [];
+  for (const raw of list) {
+    const d = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+    if (!d) continue;
+    const nested = d.cosmetic && typeof d.cosmetic === "object" ? (d.cosmetic as Record<string, unknown>) : null;
+    const row = readEquipped(nested ? { ...nested, cosmeticId: d.cosmeticId ?? nested.id ?? nested.cosmeticId } : d);
+    if (row && !out.some((x) => x.cosmeticId === row.cosmeticId)) out.push({ ...row, unlockedAt: str(d.unlockedAt) });
+  }
+  return out;
+}
+
 const wearPath = (cosmeticId: string) => {
   if (!/^\d+$/.test(cosmeticId) && !/^[\w-]{1,64}$/.test(cosmeticId)) throw new ApiError("That cosmetic can't be worn.", 0, "http");
   return `/api/v1/vip/cosmetics/${encodeURIComponent(cosmeticId)}/wear`;
@@ -65,8 +93,9 @@ export async function takeOffCosmetic(cosmeticId: string): Promise<void> {
 }
 
 /** A short message for a refused wear / take-off. The server's own message is used when it sent one. */
-export function equipErrorText(e: unknown, action: "wear" | "remove"): string {
+export function equipErrorText(e: unknown, action: "wear" | "remove" | "load"): string {
   if (e instanceof ApiError) {
+    if (action === "load" && e.status === 403) return "Your account isn't allowed to open VIP cosmetics right now (403).";
     if (e.code === "network" || e.code === "timeout" || e.code === "unauthorized" || e.code === "config" || e.code === "ngrok_interstitial") return e.message;
     if (e.status === 403) return e.message && !/^forbidden$/i.test(e.message) ? e.message : action === "wear" ? "Your VIP doesn't include this cosmetic." : "You can't change this cosmetic.";
     if (e.status === 404) return "That cosmetic doesn't exist any more.";
