@@ -29,7 +29,8 @@ export function assetKind(url: string): "svga" | "image" {
   return "svga";
 }
 
-const layoutFor = (level: number | null): VipSet => {
+/** The bundled layout (frame window, bubble text box, entry text row) for a VIP level. */
+export const layoutFor = (level: number | null): VipSet => {
   const l = Math.min(Math.max(level ?? 1, 1), 7);
   return VIP_SETS.find((s) => s.level === l) ?? VIP_SETS[0];
 };

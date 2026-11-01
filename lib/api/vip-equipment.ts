@@ -10,9 +10,9 @@
  * (GET /api/v1/vip/cosmetics). Whether you may wear one is the server's call:
  * a refusal is shown, never worked around.
  *
- * The DTO wasn't available here, so rows are read defensively: the documented
- * cosmeticId, cosmeticType, vipLevel, secureUrl (and id / type / url as other
- * spellings). A row without an id or a known type is left out.
+ * The DTO (EquippedCosmeticResponse) wasn't available here, so rows are read
+ * defensively: cosmeticId, vipLevel, type, format, url (and id / cosmeticType /
+ * secureUrl as other spellings). A row without an id or a known type is left out.
  */
 import { api, ApiError } from "./client";
 import { COSMETIC_TYPES, type CosmeticType } from "./vip-cosmetics";
@@ -21,6 +21,8 @@ export type EquippedCosmetic = {
   cosmeticId: string;
   cosmeticType: CosmeticType;
   vipLevel: number | null;
+  /** As the server sent it, upper-cased (e.g. SVGA, PNG, ANIMATED), or null. */
+  format: string | null;
   /** https link, or null. */
   url: string | null;
 };
@@ -31,11 +33,11 @@ export function readEquipped(raw: unknown): EquippedCosmetic | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const d = raw as Record<string, unknown>;
   const id = str(d.cosmeticId) ?? str(d.id);
-  const type = (str(d.cosmeticType) ?? str(d.type))?.toUpperCase();
+  const type = (str(d.type) ?? str(d.cosmeticType))?.toUpperCase();
   if (!id || !COSMETIC_TYPES.includes(type as CosmeticType)) return null;
   const lvl = typeof d.vipLevel === "number" && Number.isInteger(d.vipLevel) ? d.vipLevel : null;
-  const url = str(d.secureUrl) ?? str(d.url);
-  return { cosmeticId: id, cosmeticType: type as CosmeticType, vipLevel: lvl, url: url && /^https:\/\//i.test(url) ? url : null };
+  const url = str(d.url) ?? str(d.secureUrl);
+  return { cosmeticId: id, cosmeticType: type as CosmeticType, vipLevel: lvl, format: str(d.format)?.toUpperCase() ?? null, url: url && /^https:\/\//i.test(url) ? url : null };
 }
 
 /** What you're wearing now. An empty list is fine (nothing equipped). */
