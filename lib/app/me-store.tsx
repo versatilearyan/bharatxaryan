@@ -15,6 +15,7 @@ import { deleteProfileImage, getMyProfile, getMyStats, genderFromApi, readHair, 
 import { ApiError } from "@/lib/api/client";
 import { NAME_FONTS } from "./fonts";
 import { useApp } from "./store";
+import { emitSync, onSync } from "./sync";
 import type { NameFont, Profile } from "./types";
 
 type Load<T> = { data: T | null; loading: boolean; error: string };
@@ -77,20 +78,33 @@ export function MeProvider({ children }: { children: ReactNode }) {
   const profileRef = useRef<UserProfileResponse | null>(null);
   profileRef.current = profile.data;
 
-  const loadProfile = useCallback(async () => {
-    if (inFlight.current.profile) return;
-    inFlight.current.profile = true;
-    setProfile((s) => ({ ...s, loading: true, error: "" }));
-    try {
-      const r = await getMyProfile();
-      fetchedAt.current.profile = Date.now();
-      setProfile({ data: r, loading: false, error: "" });
-      updateProfile(toLocal(r, localRef.current));
-    } catch (e) {
-      setProfile((s) => ({ ...s, loading: false, error: message(e, "Couldn't load your profile.") }));
-    }
-    inFlight.current.profile = false;
-  }, [updateProfile]);
+  /**
+   * Only the newest profile answer is used: a forced load (after a change)
+   * starts a new request instead of waiting on an older one, and a save or
+   * picture change also makes any older request's answer be ignored.
+   */
+  const profileSeq = useRef(0);
+  const loadProfile = useCallback(
+    async (force = false) => {
+      if (inFlight.current.profile && !force) return;
+      const mine = ++profileSeq.current;
+      inFlight.current.profile = true;
+      setProfile((s) => ({ ...s, loading: true, error: "" }));
+      try {
+        const r = await getMyProfile();
+        if (mine !== profileSeq.current) return;
+        fetchedAt.current.profile = Date.now();
+        setProfile({ data: r, loading: false, error: "" });
+        updateProfile(toLocal(r, localRef.current));
+      } catch (e) {
+        if (mine !== profileSeq.current) return;
+        setProfile((s) => ({ ...s, loading: false, error: message(e, "Couldn't load your profile.") }));
+      } finally {
+        if (mine === profileSeq.current) inFlight.current.profile = false;
+      }
+    },
+    [updateProfile],
+  );
 
   const loadStats = useCallback(async () => {
     if (inFlight.current.stats) return;
@@ -110,7 +124,7 @@ export function MeProvider({ children }: { children: ReactNode }) {
     (force = false) => {
       if (!signedIn) return;
       const now = Date.now();
-      if (force || now - fetchedAt.current.profile > FRESH_MS) void loadProfile();
+      if (force || now - fetchedAt.current.profile > FRESH_MS) void loadProfile(force);
       if (force || now - fetchedAt.current.stats > FRESH_MS) void loadStats();
     },
     [signedIn, loadProfile, loadStats],
@@ -127,6 +141,16 @@ export function MeProvider({ children }: { children: ReactNode }) {
     setStats({ data: null, loading: false, error: "" });
   }, [signedIn, session?.email, refresh]);
 
+  // After you wear or take off a cosmetic, GET /users/me again (its badge/frame/bubble/entry links changed)
+  useEffect(() => (signedIn ? onSync(["my-cosmetics"], () => void loadProfile(true)) : undefined), [signedIn, loadProfile]);
+
+  /** A local write of the backend's answer: any older GET still in flight must not overwrite it. */
+  const supersede = useCallback(() => {
+    profileSeq.current++;
+    inFlight.current.profile = false;
+    fetchedAt.current.profile = Date.now();
+  }, []);
+
   /* ---------- Picture and banner (Cloudinary URLs from the backend) ---------- */
 
   // The profile shows exactly what the backend has saved; nothing local overrides it
@@ -140,30 +164,33 @@ export function MeProvider({ children }: { children: ReactNode }) {
   /** Put a new URL (or none) into the loaded profile, so every screen picks it up. */
   const setImageUrl = useCallback((kind: MediaKind, url: string | undefined) => {
     const key = kind === "avatar" ? "avatarUrl" : "bannerUrl";
-    fetchedAt.current.profile = Date.now();
-    setProfile((s) => ({ ...s, data: { ...(s.data ?? {}), [key]: url } }));
-  }, []);
+    supersede();
+    setProfile((s) => ({ ...s, loading: false, data: { ...(s.data ?? {}), [key]: url } }));
+  }, [supersede]);
 
   const uploadImage = useCallback(
     async (kind: MediaKind, file: Blob) => {
       const url = await uploadProfileImage(kind, file);
       if (url) {
         setImageUrl(kind, url);
+        emitSync("my-profile");
         return url;
       }
       // The upload worked but the answer had no URL: read the saved profile instead
       const fresh = await getMyProfile();
-      fetchedAt.current.profile = Date.now();
+      supersede();
       setProfile({ data: fresh, loading: false, error: "" });
+      emitSync("my-profile");
       return kind === "avatar" ? fresh.avatarUrl : fresh.bannerUrl;
     },
-    [setImageUrl],
+    [setImageUrl, supersede],
   );
 
   const removeImage = useCallback(
     async (kind: MediaKind) => {
       await deleteProfileImage(kind);
       setImageUrl(kind, undefined);
+      emitSync("my-profile");
     },
     [setImageUrl],
   );
@@ -176,12 +203,13 @@ export function MeProvider({ children }: { children: ReactNode }) {
       // A PATCH answer without the VIP fields doesn't change your VIP: keep what GET /users/me said
       const prev = profileRef.current;
       const fresh = answer.vipActive === undefined && prev?.vipActive !== undefined ? { ...answer, ...vipOf(prev) } : answer;
-      fetchedAt.current.profile = Date.now();
+      supersede();
       setProfile({ data: fresh, loading: false, error: "" });
       updateProfile(toLocal(fresh, localRef.current));
+      emitSync("my-profile");
       return fresh;
     },
-    [updateProfile],
+    [updateProfile, supersede],
   );
 
   const value = useMemo(() => ({ profile, stats, refresh, save, uploadImage, removeImage }), [profile, stats, refresh, save, uploadImage, removeImage]);

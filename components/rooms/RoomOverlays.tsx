@@ -53,10 +53,11 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
   const p = id ? person(id) : null;
   // Backend users: their public profile (GET /users/{id}/profile) is loaded when the card opens,
   // and its VIP fields win; until then (or if it fails) their participants record is used
-  usePublicProfile(id && id !== ME_ID ? id : "");
+  // (only an answer from this open counts: a kept one from an earlier open could show a cosmetic they've since taken off)
+  const pub = usePublicProfile(id && id !== ME_ID ? id : "");
   const roomFx = useRoomFx(s).fxFor(id ?? "", p?.vip);
   const theirVip = useServerPeople()[id ?? ""]?.vip;
-  const cardFx = (id && id !== ME_ID && profileEffects(theirVip)) || roomFx;
+  const cardFx = (id && id !== ME_ID && pub.loadedFor === id && profileEffects(theirVip)) || roomFx;
   const close = () => s.openCard(null);
 
   useEffect(() => {

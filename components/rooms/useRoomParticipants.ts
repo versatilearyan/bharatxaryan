@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getParticipantCount, getParticipants, getRoomById, isOpenRoom, roomErrorText, type VoiceRoomParticipant } from "@/lib/api/voice-rooms";
 import { identityUserId, userPersonId, useServerRooms, type ServerPerson } from "@/lib/app/server-rooms";
 import { ME_ID } from "@/lib/app/store";
+import { onSync } from "@/lib/app/sync";
 import type { LiveVoice } from "./useLiveVoice";
 
 /**
@@ -18,6 +19,12 @@ import type { LiveVoice } from "./useLiveVoice";
  * twice. The API is loaded when the room opens and again whenever LiveKit says
  * someone joined or left (no polling). Someone only LiveKit knows about still
  * gets a card, named from LiveKit or "User <id>".
+ *
+ * Cosmetics come only from the participants API. Switching rooms clears the
+ * previous room's records at once, and only the newest answer is ever used,
+ * so a slow older answer can't bring back a cosmetic someone took off. After
+ * you change your cosmetics or profile the list is loaded again; after your
+ * join goes through the public room list is refreshed (its counts change).
  */
 export type RoomMember = {
   /** Stable key and person id: ME_ID for you, "srv-user:<id>" for everyone else. */
@@ -55,8 +62,11 @@ export type RoomParticipants = {
   refresh: () => void;
 };
 
-export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoice | null, myId: string | undefined): RoomParticipants | null {
-  const { rememberPeople } = useServerRooms();
+export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoice | null, myIdIn: string | undefined): RoomParticipants | null {
+  const { rememberPeople, refresh: refreshRoomList } = useServerRooms();
+  // Your backend id: from GET /users/me, or else your own LiveKit identity, so you never appear twice while /users/me loads
+  const localIdentity = voice?.people.find((p) => p.isLocal)?.identity;
+  const myId = myIdIn ?? (localIdentity ? identityUserId(localIdentity) : undefined);
   const [records, setRecords] = useState<VoiceRoomParticipant[]>([]);
   const [count, setCount] = useState<number | null>(null);
   const [status, setStatus] = useState<RoomParticipants["status"]>("loading");
@@ -64,6 +74,22 @@ export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoic
   const [roomClosed, setRoomClosed] = useState(false);
   const [tick, setTick] = useState(0);
   const seq = useRef(0);
+  const lastKey = useRef("");
+
+  // A different room (or none): forget the last room's people, count and state before anything else renders
+  const [shownRoom, setShownRoom] = useState(serverRoomId);
+  if (shownRoom !== serverRoomId) {
+    setShownRoom(serverRoomId);
+    setRecords([]);
+    setCount(null);
+    setStatus("loading");
+    setError("");
+    setRoomClosed(false);
+  }
+  useEffect(() => {
+    seq.current++; // answers still on their way for the previous room are ignored
+    lastKey.current = "";
+  }, [serverRoomId]);
 
   // Room details once on open: a closed room says so instead of trying to look live
   useEffect(() => {
@@ -82,6 +108,17 @@ export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoic
   // Participants and count, first asked once our own join has gone through
   // (the backend records the join), and only the newest answer is used.
   const phase = !voice || voice.status === "connected" || voice.status === "reconnecting" ? "in" : voice.status === "error" || voice.status === "disconnected" ? "out" : "wait";
+
+  // Once per room, when your join has gone through: the public list's counts changed
+  const joinedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!serverRoomId || !voice || voice.status !== "connected" || joinedFor.current === serverRoomId) return;
+    joinedFor.current = serverRoomId;
+    void refreshRoomList();
+  }, [serverRoomId, voice, refreshRoomList]);
+
+  // You wore or took off a cosmetic, or changed your profile: load the list again (the backend's record for you changed)
+  useEffect(() => (serverRoomId ? onSync(["my-cosmetics", "my-profile"], () => setTick((n) => n + 1)) : undefined), [serverRoomId]);
   useEffect(() => {
     if (!serverRoomId || phase === "wait") return;
     const mine = ++seq.current;
@@ -102,7 +139,6 @@ export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoic
   // Reload when LiveKit's set of connected people changes (someone joined or left)
   // (keyed on the set of identities only, so speaking or mic changes don't trigger a reload)
   const connectedKey = voice?.status === "connected" ? voice.people.map((p) => p.identity).sort().join("|") : "";
-  const lastKey = useRef("");
   useEffect(() => {
     if (!serverRoomId || !connectedKey) return;
     const prev = lastKey.current;

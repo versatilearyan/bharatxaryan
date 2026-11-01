@@ -103,12 +103,12 @@ function ProfileEntry({ src, name, avatar }: { src: EffectSet; name: string; ava
 }
 
 /** Banner, avatar, name, level, VIP, charm, ID and bio. */
-export function ProfileHero({ personId, topLeft, topRight }: { personId: string; topLeft?: ReactNode; topRight?: ReactNode }) {
+export function ProfileHero({ personId, topLeft, topRight, vipFresh = true }: { personId: string; topLeft?: ReactNode; topRight?: ReactNode; vipFresh?: boolean }) {
   const { profile, toast } = useApp();
   const person = usePeople();
   const p = person(personId);
   // VIP cosmetics from this person's own profile response (yours: GET /users/me; theirs: GET /users/{id}/profile)
-  const fx = useProfileFx(personId, p.vip);
+  const fx = useProfileFx(personId, p.vip, vipFresh);
   const mine = personId === ME_ID;
   // A banner that fails to load falls back to the illustration
   const [brokenBanner, setBrokenBanner] = useState<string | null>(null);
@@ -595,6 +595,7 @@ export function UserProfileScreen({ personId }: { personId: string }) {
       <div className="app-scroll min-h-0 flex-1 pb-4">
         <ProfileHero
           personId={personId}
+          vipFresh={!pub.isBackendUser || pub.loadedFor === personId}
           topLeft={
             <button type="button" onClick={pop} aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full bg-black/40 text-cream backdrop-blur">
               <ChevronLeft className="h-6 w-6" />

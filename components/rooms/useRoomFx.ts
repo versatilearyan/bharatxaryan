@@ -11,9 +11,12 @@ import type { RoomSession } from "./useRoomSession";
  * VIP cosmetics in backend rooms come from each person's own participants
  * record (vipLevel, frameUrl, badgeUrl, bubbleUrl, entryAnimationUrl), so
  * everyone in the room sees the same thing for that person, whatever the
- * viewer's own VIP is. Once someone's record has loaded it is the only source
- * for them, you included: a null link means no cosmetic. Before that, and in
- * rooms that aren't on the backend, the existing effects are used.
+ * viewer's own VIP is. In a backend room that record is the only source, you
+ * included: a null or empty link means no cosmetic, and before someone's
+ * record has loaded they show none (never your on-device Bag picks or a set
+ * guessed from a VIP level, which used to show for a moment and then vanish
+ * when the record said "none"). Rooms that aren't on the backend keep the
+ * existing on-device effects.
  *
  * The files are drawn by the existing VIP components, which need to know how
  * each file is laid out (where the avatar sits in a frame, the text box in a
@@ -21,6 +24,8 @@ import type { RoomSession } from "./useRoomSession";
  * level (VIP 8 and up use the VIP 7 ones). Only the links come from the server.
  */
 export type ServerVip = NonNullable<RoomMember["vip"]>;
+
+const NONE: Effects = {};
 
 /**
  * fxFor(personId, vip) gives the effects to draw for someone in this room:
@@ -37,9 +42,10 @@ export function useRoomFx(s: RoomSession) {
     return map;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
-  const fxFor = useCallback((personId: string, vip?: number): Effects => server.get(personId) ?? effectsFor(personId, vip), [server, effectsFor]);
-  /** Only what the server sent for this person (undefined before their record loads, or outside backend rooms). */
-  const serverFx = useCallback((personId: string): Effects | undefined => server.get(personId), [server]);
+  const backend = Boolean(s.participants);
+  const fxFor = useCallback((personId: string, vip?: number): Effects => (backend ? (server.get(personId) ?? NONE) : effectsFor(personId, vip)), [backend, server, effectsFor]);
+  /** Only what the server sent for this person: nothing before their record loads; undefined outside backend rooms. */
+  const serverFx = useCallback((personId: string): Effects | undefined => (backend ? (server.get(personId) ?? NONE) : undefined), [backend, server]);
   return { fxFor, serverFx };
 }
 

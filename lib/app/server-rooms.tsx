@@ -140,12 +140,17 @@ export function ServerRoomsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => setPrefs(readPrefs()), []);
 
+  // Only the newest answer is used, so a slow older list can't bring back a room that closed
+  const listSeq = useRef(0);
   const refresh = useCallback(async () => {
+    const mine = ++listSeq.current;
     setList((l) => ({ ...l, status: "loading", error: "" }));
     try {
       const rooms = await getPublicRooms();
+      if (mine !== listSeq.current) return;
       setList({ status: "ready", error: "", rooms, loadedAt: Date.now() });
     } catch (e) {
+      if (mine !== listSeq.current) return;
       setList((l) => ({ ...l, status: "error", error: roomErrorText(e, "load") }));
     }
   }, []);

@@ -1,104 +1,148 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { equipErrorText, getCosmeticInventory, getEquippedCosmetics, takeOffCosmetic, wearCosmetic, type EquippedCosmetic, type OwnedCosmetic } from "@/lib/api/vip-equipment";
-import { useMe } from "@/lib/app/me-store";
 import { readToken } from "@/lib/auth/token";
-
-/** One request of each kind at a time across the app: callers that ask while one is running share it. */
-let inventoryInFlight: Promise<OwnedCosmetic[]> | null = null;
-let equippedInFlight: Promise<EquippedCosmetic[]> | null = null;
-const loadInventory = () => {
-  inventoryInFlight ??= getCosmeticInventory().finally(() => {
-    inventoryInFlight = null;
-  });
-  return inventoryInFlight;
-};
-const loadEquipped = () => {
-  equippedInFlight ??= getEquippedCosmetics().finally(() => {
-    equippedInFlight = null;
-  });
-  return equippedInFlight;
-};
+import { emitSync, onSync } from "@/lib/app/sync";
 
 /**
- * Your VIP cosmetics: what you own and what you're wearing, kept separate.
+ * Your VIP cosmetics, shared by every screen that shows them (Bag, VIP page),
+ * so they always agree: what you own (GET /vip/cosmetics/inventory, which also
+ * lets the backend unlock what your VIP covers) and what you're wearing
+ * (GET /vip/cosmetics/equipped), kept separate.
  *
- * When `enabled` (and signed in) it loads once: first the inventory
- * (GET /vip/cosmetics/inventory, which also lets the backend unlock what your
- * VIP is eligible for), then, once that succeeded, the equipped list
- * (GET /vip/cosmetics/equipped). A failure stops there and offers Retry; there
- * are no automatic retries. A 401 goes through the app's normal sign-out.
+ * Loading: the inventory first, then, only if that worked, the equipped list.
+ * A failure stops there and offers Retry; there are no automatic retries. A
+ * 401 goes through the app's normal sign-out. Only the newest load's answers
+ * are used, so a slow older answer can never bring back something you took off.
  *
- * Wear / take off go to POST / DELETE /vip/cosmetics/{id}/wear (the backend
- * checks VIP and inventory). After a change the equipped list is loaded again
- * and your profile (GET /users/me) refreshed. Nothing is worn automatically.
+ * Wear / take off: POST / DELETE /vip/cosmetics/{id}/wear (the backend checks
+ * VIP and inventory). After the backend accepts it:
+ * - take off: the item leaves the equipped list at once;
+ * - then the inventory and equipped list load again, and "my-cosmetics" is
+ *   sent so GET /users/me, the room you're in and your public profile refetch.
+ * Nothing is worn automatically.
  */
+type State = {
+  owned: OwnedCosmetic[] | null;
+  items: EquippedCosmetic[] | null;
+  loading: boolean;
+  error: string;
+  busyId: string | null;
+  actionError: string;
+};
+const EMPTY: State = { owned: null, items: null, loading: false, error: "", busyId: null, actionError: "" };
+
+let state: State = EMPTY;
+/** Whose data this is (the end of the token), so another sign-in never sees it. */
+let owner = "";
+const listeners = new Set<() => void>();
+const set = (patch: Partial<State>) => {
+  state = { ...state, ...patch };
+  for (const l of listeners) l();
+};
+const subscribe = (l: () => void) => {
+  listeners.add(l);
+  return () => listeners.delete(l);
+};
+const snapshot = () => state;
+const serverSnapshot = () => EMPTY;
+
+const tokenTail = () => readToken()?.accessToken.slice(-16) ?? "";
+const checkOwner = () => {
+  const t = tokenTail();
+  if (t !== owner) {
+    owner = t;
+    seq++;
+    current = null;
+    state = EMPTY;
+  }
+};
+
+/** Bumped by every load and every accepted change: answers from an older load are dropped. */
+let seq = 0;
+/** The load running now, shared by screens that ask while it runs (until a change makes it out of date). */
+let current: { seq: number; promise: Promise<void> } | null = null;
+
+function load(): Promise<void> {
+  checkOwner();
+  if (current && current.seq === seq) return current.promise;
+  const mine = ++seq;
+  set({ loading: true, error: "" });
+  const promise = (async () => {
+    try {
+      const inv = await getCosmeticInventory();
+      if (mine !== seq) return;
+      set({ owned: inv });
+      const worn = await getEquippedCosmetics();
+      if (mine !== seq) return;
+      set({ items: worn, loading: false });
+    } catch (e) {
+      if (mine !== seq) return;
+      set({ loading: false, error: `Couldn't load your VIP cosmetics. ${equipErrorText(e, "load")}` });
+    } finally {
+      if (current?.seq === mine) current = null;
+    }
+  })();
+  current = { seq: mine, promise };
+  return promise;
+}
+
+async function change(cosmeticId: string, wear: boolean) {
+  if (state.busyId) return;
+  set({ busyId: cosmeticId, actionError: "" });
+  try {
+    await (wear ? wearCosmetic(cosmeticId) : takeOffCosmetic(cosmeticId));
+  } catch (e) {
+    set({ busyId: null, actionError: equipErrorText(e, wear ? "wear" : "remove") });
+    return;
+  }
+  // Accepted: anything loaded before this is out of date
+  seq++;
+  current = null;
+  set({ busyId: null, ...(wear ? {} : { items: state.items?.filter((c) => c.cosmeticId !== cosmeticId) ?? null }) });
+  emitSync("my-cosmetics");
+}
+
+// Every "my-cosmetics" change reloads the inventory and the equipped list once (all screens share it)
+let wired = false;
+const wire = () => {
+  if (wired) return;
+  wired = true;
+  onSync(["my-cosmetics"], () => {
+    if (listeners.size) void load();
+  });
+};
+
 export function useEquipped(enabled: boolean) {
   const signedIn = enabled && Boolean(readToken());
-  const { refresh: refreshMe } = useMe();
-  const [owned, setOwned] = useState<OwnedCosmetic[] | null>(null);
-  const [items, setItems] = useState<EquippedCosmetic[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState("");
-  const live = useRef(true);
+  const s = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
+
+  // Load each time a screen showing them opens (a load already running is shared)
   useEffect(() => {
-    live.current = true;
-    return () => {
-      live.current = false;
-    };
-  }, []);
+    if (!signedIn) return;
+    wire();
+    void load();
+  }, [signedIn]);
 
-  const reloadEquipped = useCallback(async () => {
-    const list = await loadEquipped();
-    if (live.current) setItems(list);
-  }, []);
-
-  /** Inventory, then equipped. */
-  const reload = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const inv = await loadInventory();
-      if (!live.current) return;
-      setOwned(inv);
-      await reloadEquipped();
-    } catch (e) {
-      if (live.current) setError(`Couldn't load your VIP cosmetics. ${equipErrorText(e, "load")}`);
-    } finally {
-      if (live.current) setLoading(false);
-    }
-  }, [reloadEquipped]);
-
-  useEffect(() => {
-    if (signedIn) void reload();
-  }, [signedIn, reload]);
-
-  const change = useCallback(
-    async (cosmeticId: string, wear: boolean) => {
-      if (busyId) return;
-      setBusyId(cosmeticId);
-      setActionError("");
-      try {
-        await (wear ? wearCosmetic(cosmeticId) : takeOffCosmetic(cosmeticId));
-        try {
-          await reloadEquipped();
-        } catch (e) {
-          if (live.current) setError(`Couldn't load what you're wearing. ${equipErrorText(e, "load")}`);
-        }
-        refreshMe(true);
-      } catch (e) {
-        if (live.current) setActionError(equipErrorText(e, wear ? "wear" : "remove"));
-      } finally {
-        if (live.current) setBusyId(null);
-      }
-    },
-    [busyId, reloadEquipped, refreshMe],
-  );
-
-  const isWorn = useCallback((cosmeticId: string) => Boolean(items?.some((c) => c.cosmeticId === cosmeticId)), [items]);
-  const isOwned = useCallback((cosmeticId: string) => Boolean(owned?.some((c) => c.cosmeticId === cosmeticId)), [owned]);
-  return { signedIn, owned, items, loading, error, reload, busyId, actionError, isWorn, isOwned, wear: (id: string) => change(id, true), takeOff: (id: string) => change(id, false) };
+  const reload = useCallback(() => load(), []);
+  const mine = signedIn && owner === tokenTail();
+  const owned = mine ? s.owned : null;
+  const items = mine ? s.items : null;
+  const isWorn = useCallback((id: string) => Boolean(items?.some((c) => c.cosmeticId === id)), [items]);
+  const isOwned = useCallback((id: string) => Boolean(owned?.some((c) => c.cosmeticId === id)), [owned]);
+  return {
+    signedIn,
+    owned,
+    items,
+    loading: mine && s.loading,
+    error: mine ? s.error : "",
+    reload,
+    busyId: mine ? s.busyId : null,
+    actionError: mine ? s.actionError : "",
+    isWorn,
+    isOwned,
+    wear: (id: string) => change(id, true),
+    takeOff: (id: string) => change(id, false),
+  };
 }
