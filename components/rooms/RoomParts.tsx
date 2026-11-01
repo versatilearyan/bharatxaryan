@@ -485,8 +485,8 @@ export function ChatInput({ s, value, setValue, compact = false }: { s: RoomSess
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        s.send(value);
-        setValue("");
+        // Cleared only when the line went out (a backend room may be offline)
+        if (s.send(value) !== false) setValue("");
       }}
       className={`flex h-10 min-w-0 flex-1 items-center rounded-full bg-cream/[0.08] pl-3.5 pr-1 ring-1 ring-line focus-within:ring-gold/40 ${compact ? "" : ""}`}
     >

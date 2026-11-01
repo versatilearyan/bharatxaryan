@@ -224,8 +224,32 @@ const path = (id: string) => `/api/v1/voice-rooms/${encodeURIComponent(id)}`;
 /** One list request at a time: callers that ask while one is running share it. */
 let listInFlight: Promise<VoiceRoom[]> | null = null;
 
+/**
+ * GET with a documented path first and the path this app used before as the
+ * fallback, only when the first answers 404/405 (the route doesn't exist). The
+ * one that worked is remembered for the rest of the visit.
+ */
+const preferred: Record<string, string> = {};
+async function getEither(key: string, primary: string, fallback: string): Promise<unknown> {
+  const opts = { auth: true, forbiddenIsAccess: true } as const;
+  if (preferred[key] === "fallback") return api<unknown>(fallback, opts);
+  try {
+    const d = await api<unknown>(primary, opts);
+    preferred[key] = "primary";
+    return d;
+  } catch (e) {
+    if (preferred[key] !== "primary" && e instanceof ApiError && (e.status === 404 || e.status === 405)) {
+      const d = await api<unknown>(fallback, opts);
+      preferred[key] = "fallback";
+      return d;
+    }
+    throw e;
+  }
+}
+
+/** Public rooms: GET /voice-rooms/public (falls back to GET /voice-rooms). */
 export function getPublicRooms(): Promise<VoiceRoom[]> {
-  listInFlight ??= api<unknown>("/api/v1/voice-rooms", { auth: true, forbiddenIsAccess: true })
+  listInFlight ??= getEither("list", "/api/v1/voice-rooms/public", "/api/v1/voice-rooms")
     .then((d) => list(d).map(readVoiceRoom).filter((r): r is VoiceRoom => r !== null && isOpenRoom(r)))
     .finally(() => {
       listInFlight = null;
@@ -273,7 +297,8 @@ export async function getParticipants(roomId: string): Promise<VoiceRoomParticip
 
 /** The backend's participant count (database records), not the number of people connected to LiveKit. */
 export async function getParticipantCount(roomId: string): Promise<number> {
-  const d = await api<unknown>(`${path(roomId)}/participants/count`, { auth: true, forbiddenIsAccess: true });
+  // GET /voice-rooms/{id}/count (falls back to /participants/count)
+  const d = await getEither("count", `${path(roomId)}/count`, `${path(roomId)}/participants/count`);
   const n = num(d) ?? (d && typeof d === "object" ? num(firstOf(d as Record<string, unknown>, ["count", "participantCount", "total", "data"])) : undefined);
   if (n === undefined) throw new ApiError("The participant count couldn't be read.", 200, "http");
   return n;

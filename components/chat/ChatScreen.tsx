@@ -9,6 +9,8 @@ import { DemoNote, IconButton, SearchField } from "@/components/ui/kit";
 import { PEOPLE } from "@/lib/app/data";
 import { usePeople } from "@/lib/app/people";
 import { useApp } from "@/lib/app/store";
+import { useChat } from "@/lib/app/chat-store";
+import { ServerInbox } from "./ServerChat";
 
 export function timeAgo(at: number) {
   const m = Math.max(0, Math.round((Date.now() - at) / 60_000));
@@ -31,6 +33,8 @@ export function ChatScreen() {
   }, [conversations, q, person]);
 
   const online = PEOPLE.filter((p) => p.online);
+  // Signed in: your real chats from the backend instead of the demo ones
+  const server = useChat().enabled;
 
   return (
     <div className="app-scroll h-full pb-[calc(84px+var(--mini,0px)+env(safe-area-inset-bottom))]">
@@ -46,7 +50,10 @@ export function ChatScreen() {
         </div>
       </header>
 
+      {server ? <ServerInbox query={q} /> : null}
+
       {/* Online now */}
+      {server ? null : <>
       <div className="no-scrollbar flex gap-4 overflow-x-auto px-4 pb-4 pt-1">
         {online.map((p) => (
           <button key={p.id} type="button" onClick={() => openConversation(p.id)} className="flex w-14 shrink-0 flex-col items-center gap-1" aria-label={`Message ${p.name}`}>
@@ -91,6 +98,7 @@ export function ChatScreen() {
         })}
       </ul>
       {list.length === 0 ? <p className="px-4 pt-10 text-center text-sm text-muted">No chats match “{q}”.</p> : null}
+      </>}
 
       <BottomSheet open={picker} onClose={() => setPicker(false)} title="New message" tall>
         <button
@@ -104,8 +112,9 @@ export function ChatScreen() {
           <UserPlus className="h-5 w-5 text-coral" aria-hidden />
           <span className="text-[14px] font-semibold text-cream">Find someone by user ID</span>
         </button>
+        {server ? <p className="px-5 pb-6 pt-2 text-[13px] text-muted">To message someone, open their profile and tap Chat.</p> : null}
         <ul className="pb-4">
-          {PEOPLE.map((p) => (
+          {(server ? [] : PEOPLE).map((p) => (
             <li key={p.id}>
               <button
                 type="button"

@@ -11,6 +11,7 @@ import { useServerRooms } from "@/lib/app/server-rooms";
 import { muteParticipant, roomErrorText } from "@/lib/api/voice-rooms";
 import { useRoomParticipants } from "./useRoomParticipants";
 import { useLiveVoice } from "./useLiveVoice";
+import { SERVER_CHAT_PREFIX, useServerRoomChat } from "./useRoomChat";
 import type { GiftId, Room, RoomMessage, RoomRole, RoomSettings } from "@/lib/app/types";
 
 /** VIP level needed to sit in a room: 0 for normal rooms, the owner's choice (default 1) for VIP rooms. */
@@ -106,7 +107,7 @@ export function useRoomSession(room: Room) {
     const list: RoomMessage[] = [
       { id: mid(), kind: "system", text: `Welcome to ${room.name}! Be kind, keep it respectful, and have fun.` },
       room.server
-        ? { id: mid(), kind: "system", text: "Voice in this room is live. Chat, gifts and seats are still only on your device." }
+        ? { id: mid(), kind: "system", text: "Voice and chat in this room are live. Gifts and seats are still only on your device." }
         : { id: mid(), kind: "system", text: "Web preview: voice, YouTube and chat here are local demos and aren't sent to anyone." },
     ];
     if (room.server) {
@@ -134,6 +135,23 @@ export function useRoomSession(room: Room) {
   const pkListener = useRef<((fromId: string, toId: string, value: number) => void) | null>(null);
   const add = useCallback((m: RoomMessage) => setMessages((list) => [...list.slice(-80), m]), []);
   const addSystem = useCallback((text: string) => add({ id: mid(), kind: "system", text }), [add]);
+
+  /** Backend rooms: text chat from the server (history over REST, live over STOMP) once your join has gone through. */
+  const inRoom = Boolean(voice && (voice.status === "connected" || voice.status === "reconnecting"));
+  const deliverServerChat = useCallback(
+    (lines: RoomMessage[], history: boolean) =>
+      setMessages((list) => {
+        if (!history) return [...list, ...lines].slice(-120);
+        // Earlier chat goes before any live lines already showing
+        const at = list.findIndex((m) => m.id.startsWith(SERVER_CHAT_PREFIX));
+        return at < 0 ? [...list, ...lines] : [...list.slice(0, at), ...lines, ...list.slice(at)];
+      }),
+    [],
+  );
+  const roomChat = useServerRoomChat(room.server?.id ?? null, inRoom, myServerId, deliverServerChat);
+  useEffect(() => {
+    if (roomChat.historyError) addSystem(roomChat.historyError);
+  }, [roomChat.historyError, addSystem]);
 
   const role: RoomRole = roleIn(room);
   const isOwner = role === "owner";
@@ -580,11 +598,18 @@ export function useRoomSession(room: Room) {
       if (!t) return;
       if (chatBlocked) {
         toast("The owner turned off text chatting in this room");
-        return;
+        return false;
+      }
+      if (live) {
+        // Backend room: to the server only; your line shows when the server broadcasts it
+        const err = roomChat.send(t);
+        if (err) toast(err);
+        return !err;
       }
       add({ id: mid(), kind: "text", authorId: ME_ID, text: t });
+      return true;
     },
-    [add, chatBlocked, toast],
+    [add, chatBlocked, toast, live, roomChat],
   );
 
   const react = useCallback((emoji: string) => {

@@ -31,3 +31,14 @@ export const GOOGLE_CLIENT_ID_SETTING = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
  * wss:// URL. Locally run it with `PORT=8090 npm run dev` inside chess-server/.
  */
 export const CHESS_WS_URL = process.env.NEXT_PUBLIC_CHESS_WS_URL?.trim() || "ws://localhost:8090";
+
+/**
+ * The backend's STOMP WebSocket endpoint (private chat and voice-room chat).
+ * The browser connects to it directly, not through the /backend proxy, so it
+ * needs the backend's own address. Set NEXT_PUBLIC_CHAT_WS_URL to the full
+ * ws:// or wss:// URL of the endpoint registered in the backend's
+ * WebSocketMessageBrokerConfigurer (for a SockJS endpoint "/ws", use
+ * ".../ws/websocket"). Not verified against the backend: the default below is
+ * DEFAULT_BACKEND_URL with wss:// and "/ws".
+ */
+export const CHAT_WS_URL_SETTING = process.env.NEXT_PUBLIC_CHAT_WS_URL?.trim() || `${backendOrigin(DEFAULT_BACKEND_URL).replace(/^http/i, "ws")}/ws`;

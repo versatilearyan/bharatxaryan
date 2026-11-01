@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Compass, House, MessageCircle, Radio, UserRound, type LucideIcon } from "lucide-react";
+import { useChat, useServerUnread } from "@/lib/app/chat-store";
 import { useMarket } from "@/lib/app/market-store";
 import { useApp, type Tab } from "@/lib/app/store";
 
@@ -16,7 +17,10 @@ const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
 /** Fixed bottom navigation, pinned inside the mobile-width app container. */
 export function BottomNav() {
   const { tab, setTab, conversations } = useApp();
-  const unread = conversations.reduce((n, c) => n + c.unread, 0);
+  // Signed in: the server's count (GET /chat/unread-count); otherwise the demo chats'
+  const serverUnread = useServerUnread();
+  const signedIn = useChat().enabled;
+  const unread = signedIn ? (serverUnread ?? 0) : conversations.reduce((n, c) => n + c.unread, 0);
   const { newVisitors } = useMarket();
 
   return (

@@ -8,10 +8,20 @@ import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { IconButton } from "@/components/ui/kit";
 import { usePeople } from "@/lib/app/people";
 import { useApp } from "@/lib/app/store";
+import { useChat } from "@/lib/app/chat-store";
+import { isServerChatTarget, ServerConversationView } from "./ServerChat";
 
 const fmt = (at: number) => new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
 export function ConversationView({ personId }: { personId: string }) {
+  const { enabled } = useChat();
+  // Backend users, when signed in: the real conversation
+  if (enabled && isServerChatTarget(personId)) return <ServerConversationView personId={personId} />;
+  return <DemoConversationView personId={personId} />;
+}
+
+/** The on-device demo chat with sample people. */
+function DemoConversationView({ personId }: { personId: string }) {
   const { conversations, sendMessage, pop, typing, setSheet } = useApp();
   const person = usePeople();
   const p = person(personId);

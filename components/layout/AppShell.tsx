@@ -9,6 +9,7 @@ import { MusicProvider } from "@/lib/app/music-store";
 import { GiftNewsProvider } from "@/lib/app/gift-news-store";
 import { MeProvider } from "@/lib/app/me-store";
 import { ServerRoomsProvider } from "@/lib/app/server-rooms";
+import { ChatProvider } from "@/lib/app/chat-store";
 import { GiftBanner } from "@/components/gifts/GiftBanner";
 import { RedPacketBanner } from "@/components/redpacket/RedPacket";
 import { ParivarCreateScreen, ParivarHome, ParivarListScreen } from "@/components/parivar/ParivarScreens";
@@ -46,6 +47,7 @@ export function AppShell() {
     <AppProvider>
       <MeProvider>
       <ServerRoomsProvider>
+      <ChatProvider>
       <MarketProvider>
         <ParivarProvider>
           <RedPacketProvider>
@@ -57,6 +59,7 @@ export function AppShell() {
           </RedPacketProvider>
         </ParivarProvider>
       </MarketProvider>
+      </ChatProvider>
       </ServerRoomsProvider>
       </MeProvider>
     </AppProvider>
