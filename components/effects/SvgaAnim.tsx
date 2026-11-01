@@ -32,6 +32,30 @@ async function load(src: string) {
   return p;
 }
 
+/**
+ * In development only: say which file couldn't be played and the likely cause,
+ * so a missing VIP cosmetic isn't a silent mystery. Only the file's address
+ * (without any query string) is logged, never tokens or response bodies.
+ */
+const warned = new Set<string>();
+export function warnSvga(src: string, e: unknown) {
+  if (process.env.NODE_ENV === "production" || warned.has(src)) return;
+  warned.add(src);
+  const where = src.split("?")[0];
+  let crossOrigin = false;
+  try {
+    crossOrigin = new URL(src, window.location.href).origin !== window.location.origin;
+  } catch {
+    /* not a URL */
+  }
+  const why = e instanceof Error && e.message ? e.message : String(e ?? "unknown error");
+  console.warn(
+    `[SVGA] Couldn't play ${where}: ${why}.` +
+      (crossOrigin ? " The file is on another site: check it downloads (status 200) and that the response allows this site (Access-Control-Allow-Origin)." : "") +
+      " Check it is an SVGA file. The normal UI is shown instead.",
+  );
+}
+
 /** Never draw an animation bigger than this many canvas pixels (about 1080×2340 at 3×), to keep phones smooth. */
 const MAX_CANVAS_PIXELS = 3_200_000;
 
@@ -98,8 +122,9 @@ export function SvgaAnim({ src, loop = 0, className = "", style, onEnd, onReady,
         sharpen(player, ref.current, video.size);
         player.start();
         readyRef.current?.();
-      } catch {
+      } catch (e) {
         if (!cancelled) {
+          warnSvga(src, e);
           setFailed(true);
           errorRef.current?.();
         }

@@ -1,9 +1,10 @@
 "use client";
 
-import { SvgaAnim, preloadSvga } from "@/components/effects/SvgaAnim";
-import { VipBadge, VipFrame, frameFit } from "@/components/effects/VipFx";
+import { SvgaAnim, preloadSvga, warnSvga } from "@/components/effects/SvgaAnim";
+import { VipAvatar, VipBadge, VipEntryBanner } from "@/components/effects/VipFx";
+import type { EffectSet } from "@/lib/app/effects";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronLeft, ChevronRight, Copy, Gift, Lock, MessageCircle, Shield, ShieldCheck, UserPlus } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
 import { RingArt } from "@/components/art/RingArt";
@@ -53,6 +54,54 @@ function Panel({ title, meta, onOpen, children }: { title: string; meta?: ReactN
   );
 }
 
+/**
+ * The VIP entry animation (SVGA, through VipEntryBanner and SvgaAnim), played
+ * once each time a profile is opened: it waits for the file, slides in over the
+ * banner, and goes after about 5 s. Re-renders and data reloads don't replay it
+ * (the parent keys it by person). A file that can't be loaded is skipped.
+ */
+function ProfileEntry({ src, name, avatar }: { src: EffectSet; name: string; avatar: ReactNode }) {
+  const [show, setShow] = useState(false);
+  const played = useRef(false);
+  useEffect(() => {
+    if (played.current) return;
+    played.current = true;
+    let cancelled = false;
+    preloadSvga(src.entry)
+      .then(() => !cancelled && setShow(true))
+      .catch((e) => warnSvga(src.entry, e));
+    return () => {
+      cancelled = true;
+      played.current = false;
+    };
+    // Once per opening, for the entry this profile had when it first had one
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!show) return;
+    const t = window.setTimeout(() => setShow(false), 4800);
+    return () => window.clearTimeout(t);
+  }, [show]);
+  return (
+    <AnimatePresence>
+      {show ? (
+        <motion.div
+          className="pointer-events-none absolute right-2 top-[104px] z-20 w-[60%] max-w-[240px]"
+          initial={{ x: "110%" }}
+          animate={{ x: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ type: "spring", stiffness: 200, damping: 28 }}
+          role="status"
+        >
+          <VipEntryBanner set={src} avatar={avatar}>
+            <span className="text-[#ffe08a]">{name}</span> entered
+          </VipEntryBanner>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
 /** Banner, avatar, name, level, VIP, charm, ID and bio. */
 export function ProfileHero({ personId, topLeft, topRight }: { personId: string; topLeft?: ReactNode; topRight?: ReactNode }) {
   const { profile, toast } = useApp();
@@ -60,9 +109,6 @@ export function ProfileHero({ personId, topLeft, topRight }: { personId: string;
   const p = person(personId);
   // VIP cosmetics from this person's own profile response (yours: GET /users/me; theirs: GET /users/{id}/profile)
   const fx = useProfileFx(personId, p.vip);
-  // A frame file that can't be played falls back to the normal avatar
-  const [brokenFrame, setBrokenFrame] = useState("");
-  const frame = fx.frame && fx.frame.frame !== brokenFrame ? fx.frame : undefined;
   const mine = personId === ME_ID;
   // A banner that fails to load falls back to the illustration
   const [brokenBanner, setBrokenBanner] = useState<string | null>(null);
@@ -77,6 +123,7 @@ export function ProfileHero({ personId, topLeft, topRight }: { personId: string;
         // Taps go through it; the top buttons stay above it.
         <SvgaAnim src={fx.page.page} className="pointer-events-none absolute inset-x-0 top-0 z-[5] w-full" style={{ aspectRatio: fx.page.pageRatio }} />
       ) : null}
+      {fx.entry ? <ProfileEntry key={personId} src={fx.entry} name={mine ? profile.name : p.name} avatar={<PersonAvatar person={{ ...p, frame: "none" }} size={64} className="!h-full !w-full" />} /> : null}
       <div className="relative h-[168px]">
         {bannerSrc ? (
           <img src={bannerSrc} alt={mine ? "Your banner" : `${p.name}'s banner`} className="h-full w-full object-cover" onError={() => setBrokenBanner(bannerSrc)} />
@@ -90,15 +137,12 @@ export function ProfileHero({ personId, topLeft, topRight }: { personId: string;
         </div>
       </div>
       <div className="relative -mt-14 px-4">
-        {frame ? (
-          <span className="grid place-items-center" style={{ width: 96, height: 96, marginLeft: 24, marginBottom: frameFit(frame, 96).drop + 8 }}>
-            <VipFrame set={frame} size={frameFit(frame, 96).avatar} onError={() => setBrokenFrame(frame.frame)}>
-              <PersonAvatar person={{ ...p, frame: "none" }} size={frameFit(frame, 96).avatar} className="rounded-full" />
-            </VipFrame>
-          </span>
-        ) : (
-          <PersonAvatar person={p} size={96} className="rounded-full ring-4 ring-ink" />
-        )}
+        <VipAvatar
+          frame={fx.frame}
+          size={96}
+          framedStyle={(drop) => ({ marginLeft: 24, marginBottom: drop + 8 })}
+          render={(s, framed) => (framed ? <PersonAvatar person={{ ...p, frame: "none" }} size={s} className="rounded-full" /> : <PersonAvatar person={p} size={s} className="rounded-full ring-4 ring-ink" />)}
+        />
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <h1 className={`font-display text-[26px] font-extrabold ${nameTone(p.vip)}`} style={nameFace(p.nameFont)}>{p.name}</h1>
           {fx.badge ? <VipBadge set={fx.badge} level={p.vip ?? (fx.badge.level || undefined)} size={22} animated /> : null}

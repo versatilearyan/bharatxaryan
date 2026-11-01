@@ -1,6 +1,6 @@
 "use client";
 
-import { VipBadge } from "@/components/effects/VipFx";
+import { VipAvatar, VipBadge } from "@/components/effects/VipFx";
 import { useRoomFx } from "./useRoomFx";
 import { usePublicProfile } from "@/components/profile/usePublicProfile";
 import { useServerPeople } from "@/lib/app/server-rooms";
@@ -101,7 +101,12 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
           <div className="px-5 pb-5">
             <div className="-mt-7 flex items-end gap-3">
               <button type="button" onClick={() => (close(), openProfile(p.id))} aria-label={`Open ${p.name}'s profile`} className="shrink-0 rounded-full">
-                <PersonAvatar person={p} size={76} className="rounded-full ring-4 ring-white" />
+                {/* This person's own VIP frame (from their profile, or their participants record until it loads) */}
+                <VipAvatar
+                  frame={cardFx.frame}
+                  size={76}
+                  render={(s, framed) => (framed ? <PersonAvatar person={{ ...p, frame: "none" }} size={s} className="rounded-full" /> : <PersonAvatar person={p} size={s} className="rounded-full ring-4 ring-white" />)}
+                />
               </button>
               <div className="min-w-0">
                 <p className="flex items-center gap-1.5 truncate text-[19px] font-extrabold text-[#1c1820]">

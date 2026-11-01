@@ -105,3 +105,25 @@ export function VipBadge({ set, size = 18, animated = false, level, className = 
     </span>
   );
 }
+
+/**
+ * An avatar with an optional VIP frame, the same way everywhere (profile page,
+ * profile popup). `render(avatarSize)` draws the avatar itself (picture or the
+ * cartoon avatar, unchanged); with a frame it's drawn at the size of the frame's
+ * window, centred, and the box keeps `size` so nothing around it moves. A frame
+ * file that can't be played falls back to the plain avatar. `framedStyle` gets
+ * the space the frame's art needs below the box (see frameFit).
+ */
+export function VipAvatar({ frame, size, render, className = "", framedStyle }: { frame?: EffectSet; size: number; render: (avatarSize: number, framed: boolean) => ReactNode; className?: string; framedStyle?: (drop: number) => CSSProperties }) {
+  const [broken, setBroken] = useState("");
+  const f = frame && frame.frame && frame.frame !== broken ? frame : undefined;
+  if (!f) return <>{render(size, false)}</>;
+  const fit = frameFit(f, size);
+  return (
+    <span className={`relative grid shrink-0 place-items-center ${className}`} style={{ width: size, height: size, ...framedStyle?.(fit.drop) }}>
+      <VipFrame set={f} size={fit.avatar} onError={() => setBroken(f.frame)}>
+        {render(fit.avatar, true)}
+      </VipFrame>
+    </span>
+  );
+}
