@@ -5,11 +5,12 @@ import { motion } from "framer-motion";
 import { Backpack, RefreshCw } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin, ScreenHeader, formatCoins } from "@/components/ui/kit";
-import { RedPacketArt } from "@/components/redpacket/RedPacket";
-import { RED_PACKETS, formatInr, packetById, type RedPacketId } from "@/lib/app/redpacket";
-import { CheckoutSheet } from "./CheckoutSheet";
+import { packetById, type RedPacketId } from "@/lib/app/redpacket";
+import { CheckoutSheet, type CheckoutItem } from "./CheckoutSheet";
+import { RedPacketArt, RedPacketShop, WalletImage } from "@/components/redpacket/RedPacket";
+import { useWalletCatalog } from "@/lib/app/use-wallet";
+import { walletImageSrc, type WalletRedPacket } from "@/lib/api/wallet";
 import { ShopProductAsset } from "./ShopProductAsset";
-import { useRedPackets } from "@/lib/app/redpacket-store";
 import { useApp, type ShopTab } from "@/lib/app/store";
 import { ApiError } from "@/lib/api/client";
 import { getShopCategories, getShopProduct, getShopProducts, type ShopCategory, type ShopProduct } from "@/lib/api/shop";
@@ -34,9 +35,21 @@ type Load<T> = { status: "loading" } | { status: "error"; message: string } | { 
  */
 export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; initialPay?: RedPacketId }) {
   const { pop, push, coins, setSheet, toast } = useApp();
-  const { addPaid, owned } = useRedPackets();
   const [categories, setCategories] = useState<Load<ShopCategory[]>>({ status: "loading" });
   const [tab, setTab] = useState<TabKey | null>(initialTab === "packets" ? PACKETS : null);
+  const wallet = useWalletCatalog(tab === PACKETS);
+  const [checkout, setCheckout] = useState<CheckoutItem | null>(null);
+  const buyPacket = (p: WalletRedPacket) => {
+    if (!wallet.signedIn) return toast("Sign in to buy red packets.");
+    setCheckout({
+      id: `packet-${p.id}`,
+      name: p.name,
+      note: `${p.coinValue.toLocaleString("en-IN")} coins for the room to loot`,
+      art: <WalletImage src={walletImageSrc(p.imageUrl)} alt="" className="h-12 w-12 object-contain" fallback={<RedPacketArt id="rp-10k" cover="red" size={44} label={false} />} />,
+      inr: p.priceInRupees,
+      purchase: { purpose: "RED_PACKET", productId: p.id, ownedBefore: wallet.inventory.data ? (wallet.inventory.data[p.id] ?? 0) : undefined },
+    });
+  };
   /** Products per tab, so going back to a tab shows it at once. */
   const [products, setProducts] = useState<Record<TabKey, Load<ShopProduct[]>>>({});
   const [openId, setOpenId] = useState<string | null>(null);
@@ -120,21 +133,9 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
         <ErrorBox message={categories.message} onRetry={loadCategories} />
       ) : tab === PACKETS ? (
         <>
-          <p className="mx-4 mt-3 text-[12px] text-muted">Buy red packets with UPI, card or net banking. They wait in your Bag: in any room, tap the red packet button to send one, pick a cover and when the rain starts.</p>
-          <div className="mt-3 grid grid-cols-3 gap-2.5 px-4">
-            {RED_PACKETS.map((p) => (
-              <div key={p.id} className="flex flex-col items-center rounded-3xl bg-surface p-2.5 ring-1 ring-line">
-                <RedPacketArt id={p.id} size={52} />
-                <span className="mt-1 text-center text-[12px] font-bold leading-tight text-cream">{p.name}</span>
-                <span className="text-[10.5px] text-muted">In Bag: {owned[p.id] ?? 0}</span>
-                <span className="mt-1 flex items-center gap-1 text-[11px] font-semibold text-cream/80">
-                  <Coin className="h-3 w-3" /> {p.amount.toLocaleString("en-IN")}
-                </span>
-                <motion.button type="button" whileTap={{ scale: 0.95 }} onClick={() => setPaying(p.id)} aria-label={`Buy ${p.label} red packet for ${formatInr(p.inr)}`} className="mt-2 flex h-8 w-full items-center justify-center rounded-full bg-gold text-[12.5px] font-bold text-ink">
-                  {formatInr(p.inr)}
-                </motion.button>
-              </div>
-            ))}
+          <p className="mx-4 mt-3 text-[12px] text-muted">Buy red packets with UPI, card or net banking on PayU&apos;s secure page. They wait in your Bag once Panchayat confirms the payment: in any room, tap the red packet button to send one.</p>
+          <div className="px-4">
+            <RedPacketShop products={wallet.redPackets} inventory={wallet.inventory} signedIn={wallet.signedIn} onBuy={buyPacket} />
           </div>
         </>
       ) : categories.status === "ok" && categories.data.length === 0 ? (
@@ -178,12 +179,8 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
 
       <ProductSheet id={openId} preview={current?.status === "ok" ? current.data.find((p) => p.id === openId) : undefined} onClose={() => setOpenId(null)} onBuy={buy} />
 
-      <CheckoutSheet
-        item={payFor ? { id: payFor.id, name: `${payFor.label} ${payFor.name}`, note: `${payFor.amount.toLocaleString("en-IN")} coins for the room to loot`, art: <RedPacketArt id={payFor.id} size={52} />, inr: payFor.inr } : null}
-        onClose={() => setPaying(null)}
-        onPaid={(id) => addPaid(id as RedPacketId)}
-        onViewBag={() => push({ kind: "bag" })}
-      />
+      {/* Red packets are bought from the backend's catalogue (purpose RED_PACKET); a sample packet has no backend product and can't be bought online */}
+      <CheckoutSheet item={checkout ?? (payFor ? { id: payFor.id, name: `${payFor.label} ${payFor.name}`, note: `${payFor.amount.toLocaleString("en-IN")} coins for the room to loot`, art: <RedPacketArt id={payFor.id} size={52} />, inr: payFor.inr } : null)} onClose={() => (setPaying(null), setCheckout(null))} />
     </div>
   );
 }

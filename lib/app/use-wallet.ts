@@ -28,6 +28,11 @@ function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
   return promise;
 }
 
+/** Drop cached lists whose key starts with `prefix`, so the next look asks the server again (e.g. after a payment). */
+export function forgetCached(prefix: string) {
+  for (const k of [...cache.keys()]) if (k.startsWith(prefix)) cache.delete(k);
+}
+
 export type Loaded<T> = { data: T | null; error: string | null; loading: boolean; retry: () => void };
 
 export function useCachedLoad<T>(key: string | null, load: () => Promise<T>): Loaded<T> {

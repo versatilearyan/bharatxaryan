@@ -9,15 +9,12 @@ import { MusicPill, MusicSheet } from "./RoomMusic";
 import { usePkState } from "./usePk";
 import { IconButton } from "@/components/ui/kit";
 import { GiftPanel } from "@/components/gifts/GiftPanel";
-import { useApp } from "@/lib/app/store";
 import { ChatInput, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomTopBar, SeatLayout } from "./RoomParts";
-import { YouTubeMark } from "./YouTubePlayer";
 import { LiveVoiceBar } from "./LiveVoiceBar";
 import { BACKGROUNDS } from "./RoomSettings";
 import type { RoomSession } from "./useRoomSession";
 
 export function VoiceRoom({ s }: { s: RoomSession }) {
-  const { leaveRoom } = useApp();
   const [sheet, setSheet] = useState<null | "gift" | "emoji" | "menu" | "invite" | "pk" | "music">(null);
   const pkOn = Boolean(usePkState()?.pk);
   const [draft, setDraft] = useState("");
@@ -37,7 +34,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
       )}
       {vip ? <VipDecor /> : null}
 
-      <RoomTopBar s={s} onMenu={() => setSheet("menu")} onLeave={leaveRoom} />
+      <RoomTopBar s={s} onMenu={() => s.setPanel("online")} />
 
       <div className="relative z-10 flex items-center justify-between gap-2 px-4 pt-1">
         <p className="min-w-0 truncate text-[12px] text-cream/70">
@@ -45,26 +42,6 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
           {s.settings.event ? <span className="mr-1.5 rounded-md bg-coral px-1.5 py-0.5 text-[10px] font-bold text-white">🎉 Event</span> : null}
           {s.room.topic}
         </p>
-        {s.canModerate && !pkOn ? (
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.94 }}
-            onClick={() => setSheet("pk")}
-            className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-[#ff4f7b] to-[#3d9bff] px-3 text-[11.5px] font-extrabold text-white"
-          >
-            <Swords className="h-3.5 w-3.5" aria-hidden /> PK
-          </motion.button>
-        ) : null}
-        {s.canModerate ? (
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.94 }}
-            onClick={() => s.setMode("youtube")}
-            className="flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-cream/10 px-3 text-[11.5px] font-bold text-cream ring-1 ring-line-strong backdrop-blur hover:bg-cream/15"
-          >
-            <YouTubeMark className="h-3.5 w-5" /> Watch YouTube
-          </motion.button>
-        ) : null}
       </div>
 
       <PkPanel s={s} />
@@ -94,7 +71,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
           </IconButton>
           <ChatInput s={s} value={draft} setValue={setDraft} />
           <EmojiButton onClick={() => setSheet("emoji")} />
-          <IconButton label={s.handRaised ? "Lower hand" : "Raise hand"} onClick={s.toggleHand} active={s.handRaised} className={s.handRaised ? "!bg-gold !text-ink" : ""}>
+          <IconButton label="Room options: mode, mic order, raise hand, leave" onClick={() => setSheet("menu")} active={s.handRaised} className={s.handRaised ? "!bg-gold !text-ink" : ""}>
             <Hand className="h-5 w-5" />
           </IconButton>
           <GiftButton onClick={() => setSheet("gift")} />
@@ -106,7 +83,22 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
       <MusicSheet open={sheet === "music"} onClose={close} />
       <EmojiSheet open={sheet === "emoji"} onClose={close} s={s} onInsert={(e) => setDraft((d) => d + e)} />
       <InviteSheet open={sheet === "invite"} onClose={close} roomName={s.room.name} />
-      <RoomMenuSheet open={sheet === "menu"} onClose={close} s={s} onInvite={() => setSheet("invite")} />
+      <RoomMenuSheet
+        open={sheet === "menu"}
+        onClose={close}
+        s={s}
+        onInvite={() => setSheet("invite")}
+        extra={
+          s.canModerate && !pkOn ? (
+            <button type="button" onClick={() => setSheet("pk")} className="flex flex-col items-center gap-1.5 rounded-2xl py-2 hover:bg-cream/[0.04]">
+              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-[#ff4f7b] to-[#3d9bff] text-white">
+                <Swords className="h-5 w-5" />
+              </span>
+              <span className="text-[11.5px] text-cream/80">Start PK</span>
+            </button>
+          ) : null
+        }
+      />
     </div>
   );
 }
@@ -127,3 +119,4 @@ export function VipDecor() {
     </div>
   );
 }
+

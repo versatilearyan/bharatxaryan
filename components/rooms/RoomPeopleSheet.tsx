@@ -17,7 +17,7 @@ import { VipBadge } from "@/components/effects/VipFx";
 import { useRoomFx } from "./useRoomFx";
 
 type Tab = "online" | "members" | "contribution";
-type Period = "Daily" | "Weekly" | "Total";
+export type Period = "Daily" | "Weekly" | "Total";
 
 /** Stable pseudo-random number from a string, so sample boards don't jump around. */
 function hash(str: string) {
@@ -165,14 +165,11 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-function Contribution({ s }: { s: RoomSession }) {
-  const person = usePeople();
+/** The room's contribution board for a period: coins gifted here per person, highest first (sample values plus your own gifts). */
+export function useContributionBoard(s: RoomSession, period: Period) {
   const { myContrib } = useApp();
-  const [period, setPeriod] = useState<Period>("Total");
-  const [help, setHelp] = useState(false);
   const mine = myContrib[s.room.id] ?? 0;
-
-  const board = useMemo(() => {
+  return useMemo(() => {
     const base = Math.max(1, s.room.basePoints / 100); // coins this room has received in total (sample)
     const rows = PEOPLE.filter((p) => p.id !== s.room.hostId).map((p) => {
       const r = hash(`${s.room.id}:${p.id}`);
@@ -183,6 +180,16 @@ function Contribution({ s }: { s: RoomSession }) {
     rows.push({ id: ME_ID, coins: mine });
     return rows.filter((r) => r.coins > 0).sort((a, b) => b.coins - a.coins);
   }, [s.room.id, s.room.basePoints, s.room.hostId, period, mine]);
+}
+
+function Contribution({ s }: { s: RoomSession }) {
+  const person = usePeople();
+  const { myContrib } = useApp();
+  const [period, setPeriod] = useState<Period>("Daily");
+  const [help, setHelp] = useState(false);
+  const mine = myContrib[s.room.id] ?? 0;
+
+  const board = useContributionBoard(s, period);
 
   const myRank = board.findIndex((r) => r.id === ME_ID) + 1;
 

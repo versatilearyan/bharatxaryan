@@ -2,11 +2,10 @@
  * Coin packs sold in rupees. Prices include GST. Bigger packs give more coins
  * per rupee (12.2 on the smallest, 17.5 on the biggest).
  *
- * Payments are not connected yet (PAYMENTS_LIVE is false): the checkout runs in
- * test mode and nothing is charged. Once the backend can create an order and
- * verify the payment, coins must only be added after the server confirms it.
+ * Sample packs for the on-device demo only. Real coin packs come from
+ * GET /api/v1/wallet/coin-packs and are bought through the backend and PayU
+ * (CheckoutSheet); coins are only ever added by the backend.
  */
-export const PAYMENTS_LIVE = false;
 
 export type CoinPack = { id: string; coins: number; inr: number; tag?: "Popular" | "Best value" };
 

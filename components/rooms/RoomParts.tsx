@@ -32,7 +32,7 @@ import { LevelPill } from "@/components/profile/IdTags";
 /* Top bar                                                             */
 /* ------------------------------------------------------------------ */
 
-export function RoomTopBar({ s, onMenu, onLeave }: { s: RoomSession; onMenu: () => void; onLeave: () => void }) {
+export function RoomTopBar({ s, onMenu, onLeave }: { s: RoomSession; onMenu: () => void; onLeave?: () => void }) {
   const { minimizeRoom, toast, roomLevelOf, isJoined, isFollowingRoom, toggleJoinRoom, toggleFollowRoom } = useApp();
   const person = usePeople();
   const host = person(s.room.hostId);
@@ -54,15 +54,17 @@ export function RoomTopBar({ s, onMenu, onLeave }: { s: RoomSession; onMenu: () 
 
   return (
     <header className="pt-safe relative z-20">
-      <div className="flex h-14 items-center gap-2 px-2.5">
-        <IconButton label="Minimise room" onClick={minimizeRoom} className="!bg-black/30 backdrop-blur">
+      <div className="flex h-14 items-center gap-1.5 px-2.5">
+        <IconButton label="Minimise room" onClick={minimizeRoom} className="!h-9 !w-9 shrink-0 !bg-black/30 backdrop-blur">
           <ChevronDown className="h-5 w-5" />
         </IconButton>
-        <button type="button" onClick={() => s.setPanel("info")} aria-label={`${s.room.name}, room info`} className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-black/30 py-1 pl-1 pr-3 text-left backdrop-blur">
+        {/* Room pill: room info, with Join / Follow tucked in at the end */}
+        <div className="flex h-10 min-w-0 max-w-[46%] shrink items-center rounded-full bg-black/30 pr-1 backdrop-blur">
+        <button type="button" onClick={() => s.setPanel("info")} aria-label={`${s.room.name}, room info`} className="flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-full pl-1 pr-1 text-left">
           <PersonAvatar person={host} size={30} />
-          <span className="min-w-0">
+          <span className="min-w-0 flex-1 overflow-hidden">
             <span className={`block truncate text-[13.5px] font-bold leading-tight ${s.room.vip ? "gold-shine" : "text-cream"}`} style={nameFace(s.settings.nameFont)}>{s.room.name}</span>
-            <span className="flex items-center gap-1.5 whitespace-nowrap text-[10.5px] text-cream/60">
+            <span className="flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-[10.5px] text-cream/60">
               {s.room.permanent ? (
                 <span className="rounded bg-gold/20 px-1 text-[9.5px] font-extrabold text-gold">Lv.{lvl.level}</span>
               ) : (
@@ -81,36 +83,86 @@ export function RoomTopBar({ s, onMenu, onLeave }: { s: RoomSession; onMenu: () 
               >
                 ID {s.room.code} {copied ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
               </span>
-              {/* Backend rooms: the backend's participant count (GET /participants/count); hidden until it loads */}
-              {s.room.server && s.participants?.count == null ? null : (
-                <>
-                  <span aria-hidden>·</span>
-                  <span className="inline-flex items-center gap-0.5" title={s.room.server ? "People in this room" : undefined}>
-                    <UsersRound className="h-2.5 w-2.5" aria-hidden />
-                    {s.room.server ? s.participants?.count : formatCount(s.room.members + (joined ? 1 : 0))}
-                  </span>
-                </>
-              )}
             </span>
           </span>
         </button>
         {s.isOwner ? null : !joined ? (
-          <motion.button type="button" whileTap={{ scale: 0.92 }} onClick={() => toggleJoinRoom(s.room)} className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-[#ffb347] to-[#ff8a3d] px-3 text-[12px] font-extrabold text-[#2a1205]">
-            <UserPlus className="h-3.5 w-3.5" aria-hidden /> Join
+          <motion.button type="button" whileTap={{ scale: 0.92 }} onClick={() => toggleJoinRoom(s.room)} aria-label="Join room" className="flex h-7 shrink-0 items-center gap-0.5 rounded-full bg-gradient-to-r from-[#ffb347] to-[#ff8a3d] px-2 text-[11px] font-extrabold text-[#2a1205]">
+            <UserPlus className="h-3 w-3" aria-hidden /> Join
           </motion.button>
         ) : (
-          <IconButton label={following ? "Unfollow room" : "Follow room"} onClick={() => toggleFollowRoom(s.room)} active={following} className={following ? "" : "!bg-black/30 backdrop-blur"}>
-            <Heart className={`h-[18px] w-[18px] ${following ? "fill-current" : ""}`} />
-          </IconButton>
+          <motion.button
+            type="button"
+            whileTap={{ scale: 0.88 }}
+            onClick={() => toggleFollowRoom(s.room)}
+            aria-label={following ? "Unfollow room" : "Follow room"}
+            aria-pressed={following}
+            className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${following ? "bg-coral/20 text-coral" : "bg-cream/10 text-cream/80"}`}
+          >
+            <Heart className={`h-3.5 w-3.5 ${following ? "fill-current" : ""}`} />
+          </motion.button>
         )}
-        <IconButton label="Room menu" onClick={onMenu} className="!bg-black/30 backdrop-blur">
+        </div>
+        <TopGifters s={s} />
+        <IconButton label="Room menu" onClick={onMenu} className="!h-9 !w-9 shrink-0 !bg-black/30 backdrop-blur">
           <MoreHorizontal className="h-5 w-5" />
         </IconButton>
-        <IconButton label="Leave room" onClick={onLeave} className="!bg-[#3a1418]/80 !text-[#ff8a8f]">
-          <LogOut className="h-[18px] w-[18px]" />
-        </IconButton>
+        {onLeave ? (
+          <IconButton label="Leave room" onClick={onLeave} className="!bg-[#3a1418]/80 !text-[#ff8a8f]">
+            <LogOut className="h-[18px] w-[18px]" />
+          </IconButton>
+        ) : null}
       </div>
     </header>
+  );
+}
+
+/**
+ * Top bar, right side (its own space; the room pill never grows into it): the
+ * three people in the room with the highest charm, each with their charm level,
+ * then how many people are live in the room. Tapping either opens Online / Members / Contribution.
+ */
+function TopGifters({ s }: { s: RoomSession }) {
+  const person = usePeople();
+  const { charmOf } = useApp();
+  const ids = s.room.server ? s.onlineIds : Array.from(new Set([...s.onlineIds, ...s.seats.filter((x): x is string => Boolean(x))]));
+  const top = ids
+    .map((id) => ({ id, c: charmOf(id) }))
+    .filter((r) => r.c.tier)
+    .sort((a, b) => b.c.points - a.c.points)
+    .slice(0, 3);
+  // Backend rooms: the backend's participant count; demo rooms: who's here
+  const live = s.room.server ? s.participants?.count : s.onlineIds.length;
+  // Gold, silver, bronze
+  const tone = [
+    { ring: "#f2c14e", tag: "linear-gradient(180deg,#ffd76a,#e9a91c)" },
+    { ring: "#c3cede", tag: "linear-gradient(180deg,#d9e2ee,#8f9db3)" },
+    { ring: "#d49a6a", tag: "linear-gradient(180deg,#e7b384,#a86b3c)" },
+  ];
+  return (
+    <div className="ml-auto flex min-w-[140px] shrink-0 items-center justify-end gap-1.5">
+      {top.length ? (
+        <button type="button" onClick={() => s.setPanel("online")} className="flex items-start gap-1" aria-label={`Top charm in the room: ${top.map((r) => `${person(r.id).name}, charm level ${r.c.tier?.rank}`).join("; ")}`}>
+          {top.map((r, i) => (
+            <span key={r.id} className="flex w-[30px] flex-col items-center">
+              <span className="rounded-full p-[1.5px]" style={{ background: tone[i].ring }}>
+                <span className="block rounded-full ring-1 ring-black/40">
+                  <PersonAvatar person={{ ...person(r.id), frame: "none" }} size={25} />
+                </span>
+              </span>
+              <span className="relative -mt-[7px] min-w-[20px] rounded-full px-[3px] text-center text-[8.5px] font-extrabold leading-[12px] text-white shadow-[0_1px_2px_rgb(0_0_0/0.45)] [text-shadow:0_1px_1px_rgb(0_0_0/0.35)]" style={{ background: tone[i].tag }}>
+                {r.c.tier?.rank}
+              </span>
+            </span>
+          ))}
+        </button>
+      ) : null}
+      {live == null ? null : (
+        <button type="button" onClick={() => s.setPanel("online")} className="grid h-8 min-w-8 place-items-center rounded-full bg-black/30 px-1.5 text-[12.5px] font-extrabold tabular-nums text-cream backdrop-blur" aria-label={`${live} live in the room. Online, members and contribution`}>
+          {formatCount(live)}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -304,7 +356,7 @@ export function Pair({ s, a, b, size, gap, gold, linked, numbered = false }: { s
  * then rows of linked pairs (62pt seats, 32pt link, 32pt between pairs, 24pt side margins).
  * `scale` shrinks the whole layout for denser modes such as YouTube.
  */
-export function SeatLayout({ s, gold = false, scale = 1 }: { s: RoomSession; gold?: boolean; scale?: number }) {
+export function SeatLayout({ s, gold = false, scale = 1, grid = false }: { s: RoomSession; gold?: boolean; scale?: number; grid?: boolean }) {
   const [ref, width] = useWidth<HTMLDivElement>();
   const k = (Math.min(width, 430) / REF_WIDTH) * scale;
   const big = Math.round(85 * k);
@@ -316,6 +368,7 @@ export function SeatLayout({ s, gold = false, scale = 1 }: { s: RoomSession; gol
   for (let i = 0; i < rest.length; i += 2) pairs.push([rest[i], rest[i + 1]]);
   const partner = s.settings.partnerSeat;
   const team = usePkState()?.pk?.mode === "team";
+  if (grid) return <SeatGrid s={s} gold={gold} width={width} gridRef={ref} />;
   return (
     <div ref={ref} className="w-full">
       <Pair s={s} a={0} b={s.seats.length > 1 ? 1 : undefined} size={big} gap={bigGap} gold={gold} linked={partner !== "off"} />
@@ -331,6 +384,27 @@ export function SeatLayout({ s, gold = false, scale = 1 }: { s: RoomSession; gol
           <Pair key={a} s={s} a={a} b={b} size={small} gap={smallGap} gold={gold} linked={partner === "all"} />
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * YouTube room seats: every seat (the owner's included) in linked pairs, three pairs to a row,
+ * sized so a row fills the screen width with even side margins.
+ */
+function SeatGrid({ s, gold, width, gridRef }: { s: RoomSession; gold: boolean; width: number; gridRef: React.RefObject<HTMLDivElement | null> }) {
+  // Row = 6 seats + 3 links (0.26 seat each) + 2 gaps between pairs (0.3 seat each), 12px margins
+  const unit = (Math.min(width, 430) - 24) / (6 + 3 * 0.26 + 2 * 0.3);
+  const size = Math.floor(unit);
+  const gap = Math.round(unit * 0.26);
+  const pairs: [number, number | undefined][] = [];
+  for (let i = 0; i < s.seats.length; i += 2) pairs.push([i, i + 1 < s.seats.length ? i + 1 : undefined]);
+  const partner = s.settings.partnerSeat;
+  return (
+    <div ref={gridRef} className="flex w-full flex-wrap justify-center px-3" style={{ columnGap: Math.round(unit * 0.3), rowGap: Math.round(unit * 0.22) }}>
+      {pairs.map(([a, b]) => (
+        <Pair key={a} s={s} a={a} b={b} size={size} gap={gap} gold={gold} linked={a === 0 ? partner !== "off" : partner === "all"} />
+      ))}
     </div>
   );
 }

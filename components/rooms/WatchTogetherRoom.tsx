@@ -14,7 +14,7 @@ import type { RoomSession } from "./useRoomSession";
 
 /** YouTube Watch Together. This is the room's "video" mode: there are no video calls. */
 export function WatchTogetherRoom({ s }: { s: RoomSession }) {
-  const { leaveRoom, toast } = useApp();
+  const { toast } = useApp();
   const [sheet, setSheetState] = useState<null | "gift" | "emoji" | "menu" | "invite" | "add">(null);
   // Anyone on the mic can pick a video; the owner and admins can always change it
   const canPickVideo = s.canModerate || s.seated;
@@ -32,40 +32,40 @@ export function WatchTogetherRoom({ s }: { s: RoomSession }) {
   return (
     <div className={`relative flex h-full flex-col overflow-hidden ${vip ? "bg-wine-2" : "bg-ink"}`}>
       {vip ? <VipDecor /> : null}
-      <RoomTopBar s={s} onMenu={() => setSheet("menu")} onLeave={leaveRoom} />
+      <RoomTopBar s={s} onMenu={() => s.setPanel("online")} />
 
-      {/* Player */}
+      {/* Player, or the "choose a video" card before one is picked */}
       <div className="relative z-10 px-3">
-        <div className="relative aspect-video overflow-hidden rounded-2xl bg-[#0c0b0f] ring-1 ring-line">
-          {s.video ? (
-            <YouTubePlayer videoId={s.video.id} onChooseAnother={() => setSheet("add")} />
-          ) : (
-            <div className="flex h-full flex-col items-center justify-center gap-3" style={{ background: "radial-gradient(circle at 50% 30%, #2a1a22, #0c0b0f 70%)" }}>
-              <div className="flex items-center gap-2">
-                <YouTubeMark className="h-6 w-9" />
-                <span className="font-display text-[17px] font-bold tracking-tight text-cream">YouTube</span>
-              </div>
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSheet("add")}
-                className="flex h-10 items-center gap-1.5 rounded-full bg-[#ff0033] px-4 text-[13px] font-bold text-white shadow-[0_10px_24px_-8px_rgb(255_0_51/0.7)]"
-              >
-                <Plus className="h-4 w-4" aria-hidden /> Add YouTube Video
-              </motion.button>
-              <p className="text-[11px] text-muted">Paste any public YouTube link</p>
-            </div>
-          )}
-        </div>
         {s.video ? (
-          <div className="mt-2 flex items-center gap-2">
-            <YouTubeMark className="h-4 w-6 shrink-0" />
-            <p className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-cream">{s.video.title}</p>
-            <button type="button" onClick={() => setSheet("add")} className="flex items-center gap-1 rounded-full bg-cream/[0.07] px-2.5 py-1 text-[11px] font-bold text-cream">
-              <RefreshCw className="h-3 w-3" aria-hidden /> Change
-            </button>
+          <>
+            <div className="relative aspect-video overflow-hidden rounded-2xl bg-[#0c0b0f] ring-1 ring-line">
+              <YouTubePlayer videoId={s.video.id} onChooseAnother={() => setSheet("add")} />
+            </div>
+            <div className="mt-2 flex items-center gap-2">
+              <YouTubeMark className="h-4 w-6 shrink-0" />
+              <p className="min-w-0 flex-1 truncate text-[12.5px] font-semibold text-cream">{s.video.title}</p>
+              <button type="button" onClick={() => setSheet("add")} className="flex items-center gap-1 rounded-full bg-cream/[0.07] px-2.5 py-1 text-[11px] font-bold text-cream">
+                <RefreshCw className="h-3 w-3" aria-hidden /> Change
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center rounded-[22px] bg-[#1c1b21] px-6 pb-6 pt-7 text-center ring-1 ring-white/[0.06]">
+            <div className="flex items-center gap-1.5">
+              <YouTubeMark className="h-7 w-10" />
+              <span className="font-display text-[22px] font-bold tracking-[-0.03em] text-cream">YouTube</span>
+            </div>
+            <p className="mt-4 max-w-[260px] text-[14px] leading-snug text-cream/75">Choose a YouTube video to watch and chat with friends in the room</p>
+            <motion.button
+              type="button"
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setSheet("add")}
+              className="mt-5 h-11 rounded-full bg-[#14b8a6] px-8 text-[14.5px] font-bold text-white shadow-[0_10px_24px_-10px_rgb(20_184_166/0.8)]"
+            >
+              Add a video
+            </motion.button>
           </div>
-        ) : null}
+        )}
       </div>
 
       {/* Mode switch */}
@@ -86,8 +86,8 @@ export function WatchTogetherRoom({ s }: { s: RoomSession }) {
       </div>
 
       {/* Seats */}
-      <div className="relative z-10 mt-3 px-1">
-        <SeatLayout s={s} gold={vip} scale={0.68} />
+      <div className="relative z-10 mt-4">
+        <SeatLayout s={s} gold={vip} grid />
         <MicOrderBar s={s} />
       </div>
 

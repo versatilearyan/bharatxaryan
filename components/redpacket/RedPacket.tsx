@@ -194,7 +194,7 @@ export function RedPacketShop({
   products: Loaded<WalletRedPacket[]>;
   inventory: Loaded<RedPacketInventory>;
   signedIn: boolean;
-  onBuy: () => void;
+  onBuy: (product: WalletRedPacket) => void;
 }) {
   const list = products.data ?? [];
   const owned = (id: string) => (!signedIn ? null : inventory.loading ? "…" : inventory.error ? "?" : String(inventory.data?.[id] ?? 0));
@@ -228,7 +228,7 @@ export function RedPacketShop({
                 {have !== null ? <span className="text-[10.5px] text-muted">You have {have}</span> : null}
                 <button
                   type="button"
-                  onClick={onBuy}
+                  onClick={() => onBuy(p)}
                   aria-label={`${p.name}, ${p.coinValue.toLocaleString("en-IN")} coins, ${formatInr(p.priceInRupees)}`}
                   className="mt-1.5 flex h-8 w-full items-center justify-center rounded-full bg-gradient-to-r from-[#ff7a1a] to-[#e2242f] text-[11.5px] font-bold text-white"
                 >

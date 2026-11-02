@@ -14,7 +14,8 @@ import { TagStrip, TagTitleChip } from "@/components/rooms/TagParts";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Button, Coin, DemoNote, formatCount } from "@/components/ui/kit";
 import { EditProfileSheet } from "@/components/profile/EditProfileSheet";
-import { RedPacketShop } from "@/components/redpacket/RedPacket";
+import { RedPacketArt, RedPacketShop } from "@/components/redpacket/RedPacket";
+import { CheckoutSheet, type CheckoutItem } from "@/components/market/CheckoutSheet";
 import { WalletImage } from "@/components/redpacket/RedPacket";
 import { useWalletCatalog } from "@/lib/app/use-wallet";
 import { walletImageSrc } from "@/lib/api/wallet";
@@ -253,9 +254,35 @@ function CoinsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { coins, toast } = useApp();
   const { coinPacks, redPackets, inventory, signedIn } = useWalletCatalog(open);
   const packs = coinPacks.data ?? [];
-  // No purchase endpoint yet: the button says so instead of pretending a payment went through
-  const notLive = () => toast("Buying isn't available yet. Checkout opens once payments are connected.");
+  // Buying goes through the backend and PayU (CheckoutSheet); nothing is credited here
+  const [checkout, setCheckout] = useState<CheckoutItem | null>(null);
+  const needSignIn = () => toast("Sign in to buy coins and red packets.");
+  const buyPack = (p: (typeof packs)[number]) => {
+    if (!signedIn) return needSignIn();
+    const img = walletImageSrc(p.imageUrl);
+    setCheckout({
+      id: `pack-${p.id}`,
+      name: `${p.coins.toLocaleString("en-IN")} coins`,
+      note: p.bonusCoins > 0 ? `Includes ${p.bonusCoins.toLocaleString("en-IN")} bonus coins` : p.name || "Coin pack",
+      art: img ? <WalletImage src={img} alt="" className="h-12 w-12 object-contain" fallback={<Coin className="h-11 w-11" />} /> : <Coin className="h-11 w-11" />,
+      inr: p.priceInRupees,
+      tone: "gold",
+      purchase: { purpose: "COIN_PACK", productId: p.id },
+    });
+  };
+  const buyPacket = (p: NonNullable<typeof redPackets.data>[number]) => {
+    if (!signedIn) return needSignIn();
+    setCheckout({
+      id: `packet-${p.id}`,
+      name: p.name,
+      note: `${p.coinValue.toLocaleString("en-IN")} coins for the room to loot`,
+      art: <WalletImage src={walletImageSrc(p.imageUrl)} alt="" className="h-12 w-12 object-contain" fallback={<RedPacketArt id="rp-10k" cover="red" size={44} label={false} />} />,
+      inr: p.priceInRupees,
+      purchase: { purpose: "RED_PACKET", productId: p.id, ownedBefore: inventory.data ? (inventory.data[p.id] ?? 0) : undefined },
+    });
+  };
   return (
+    <>
     <BottomSheet open={open} onClose={onClose} title="Wallet" tall>
       <div className="px-5 pb-6">
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#4a3214] via-[#2a1a0c] to-[#1a1008] p-5 ring-1 ring-gold/40">
@@ -288,7 +315,7 @@ function CoinsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
                   key={p.id}
                   type="button"
                   whileTap={{ scale: 0.95 }}
-                  onClick={notLive}
+                  onClick={() => buyPack(p)}
                   aria-label={`${p.coins.toLocaleString("en-IN")} coins for ${formatInr(p.priceInRupees)}`}
                   className={`relative flex flex-col items-center gap-1 rounded-2xl bg-surface px-2 pb-2.5 pt-3.5 ring-1 hover:ring-gold/50 ${p.badge ? "ring-gold/50" : "ring-line"} ${wide ? "col-span-2" : ""}`}
                 >
@@ -304,10 +331,12 @@ function CoinsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
             })}
           </div>
         )}
-        <p className="mt-2 text-[11px] text-muted">Prices include GST. Buying opens once payments are connected.</p>
-        <RedPacketShop products={redPackets} inventory={inventory} signedIn={signedIn} onBuy={notLive} />
+        <p className="mt-2 text-[11px] text-muted">Prices include GST. You pay on PayU&apos;s secure page; coins arrive once Panchayat confirms the payment.</p>
+        <RedPacketShop products={redPackets} inventory={inventory} signedIn={signedIn} onBuy={buyPacket} />
       </div>
     </BottomSheet>
+    <CheckoutSheet item={checkout} onClose={() => setCheckout(null)} />
+    </>
   );
 }
 

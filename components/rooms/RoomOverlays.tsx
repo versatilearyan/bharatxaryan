@@ -106,6 +106,8 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
                 <VipAvatar
                   frame={cardFx.frame}
                   size={76}
+                  // Room for the frame's art, so it never covers the name, badges or ID beside and below it
+                  framedStyle={(_, f) => ({ marginLeft: Math.max(0, f.side - 12), marginRight: f.side, marginBottom: f.below + 4 })}
                   render={(s, framed) => (framed ? <PersonAvatar person={{ ...p, frame: "none" }} size={s} className="rounded-full" /> : <PersonAvatar person={p} size={s} className="rounded-full ring-4 ring-white" />)}
                 />
               </button>

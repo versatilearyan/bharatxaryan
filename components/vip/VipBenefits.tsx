@@ -33,16 +33,6 @@ export function VipBenefits() {
   const unlocked = VIP_TIERS.filter((t) => t.tier <= tier).flatMap((t) => t.perks);
   /** Coins still to spend for the next level. */
   const coinsToNext = vip.next === null ? 0 : (vip.next - vip.points) * COINS_PER_GROWTH;
-  const subscribed = () => {
-    const wasVip = vip.level > 0;
-    const to = buyVip();
-    toast(
-      wasVip
-        ? `VIP renewed for ${VIP_DAYS} more days. You're VIP ${to}.`
-        : `Welcome to VIP 1 for ${VIP_DAYS} days! Your badge, frame, chat bubble and entry are on. Spend coins to grow to VIP 2.`,
-      "gold",
-    );
-  };
   const until = vipUntil ? new Date(vipUntil).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
 
   return (
@@ -130,12 +120,10 @@ export function VipBenefits() {
                 art: <Crown className="h-11 w-11 text-gold" aria-hidden />,
                 inr: VIP_PRICE_INR,
                 tone: "gold",
-                successText: vip.level ? `Your VIP now runs ${VIP_DAYS} days longer.` : "You're VIP 1! Your badge, frame, chat bubble and entry are on.",
               }
             : null
         }
         onClose={() => setPaying(false)}
-        onPaid={subscribed}
       />
 
       {/* Perks */}

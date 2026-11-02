@@ -1,5 +1,6 @@
 "use client";
 
+import { PaymentReturn } from "@/components/market/PaymentReturn";
 import { AnimatePresence, motion } from "framer-motion";
 import { AppProvider, useApp, type Screen } from "@/lib/app/store";
 import { MarketProvider } from "@/lib/app/market-store";
@@ -85,6 +86,7 @@ function Frame() {
               <Stack />
               <ActiveRoomHost />
               <GlobalSheets />
+              <PaymentReturn />
               <GiftOverlay />
               <RedPacketBanner />
               <GiftBanner />

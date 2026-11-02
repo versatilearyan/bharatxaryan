@@ -11,9 +11,13 @@ import { SvgaAnim } from "./SvgaAnim";
  * (like the VIP 1 ribbon) so it doesn't cover the name.
  */
 export function frameFit(set: EffectSet, box: number, k = 1.45) {
+  const w = box * k;
   return {
     avatar: Math.round((box * k) / set.frameScale),
-    drop: Math.max(0, Math.round(box * k * (1 - set.frameY) - box / 2 - box * 0.12)),
+    drop: Math.max(0, Math.round(w * (1 - set.frameY) - box / 2 - box * 0.12)),
+    /** How far the frame's art reaches past the box: on each side, and below it. */
+    side: Math.max(0, Math.round((w - box) / 2)),
+    below: Math.max(0, Math.round(w * (1 - set.frameY) - box / 2)),
   };
 }
 
@@ -114,13 +118,13 @@ export function VipBadge({ set, size = 18, animated = false, level, className = 
  * file that can't be played falls back to the plain avatar. `framedStyle` gets
  * the space the frame's art needs below the box (see frameFit).
  */
-export function VipAvatar({ frame, size, render, className = "", framedStyle }: { frame?: EffectSet; size: number; render: (avatarSize: number, framed: boolean) => ReactNode; className?: string; framedStyle?: (drop: number) => CSSProperties }) {
+export function VipAvatar({ frame, size, render, className = "", framedStyle }: { frame?: EffectSet; size: number; render: (avatarSize: number, framed: boolean) => ReactNode; className?: string; framedStyle?: (drop: number, fit: ReturnType<typeof frameFit>) => CSSProperties }) {
   const [broken, setBroken] = useState("");
   const f = frame && frame.frame && frame.frame !== broken ? frame : undefined;
   if (!f) return <>{render(size, false)}</>;
   const fit = frameFit(f, size);
   return (
-    <span className={`relative grid shrink-0 place-items-center ${className}`} style={{ width: size, height: size, ...framedStyle?.(fit.drop) }}>
+    <span className={`relative grid shrink-0 place-items-center ${className}`} style={{ width: size, height: size, ...framedStyle?.(fit.drop, fit) }}>
       <VipFrame set={f} size={fit.avatar} onError={() => setBroken(f.frame)}>
         {render(fit.avatar, true)}
       </VipFrame>
