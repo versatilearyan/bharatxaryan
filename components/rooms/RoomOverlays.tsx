@@ -8,7 +8,7 @@ import { profileEffects } from "@/lib/app/vip-cosmetics";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronRight, Copy, Eye, Gift, Heart, Lock, LockOpen, MessageCircle, Mic, MicOff, Pencil, Shield, ShieldOff, User, UserMinus, UserPlus, UserX, X } from "lucide-react";
+import { Ban, Check, ChevronRight, Copy, Eye, Gift, Heart, Lock, LockOpen, MessageCircle, Mic, MicOff, Pencil, Shield, ShieldOff, User, UserMinus, UserPlus, UserX, X } from "lucide-react";
 import { SunsetScene } from "@/components/art/SunsetScene";
 import { GiftPanel } from "@/components/gifts/GiftPanel";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -233,6 +233,7 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
                     />
                   ) : null}
                   <Action icon={<UserX className="h-4.5 w-4.5" />} label="Kick out" danger onClick={() => s.kick(id)} />
+                  {s.room.server ? <Action icon={<Ban className="h-4.5 w-4.5" />} label="Ban" danger onClick={() => s.ban(id)} /> : null}
                 </div>
               </div>
             ) : null}

@@ -10,6 +10,8 @@ import { charmFromCoins, giftEarnings, voiceExpForMinute } from "@/lib/app/progr
 import { useServerRooms } from "@/lib/app/server-rooms";
 import { muteParticipant, roomErrorText } from "@/lib/api/voice-rooms";
 import { useRoomParticipants } from "./useRoomParticipants";
+import { useRoomState, type LiveRoomEvent } from "./useRoomState";
+import { roomStateApi } from "@/lib/api/room-state";
 import { useLiveVoice } from "./useLiveVoice";
 import { SERVER_CHAT_PREFIX, useServerRoomChat } from "./useRoomChat";
 import type { GiftId, Room, RoomMessage, RoomRole, RoomSettings } from "@/lib/app/types";
@@ -49,7 +51,7 @@ const modeFor = (room: Room): RoomMode => (room.type === "watch" ? "youtube" : r
  * Seat 0 is always the owner's seat and never moves.
  */
 export function useRoomSession(room: Room) {
-  const { profile, vip, spend, playGift, armCombo, clearCombo, toast, addRoomGift, addIntimacy, tagsOf, addCharm, trackReceived, addExp, roleIn, adminsOf, setRoomAdmin, updateMyRoom, membershipOf } = useApp();
+  const { profile, vip, spend, playGift, armCombo, clearCombo, toast, addRoomGift, addIntimacy, tagsOf, addCharm, trackReceived, addExp, roleIn, adminsOf, setRoomAdmin, updateMyRoom, membershipOf, leaveRoom } = useApp();
   const person = usePeople();
   /** Backend rooms have real voice over LiveKit, and no simulated crowd. */
   const live = Boolean(room.server);
@@ -75,18 +77,17 @@ export function useRoomSession(room: Room) {
     const length = Math.max(room.seats, others.length + 1);
     return Array.from({ length }, (_, i) => (i === 0 ? (ids.includes(room.hostId) ? room.hostId : null) : (others[i - 1] ?? null)));
   }, [participants, room.hostId, room.seats]);
-  const seats = liveSeats ?? localSeats;
   const [mode, setModeState] = useState<RoomMode>(() => modeFor(room));
-  const [closedSeats, setClosedSeats] = useState<number[]>([]);
+  const [localClosedSeats, setClosedSeats] = useState<number[]>([]);
   /** People an owner or admin muted. */
   const [forceMuted, setForceMuted] = useState<string[]>([]);
   /** Seats an owner or admin muted: whoever sits there can't talk. */
-  const [mutedSeats, setMutedSeats] = useState<number[]>([]);
+  const [localMutedSeats, setMutedSeats] = useState<number[]>([]);
   /** Mic order: when on, people ask the owner or an admin before taking a seat. */
   // Demo: about half the sample rooms other people own start with mic order on
-  const [micOrder, setMicOrderState] = useState(() => !room.server && room.hostId !== ME_ID && room.seated.length % 2 === 0);
+  const [localMicOrder, setMicOrderState] = useState(() => !room.server && room.hostId !== ME_ID && room.seated.length % 2 === 0);
   /** People waiting for the owner or an admin to let them on the mic, oldest first. */
-  const [micRequests, setMicRequests] = useState<{ id: string; seat: number }[]>([]);
+  const [localMicRequests, setMicRequests] = useState<{ id: string; seat: number }[]>([]);
   /** The "Waiting" (mic queue) sheet is open. */
   const [queueOpen, setQueueOpen] = useState(false);
   /** People removed from the room this session. */
@@ -107,7 +108,7 @@ export function useRoomSession(room: Room) {
     const list: RoomMessage[] = [
       { id: mid(), kind: "system", text: `Welcome to ${room.name}! Be kind, keep it respectful, and have fun.` },
       room.server
-        ? { id: mid(), kind: "system", text: "Voice and chat in this room are live. Gifts and seats are still only on your device." }
+        ? { id: mid(), kind: "system", text: "Voice, chat and seats in this room are live. Gifts are still only on your device." }
         : { id: mid(), kind: "system", text: "Web preview: voice, YouTube and chat here are local demos and aren't sent to anyone." },
     ];
     if (room.server) {
@@ -153,12 +154,107 @@ export function useRoomSession(room: Room) {
     if (roomChat.historyError) addSystem(roomChat.historyError);
   }, [roomChat.historyError, addSystem]);
 
-  const role: RoomRole = roleIn(room);
+  /*
+   * Backend rooms: seats, the mic queue, admins and the open/closed lock come
+   * from the server (useRoomState), which also enforces who may talk. Changes
+   * arrive as events and become system lines for everyone in the room.
+   */
+  const nameOf = useCallback((id?: string) => (!id ? "Someone" : id === ME_ID ? profile.name : person(id).name), [person, profile.name]);
+  const onRoomEvent = useCallback(
+    (e: LiveRoomEvent) => {
+      const a = nameOf(e.actorId);
+      const t = nameOf(e.targetId);
+      const seatNo = e.seat !== undefined ? e.seat + 1 : 0;
+      const toMe = e.targetId === ME_ID;
+      switch (e.type) {
+        case "JOINED":
+          if (!toMe && e.targetId) add({ id: mid(), kind: "join", authorId: e.targetId });
+          break;
+        case "MIC_APPROVED":
+          addSystem(`${a} approved ${t}'s mic request · seat No.${seatNo}`);
+          if (toMe) toast(`Approved! You're on seat ${seatNo}. Tap the mic to unmute.`, "gold");
+          break;
+        case "MIC_DECLINED":
+          if (toMe) toast("Your mic request was declined");
+          break;
+        case "MIC_ORDER":
+          addSystem(e.on ? `${a} turned on mic order: ask the owner or an admin to take a seat` : `${a} turned off mic order: anyone can take an empty seat`);
+          break;
+        case "SEAT_CLOSED":
+        case "SEAT_OPENED":
+          addSystem(`${a} ${e.type === "SEAT_CLOSED" ? "closed" : "opened"} seat No.${seatNo}`);
+          break;
+        case "SEAT_MUTED":
+        case "SEAT_UNMUTED":
+          addSystem(`${a} ${e.type === "SEAT_MUTED" ? "muted" : "unmuted"} seat No.${seatNo}${e.targetId ? ` (${t})` : ""}`);
+          if (toMe && e.type === "SEAT_MUTED") toast("The owner or an admin muted your seat", "error");
+          break;
+        case "SEAT_INVITED":
+          addSystem(`${a} invited ${t} to seat No.${seatNo}`);
+          if (toMe) toast(`You're on seat ${seatNo}. Tap the mic to unmute.`, "gold");
+          break;
+        case "REMOVED_FROM_MIC":
+          addSystem(`${a} removed ${t} from the mic`);
+          if (toMe) toast("You were taken off the mic. You're still in the room, listening.", "error");
+          break;
+        case "ADMIN_ADDED":
+        case "ADMIN_REMOVED":
+          addSystem(e.type === "ADMIN_ADDED" ? `Owner made ${t} an admin` : `Owner removed ${t} as admin`);
+          if (toMe) toast(e.type === "ADMIN_ADDED" ? "You're now an admin of this room" : "You're no longer an admin of this room");
+          break;
+        case "KICKED":
+        case "BANNED":
+          addSystem(`${a} removed ${t} from the room`);
+          if (toMe && !removedRef.current) {
+            removedRef.current = true;
+            toast(e.type === "BANNED" ? "You were banned from this room" : "You were removed from this room. You can come back in 10 minutes.", "error");
+            leaveRoom();
+          }
+          break;
+        default:
+          break;
+      }
+    },
+    [nameOf, add, addSystem, toast, leaveRoom],
+  );
+  // Kicked or banned, seen by the voice call (removed from it, or joining again refused): leave the room screen
+  const removedRef = useRef(false);
+  useEffect(() => {
+    if (!voice?.removed || removedRef.current) return;
+    removedRef.current = true;
+    toast("You were removed from this room", "error");
+    leaveRoom();
+  }, [voice?.removed, toast, leaveRoom]);
+  const onRoomClosed = useCallback(() => {
+    toast("The owner closed this room");
+    leaveRoom();
+  }, [toast, leaveRoom]);
+  const onRoomError = useCallback((m: string) => toast(m, "error"), [toast]);
+  const rs = useRoomState(room.server?.id ?? null, inRoom, myServerId, onRoomEvent, onRoomError, onRoomClosed);
+  /** The server's state, once loaded (backend rooms only). */
+  const srv = live ? rs.state : null;
+
+  const seats = srv?.seats ?? liveSeats ?? localSeats;
+  const closedSeats = srv?.closedSeats ?? localClosedSeats;
+  const mutedSeats = srv?.mutedSeats ?? localMutedSeats;
+  const micOrder = srv?.micOrder ?? localMicOrder;
+  const micRequests = srv?.queue ?? localMicRequests;
+
+  const baseRole = roleIn(room);
+  const role: RoomRole = srv
+    ? srv.ownerId === ME_ID || room.hostId === ME_ID
+      ? "owner"
+      : srv.admins.includes(ME_ID)
+        ? "admin"
+        : baseRole === "guest"
+          ? "guest"
+          : "member"
+    : baseRole;
   const isOwner = role === "owner";
   const canModerate = role === "owner" || role === "admin";
   /** "Owner" or "Admin", for system messages about your actions. */
   const actor = isOwner ? "Owner" : "Admin";
-  const admins = adminsOf(room);
+  const admins = srv ? srv.admins : adminsOf(room);
 
   const seatedIds = useMemo(() => seats.filter((s): s is string => Boolean(s)), [seats]);
   const mySeat = seats.indexOf(ME_ID);
@@ -166,9 +262,9 @@ export function useRoomSession(room: Room) {
   const listenerIds = useMemo(
     () =>
       live
-        ? []
+        ? (participants?.members ?? []).map((m) => m.personId).filter((id) => id !== ME_ID && !seatedIds.includes(id))
         : PEOPLE.filter((p) => p.online && !seatedIds.includes(p.id) && !kicked.includes(p.id) && p.id !== room.hostId).slice(0, 5).map((p) => p.id),
-    [live, seatedIds, kicked, room.hostId],
+    [live, seatedIds, kicked, room.hostId, participants],
   );
   const listenersRef = useRef<string[]>([]);
   listenersRef.current = listenerIds;
@@ -181,8 +277,8 @@ export function useRoomSession(room: Room) {
    */
   const ownerHere = isOwner || onlineIds.includes(room.hostId);
   const adminHere = role === "admin" || onlineIds.some((id) => admins.includes(id));
-  const roomOpen = ownerHere || adminHere;
-  const openedByAdmin = !ownerHere && adminHere;
+  const roomOpen = srv ? srv.open : ownerHere || adminHere;
+  const openedByAdmin = srv ? srv.open && !srv.seats[0] : !ownerHere && adminHere;
   const CLOSED_TEXT = "The room is closed until the owner or an admin joins";
 
   /** Can you moderate this person? The owner can act on anyone; admins only on members and guests. */
@@ -252,7 +348,18 @@ export function useRoomSession(room: Room) {
         return;
       }
       if (live) {
-        toast("In a live room everyone has a seat. Tap the mic to talk.");
+        if (!srv) {
+          toast("The room is still loading. Try again in a moment.");
+          return;
+        }
+        if (srv.seats[index]) return;
+        const wasSeated = srv.seats.includes(ME_ID);
+        const asks = micOrder && !canModerate && !wasSeated;
+        void rs.run((id) => roomStateApi.takeSeat(id, index)).then((ok) => {
+          if (!ok) return;
+          if (asks) toast("Mic order is on. Your request went to the owner and admins.");
+          else toast(wasSeated ? `You moved to seat ${index + 1}` : `You took seat ${index + 1}. Tap the mic to unmute.`);
+        });
         return;
       }
       if (isOwner) {
@@ -290,7 +397,7 @@ export function useRoomSession(room: Room) {
       toast(`You took seat ${index + 1}. Tap the mic to unmute.`);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [seats, toast, isOwner, closedSeats, room, vip.level, live, micOrder, canModerate, roomOpen],
+    [seats, toast, isOwner, closedSeats, room, vip.level, live, micOrder, canModerate, roomOpen, srv, rs],
   );
 
   /* ---- Mic order: ask before taking a seat ---- */
@@ -308,6 +415,10 @@ export function useRoomSession(room: Room) {
   );
   const requestSeat = useCallback(
     (index: number) => {
+      if (live) {
+        void rs.run((id) => roomStateApi.takeSeat(id, index)).then((ok) => ok && toast("Mic order is on. Your request went to the owner and admins."));
+        return;
+      }
       if (requestsRef.current.some((r) => r.id === ME_ID)) {
         toast("Your mic request is waiting for the owner or an admin");
         return;
@@ -331,15 +442,24 @@ export function useRoomSession(room: Room) {
         toast(`Approved! You're on seat ${at + 1}. Tap the mic to unmute.`, "gold");
       }, 3500);
     },
-    [toast, freeSeat, addSystem, person, room.hostId, profile.name],
+    [toast, freeSeat, addSystem, person, room.hostId, profile.name, live, rs],
   );
   const cancelMicRequest = useCallback(() => {
+    if (live) {
+      void rs.run((id) => roomStateApi.cancelMicRequest(id)).then((ok) => ok && toast("Mic request cancelled"));
+      return;
+    }
     setMicRequests((q) => q.filter((r) => r.id !== ME_ID));
     toast("Mic request cancelled");
-  }, [toast]);
+  }, [toast, live, rs]);
   const approveMicRequest = useCallback(
     (id: string) => {
       if (!canModerate) return;
+      if (live) {
+        const uid = rs.userIdOf(id);
+        if (uid) void rs.run((rid) => roomStateApi.approveMicRequest(rid, uid));
+        return;
+      }
       const req = requestsRef.current.find((r) => r.id === id);
       if (!req) return;
       const at = freeSeat(req.seat);
@@ -351,15 +471,20 @@ export function useRoomSession(room: Room) {
       setSeats((s) => s.map((x, i) => (x === id ? null : i === at ? id : x)));
       addSystem(`${actor} approved ${person(id).name}'s mic request · seat No.${at + 1}`);
     },
-    [canModerate, freeSeat, toast, addSystem, actor, person],
+    [canModerate, freeSeat, toast, addSystem, actor, person, live, rs],
   );
   const declineMicRequest = useCallback(
     (id: string) => {
       if (!canModerate) return;
+      if (live) {
+        const uid = rs.userIdOf(id);
+        if (uid) void rs.run((rid) => roomStateApi.declineMicRequest(rid, uid)).then((ok) => ok && toast(`Declined ${person(id).name}'s mic request`));
+        return;
+      }
       setMicRequests((q) => q.filter((r) => r.id !== id));
       toast(`Declined ${person(id).name}'s mic request`);
     },
-    [canModerate, toast, person],
+    [canModerate, toast, person, live, rs],
   );
   const setMicOrder = useCallback(
     (on: boolean) => {
@@ -367,11 +492,15 @@ export function useRoomSession(room: Room) {
         toast("Only the owner or an admin can change the mic order");
         return;
       }
+      if (live) {
+        void rs.run((id) => roomStateApi.setMicOrder(id, on));
+        return;
+      }
       setMicOrderState(on);
       if (!on) setMicRequests([]);
       addSystem(on ? `${actor} turned on mic order: ask the owner or an admin to take a seat` : `${actor} turned off mic order: anyone can take an empty seat`);
     },
-    [canModerate, toast, addSystem, actor],
+    [canModerate, toast, addSystem, actor, live, rs],
   );
   // Demo: with mic order on in your room, listeners ask to come on the mic now and then
   useEffect(() => {
@@ -392,13 +521,13 @@ export function useRoomSession(room: Room) {
   }, [micOrder, canModerate, live]);
 
   const leaveSeat = useCallback(() => {
-    if (live) {
-      if (voice?.micOn) void voice.setMic(false);
-      toast("Your mic is off. Leave the room to leave the call.");
-      return;
-    }
     if (isOwner) {
       toast("The owner's seat is fixed. Mute your mic instead.");
+      return;
+    }
+    if (live) {
+      if (voice?.micOn) void voice.setMic(false);
+      void rs.run((id) => roomStateApi.leaveSeat(id)).then((ok) => ok && toast("You left the mic. You're still in the room, listening."));
       return;
     }
     setSeats((s) => s.map((x) => (x === ME_ID ? null : x)));
@@ -406,7 +535,7 @@ export function useRoomSession(room: Room) {
     // Live rooms: stop sending your voice too
     if (voice?.micOn) void voice.setMic(false);
     toast("You left the mic. You're still in the room, listening.");
-  }, [toast, isOwner, voice, live]);
+  }, [toast, isOwner, voice, live, rs]);
 
   /** Muted by the owner or an admin: you, or the seat you're on. */
   const adminMutedMe = forceMuted.includes(ME_ID) || (mySeat >= 0 && mutedSeats.includes(mySeat));
@@ -417,7 +546,7 @@ export function useRoomSession(room: Room) {
       toast(CLOSED_TEXT, "error");
       return;
     }
-    if (!seated && !live) {
+    if (!seated) {
       toast("Take an empty seat to use the mic");
       return;
     }
@@ -428,13 +557,18 @@ export function useRoomSession(room: Room) {
     if (voice) {
       // The real microphone: asks for permission the first time
       if (voice.micBusy) return;
-      void voice.setMic(!voice.micOn).then((ok) => {
-        if (!ok) toast("Couldn't change your microphone. See the voice bar for details.", "error");
-      });
+      const want = !voice.micOn;
+      void voice
+        .setMic(want)
+        // Just took a seat: the server's permission to talk may land a moment after your tap, so try once more
+        .then((ok) => (ok || !want || !srv ? ok : new Promise<void>((r) => window.setTimeout(r, 900)).then(() => voice.setMic(true))))
+        .then((ok) => {
+          if (!ok) toast("Couldn't change your microphone. See the voice bar for details.", "error");
+        });
       return;
     }
     setMuted((m) => !m);
-  }, [seated, toast, voice, live, adminMutedMe, muted, roomOpen]);
+  }, [seated, toast, voice, live, adminMutedMe, muted, roomOpen, srv]);
   // The room closing (owner and admins all gone) turns your mic off
   useEffect(() => {
     if (roomOpen) return;
@@ -446,6 +580,11 @@ export function useRoomSession(room: Room) {
   useEffect(() => {
     if (adminMutedMe) setMuted(true);
   }, [adminMutedMe]);
+  // Live rooms: no seat, a muted seat or a closed room turns your real mic off (the server has also taken away permission to talk)
+  useEffect(() => {
+    if (!srv || !voice?.micOn) return;
+    if (!seated || adminMutedMe || !roomOpen) void voice.setMic(false);
+  }, [srv, voice, seated, adminMutedMe, roomOpen]);
 
   /*
    * Music in the room goes out through the mic of whoever started it. If the
@@ -477,10 +616,14 @@ export function useRoomSession(room: Room) {
   const setSeatClosed = useCallback(
     (index: number, closed: boolean) => {
       if (!canModerate || index === 0) return;
+      if (live) {
+        void rs.run((id) => roomStateApi.setSeatClosed(id, index, closed));
+        return;
+      }
       setClosedSeats((c) => (closed ? [...new Set([...c, index])] : c.filter((x) => x !== index)));
       addSystem(`${actor} ${closed ? "closed" : "opened"} seat No.${index + 1}`);
     },
-    [canModerate, actor, addSystem],
+    [canModerate, actor, addSystem, live, rs],
   );
 
   const setSeatMuted = useCallback(
@@ -491,19 +634,28 @@ export function useRoomSession(room: Room) {
         toast("Admins can't mute the owner or another admin");
         return;
       }
+      if (live) {
+        void rs.run((rid) => roomStateApi.setSeatMuted(rid, index, on));
+        return;
+      }
       setMutedSeats((m) => (on ? [...new Set([...m, index])] : m.filter((x) => x !== index)));
       addSystem(`${actor} ${on ? "muted" : "unmuted"} seat No.${index + 1}${id ? ` (${person(id).name})` : ""}`);
     },
-    [canModerate, seats, canManage, toast, addSystem, actor, person],
+    [canModerate, seats, canManage, toast, addSystem, actor, person, live, rs],
   );
 
   const removeFromMic = useCallback(
     (id: string) => {
       if (!canManage(id) || id === room.hostId) return;
+      if (live) {
+        const uid = rs.userIdOf(id);
+        if (uid) void rs.run((rid) => roomStateApi.removeFromMic(rid, uid));
+        return;
+      }
       setSeats((s) => s.map((x) => (x === id ? null : x)));
       addSystem(`${actor} removed ${person(id).name} from the mic`);
     },
-    [canManage, room.hostId, actor, addSystem, person],
+    [canManage, room.hostId, actor, addSystem, person, live, rs],
   );
 
   const toggleForceMute = useCallback(
@@ -535,6 +687,11 @@ export function useRoomSession(room: Room) {
   const inviteToSeat = useCallback(
     (id: string, index?: number) => {
       if (!canModerate) return;
+      if (live) {
+        const uid = rs.userIdOf(id);
+        if (uid) void rs.run((rid) => roomStateApi.inviteToSeat(rid, uid, index));
+        return;
+      }
       const target = index ?? seats.findIndex((x, i) => i > 0 && x === null && !closedSeats.includes(i));
       if (target <= 0 || seats[target]) {
         toast("No open seat. Open or free a seat first.");
@@ -549,12 +706,18 @@ export function useRoomSession(room: Room) {
       setSeats((s) => s.map((x, i) => (x === id ? null : i === target ? id : x)));
       addSystem(`${actor} invited ${person(id).name} to seat No.${target + 1}`);
     },
-    [canModerate, seats, closedSeats, toast, actor, addSystem, person, room],
+    [canModerate, seats, closedSeats, toast, actor, addSystem, person, room, live, rs],
   );
 
   const kick = useCallback(
     (id: string) => {
       if (!canManage(id)) return;
+      if (live) {
+        const uid = rs.userIdOf(id);
+        if (uid) void rs.run((rid) => roomStateApi.kick(rid, uid)).then((ok) => ok && toast(`${person(id).name} was removed from the room for 10 minutes`));
+        setCardId(null);
+        return;
+      }
       setSeats((s) => s.map((x) => (x === id ? null : x)));
       setKicked((k) => [...k, id]);
       if (admins.includes(id)) setRoomAdmin(room, id, false);
@@ -562,12 +725,28 @@ export function useRoomSession(room: Room) {
       toast(`${person(id).name} was removed from the room`);
       setCardId(null);
     },
-    [canManage, admins, setRoomAdmin, room, actor, addSystem, person, toast],
+    [canManage, admins, setRoomAdmin, room, actor, addSystem, person, toast, live, rs],
+  );
+
+  /** Live rooms: remove someone and keep them out until unbanned. */
+  const ban = useCallback(
+    (id: string) => {
+      if (!canManage(id) || !live) return;
+      const uid = rs.userIdOf(id);
+      if (uid) void rs.run((rid) => roomStateApi.ban(rid, uid)).then((ok) => ok && toast(`${person(id).name} was banned from the room`));
+      setCardId(null);
+    },
+    [canManage, live, rs, person, toast],
   );
 
   const setAdmin = useCallback(
     (id: string, on: boolean) => {
       if (!isOwner || id === ME_ID) return;
+      if (live) {
+        const uid = rs.userIdOf(id);
+        if (uid) void rs.run((rid) => roomStateApi.setAdmin(rid, uid, on));
+        return;
+      }
       if (on) {
         const m = membershipOf(room, id);
         if (!m.joined || !m.followed) {
@@ -578,7 +757,7 @@ export function useRoomSession(room: Room) {
       setRoomAdmin(room, id, on);
       addSystem(on ? `Owner made ${person(id).name} an admin` : `Owner removed ${person(id).name} as admin`);
     },
-    [isOwner, setRoomAdmin, room, addSystem, person, membershipOf, toast],
+    [isOwner, setRoomAdmin, room, addSystem, person, membershipOf, toast, live, rs],
   );
 
   const setMode = useCallback(
@@ -791,6 +970,7 @@ export function useRoomSession(room: Room) {
     removeFromMic,
     inviteToSeat,
     kick,
+    ban,
     kicked,
     setAdmin,
     listenerIds,

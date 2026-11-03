@@ -33,6 +33,8 @@ export type VoicePerson = {
 export type LiveVoice = {
   status: VoiceStatus;
   error: string;
+  /** The server took you out of this room (kick or ban): the call ended and joining again is refused. */
+  removed: boolean;
   people: VoicePerson[];
   /** Your microphone is publishing and not muted (from the SDK). */
   micOn: boolean;
@@ -91,6 +93,7 @@ function snapshot(room: Room): VoicePerson[] {
 export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [error, setError] = useState("");
+  const [removed, setRemoved] = useState(false);
   const [people, setPeople] = useState<VoicePerson[]>([]);
   const [micOn, setMicOn] = useState(false);
   const [micBusy, setMicBusy] = useState(false);
@@ -150,6 +153,7 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       })
       .on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
         if (cancelled) return;
+        if (reason === DisconnectReason.PARTICIPANT_REMOVED) setRemoved(true);
         setStatus("disconnected");
         setMicOn(false);
         setError(disconnectText(reason));
@@ -158,6 +162,7 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
 
     (async () => {
       setStatus("joining");
+      setRemoved(false);
       setError("");
       setPeople([]);
       setMicOn(false);
@@ -179,6 +184,8 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
         sync();
       } catch (e) {
         if (cancelled) return;
+        // 403 on join: kicked or banned from this room
+        if (e instanceof Error && e.name === "ApiError" && (e as Error & { status?: number }).status === 403) setRemoved(true);
         setStatus("error");
         setError(
           e instanceof Error && e.name === "ApiError"
@@ -240,5 +247,5 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   if (!serverRoomId) return null;
-  return { status, error, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry };
+  return { status, error, removed, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry };
 }
