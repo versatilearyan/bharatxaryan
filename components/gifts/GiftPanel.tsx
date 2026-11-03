@@ -8,7 +8,8 @@ import { preloadSvga } from "@/components/effects/SvgaAnim";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, formatCoins } from "@/components/ui/kit";
-import { GIFTS, GIFTS_LIVE, GIFTS_SOON_TEXT, GIFT_CATEGORIES, giftById } from "@/lib/app/data";
+import { GIFTS_LIVE, GIFTS_SOON_TEXT, giftById, giftCategories, giftsOnSale } from "@/lib/app/data";
+import { bagGiftCounts, useGiftsVersion, useRewards } from "@/lib/app/rewards-store";
 import { ComingSoonBadge, SoonTag } from "@/components/ui/ComingSoonBadge";
 import { GIFT_MESSAGE_MAX, useGiftNews } from "@/lib/app/gift-news-store";
 import { useMarket } from "@/lib/app/market-store";
@@ -22,7 +23,18 @@ const QTY = [1, 5, 10, 99];
 /** Gift store bottom sheet. All coins and costs are demo values. While GIFTS_LIVE is off, gifts can be browsed but not sent. */
 export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onClose: () => void; s: RoomSession; initialTo?: string }) {
   const { coins, setSheet, toast } = useApp();
-  const { pkg, takePackage } = useMarket();
+  const { pkg: localPkg, takePackage } = useMarket();
+  // Backend rooms: the server's gifts (admin panel) and the gifts in your server Bag (won as rewards)
+  const backend = Boolean(s.room.server);
+  const giftsV = useGiftsVersion();
+  const GIFTS = useMemo(() => giftsOnSale(), [giftsV]); // eslint-disable-line react-hooks/exhaustive-deps
+  const GIFT_CATEGORIES = useMemo(() => giftCategories(), [giftsV]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { rewards, refresh: refreshBag } = useRewards();
+  const serverPkg = useMemo(() => bagGiftCounts(rewards), [rewards]);
+  const pkg: Partial<Record<string, number>> = backend ? serverPkg : localPkg;
+  useEffect(() => {
+    if (open && backend) void refreshBag();
+  }, [open, backend, refreshBag]);
   const person = usePeople();
   const recipients = useMemo(() => {
     const seated = s.seatedIds.filter((id) => id !== ME_ID);
@@ -34,7 +46,7 @@ export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onCl
     if (open && initialTo) setTo(initialTo);
   }, [open, initialTo]);
   const [cat, setCat] = useState<GiftCategory | "Package">(GIFT_CATEGORIES[0] ?? "Package");
-  const [gift, setGift] = useState<GiftId>(GIFTS[0].id);
+  const [gift, setGift] = useState<GiftId>(() => giftsOnSale()[0]?.id ?? ("city-fireworks" as GiftId));
   const [qty, setQty] = useState(1);
   /** Big animated gifts are announced to all of Panchayat with this message. */
   const [message, setMessage] = useState("");
@@ -67,8 +79,9 @@ export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onCl
   const send = () => {
     if (!GIFTS_LIVE) return toast(GIFTS_SOON_TEXT);
     if (isPkg) {
-      // Package gifts are free: they come out of your Bag
-      if (!takePackage(gift, qty)) return toast(`You only have ${have} ${selected.name} in your package`, "error");
+      // Package gifts are free: they come out of your Bag (the server's Bag in backend rooms)
+      if (have < qty) return toast(`You only have ${have} ${selected.name} in your package`, "error");
+      if (!backend && !takePackage(gift, qty)) return toast(`You only have ${have} ${selected.name} in your package`, "error");
       s.sendGift(gift, to, qty, true);
       return sent();
     }

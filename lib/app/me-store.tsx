@@ -62,7 +62,7 @@ function toLocal(r: UserProfileResponse, current: Profile): Partial<Profile> {
   return patch;
 }
 
-const vipOf = (p: UserProfileResponse) => ({ vipActive: p.vipActive, vipLevel: p.vipLevel, vipExpiresAt: p.vipExpiresAt, badgeUrl: p.badgeUrl, frameUrl: p.frameUrl, bubbleUrl: p.bubbleUrl, entryAnimationUrl: p.entryAnimationUrl });
+const vipOf = (p: UserProfileResponse) => ({ vipActive: p.vipActive, vipLevel: p.vipLevel, vipExpiresAt: p.vipExpiresAt, badgeUrl: p.badgeUrl, frameUrl: p.frameUrl, bubbleUrl: p.bubbleUrl, entryAnimationUrl: p.entryAnimationUrl, rewardEffects: p.rewardEffects });
 
 const message = (e: unknown, fallback: string) => (e instanceof ApiError || e instanceof Error ? e.message || fallback : fallback);
 

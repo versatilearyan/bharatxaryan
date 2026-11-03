@@ -13,6 +13,7 @@
  * The backend uploads to Cloudinary and returns the URL; the browser never
  * talks to Cloudinary.
  */
+import { readRewardEffects, type RewardEffects } from "./rewards";
 import { api } from "./client";
 import type { GameId } from "@/lib/app/types";
 
@@ -53,6 +54,8 @@ export type VipProfileFields = {
   frameUrl: string | null;
   bubbleUrl: string | null;
   entryAnimationUrl: string | null;
+  /** Spend rewards this person wears (frame, bubble, entry, profile). Shown whether or not they're VIP. */
+  rewardEffects?: RewardEffects;
 };
 
 /** GET /users/me and the answer to PATCH /users/me. */
@@ -178,6 +181,7 @@ export function readVip(d: Record<string, unknown>): VipProfileFields {
     frameUrl: link(d.frameUrl),
     bubbleUrl: link(d.bubbleUrl),
     entryAnimationUrl: link(d.entryAnimationUrl),
+    rewardEffects: readRewardEffects(d.rewardEffects),
   };
 }
 

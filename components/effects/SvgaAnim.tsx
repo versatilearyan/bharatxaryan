@@ -13,6 +13,9 @@ let queue: Promise<unknown> = Promise.resolve();
 
 /** Download and parse a file ahead of time, so it can play the moment it's shown. */
 export function preloadSvga(src: string) {
+  // Videos and pictures are fetched by the browser itself; only SVGA needs parsing ahead
+  const path = src.split(/[?#]/)[0].toLowerCase();
+  if (path.endsWith(".mp4") || /\.(png|jpe?g|webp|gif|avif)$/.test(path)) return Promise.resolve(undefined);
   return load(src);
 }
 
@@ -98,7 +101,76 @@ function sharpen(player: import("svga").Player, canvas: HTMLCanvasElement, size:
  * fires once the first frame is playing, onError when the file can't be
  * downloaded or parsed.
  */
-export function SvgaAnim({ src, loop = 0, className = "", style, onEnd, onReady, onError, observe = true }: { src: string; loop?: number; className?: string; style?: CSSProperties; onEnd?: () => void; onReady?: () => void; onError?: () => void; observe?: boolean }) {
+/** What kind of file a link is, from its extension (admin uploads can be SVGA, MP4 or a picture). */
+export function mediaKind(src: string): "svga" | "mp4" | "image" {
+  const path = src.split(/[?#]/)[0].toLowerCase();
+  if (path.endsWith(".mp4")) return "mp4";
+  if (/\.(png|jpe?g|webp|gif|avif)$/.test(path)) return "image";
+  return "svga";
+}
+
+export function SvgaAnim(props: { src: string; loop?: number; className?: string; style?: CSSProperties; onEnd?: () => void; onReady?: () => void; onError?: () => void; observe?: boolean }) {
+  const kind = mediaKind(props.src);
+  if (kind === "mp4") return <Mp4Anim {...props} />;
+  if (kind === "image") return <ImageAnim {...props} />;
+  return <SvgaCanvas {...props} />;
+}
+
+/** An MP4 effect: muted (sound plays separately), inline, looping when `loop` is 0. */
+function Mp4Anim({ src, loop = 0, className = "", style, onEnd, onReady, onError }: { src: string; loop?: number; className?: string; style?: CSSProperties; onEnd?: () => void; onReady?: () => void; onError?: () => void }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return null;
+  return (
+    <video
+      src={src}
+      className={`object-contain ${className}`}
+      style={style}
+      autoPlay
+      muted
+      playsInline
+      loop={loop === 0}
+      preload="auto"
+      aria-hidden
+      onPlaying={onReady}
+      onEnded={onEnd}
+      onError={() => {
+        warnSvga(src, new Error("the video couldn't be played"));
+        setFailed(true);
+        onError?.();
+      }}
+    />
+  );
+}
+
+/** A still picture effect. A one-shot (`loop` > 0) ends after a short show. */
+function ImageAnim({ src, loop = 0, className = "", style, onEnd, onReady, onError }: { src: string; loop?: number; className?: string; style?: CSSProperties; onEnd?: () => void; onReady?: () => void; onError?: () => void }) {
+  const [failed, setFailed] = useState(false);
+  const endRef = useRef(onEnd);
+  endRef.current = onEnd;
+  useEffect(() => {
+    if (loop === 0) return;
+    const t = window.setTimeout(() => endRef.current?.(), 3000);
+    return () => window.clearTimeout(t);
+  }, [src, loop]);
+  if (failed) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      className={`object-contain ${className}`}
+      style={style}
+      aria-hidden
+      onLoad={onReady}
+      onError={() => {
+        setFailed(true);
+        onError?.();
+      }}
+    />
+  );
+}
+
+function SvgaCanvas({ src, loop = 0, className = "", style, onEnd, onReady, onError, observe = true }: { src: string; loop?: number; className?: string; style?: CSSProperties; onEnd?: () => void; onReady?: () => void; onError?: () => void; observe?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [failed, setFailed] = useState(false);
   const endRef = useRef(onEnd);

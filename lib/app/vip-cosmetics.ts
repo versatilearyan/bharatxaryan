@@ -9,11 +9,13 @@
  * use the VIP 7 ones). Only the links come from the server; nothing is invented.
  */
 import type { VipProfileFields } from "@/lib/api/users";
-import { VIP_SETS, type EffectSet, type VipSet } from "./effects";
+import type { RewardEffects } from "@/lib/api/rewards";
+import { VIP_SETS, type EffectSet, type GiftSet, type VipSet } from "./effects";
+import type { GiftId, GiftSetId } from "./types";
 import type { Effects } from "./market-store";
 
 /** The cosmetic links and level, as both profile and participant responses send them. */
-export type ServerVip = Pick<VipProfileFields, "vipLevel" | "badgeUrl" | "frameUrl" | "bubbleUrl" | "entryAnimationUrl">;
+export type ServerVip = Pick<VipProfileFields, "vipLevel" | "badgeUrl" | "frameUrl" | "bubbleUrl" | "entryAnimationUrl" | "rewardEffects">;
 
 
 /**
@@ -48,6 +50,7 @@ export function serverEffects(v: ServerVip): Effects {
   if (bubble) fx.bubble = as({ bubble });
   const entry = svga(v.entryAnimationUrl);
   if (entry) fx.entry = as({ entry });
+  Object.assign(fx, rewardFx(v.rewardEffects));
   if (v.badgeUrl) {
     // An SVGA badge plays; a picture badge shows as an <img>. `level` is the person's real VIP level (0 when the server sent none), for the label.
     const level = v.vipLevel ?? 0;
@@ -64,9 +67,39 @@ export function serverEffects(v: ServerVip): Effects {
  */
 export function profileEffects(v: Partial<VipProfileFields> | null | undefined): Effects | undefined {
   if (!v || typeof v.vipActive !== "boolean") return undefined;
-  if (!v.vipActive) return {};
-  return serverEffects({ vipLevel: v.vipLevel ?? null, badgeUrl: v.badgeUrl ?? null, frameUrl: v.frameUrl ?? null, bubbleUrl: v.bubbleUrl ?? null, entryAnimationUrl: v.entryAnimationUrl ?? null });
+  // Not VIP: no VIP cosmetics, but rewards they won and wear still show
+  if (!v.vipActive) return rewardFx(v.rewardEffects);
+  return serverEffects({ vipLevel: v.vipLevel ?? null, badgeUrl: v.badgeUrl ?? null, frameUrl: v.frameUrl ?? null, bubbleUrl: v.bubbleUrl ?? null, entryAnimationUrl: v.entryAnimationUrl ?? null, rewardEffects: v.rewardEffects });
 }
 
 /** The VIP level to style a name with, or undefined when not VIP. undefined `vipActive`: not known. */
 export const activeVipLevel = (v: Partial<VipProfileFields> | null | undefined) => (v?.vipActive ? (v.vipLevel ?? undefined) : undefined);
+
+/**
+ * Spend rewards someone wears, as Effects. They replace the VIP piece in the
+ * same place (a worn reward frame shows instead of the VIP frame). Admin files
+ * have no measured layout, so they use the VIP 1 fit; SvgaAnim plays SVGA, MP4
+ * and pictures alike.
+ */
+export function rewardFx(r: RewardEffects | undefined): Effects {
+  const fx: Effects = {};
+  if (!r) return fx;
+  const base = layoutFor(1);
+  const as = (patch: Partial<EffectSet>): EffectSet => ({ ...base, frame: "", bubble: "", entry: "", ...patch });
+  if (r.FRAME) fx.frame = as({ frame: r.FRAME.url });
+  if (r.BUBBLE) fx.bubble = as({ bubble: r.BUBBLE.url });
+  if (r.ENTRY) fx.entry = as({ entry: r.ENTRY.url });
+  if (r.PROFILE) {
+    const page: GiftSet = {
+      ...as({}),
+      id: "storm-guardian" as GiftSetId,
+      name: r.PROFILE.name ?? "Profile effect",
+      giftId: "storm-guardian" as GiftId,
+      page: r.PROFILE.url,
+      // A phone-shaped effect, like the bundled one
+      pageRatio: "1080 / 2340",
+    };
+    fx.page = page;
+  }
+  return fx;
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import { refreshRewards } from "@/lib/app/rewards-store";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PEOPLE, ROOM_CHATTER, giftById, GIFTS_LIVE, GIFTS_SOON_TEXT } from "@/lib/app/data";
 import { ME_ID, settingsOf, useApp } from "@/lib/app/store";
@@ -1082,22 +1083,26 @@ export function useRoomSession(room: Room) {
         return false;
       }
       const gift = giftById(giftId);
-      // Backend rooms: the server charges the real price and tells everyone (Bag gifts stay on this device for now)
-      if (room.server && !free) {
+      // Backend rooms: the server charges the real price (or takes it from your server Bag) and tells everyone
+      if (room.server) {
         const serverId = room.server.id;
         const uid = rs.userIdOf(toId);
         if (!uid || toId === ME_ID) {
           toast(toId === ME_ID ? "You can't send a gift to yourself" : "You can only send gifts to people in this room");
           return false;
         }
-        if (coins < gift.cost * count) {
+        if (!free && coins < gift.cost * count) {
           toast("Not enough coins. Tap your coin balance to recharge.", "error");
           clearCombo();
           return false;
         }
-        sendRoomGift(serverId, giftId, uid, count)
+        sendRoomGift(serverId, giftId, uid, count, free)
           .then((ev) => {
             showServerGift(ev, combo);
+            if (free) {
+              void refreshRewards();
+              return;
+            }
             void refreshCoins();
             armCombo({ giftId, n: combo, send: () => sendGiftRef.current(giftId, toId, count, false, combo + 1) });
           })

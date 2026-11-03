@@ -46,7 +46,7 @@ export type RoomMember = {
   modMuted?: boolean;
   joinedAt?: string;
   /** This person's own VIP level and cosmetics from their participants record (absent until it loads). */
-  vip?: Pick<VoiceRoomParticipant, "vipLevel" | "badgeUrl" | "frameUrl" | "bubbleUrl" | "entryAnimationUrl">;
+  vip?: Pick<VoiceRoomParticipant, "vipLevel" | "badgeUrl" | "frameUrl" | "bubbleUrl" | "entryAnimationUrl" | "rewardEffects">;
 };
 
 export type RoomParticipants = {
@@ -165,7 +165,7 @@ export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoic
         speaking: false,
         modMuted: r.muted,
         joinedAt: r.joinedAt,
-        vip: { vipLevel: r.vipLevel, badgeUrl: r.badgeUrl, frameUrl: r.frameUrl, bubbleUrl: r.bubbleUrl, entryAnimationUrl: r.entryAnimationUrl },
+        vip: { vipLevel: r.vipLevel, badgeUrl: r.badgeUrl, frameUrl: r.frameUrl, bubbleUrl: r.bubbleUrl, entryAnimationUrl: r.entryAnimationUrl, rewardEffects: r.rewardEffects },
       });
     }
     for (const p of voice?.people ?? []) {

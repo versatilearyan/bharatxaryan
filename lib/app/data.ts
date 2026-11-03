@@ -2,7 +2,8 @@
  * Local sample data for the Panchayat web app.
  * Every person, room, number and message here is fictional.
  */
-import type { Conversation, Game, Gift, GiftCategory, Notice, Person, Profile, Room } from "./types";
+import type { Conversation, Game, Gift, GiftCategory, GiftId, Notice, Person, Profile, Room } from "./types";
+import type { ServerGift } from "@/lib/api/rewards";
 
 const UIDS: Record<string, string> = {"riya": "208114", "kabir": "311520", "meher": "402773", "arjun": "518806", "zoya": "627415", "dev": "100777", "tara": "733092", "ishaan": "845261", "naina": "956130", "vikram": "167048", "anaya": "278359", "rohan": "389460", "saanvi": "490571", "aditya": "501682"};
 
@@ -217,8 +218,57 @@ const RETIRED_GIFTS: Gift[] = [
   { id: "hamper", name: "Panchayat Hamper", cost: 666, categories: [], tier: "ordinary", packageOnly: true },
 ];
 
-export const isGiftOnSale = (id: string) => GIFTS.some((g) => g.id === id);
-export const giftById = (id: string) => GIFTS.find((g) => g.id === id) ?? RETIRED_GIFTS.find((g) => g.id === id) ?? GIFTS[0];
+/*
+ * The server's gift catalog (GET /api/v1/gifts), managed from the admin panel.
+ * Once loaded it is the list on sale: prices, names and categories come from
+ * the server; an admin-uploaded picture or animation (SVGA or MP4, with an MP3
+ * sound) replaces the bundled art, and gifts the admins added appear too.
+ * Until it loads (or without the backend) the bundled list is used.
+ */
+let serverGifts: Map<string, Gift> | null = null;
+const giftListeners = new Set<() => void>();
+
+export function setServerGifts(list: ServerGift[]) {
+  const map = new Map<string, Gift>();
+  for (const sg of [...list].sort((a, b) => a.sortOrder - b.sortOrder || a.price - b.price)) {
+    const local = GIFTS.find((g) => g.id === sg.id) ?? RETIRED_GIFTS.find((g) => g.id === sg.id);
+    const category = (ALL_GIFT_CATEGORIES as string[]).includes(sg.category) ? (sg.category as GiftCategory) : "Popular";
+    const icon = sg.imageUrl ?? local?.svga?.icon ?? local?.video?.icon ?? "";
+    const g: Gift = {
+      ...(local ?? { tier: sg.price >= 10_000 ? "legendary" : "ordinary" }),
+      id: sg.id as GiftId,
+      name: sg.name,
+      cost: sg.price,
+      categories: local?.categories.length ? Array.from(new Set([category, ...local.categories])) : [category],
+      image: sg.imageUrl ?? undefined,
+    } as Gift;
+    if (sg.animationUrl && sg.animationFormat === "SVGA") {
+      g.svga = { src: sg.animationUrl, sound: sg.soundUrl ?? undefined, icon, still: sg.imageUrl ?? undefined };
+      delete g.video;
+    } else if (sg.animationUrl && sg.animationFormat === "MP4") {
+      g.video = { src: sg.animationUrl, poster: sg.imageUrl ?? icon, icon };
+      delete g.svga;
+    }
+    map.set(sg.id, g);
+  }
+  serverGifts = map;
+  giftListeners.forEach((f) => f());
+}
+
+export function subscribeGifts(f: () => void) {
+  giftListeners.add(f);
+  return () => {
+    giftListeners.delete(f);
+  };
+}
+
+/** Gifts on sale now: the server's when loaded, otherwise the bundled ones. */
+export const giftsOnSale = (): Gift[] => (serverGifts ? [...serverGifts.values()] : GIFTS);
+export const giftCategories = (): GiftCategory[] => ALL_GIFT_CATEGORIES.filter((c) => giftsOnSale().some((g) => !g.packageOnly && g.categories.includes(c)));
+
+export const isGiftOnSale = (id: string) => (serverGifts ? serverGifts.has(id) : GIFTS.some((g) => g.id === id));
+export const giftById = (id: string): Gift =>
+  serverGifts?.get(id) ?? GIFTS.find((g) => g.id === id) ?? RETIRED_GIFTS.find((g) => g.id === id) ?? { id: id as GiftId, name: "Gift", cost: 0, categories: [], tier: "ordinary" };
 
 /** Sample YouTube videos (Blender Foundation open movies) offered in the Add Video modal. */
 export const SAMPLE_VIDEOS = [

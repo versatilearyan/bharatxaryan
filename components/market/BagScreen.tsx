@@ -20,6 +20,10 @@ import { usePeople } from "@/lib/app/people";
 import { RED_PACKETS, type RedPacketId } from "@/lib/app/redpacket";
 import { useRedPackets } from "@/lib/app/redpacket-store";
 import { ME_ID, useApp } from "@/lib/app/store";
+import { useMe } from "@/lib/app/me-store";
+import { useRewards } from "@/lib/app/rewards-store";
+import { rewardTypeText } from "./RewardWon";
+import { Gift as GiftIcon, Music } from "lucide-react";
 import type { GiftId } from "@/lib/app/types";
 
 /** One thing in the Bag, ready to draw as a tile and act on from its detail sheet. */
@@ -42,6 +46,75 @@ export function BagScreen() {
   const me = person(ME_ID);
   // Signed in to the backend: VIP decorations and red packets come from the server
   const srv = useBagServer(true, me, now);
+  // Spend rewards you won (server): effects to wear, gifts to send for free
+  const rw = useRewards();
+  const meStore = useMe();
+  const rewardBadge = (expiresAt: string | null) => (expiresAt ? short(Date.parse(expiresAt), now) : "Permanent");
+  const wearServer = (id: string, on: boolean, name: string) =>
+    rw
+      .wear(id, on)
+      .then(() => {
+        // Your profile and rooms read what you wear from the server
+        meStore.refresh(true);
+        toast(on ? `${name} is on. Everyone sees it in rooms and on your profile.` : `${name} taken off`, on ? "gold" : undefined);
+      })
+      .catch((e) => toast(e instanceof Error && e.message ? e.message : "That didn't work. Try again.", "error"));
+  const rewardArt = (url: string | null, format: string | null) =>
+    !url ? (
+      <GiftIcon className="h-8 w-8 text-gold" aria-hidden />
+    ) : format === "MP3" ? (
+      <Music className="h-8 w-8 text-gold" aria-hidden />
+    ) : (
+      <span className="relative block h-[78px] w-[78px] overflow-hidden rounded-lg">
+        <SvgaAnim src={url} className="absolute inset-0 h-full w-full" />
+      </span>
+    );
+  const SLOT_NOTE: Record<string, string> = {
+    FRAME: "Shows around your picture on your profile and on your seat in rooms.",
+    BUBBLE: "Your chat messages in rooms use this bubble.",
+    ENTRY: "Plays with your name when you enter a room. Everyone in the room sees it.",
+    PROFILE: "Plays across the top of your profile for everyone who visits.",
+  };
+  const rewardEffects: Entry[] = rw.rewards
+    .filter((r) => r.itemType !== "GIFT")
+    .map((r) => ({
+      key: `reward-${r.id}`,
+      name: r.itemName,
+      kind: rewardTypeText(r.itemType),
+      art: rewardArt(r.mediaUrl, r.mediaFormat),
+      badge: rewardBadge(r.expiresAt),
+      count: r.quantity > 1 ? r.quantity : undefined,
+      inUse: r.equipped,
+      source: `${r.ruleName} (spend reward)`,
+      tint: "from-[#4a2a6b] to-[#1d1430]",
+      note: r.slot ? SLOT_NOTE[r.slot] : "Kept in your Bag.",
+      action: r.slot ? (r.equipped ? { label: "Take off", run: () => void wearServer(r.id, false, r.itemName), off: true } : { label: "Wear", run: () => void wearServer(r.id, true, r.itemName) }) : undefined,
+    }));
+  const rewardGifts: Entry[] = Object.values(
+    rw.rewards
+      .filter((r) => r.itemType === "GIFT" && r.giftId && (r.remaining ?? 0) > 0)
+      .reduce<Record<string, { giftId: string; count: number; expiresAt: string | null; from: string }>>((acc, r) => {
+        const a = (acc[r.giftId!] ??= { giftId: r.giftId!, count: 0, expiresAt: r.expiresAt, from: r.ruleName });
+        a.count += r.remaining ?? 0;
+        // The soonest expiry shows
+        if (r.expiresAt && (!a.expiresAt || Date.parse(r.expiresAt) < Date.parse(a.expiresAt))) a.expiresAt = r.expiresAt;
+        return acc;
+      }, {}),
+  ).map((g) => ({
+    key: `reward-gift-${g.giftId}`,
+    name: giftById(g.giftId).name,
+    kind: "Reward gift",
+    art: (
+      <span className="h-12 w-12">
+        <GiftArt id={g.giftId as GiftId} />
+      </span>
+    ),
+    badge: rewardBadge(g.expiresAt),
+    count: g.count,
+    source: `${g.from} (spend reward)`,
+    tint: GIFT_TINT,
+    note: "Free to send: in a room, open Gifts and pick the Package tab.",
+  }));
 
   /* ---- Decorations ---- */
   const bubbleEntry = (id: BubbleId, expiresAt: number, source: string): Entry => {
@@ -143,6 +216,7 @@ export function BagScreen() {
   };
 
   const decorations: Entry[] = [
+    ...rewardEffects,
     ...srv.decorations,
     ...giftSets.map(giftSetById).flatMap(giftSetEntries),
     // On-device VIP sets only when not signed in; signed in, the server's slots replace them
@@ -170,6 +244,7 @@ export function BagScreen() {
       : { label: "💍 Propose", run: () => (setOpen(null), setFinding(true)) };
 
   const items: Entry[] = [
+    ...rewardGifts,
     ...srv.items,
     // Signed in, your red packets are the server's inventory
     ...RED_PACKETS.filter((p) => !srv.signedIn && (owned[p.id] ?? 0) > 0).map<Entry>((p) => ({
@@ -231,6 +306,25 @@ export function BagScreen() {
         <p className="mx-4 mt-3 rounded-xl bg-coral/10 px-3 py-2 text-[12.5px] font-semibold text-coral ring-1 ring-coral/30" role="alert">
           {srv.actionError}
         </p>
+      ) : null}
+      {rw.goals.length ? (
+        <section className="mt-4 px-4" aria-label="Spend rewards">
+          <h2 className="font-display text-[19px] font-extrabold text-cream">Spend rewards</h2>
+          <ul className="mt-2 space-y-2">
+            {rw.goals.map((g) => (
+              <li key={g.ruleId} className="rounded-2xl bg-surface px-3.5 py-2.5 ring-1 ring-line">
+                <p className="flex items-center justify-between gap-2 text-[12.5px]">
+                  <span className="font-bold text-cream">{g.name}</span>
+                  <span className="text-muted">{g.kind === "RANDOM" ? "Random prize" : "Guaranteed"}</span>
+                </p>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-cream/10" role="progressbar" aria-valuemin={0} aria-valuemax={g.coinThreshold} aria-valuenow={g.spent} aria-label={g.name}>
+                  <div className="h-full rounded-full bg-gradient-to-r from-[#f6d899] to-[#c9954a]" style={{ width: `${Math.min(100, (g.spent / Math.max(1, g.coinThreshold)) * 100)}%` }} />
+                </div>
+                <p className="mt-1 text-[11px] text-muted">Spend {g.remaining.toLocaleString("en-IN")} more coins on gifts to win</p>
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
       <Section title="Decorations" status={srv.decorStatus} entries={decorations} onOpen={setOpen} empty="No decorations yet. Get VIP for the animated frame, or send a Storm Guardian gift for its frame, bubble, entry and profile effect." onShop={() => push({ kind: "shop", tab: "bubbles" })} />
       <Section title="Items" status={srv.itemStatus} entries={items} onOpen={setOpen} empty="No items yet. Red packets and rings you buy land here." onShop={() => push({ kind: "shop", tab: "packets" })} />

@@ -185,6 +185,8 @@ export type Gift = {
   svga?: { src: string; sound?: string; icon: string; still?: string };
   /** Effects the sender unlocks by sending this gift. */
   reward?: GiftSetId;
+  /** Picture uploaded in the admin panel (server catalog); replaces the bundled art. */
+  image?: string;
 };
 
 export type RoomMessage =

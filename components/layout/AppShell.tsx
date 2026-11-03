@@ -1,5 +1,6 @@
 "use client";
 
+import { RewardWon } from "@/components/market/RewardWon";
 import { PaymentReturn } from "@/components/market/PaymentReturn";
 import { AnimatePresence, motion } from "framer-motion";
 import { AppProvider, useApp, type Screen } from "@/lib/app/store";
@@ -90,6 +91,7 @@ function Frame() {
               <GiftOverlay />
               <RedPacketBanner />
               <GiftBanner />
+              <RewardWon />
             </>
           ) : signedIn === false ? (
             <AuthFlow />

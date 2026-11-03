@@ -52,8 +52,9 @@ const newRequestId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 
 /** Send a gift. Throws ApiError with the server's message (e.g. "Not enough coins…"). */
-export async function sendRoomGift(roomId: string, giftId: string, toUserId: string, count: number): Promise<RoomGiftEvent> {
-  const body = { giftId, toUserId: /^\d+$/.test(toUserId) ? Number(toUserId) : toUserId, count, requestId: newRequestId() };
+/** fromBag: send gifts you won (your server Bag) instead of paying coins. */
+export async function sendRoomGift(roomId: string, giftId: string, toUserId: string, count: number, fromBag = false): Promise<RoomGiftEvent> {
+  const body = { giftId, toUserId: /^\d+$/.test(toUserId) ? Number(toUserId) : toUserId, count, requestId: newRequestId(), fromBag };
   const raw = await api<unknown>(`/api/v1/voice-rooms/${encodeURIComponent(roomId)}/gifts`, { method: "POST", auth: true, forbiddenIsAccess: true, body });
   const ev = readGiftEvent(raw);
   if (!ev) throw new Error("The gift was sent, but the server's answer couldn't be read.");

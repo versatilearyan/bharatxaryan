@@ -12,6 +12,7 @@
  * there. A join answer without a server URL and a token is treated as an
  * error, never as a successful join.
  */
+import { readRewardEffects, type RewardEffects } from "./rewards";
 import { ApiError, api } from "./client";
 
 export type VoiceRoomType = "VOICE" | "WATCH" | "KHARIDARI";
@@ -96,6 +97,8 @@ export type VoiceRoomParticipant = {
   frameUrl: string | null;
   bubbleUrl: string | null;
   entryAnimationUrl: string | null;
+  /** Spend rewards this person wears (frame, bubble, entry, profile), for everyone to see. */
+  rewardEffects?: RewardEffects;
 };
 
 /** What PATCH /voice-rooms/{id}/mute takes. */
@@ -204,6 +207,7 @@ export function readParticipant(raw: unknown): VoiceRoomParticipant | null {
     frameUrl: httpsUrl(r.frameUrl),
     bubbleUrl: httpsUrl(r.bubbleUrl),
     entryAnimationUrl: httpsUrl(r.entryAnimationUrl),
+    rewardEffects: readRewardEffects(r.rewardEffects),
     userId,
     name: str(pick(PARTICIPANT_FIELDS.name)),
     // Only real web addresses are used as pictures

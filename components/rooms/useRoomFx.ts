@@ -35,7 +35,7 @@ export function useRoomFx(s: RoomSession) {
   const { effectsFor } = useMarket();
   const members = s.participants?.members;
   // Rebuilt only when someone's links change, not on every speaking or mic update
-  const key = members?.map((m) => (m.vip ? [m.personId, m.vip.vipLevel, m.vip.frameUrl, m.vip.badgeUrl, m.vip.bubbleUrl, m.vip.entryAnimationUrl].join("|") : "")).join("\n") ?? "";
+  const key = members?.map((m) => (m.vip ? [m.personId, m.vip.vipLevel, m.vip.frameUrl, m.vip.badgeUrl, m.vip.bubbleUrl, m.vip.entryAnimationUrl, JSON.stringify(m.vip.rewardEffects ?? {})].join("|") : "")).join("\n") ?? "";
   const server = useMemo(() => {
     const map = new Map<string, Effects>();
     for (const m of members ?? []) if (m.vip) map.set(m.personId, serverEffects(m.vip));

@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { giftById } from "@/lib/app/data";
 import type { GiftId } from "@/lib/app/types";
 
 /** Original gift illustrations, drawn in a 64×64 box. */
@@ -31,7 +32,7 @@ export function GiftArt({ id, className = "h-full w-full" }: { id: GiftId; class
           <rect x="6" y="6" width="52" height="52" rx="11" fill="#fff" filter={u("featherBlur")} />
         </mask>
       </defs>
-      {art(id, u)}
+      {giftById(id).image ? <image href={giftById(id).image} x="1" y="1" width="62" height="62" preserveAspectRatio="xMidYMid meet" /> : art(id, u)}
     </svg>
   );
 }

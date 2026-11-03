@@ -23,7 +23,8 @@ export function useProfileFx(personId: string, vip?: number, fresh = true): Effe
   const theirs = personId.startsWith(SERVER_USER_PREFIX) ? people[personId]?.vip : undefined;
   const local = effectsFor(personId, vip);
   const server = useMemo(() => profileEffects(personId === ME_ID ? mine : theirs), [personId, mine, theirs]);
-  if (personId === ME_ID) return server ? { ...server, page: local.page } : local;
+  // A profile effect you won and wear (server) shows instead of the one from your on-device Bag
+  if (personId === ME_ID) return server ? { ...server, page: server.page ?? local.page } : local;
   // fresh false: their profile hasn't answered during this open yet, so a kept answer isn't trusted
   if (personId.startsWith(SERVER_USER_PREFIX)) return fresh ? (server ?? {}) : {};
   return local;
