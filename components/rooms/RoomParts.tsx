@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Armchair, AudioLines, Bell, Check, ChevronDown, Copy, Gavel, Gift, Hand, Heart, ListOrdered, Lock, LogOut, Megaphone, MicOff, MonitorPlay, MoreHorizontal, Plus, Power, Send, Share2, Smile, UserPlus, UsersRound, Volume2, X } from "lucide-react";
+import { Armchair, AudioLines, Bell, Check, ChevronDown, Copy, Gavel, Gift, Hand, Heart, ListOrdered, Lock, LogOut, Megaphone, MicOff, MonitorPlay, MoreHorizontal, Music2, Plus, Power, Send, Share2, Smile, UserPlus, UsersRound, Volume2, X } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { RoomCover } from "./RoomCover";
+import { useMusic } from "@/lib/app/music-store";
 import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { VipBadge, VipBubbleArt, VipFrame, frameFit } from "@/components/effects/VipFx";
@@ -34,8 +36,6 @@ import { LevelPill } from "@/components/profile/IdTags";
 
 export function RoomTopBar({ s, onMenu, onLeave }: { s: RoomSession; onMenu: () => void; onLeave?: () => void }) {
   const { minimizeRoom, toast, roomLevelOf, isJoined, isFollowingRoom, toggleJoinRoom, toggleFollowRoom } = useApp();
-  const person = usePeople();
-  const host = person(s.room.hostId);
   const [copied, setCopied] = useState(false);
   const lvl = roomLevelOf(s.room);
   const joined = isJoined(s.room.id);
@@ -61,7 +61,10 @@ export function RoomTopBar({ s, onMenu, onLeave }: { s: RoomSession; onMenu: () 
         {/* Room pill: room info, with Join / Follow tucked in at the end */}
         <div className="flex h-10 min-w-0 max-w-[46%] shrink items-center rounded-full bg-black/30 pr-1 backdrop-blur">
         <button type="button" onClick={() => s.setPanel("info")} aria-label={`${s.room.name}, room info`} className="flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-full pl-1 pr-1 text-left">
-          <PersonAvatar person={host} size={30} />
+          {/* The room's cover (the owner's picture or the illustrated scene) */}
+          <span className="h-[30px] w-[30px] shrink-0 overflow-hidden rounded-full ring-1 ring-white/15">
+            <RoomCover room={s.room} />
+          </span>
           <span className="min-w-0 flex-1 overflow-hidden">
             <span className={`block truncate text-[13.5px] font-bold leading-tight ${s.room.vip ? "gold-shine" : "text-cream"}`} style={nameFace(s.settings.nameFont)}>{s.room.name}</span>
             <span className="flex items-center gap-1.5 overflow-hidden whitespace-nowrap text-[10.5px] text-cream/60">
@@ -162,6 +165,69 @@ function TopGifters({ s }: { s: RoomSession }) {
           {formatCount(live)}
         </button>
       )}
+    </div>
+  );
+}
+
+/** Shown while the room is vacant (no owner or admin in it), or opened by an admin while the owner is away. */
+/** Shown in place of the seats while no owner or admin is in the room. */
+export function ClosedRoomCard({ s }: { s: RoomSession }) {
+  const { rooms, openRoom } = useApp();
+  const picks = rooms
+    .filter((r) => r.id !== s.room.id && r.live && !r.password && !r.isPrivate && !r.vip && (r.type === "voice" || r.type === "watch"))
+    .sort((a, b) => (b.server ? 0 : b.members) - (a.server ? 0 : a.members))
+    .slice(0, 3);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      role="status"
+      className="relative z-10 mx-4 rounded-[26px] bg-black/55 px-4 pb-5 pt-6 text-center ring-1 ring-cream/10 backdrop-blur-md"
+    >
+      <span className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-full bg-gold/15 text-gold ring-1 ring-gold/30">
+        <Lock className="h-5 w-5" aria-hidden />
+      </span>
+      <p className="mx-auto max-w-[300px] font-display text-[17px] font-bold leading-snug text-cream">
+        The room owner and admins have left the room. Mics are unavailable for now.
+      </p>
+      <p className="mt-1.5 text-[12px] text-cream/60">Seats open again when the owner or an admin joins.</p>
+      {picks.length ? (
+        <>
+          <p className="mt-5 text-[12px] font-bold uppercase tracking-wide text-cream/55">Recommended rooms</p>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {picks.map((r) => (
+              <motion.button
+                key={r.id}
+                type="button"
+                whileTap={{ scale: 0.95 }}
+                onClick={() => openRoom(r.id)}
+                className="flex min-w-0 flex-col items-center gap-1.5 rounded-2xl px-1 py-2 hover:bg-cream/[0.04]"
+                aria-label={`Join ${r.name}`}
+              >
+                <span className="relative h-[72px] w-[72px] overflow-hidden rounded-full ring-2 ring-gold/50">
+                  <RoomCover room={r} />
+                </span>
+                <span className="w-full truncate text-[13px] font-bold text-cream" style={nameFace(r.settings?.nameFont)}>{r.name}</span>
+                <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-cream/75">
+                  {r.server ? "Live" : `${formatCount(r.members)} online`}
+                  <AudioLines className="h-3 w-3 text-[#5fe39a]" aria-hidden />
+                </span>
+              </motion.button>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </motion.div>
+  );
+}
+
+export function RoomStatusBanner({ s }: { s: RoomSession }) {
+  if (!s.roomOpen) return null;
+  if (!s.openedByAdmin) return null;
+  return (
+    <div className="relative z-20 mx-4 mt-2 flex items-center gap-2 rounded-2xl px-3 py-2 text-[12px] ring-1" role="status" style={{ background: "rgb(36 179 107 / 0.14)", color: "#9ff0c4", borderColor: "transparent" }}>
+      <span className="h-2 w-2 shrink-0 rounded-full bg-[#5fe39a]" aria-hidden />
+      <span className="min-w-0 flex-1">The owner isn&apos;t here. An admin has opened the room.</span>
     </div>
   );
 }
@@ -331,17 +397,15 @@ export function Pair({ s, a, b, size, gap, gold, linked, numbered = false }: { s
   const y = b !== undefined ? s.seats[b] : null;
   // Tagged people sitting beside each other show their tag instead of the heartbeat
   const tag = x && y ? tagBetween(x, y) : null;
-  // Tag Lv 5 perk: a matching glow around both seats
-  const glow = tag && tagLevel(tag.intimacy).level >= 5 ? { filter: `drop-shadow(0 0 ${Math.round(size / 9)}px ${relationshipById(tag.relation).tint})` } : undefined;
   return (
     <div className="flex items-start justify-center">
-      <div className="relative z-10" style={glow}>
+      <div className="relative z-10">
         <Seat s={s} index={a} size={size} gold={gold} numbered={numbered} />
       </div>
       {b !== undefined ? (
         <>
           {tag ? <TagLink tag={tag} gap={gap} size={size} /> : <Heartbeat gap={gap} size={size} live={Boolean(x && y)} linked={linked} />}
-          <div className="relative z-10" style={glow}>
+          <div className="relative z-10">
             <Seat s={s} index={b} size={size} gold={gold} numbered={numbered} />
           </div>
         </>
@@ -675,6 +739,7 @@ const MODES: { id: RoomMode; icon: ReactNode; hint: string }[] = [
 
 export function RoomMenuSheet({ open, onClose, s, extra, onInvite }: { open: boolean; onClose: () => void; s: RoomSession; extra?: ReactNode; onInvite?: () => void }) {
   const { toast, leaveRoom } = useApp();
+  const music = useMusic();
   const live = useServerRooms();
   // Only the owner of a backend room can close it
   const canClose = Boolean(s.room.server?.mine);
@@ -753,6 +818,25 @@ export function RoomMenuSheet({ open, onClose, s, extra, onInvite }: { open: boo
               {s.micOrder ? "On: ask the owner or an admin for a seat" : "Off: take any empty seat"} <span className="text-muted">· the owner and admins set this</span>
             </p>
           )}
+        </div>
+        <div className="mt-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Music</p>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={!music.musicOff}
+            onClick={() => music.setMusicOff(!music.musicOff)}
+            className="mt-2 flex w-full items-center gap-3 rounded-2xl bg-cream/[0.05] px-3.5 py-3 text-left ring-1 ring-line"
+          >
+            <Music2 className="h-5 w-5 shrink-0 text-cream/80" aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[13.5px] font-bold text-cream">Room music</span>
+              <span className="block text-[11px] text-muted">{music.musicOff ? "Off: the music is hidden and silent for you." : "On: hear the room's songs. Turn off to hide the music."}</span>
+            </span>
+            <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${music.musicOff ? "bg-cream/15" : "bg-speak"}`}>
+              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${music.musicOff ? "left-0.5" : "left-[22px]"}`} />
+            </span>
+          </button>
         </div>
         <RoomLevelCard room={s.room} className="mt-4" />
         <div className="mt-4 grid grid-cols-4 gap-2">

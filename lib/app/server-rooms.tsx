@@ -92,7 +92,7 @@ export function toAppRoom(v: VoiceRoom, myId: string | undefined, prefs: ServerR
     basePoints: 0,
     seated: [host],
     createdByMe: mine,
-    settings: { background: "brief" },
+    settings: {},
     server: { id: v.id, ownerId: v.ownerId, mine, status: v.status, description: v.description, maxParticipants: v.maxParticipants },
   };
 }

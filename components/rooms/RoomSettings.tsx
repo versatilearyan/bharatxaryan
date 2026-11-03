@@ -34,13 +34,10 @@ const PERMISSIONS: [string, boolean, boolean][] = [
 const TIERS = ["Basic", "Basic", "Advanced", "Advanced", "Elite", "Elite", "Royal", "Royal", "Legend", "Legend"];
 
 export const BACKGROUNDS: { id: RoomBackground; label: string; css: string; vip?: boolean }[] = [
-  { id: "cover", label: "Room cover", css: "" },
-  { id: "brief", label: "Brief", css: "#2a2a30" },
-  { id: "velvet", label: "Velvet", css: "radial-gradient(120% 70% at 50% 0%, #5a1a3a 0%, #2a0f22 55%, #160a14 100%)" },
-  { id: "starry", label: "Starry night", css: "radial-gradient(1px 1px at 20% 30%, #fff8 50%, transparent 51%), radial-gradient(1px 1px at 70% 20%, #fff6 50%, transparent 51%), radial-gradient(1.5px 1.5px at 40% 60%, #fff5 50%, transparent 51%), radial-gradient(1px 1px at 85% 55%, #fff7 50%, transparent 51%), radial-gradient(1px 1px at 10% 80%, #fff5 50%, transparent 51%), linear-gradient(180deg, #101a3d 0%, #0c1128 60%, #0a0c1a 100%)" },
-  { id: "darbar", label: "Royal Darbar", vip: true, css: "radial-gradient(80% 45% at 50% 0%, #f5cf7a55 0%, transparent 70%), repeating-linear-gradient(90deg, #e7bc7212 0 2px, transparent 2px 46px), linear-gradient(180deg, #4a1f08 0%, #2b1206 55%, #160904 100%)" },
-  { id: "sheesh-mahal", label: "Sheesh Mahal", vip: true, css: "radial-gradient(2px 2px at 15% 20%, #fff 50%, transparent 51%), radial-gradient(2px 2px at 75% 30%, #ffe9b0 50%, transparent 51%), radial-gradient(1.5px 1.5px at 45% 55%, #fff 50%, transparent 51%), radial-gradient(2px 2px at 85% 75%, #cfe8ff 50%, transparent 51%), conic-gradient(from 45deg at 50% 40%, #2a2350, #5b4a8a, #2a2350, #8a6fb8, #2a2350), linear-gradient(180deg, #1b1538, #0d0a1c)" },
-  { id: "aurora", label: "Golden Aurora", vip: true, css: "radial-gradient(70% 40% at 20% 10%, #19c3b255 0%, transparent 70%), radial-gradient(70% 40% at 80% 20%, #e7bc7266 0%, transparent 70%), linear-gradient(180deg, #0b1f24 0%, #0c1416 60%, #08090b 100%)" },
+  { id: "chaupal", label: "Chaupal", css: "linear-gradient(rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)), url(/backgrounds/chaupal.svg) top center / cover no-repeat, #140a07" },
+  { id: "gaon-raat", label: "Gaon ki raat", css: "linear-gradient(rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)), url(/backgrounds/gaon-raat.svg) top center / cover no-repeat, #080a16" },
+  { id: "mela", label: "Mela", css: "linear-gradient(rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)), url(/backgrounds/mela.svg) top center / cover no-repeat, #16050a" },
+  { id: "khet", label: "Sarson ke khet", css: "linear-gradient(rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)), url(/backgrounds/khet.svg) top center / cover no-repeat, #0f0d08" },
 ];
 
 /** VIP levels an owner can require before someone takes a seat in a VIP room. */

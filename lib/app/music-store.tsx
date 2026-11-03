@@ -7,6 +7,8 @@ import { ME_ID, useApp } from "./store";
 
 const STORAGE_KEY = "panchayat-music-v1";
 type Saved = { contributions: Contribution[]; favourites: string[]; volume: number };
+/** Saved on its own and written the moment it changes, so a reload keeps it. */
+const MUSIC_OFF_KEY = "panchayat-music-off-v1";
 
 /* Song files you contribute are kept in IndexedDB (too big for localStorage). */
 const DB = "panchayat-songs";
@@ -65,6 +67,16 @@ function useMusicState() {
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [favourites, setFavourites] = useState<string[]>([]);
   const [volume, setVolumeState] = useState(0.8);
+  /** This listener turned room music off: the music pill is hidden and nothing plays for them. */
+  const [musicOff, setMusicOffState] = useState(false);
+  const setMusicOff = useCallback((off: boolean) => {
+    setMusicOffState(off);
+    try {
+      window.localStorage.setItem(MUSIC_OFF_KEY, off ? "1" : "0");
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
   /** Object URLs for contributed songs that are live. */
   const [urls, setUrls] = useState<Record<string, string>>({});
   const [now, setNow] = useState(() => Date.now());
@@ -76,6 +88,7 @@ function useMusicState() {
       if (Array.isArray(s.contributions)) setContributions(s.contributions);
       if (Array.isArray(s.favourites)) setFavourites(s.favourites);
       if (typeof s.volume === "number") setVolumeState(s.volume);
+      setMusicOffState(window.localStorage.getItem(MUSIC_OFF_KEY) === "1");
     } catch {
       /* nothing saved */
     }
@@ -181,6 +194,10 @@ function useMusicState() {
   useEffect(() => {
     if (audio.current) audio.current.volume = volume;
   }, [volume]);
+  // Music off: silent for this listener (the room's queue carries on for everyone else)
+  useEffect(() => {
+    if (audio.current) audio.current.muted = musicOff;
+  }, [musicOff]);
 
   // Load the current song when it changes
   const src = current?.src;
@@ -263,6 +280,7 @@ function useMusicState() {
   return {
     library, songById, contributions, isLive, contribute, approveNow, removeContribution, favourites, toggleFavourite, now,
     queue, index, current, playing, repeat, setRepeat, pos, volume, setVolume, order, removeFromQueue, playAt, toggle, next, seek,
+    musicOff, setMusicOff,
   };
 }
 

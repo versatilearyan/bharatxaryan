@@ -7,9 +7,10 @@ import { Crown, Hand, Mic, MicOff, Swords, Volume2, VolumeX } from "lucide-react
 import { CreatePkSheet, PkPanel } from "./PkParts";
 import { MusicPill, MusicSheet } from "./RoomMusic";
 import { usePkState } from "./usePk";
+import { useMusic } from "@/lib/app/music-store";
 import { IconButton } from "@/components/ui/kit";
 import { GiftPanel } from "@/components/gifts/GiftPanel";
-import { ChatInput, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomTopBar, SeatLayout } from "./RoomParts";
+import { ChatInput, ClosedRoomCard, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomStatusBanner, RoomTopBar, SeatLayout } from "./RoomParts";
 import { LiveVoiceBar } from "./LiveVoiceBar";
 import { BACKGROUNDS } from "./RoomSettings";
 import type { RoomSession } from "./useRoomSession";
@@ -17,6 +18,7 @@ import type { RoomSession } from "./useRoomSession";
 export function VoiceRoom({ s }: { s: RoomSession }) {
   const [sheet, setSheet] = useState<null | "gift" | "emoji" | "menu" | "invite" | "pk" | "music">(null);
   const pkOn = Boolean(usePkState()?.pk);
+  const { musicOff } = useMusic();
   const [draft, setDraft] = useState("");
   const vip = s.room.vip;
   const close = () => setSheet(null);
@@ -44,13 +46,20 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         </p>
       </div>
 
+      <RoomStatusBanner s={s} />
       <PkPanel s={s} />
 
       {/* Seats: the owner's fixed seat + intimacy seat on top, then linked pairs */}
       <div className={`relative z-10 ${pkOn ? "mt-3" : "mt-5"}`}>
-        <MusicPill className="absolute right-2 top-6 z-20" onlyMe={s.musicOnlyMe} onOpen={() => setSheet("music")} />
-        <SeatLayout s={s} gold={vip} />
-        <MicOrderBar s={s} />
+        {musicOff ? null : <MusicPill className="absolute right-2 top-6 z-20" onlyMe={s.musicOnlyMe} onOpen={() => setSheet("music")} />}
+        {s.roomOpen ? (
+          <>
+            <SeatLayout s={s} gold={vip} />
+            <MicOrderBar s={s} />
+          </>
+        ) : (
+          <ClosedRoomCard s={s} />
+        )}
         {s.voice ? (
           <LiveVoiceBar voice={s.voice} participants={s.participants} />
         ) : (

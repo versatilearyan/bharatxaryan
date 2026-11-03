@@ -174,6 +174,17 @@ export function useRoomSession(room: Room) {
   listenersRef.current = listenerIds;
   const onlineIds = useMemo(() => [...seatedIds, ...(seated ? [] : [ME_ID]), ...listenerIds], [seatedIds, seated, listenerIds]);
 
+  /**
+   * The room is open only while its owner or an admin is in it. With neither
+   * there it is vacant: nobody else can take a seat or use the mic. If the owner
+   * is away, an admin being in the room opens it.
+   */
+  const ownerHere = isOwner || onlineIds.includes(room.hostId);
+  const adminHere = role === "admin" || onlineIds.some((id) => admins.includes(id));
+  const roomOpen = ownerHere || adminHere;
+  const openedByAdmin = !ownerHere && adminHere;
+  const CLOSED_TEXT = "The room is closed until the owner or an admin joins";
+
   /** Can you moderate this person? The owner can act on anyone; admins only on members and guests. */
   const canManage = useCallback(
     (id: string) => {
@@ -236,6 +247,10 @@ export function useRoomSession(room: Room) {
 
   const takeSeat = useCallback(
     (index: number) => {
+      if (!roomOpen) {
+        toast(CLOSED_TEXT, "error");
+        return;
+      }
       if (live) {
         toast("In a live room everyone has a seat. Tap the mic to talk.");
         return;
@@ -253,6 +268,12 @@ export function useRoomSession(room: Room) {
         return;
       }
       if (seats[index]) return;
+      // Already on a seat: move straight to the empty one, no new request and no mic change
+      if (seats.includes(ME_ID)) {
+        setSeats((s) => s.map((x, i) => (x === ME_ID ? null : i === index ? ME_ID : x)));
+        toast(`You moved to seat ${index + 1}`);
+        return;
+      }
       // VIP rooms: only VIP members (at the owner's chosen level) can sit
       const need = vipSeatNeed(room);
       if (need && vip.level < need) {
@@ -269,7 +290,7 @@ export function useRoomSession(room: Room) {
       toast(`You took seat ${index + 1}. Tap the mic to unmute.`);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [seats, toast, isOwner, closedSeats, room, vip.level, live, micOrder, canModerate],
+    [seats, toast, isOwner, closedSeats, room, vip.level, live, micOrder, canModerate, roomOpen],
   );
 
   /* ---- Mic order: ask before taking a seat ---- */
@@ -390,6 +411,12 @@ export function useRoomSession(room: Room) {
   /** Muted by the owner or an admin: you, or the seat you're on. */
   const adminMutedMe = forceMuted.includes(ME_ID) || (mySeat >= 0 && mutedSeats.includes(mySeat));
   const toggleMute = useCallback(() => {
+    // A closed room: you can still turn your mic off, but not on
+    const turningOn = voice ? !voice.micOn : muted;
+    if (!roomOpen && turningOn) {
+      toast(CLOSED_TEXT, "error");
+      return;
+    }
     if (!seated && !live) {
       toast("Take an empty seat to use the mic");
       return;
@@ -407,7 +434,14 @@ export function useRoomSession(room: Room) {
       return;
     }
     setMuted((m) => !m);
-  }, [seated, toast, voice, live, adminMutedMe, muted]);
+  }, [seated, toast, voice, live, adminMutedMe, muted, roomOpen]);
+  // The room closing (owner and admins all gone) turns your mic off
+  useEffect(() => {
+    if (roomOpen) return;
+    setMuted(true);
+    if (voice?.micOn) void voice.setMic(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomOpen]);
   // Being muted by the owner or an admin turns your mic off
   useEffect(() => {
     if (adminMutedMe) setMuted(true);
@@ -773,6 +807,8 @@ export function useRoomSession(room: Room) {
     participants,
     handRaised,
     toggleHand,
+    roomOpen,
+    openedByAdmin,
     speakingIds,
     messages,
     send,

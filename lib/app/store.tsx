@@ -84,7 +84,8 @@ export type NewRoom = {
 };
 
 export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
-  background: "cover",
+  // Rooms that haven't picked a background get one of the Panchayat defaults (see settingsOf)
+  background: "chaupal",
   partnerSeat: "all",
   highQuality: true,
   banText: false,
@@ -92,7 +93,21 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   banRedPacket: false,
   event: false,
 };
-export const settingsOf = (room: Room): RoomSettings => ({ ...DEFAULT_ROOM_SETTINGS, ...room.settings });
+/** The default room backgrounds, for every user: a room that hasn't picked one gets one of these, always the same one for that room. */
+export const DEFAULT_BACKGROUNDS = ["chaupal", "gaon-raat", "mela", "khet"] as const;
+export const defaultBackgroundFor = (roomId: string) => {
+  let h = 0;
+  for (let i = 0; i < roomId.length; i++) h = (h * 31 + roomId.charCodeAt(i)) >>> 0;
+  return DEFAULT_BACKGROUNDS[h % DEFAULT_BACKGROUNDS.length];
+};
+
+export const settingsOf = (room: Room): RoomSettings => {
+  const st = { ...DEFAULT_ROOM_SETTINGS, ...room.settings };
+  // No background picked (an older saved "cover" too: the cover is only the room's picture, never its background)
+  const picked = room.settings?.background;
+  // Only the four Panchayat backgrounds exist now; anything else saved earlier falls back to the room's default
+  return picked && (DEFAULT_BACKGROUNDS as readonly string[]).includes(picked) ? st : { ...st, background: defaultBackgroundFor(room.id) };
+};
 
 /** Price of a permanent room in demo coins. Temporary rooms are free. */
 export const PERMANENT_ROOM_COST = 1000;
@@ -563,7 +578,7 @@ function useAppState() {
         isPrivate: input.isPrivate,
         permanent: input.permanent,
         basePoints: 0,
-        settings: { background: "brief" },
+        settings: {},
         seated: ["me"],
         createdByMe: true,
       };
