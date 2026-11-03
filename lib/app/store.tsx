@@ -167,6 +167,8 @@ type RoomMeta = {
   followed: string[];
   /** Changes admins made to sample rooms (title, cover, settings, password). */
   overrides: Record<string, Partial<Room>>;
+  /** Rooms you entered on this device, newest first. */
+  recent?: string[];
 };
 // You start as an admin of "Sunday chai adda", so you've joined and followed it
 const EMPTY_META: RoomMeta = { admins: {}, announcements: {}, joined: ["r-chai"], followed: ["r-chai"], overrides: {} };
@@ -493,6 +495,7 @@ function useAppState() {
         }
         return roomId;
       });
+      setRoomMeta((m) => ({ ...m, recent: [roomId, ...(m.recent ?? []).filter((x) => x !== roomId)].slice(0, 30) }));
       setSheet(null);
       setStack((st) => st.filter((x) => x.kind !== "vip-entry"));
       setRoomOpen(true);
@@ -795,6 +798,7 @@ function useAppState() {
   );
   const isJoined = useCallback((roomId: string) => roomMeta.joined.includes(roomId), [roomMeta.joined]);
   const isFollowingRoom = useCallback((roomId: string) => roomMeta.followed.includes(roomId), [roomMeta.followed]);
+  const recentRoomIds = useMemo(() => roomMeta.recent ?? [], [roomMeta.recent]);
   /** Admins must have joined and followed the room. Leaving either one removes your admin role. */
   const dropMyAdmin = useCallback(
     (room: Room) => {
@@ -922,7 +926,7 @@ function useAppState() {
     charmOf, addCharm, addExp, expToday, exp,
     openProfile, trackReceived, receivedOf, guardiansOf, protect, protectedToday,
     tags, tagsOf, tagBetween, addIntimacy, formTag, breakTag, openIntimateSpace,
-    adminsOf, roleIn, setRoomAdmin, membershipOf, isJoined, isFollowingRoom, toggleJoinRoom, toggleFollowRoom, announcementOf, setAnnouncement,
+    adminsOf, roleIn, setRoomAdmin, membershipOf, isJoined, isFollowingRoom, recentRoomIds, toggleJoinRoom, toggleFollowRoom, announcementOf, setAnnouncement,
     tab, setTab, stack, push, pop, replaceTop, sheet, setSheet,
     profile, updateProfile, toggleFollow,
     coins, spend, addCoins, refreshCoins,
