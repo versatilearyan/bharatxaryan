@@ -132,3 +132,14 @@ export function walletImageSrc(url?: string): string | undefined {
   if (/^(https?:|data:|blob:)/i.test(url)) return url;
   return url.startsWith("/") && API_BASE_URL ? `${API_BASE_URL}${url}` : undefined;
 }
+
+/**
+ * The signed-in person's real coin balance: GET /api/v1/wallet/balance.
+ * A 403 here never signs anyone out (forbiddenIsAccess); a 401 still does.
+ */
+export async function getMyCoinBalance(): Promise<number> {
+  const raw = obj(await api<unknown>("/api/v1/wallet/balance", { auth: true, forbiddenIsAccess: true }));
+  const balance = num(raw?.balance ?? obj(raw?.data)?.balance);
+  if (balance === undefined) throw new ApiError("Couldn't read your coin balance.", 200, "http");
+  return Math.max(0, Math.floor(balance));
+}

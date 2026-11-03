@@ -10,6 +10,7 @@
  */
 import { signOutLocally, type AuthUser } from "@/lib/auth/auth";
 import { setUnauthorizedHandler } from "@/lib/api/client";
+import { getMyCoinBalance } from "@/lib/api/wallet";
 import { msUntilExpiry, readToken } from "@/lib/auth/token";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CONVERSATIONS, INITIAL_COINS, INITIAL_PROFILE, NOTICES, PEOPLE, ROOMS } from "./data";
@@ -649,6 +650,26 @@ function useAppState() {
     [roomPointsOf, toast],
   );
   const addCoins = useCallback((amount: number) => setCoins((c) => c + amount), []);
+  /**
+   * Signed in: show the real coin balance from the backend (coins bought with
+   * PayU live there). Returns the balance, or null when it couldn't be read
+   * (then the coins shown stay as they were).
+   */
+  const refreshCoins = useCallback(async (): Promise<number | null> => {
+    if (!readToken()) return null;
+    try {
+      const balance = await getMyCoinBalance();
+      setCoins(balance);
+      return balance;
+    } catch {
+      return null;
+    }
+  }, []);
+  // Load it whenever a signed-in session starts (opening the app, or signing in)
+  const sessionEmail = session?.email;
+  useEffect(() => {
+    if (hydrated && sessionEmail) void refreshCoins();
+  }, [hydrated, sessionEmail, refreshCoins]);
 
   const updateProfile = useCallback((patch: Partial<Profile>) => setProfile((p) => ({ ...p, ...patch })), []);
 
@@ -904,7 +925,7 @@ function useAppState() {
     adminsOf, roleIn, setRoomAdmin, membershipOf, isJoined, isFollowingRoom, toggleJoinRoom, toggleFollowRoom, announcementOf, setAnnouncement,
     tab, setTab, stack, push, pop, replaceTop, sheet, setSheet,
     profile, updateProfile, toggleFollow,
-    coins, spend, addCoins,
+    coins, spend, addCoins, refreshCoins,
     rooms, myRooms: ownedRooms, serverRooms, setServerRooms, payForPermanentRoom, roomById, updateMyRoom, unlockRoom, openRoom, enterRoom, createRoom, deleteMyRoom, myPermanentRoom,
     activeRoomId, roomOpen, minimizeRoom, expandRoom, leaveRoom,
     vipPoints, vip, vipUntil, buyVip, endVip, roomPointsOf, roomLevelOf, addRoomGift, myContrib,

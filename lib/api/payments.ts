@@ -102,3 +102,37 @@ export function paymentErrorText(e: unknown): string {
   }
   return e instanceof Error && e.message ? e.message : "Couldn't start the payment. Nothing was charged.";
 }
+
+/** What the backend has recorded for one of your payments. */
+export type PaymentStatus = {
+  txnId: string;
+  status: "PENDING" | "SUCCESS" | "FAILED" | "NOT_FOUND";
+  purpose?: PaymentPurpose;
+  productId?: string;
+  /** Coin packs: coins (including bonus) this payment adds. */
+  coins?: number;
+};
+
+/**
+ * GET /api/v1/payments/{txnId}/status: only your own payments; anything else is NOT_FOUND.
+ * A 403 here never signs anyone out (forbiddenIsAccess).
+ */
+export async function getPaymentStatus(txnId: string): Promise<PaymentStatus> {
+  try {
+    const d = obj(await api<unknown>(`/api/v1/payments/${encodeURIComponent(txnId)}/status`, { auth: true, forbiddenIsAccess: true }));
+    const status = str(d?.status);
+    const known = status === "PENDING" || status === "SUCCESS" || status === "FAILED" ? status : "PENDING";
+    const coins = Number(d?.coins);
+    const purpose = str(d?.purpose);
+    return {
+      txnId,
+      status: known,
+      purpose: purpose === "COIN_PACK" || purpose === "RED_PACKET" ? purpose : undefined,
+      productId: str(d?.productId),
+      coins: Number.isFinite(coins) && coins > 0 ? coins : undefined,
+    };
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return { txnId, status: "NOT_FOUND" };
+    throw e;
+  }
+}
