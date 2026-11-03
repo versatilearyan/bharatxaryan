@@ -9,15 +9,20 @@
  * kept here too; the backend JWT itself lives in lib/auth/token.ts.
  */
 import { signOutLocally, type AuthUser } from "@/lib/auth/auth";
-import { setUnauthorizedHandler } from "@/lib/api/client";
+import { freshToken, setUnauthorizedHandler } from "@/lib/api/client";
 import { getMyCoinBalance } from "@/lib/api/wallet";
-import { msUntilExpiry, readToken } from "@/lib/auth/token";
+import { subscribe } from "@/lib/realtime/stomp";
+import { getMyRoomRelations, setRoomFollow, setRoomMembership } from "@/lib/api/voice-rooms";
+import { msUntilExpiry, myUserIdFromToken, readToken } from "@/lib/auth/token";
+import { tagsApi, type ServerTag } from "@/lib/api/room-games";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CONVERSATIONS, INITIAL_COINS, INITIAL_PROFILE, NOTICES, PEOPLE, ROOMS } from "./data";
 import { GOLD_NAME_VIP, POINTS_PER_COIN, growthFor, roomLevel, vipLevel } from "./levels";
 import { EXP_SOURCES, FRIEND_EXP, TASK_EXP, charmFromCoins, charmInfo, giftEarnings, dayKey, expToNext, sampleCharm, type ExpSource } from "./progress";
 import { GUARD_PER_DAY, MY_SAMPLE_RECEIVED, sampleGuardians, sampleReceived } from "./social";
-import { SAMPLE_TAGS, TAG_SLOTS, pairKey, relationshipById, tagLevel, tokenFor, type RelationshipId, type Tag } from "./tags";
+import { RELATIONSHIPS, SAMPLE_TAGS, TAG_SLOTS, pairKey, relationshipById, tagLevel, tokenFor, type RelationshipId, type Tag } from "./tags";
+/** Relationship ids the app knows, for checking tags from the server. */
+const RELATIONSHIP_IDS: string[] = RELATIONSHIPS.map((r) => r.id);
 import type { RedPacketId } from "./redpacket";
 import type { Conversation, Cover, GameId, GiftId, Notice, Profile, Room, RoomRole, RoomSettings, RoomType } from "./types";
 
@@ -387,17 +392,27 @@ function useAppState() {
     });
     return () => setUnauthorizedHandler(null);
   }, [signOut, toast]);
-  // No refresh token: sign out when the JWT runs out, even if nothing calls the API
+  // Keep the session alive: renew the access token about a minute before it runs out,
+  // even if nothing calls the API. Signs out only when the session has really ended.
+  const [tokenTick, setTokenTick] = useState(0);
   useEffect(() => {
     if (!session) return;
     const left = msUntilExpiry();
     if (left === null) return;
     const t = window.setTimeout(() => {
-      signOut();
-      toast("Your session ended. Please sign in again.");
-    }, Math.max(0, Math.min(left, 2 ** 31 - 1)));
+      freshToken(true)
+        .then((fresh) => {
+          if (fresh) setTokenTick((n) => n + 1);
+          else {
+            signOut();
+            toast("Your session ended. Please sign in again.");
+          }
+        })
+        // Offline: try again shortly instead of signing out
+        .catch(() => window.setTimeout(() => setTokenTick((n) => n + 1), 30_000));
+    }, Math.max(0, Math.min(left - 60_000, 2 ** 31 - 1)));
     return () => window.clearTimeout(t);
-  }, [session, signOut, toast]);
+  }, [session, signOut, toast, tokenTick]);
 
   /* ---- Active Level: EXP with a daily cap per source ---- */
   const expRef = useRef(exp);
@@ -673,6 +688,14 @@ function useAppState() {
   useEffect(() => {
     if (hydrated && sessionEmail) void refreshCoins();
   }, [hydrated, sessionEmail, refreshCoins]);
+  // Live balance: the server pushes your new balance after gifts (sent or received) and purchases, to every device
+  useEffect(() => {
+    if (!hydrated || !sessionEmail) return;
+    return subscribe("/user/queue/wallet", (body) => {
+      const b = body && typeof body === "object" ? (body as { balance?: unknown }).balance : undefined;
+      if (typeof b === "number" && Number.isFinite(b)) setCoins(Math.max(0, Math.floor(b)));
+    });
+  }, [hydrated, sessionEmail]);
 
   const updateProfile = useCallback((patch: Partial<Profile>) => setProfile((p) => ({ ...p, ...patch })), []);
 
@@ -808,34 +831,82 @@ function useAppState() {
     },
     [adminsOf, toast],
   );
+  /** Backend rooms: saved on the server first; the app updates once it agreed. */
+  const serverRelation = useCallback(
+    (room: Room, kind: "joined" | "followed", on: boolean) => {
+      const serverId = room.server?.id;
+      if (!serverId) return;
+      (kind === "joined" ? setRoomMembership : setRoomFollow)(serverId, on)
+        .then(() => {
+          setRoomMeta((m) => ({ ...m, [kind]: on ? [...new Set([...m[kind], room.id])] : m[kind].filter((x) => x !== room.id) }));
+          toast(kind === "joined" ? (on ? `You're now a member of ${room.name}` : `You left ${room.name} membership`) : on ? `Following ${room.name}` : `Unfollowed ${room.name}`);
+        })
+        .catch((e) => toast(e instanceof Error && e.message ? e.message : "That didn't work. Try again.", "error"));
+    },
+    [toast],
+  );
   const toggleJoinRoom = useCallback(
     (room: Room) => {
       const on = !roomMeta.joined.includes(room.id);
+      if (room.server) {
+        // The server also ends an admin role when someone leaves
+        serverRelation(room, "joined", on);
+        return;
+      }
       setRoomMeta((m) => ({ ...m, joined: on ? [...m.joined, room.id] : m.joined.filter((x) => x !== room.id) }));
       toast(on ? `You're now a member of ${room.name}` : `You left ${room.name} membership`);
       if (!on) dropMyAdmin(room);
     },
-    [roomMeta.joined, toast, dropMyAdmin],
+    [roomMeta.joined, toast, dropMyAdmin, serverRelation],
   );
   const toggleFollowRoom = useCallback(
     (room: Room) => {
       const on = !roomMeta.followed.includes(room.id);
+      if (room.server) {
+        serverRelation(room, "followed", on);
+        return;
+      }
       setRoomMeta((m) => ({ ...m, followed: on ? [...m.followed, room.id] : m.followed.filter((x) => x !== room.id) }));
       toast(on ? `Following ${room.name}` : `Unfollowed ${room.name}`);
       if (!on) dropMyAdmin(room);
     },
-    [roomMeta.followed, toast, dropMyAdmin],
+    [roomMeta.followed, toast, dropMyAdmin, serverRelation],
   );
+  // Signed in: which backend rooms you joined and follow come from the server (other devices included)
+  const relationsFor = session?.email;
+  useEffect(() => {
+    if (!hydrated || !relationsFor) return;
+    let off = false;
+    getMyRoomRelations()
+      .then((r) => {
+        if (off) return;
+        // Backend room ids in the app are "srv-<id>" (lib/app/server-rooms.tsx)
+        const local = (list: string[]) => list.filter((id) => !id.startsWith("srv-"));
+        setRoomMeta((m) => ({
+          ...m,
+          joined: [...local(m.joined), ...r.joined.map((id) => `srv-${id}`)],
+          followed: [...local(m.followed), ...r.followed.map((id) => `srv-${id}`)],
+        }));
+      })
+      .catch(() => {
+        /* keeps what this device knew; tried again next sign-in */
+      });
+    return () => {
+      off = true;
+    };
+  }, [hydrated, relationsFor]);
   /** Has this person joined and followed the room? Sample people get a stable made-up answer. */
   const membershipOf = useCallback(
     (room: Room, personId: string) => {
       if (personId === "me") return { joined: roomMeta.joined.includes(room.id), followed: roomMeta.followed.includes(room.id) };
+      // Backend rooms: the server knows and checks it when making an admin
+      if (room.server) return { joined: true, followed: true };
       if (personId === room.hostId || adminsOf(room).includes(personId)) return { joined: true, followed: true };
       return { joined: hash01(`${room.id}:join:${personId}`) < 0.7, followed: hash01(`${room.id}:fan:${personId}`) < 0.55 };
     },
     [roomMeta.joined, roomMeta.followed, adminsOf],
   );
-  const announcementOf = useCallback((room: Room) => roomMeta.announcements[room.id] ?? room.announcement ?? "", [roomMeta.announcements]);
+  const announcementOf = useCallback((room: Room) => (room.server ? (room.announcement ?? "") : (roomMeta.announcements[room.id] ?? room.announcement ?? "")), [roomMeta.announcements]);
   const setAnnouncement = useCallback((room: Room, text: string) => setRoomMeta((m) => ({ ...m, announcements: { ...m.announcements, [room.id]: text } })), []);
 
   /* ---- Gift wall, wealth and guard ---- */
@@ -913,19 +984,62 @@ function useAppState() {
     },
     [tagBetween, tagsOf],
   );
+  /**
+   * BFF tags from the server (backend users): yours, or another person's
+   * ("srv-user:<id>"). They replace what this device had for that person.
+   */
+  const loadServerTags = useCallback(async (personId: string = "me") => {
+    const myUid = myUserIdFromToken();
+    const uid = personId === "me" ? myUid : personId.startsWith("srv-user:") ? personId.slice(9) : null;
+    if (!uid) return;
+    try {
+      const list: ServerTag[] = personId === "me" ? await tagsApi.mine() : await tagsApi.of(uid);
+      const pid = (u: string) => (u === myUid ? "me" : `srv-user:${u}`);
+      const loaded: Tag[] = list.map((t) => ({
+        id: `srv-tag:${t.id}`,
+        a: pid(t.a),
+        b: pid(t.b),
+        relation: (RELATIONSHIP_IDS.includes(t.relation) ? t.relation : "besties") as RelationshipId,
+        token: (["bicycle", "scooter", "cottage"].includes(t.token) ? t.token : "bicycle") as Tag["token"],
+        intimacy: t.intimacy,
+        createdAt: t.createdAt ? Date.parse(t.createdAt) || Date.now() : Date.now(),
+        roomName: t.roomName ?? "",
+        declaration: t.declaration,
+      }));
+      const who = pid(uid);
+      setTags((cur) => [...loaded, ...cur.filter((t) => !(t.id.startsWith("srv-tag:") && (t.a === who || t.b === who)) && !loaded.some((n) => n.id === t.id))]);
+    } catch {
+      /* keeps what this device shows; tried again next time */
+    }
+  }, []);
   const breakTag = useCallback(
     (id: string) => {
+      if (id.startsWith("srv-tag:")) {
+        tagsApi
+          .remove(id.slice(8))
+          .then(() => {
+            setTags((list) => list.filter((t) => t.id !== id));
+            toast("Tag removed from your intimate space");
+          })
+          .catch((e) => toast(e instanceof Error && e.message ? e.message : "Couldn't remove the tag.", "error"));
+        return;
+      }
       setTags((list) => list.filter((t) => t.id !== id));
       toast("Tag removed from your intimate space");
     },
     [toast],
   );
+  // Signed in: your BFF tags from the server
+  const tagsFor = session?.email;
+  useEffect(() => {
+    if (hydrated && tagsFor) void loadServerTags("me");
+  }, [hydrated, tagsFor, loadServerTags]);
   const openIntimateSpace = useCallback((personId: string = "me") => push({ kind: "intimate-space", personId }), [push]);
 
   return {
     charmOf, addCharm, addExp, expToday, exp,
     openProfile, trackReceived, receivedOf, guardiansOf, protect, protectedToday,
-    tags, tagsOf, tagBetween, addIntimacy, formTag, breakTag, openIntimateSpace,
+    tags, tagsOf, tagBetween, addIntimacy, formTag, breakTag, loadServerTags, openIntimateSpace,
     adminsOf, roleIn, setRoomAdmin, membershipOf, isJoined, isFollowingRoom, recentRoomIds, toggleJoinRoom, toggleFollowRoom, announcementOf, setAnnouncement,
     tab, setTab, stack, push, pop, replaceTop, sheet, setSheet,
     profile, updateProfile, toggleFollow,

@@ -8,7 +8,13 @@ import { useMusic } from "@/lib/app/music-store";
 import { relationshipById, tagLevel } from "@/lib/app/tags";
 import { charmFromCoins, giftEarnings, voiceExpForMinute } from "@/lib/app/progress";
 import { useServerRooms } from "@/lib/app/server-rooms";
-import { muteParticipant, roomErrorText } from "@/lib/api/voice-rooms";
+import { muteParticipant, readRoomInfo, roomErrorText, roomInfoTopic, updateRoomSettings, uploadRoomCover, type RoomSettingsPatch } from "@/lib/api/voice-rooms";
+import { subscribe } from "@/lib/realtime/stomp";
+import { readGiftEvent, roomGiftsTopic, sendRoomGift, type RoomGiftEvent } from "@/lib/api/gifts";
+import { roomLevel } from "@/lib/app/levels";
+import { readRoomMedia, roomMediaApi, roomMediaTopic, type RoomMedia, type ServerMode } from "@/lib/api/room-media";
+import type { VideoSync } from "./YouTubePlayer";
+import { SERVER_USER_PREFIX } from "@/lib/app/server-rooms";
 import { useRoomParticipants } from "./useRoomParticipants";
 import { useRoomState, type LiveRoomEvent } from "./useRoomState";
 import { roomStateApi } from "@/lib/api/room-state";
@@ -41,6 +47,10 @@ const SETTING_MESSAGES: Partial<Record<keyof RoomSettings, [string, string]>> = 
   event: ["Owner started a room event 🎉", "Owner ended the room event"],
 };
 
+/** Backend room modes. */
+const MODE_OF: Record<ServerMode, RoomMode> = { VOICE: "voice", WATCH: "youtube", KHARIDARI: "kharidari" };
+const SERVER_MODE_OF: Record<RoomMode, ServerMode> = { voice: "VOICE", youtube: "WATCH", kharidari: "KHARIDARI" };
+
 const modeFor = (room: Room): RoomMode => (room.type === "watch" ? "youtube" : room.type === "kharidari" ? "kharidari" : "voice");
 
 /**
@@ -51,12 +61,12 @@ const modeFor = (room: Room): RoomMode => (room.type === "watch" ? "youtube" : r
  * Seat 0 is always the owner's seat and never moves.
  */
 export function useRoomSession(room: Room) {
-  const { profile, vip, spend, playGift, armCombo, clearCombo, toast, addRoomGift, addIntimacy, tagsOf, addCharm, trackReceived, addExp, roleIn, adminsOf, setRoomAdmin, updateMyRoom, membershipOf, leaveRoom } = useApp();
+  const { profile, vip, spend, coins, refreshCoins, playGift, armCombo, clearCombo, toast, addRoomGift, addIntimacy, tagsOf, addCharm, trackReceived, addExp, roleIn, adminsOf, setRoomAdmin, updateMyRoom, membershipOf, leaveRoom } = useApp();
   const person = usePeople();
   /** Backend rooms have real voice over LiveKit, and no simulated crowd. */
   const live = Boolean(room.server);
   const voice = useLiveVoice(room.server?.id ?? null);
-  const { myId: myServerId } = useServerRooms();
+  const { myId: myServerId, applyRoom, applyRoomPoints } = useServerRooms();
   /** Backend rooms: who is in the room (participants API) merged with who is connected (LiveKit). */
   const participants = useRoomParticipants(room.server?.id ?? null, voice, myServerId);
 
@@ -77,7 +87,7 @@ export function useRoomSession(room: Room) {
     const length = Math.max(room.seats, others.length + 1);
     return Array.from({ length }, (_, i) => (i === 0 ? (ids.includes(room.hostId) ? room.hostId : null) : (others[i - 1] ?? null)));
   }, [participants, room.hostId, room.seats]);
-  const [mode, setModeState] = useState<RoomMode>(() => modeFor(room));
+  const [localMode, setModeState] = useState<RoomMode>(() => modeFor(room));
   const [localClosedSeats, setClosedSeats] = useState<number[]>([]);
   /** People an owner or admin muted. */
   const [forceMuted, setForceMuted] = useState<string[]>([]);
@@ -98,7 +108,7 @@ export function useRoomSession(room: Room) {
   const [speaking, setSpeaking] = useState<string[]>(() => (room.server ? [] : room.seated.filter((id) => id !== ME_ID).slice(0, 1)));
   const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const [giftCounts, setGiftCounts] = useState<Record<string, number>>({});
-  const [video, setVideoState] = useState<VideoState>(null);
+  const [localVideo, setVideoState] = useState<VideoState>(null);
   /** In-room UI: the profile card and the seat action menu. */
   const [cardId, setCardId] = useState<string | null>(null);
   const [seatMenu, setSeatMenu] = useState<number | null>(null);
@@ -108,7 +118,7 @@ export function useRoomSession(room: Room) {
     const list: RoomMessage[] = [
       { id: mid(), kind: "system", text: `Welcome to ${room.name}! Be kind, keep it respectful, and have fun.` },
       room.server
-        ? { id: mid(), kind: "system", text: "Voice, chat and seats in this room are live. Gifts are still only on your device." }
+        ? { id: mid(), kind: "system", text: "Voice, chat, seats, gifts, YouTube and music in this room are live for everyone. Gifts use your real coins." }
         : { id: mid(), kind: "system", text: "Web preview: voice, YouTube and chat here are local demos and aren't sent to anyone." },
     ];
     if (room.server) {
@@ -233,6 +243,59 @@ export function useRoomSession(room: Room) {
   const rs = useRoomState(room.server?.id ?? null, inRoom, myServerId, onRoomEvent, onRoomError, onRoomClosed);
   /** The server's state, once loaded (backend rooms only). */
   const srv = live ? rs.state : null;
+
+  /*
+   * Backend rooms: the room's mode and the shared YouTube video come from the
+   * server (/media), so everyone is in the same mode and at the same moment.
+   */
+  const [media, setMedia] = useState<RoomMedia | null>(null);
+  const mediaVersion = useRef(-1);
+  const mediaReported = useRef(-1);
+  /** Server clock minus this device's clock, so positions line up. */
+  const clockOffset = useRef(0);
+  const applyMedia = useCallback(
+    (m: RoomMedia, fromBroadcast: boolean) => {
+      clockOffset.current = m.serverTime - Date.now();
+      const report = fromBroadcast && m.event && m.version > mediaReported.current;
+      if (report) mediaReported.current = m.version;
+      if (m.version >= mediaVersion.current) {
+        mediaVersion.current = m.version;
+        setMedia(m);
+      }
+      if (!report || !m.event) return;
+      const who = m.event.actorId ? (m.event.actorId === myServerId ? ME_ID : `${SERVER_USER_PREFIX}${m.event.actorId}`) : undefined;
+      if (m.event.type === "MODE_CHANGED") addSystem(`${nameOf(who)} changed the mode to ${MODE_LABEL[MODE_OF[m.mode]]}`);
+      else if (m.event.type === "VIDEO_CHANGED" && m.video && who) add({ id: mid(), kind: "video", authorId: who, title: m.video.title });
+      else if (m.event.type === "VIDEO_REMOVED") addSystem(`${nameOf(who)} removed the video.`);
+    },
+    [myServerId, addSystem, add, nameOf],
+  );
+  useEffect(() => {
+    mediaVersion.current = -1;
+    mediaReported.current = -1;
+    setMedia(null);
+  }, [room.server?.id]);
+  useEffect(() => {
+    const serverId = room.server?.id;
+    if (!serverId || !inRoom) return;
+    let off = false;
+    roomMediaApi
+      .get(serverId)
+      .then((m) => !off && applyMedia(m, false))
+      .catch(() => {
+        /* loaded again on the next change */
+      });
+    const stop = subscribe(roomMediaTopic(serverId), (body) => {
+      const m = readRoomMedia(body);
+      if (m && m.roomId === serverId) applyMedia(m, true);
+    });
+    return () => {
+      off = true;
+      stop();
+    };
+  }, [room.server?.id, inRoom, applyMedia]);
+  const mode: RoomMode = live && media ? MODE_OF[media.mode] : localMode;
+  const video: VideoState = live ? (media?.video ? { id: media.video.id, title: media.video.title } : null) : localVideo;
 
   const seats = srv?.seats ?? liveSeats ?? localSeats;
   const closedSeats = srv?.closedSeats ?? localClosedSeats;
@@ -604,6 +667,35 @@ export function useRoomSession(room: Room) {
     wasOnlyMe.current = musicOnlyMe;
   }, [musicOnlyMe, music.playing, addSystem, toast, profile.name]);
 
+  /*
+   * Backend rooms: your song goes into the call (everyone hears the same moment)
+   * while you may talk: on a seat, not muted, room open. Otherwise it plays only
+   * for you. Other people's songs show up as a chat line.
+   */
+  const songTitle = music.current ? `${music.current.title} — ${music.current.artist}` : "";
+  const streamSong = Boolean(live && music.playing && music.current && seated && !adminMutedMe && roomOpen);
+  const voiceConnected = voice?.status === "connected";
+  const setMusicOnCall = voice?.setMusic;
+  useEffect(() => {
+    if (!setMusicOnCall || !voiceConnected) return;
+    setMusicOnCall(streamSong ? music.audioElement() : null, songTitle);
+  }, [setMusicOnCall, voiceConnected, streamSong, songTitle, music.audioElement]);
+  // Leaving the room stops sending the song
+  useEffect(() => () => setMusicOnCall?.(null, ""), [setMusicOnCall]);
+  // "Music off" also silences other people's songs on this device
+  const setRemoteMusicMuted = voice?.setRemoteMusicMuted;
+  useEffect(() => setRemoteMusicMuted?.(music.musicOff), [setRemoteMusicMuted, music.musicOff]);
+  const songsHeard = useRef<Record<string, string>>({});
+  useEffect(() => {
+    if (!voice) return;
+    for (const p of voice.people) {
+      if (p.isLocal) continue;
+      const before = songsHeard.current[p.identity];
+      if (p.music && p.music !== before) addSystem(`🎵 ${nameOf(`${SERVER_USER_PREFIX}${p.identity.replace(/^user[-_:]/i, "")}`)} is playing ${p.music}`);
+      songsHeard.current[p.identity] = p.music ?? "";
+    }
+  }, [voice?.people, addSystem, nameOf]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggleHand = useCallback(() => {
     setHandRaised((h) => {
       toast(h ? "Hand lowered" : "Hand raised. The owner or an admin can invite you to a seat");
@@ -767,10 +859,17 @@ export function useRoomSession(room: Room) {
         return;
       }
       if (m === mode) return;
+      if (room.server) {
+        void roomMediaApi
+          .setMode(room.server.id, SERVER_MODE_OF[m])
+          .then((r) => applyMedia(r, false))
+          .catch((e) => toast(e instanceof Error && e.message ? e.message : "Couldn't change the mode.", "error"));
+        return;
+      }
       setModeState(m);
       addSystem(`${actor} changed the mode to ${MODE_LABEL[m]}`);
     },
-    [canModerate, mode, toast, addSystem, actor],
+    [canModerate, mode, toast, addSystem, actor, room.server, applyMedia],
   );
 
   /* ---- Owner settings ---- */
@@ -785,12 +884,69 @@ export function useRoomSession(room: Room) {
         toast("Only the owner or an admin can change settings");
         return;
       }
+      if (room.server) {
+        // Backend room: the server saves it and tells everyone in the room (the system line comes from that)
+        const serverId = room.server.id;
+        const body: RoomSettingsPatch = {};
+        if (patch.name !== undefined) body.name = patch.name;
+        if (patch.topic !== undefined) body.description = patch.topic;
+        if (patch.category !== undefined) body.category = patch.category;
+        if (patch.announcement !== undefined) body.announcement = patch.announcement;
+        if ("password" in patch) body.password = patch.password ?? "";
+        if (patch.cover) {
+          body.coverTheme = patch.cover.theme;
+          body.coverMotif = patch.cover.motif;
+        }
+        if ("coverImage" in patch && !patch.coverImage) body.removeCoverImage = true;
+        if (patch.settings) body.settings = patch.settings as Record<string, unknown>;
+        const picture = patch.coverImage?.startsWith("data:") ? patch.coverImage : null;
+        const save = async () => {
+          let latest = Object.keys(body).length ? await updateRoomSettings(serverId, body) : null;
+          if (picture) latest = await uploadRoomCover(serverId, await (await fetch(picture)).blob());
+          if (latest) applyRoom(latest);
+        };
+        save().catch((e) => toast(e instanceof Error && e.message ? e.message : "Couldn't save that. Try again.", "error"));
+        return;
+      }
       updateMyRoom(room.id, patch);
       // Messages are written as "Owner …"; say "Admin …" when an admin made the change
       if (message) addSystem(message.replace(/^Owner /, `${actor} `));
     },
-    [canModerate, toast, updateMyRoom, room.id, addSystem, actor],
+    [canModerate, toast, updateMyRoom, room.id, room.server, addSystem, actor, applyRoom],
   );
+
+  // Backend rooms: settings, member and fan counts change live for everyone in the room
+  useEffect(() => {
+    const serverId = room.server?.id;
+    if (!serverId) return;
+    return subscribe(roomInfoTopic(serverId), (body) => {
+      const info = readRoomInfo(body);
+      if (!info || info.room.id !== serverId) return;
+      applyRoom(info.room);
+      const ev = info.event;
+      if (!ev || ev.type !== "SETTINGS_CHANGED") return;
+      const who = !ev.actorId ? "Owner" : ev.actorId === myServerId ? profile.name : person(`${SERVER_USER_PREFIX}${ev.actorId}`).name;
+      const flags = info.room.settings;
+      for (const key of ev.changed) {
+        const pair = SETTING_MESSAGES[key as keyof RoomSettings];
+        const text = pair
+          ? (flags[key] ? pair[0] : pair[1])
+          : ({
+              name: "Owner changed the title",
+              description: "Owner changed the topic",
+              category: "Owner changed the tag",
+              cover: "Owner changed the cover",
+              coverImage: "Owner changed the cover",
+              announcement: "Owner updated the announcement",
+              password: "Owner locked the room with a password",
+              passwordRemoved: "Owner removed the room password",
+              background: "Owner changed the background",
+              partnerSeat: "Owner changed the partner seats",
+            } as Record<string, string>)[key];
+        if (text) addSystem(text.replace(/^Owner /, `${who} `));
+      }
+    });
+  }, [room.server?.id, applyRoom, addSystem, myServerId, profile.name, person]);
 
   const updateSettings = useCallback(
     (patch: Partial<RoomSettings>) => {
@@ -798,9 +954,9 @@ export function useRoomSession(room: Room) {
       const key = Object.keys(patch)[0] as keyof RoomSettings;
       const msgs = SETTING_MESSAGES[key];
       const msg = msgs ? (patch[key] ? msgs[0] : msgs[1]) : key === "background" ? "Owner changed the background" : key === "partnerSeat" ? "Owner changed the partner seats" : undefined;
-      updateRoom({ settings: next }, msg);
+      updateRoom({ settings: room.server ? (patch as RoomSettings) : next }, msg);
     },
-    [settings, updateRoom],
+    [settings, updateRoom, room.server],
   );
 
   /* ---- Chat, reactions, gifts, video ---- */
@@ -831,6 +987,50 @@ export function useRoomSession(room: Room) {
     window.setTimeout(() => setReactions((list) => list.filter((x) => x.id !== r.id)), 1800);
   }, []);
 
+  /**
+   * Backend rooms: show a gift from the server (everyone in the room gets the
+   * same one). Each gift once, whether it came from the room broadcast or from
+   * your own send's answer.
+   */
+  const seenGifts = useRef(new Set<string>());
+  const showServerGift = useCallback(
+    (ev: RoomGiftEvent, combo = 1) => {
+      if (seenGifts.current.has(ev.eventId)) return;
+      seenGifts.current.add(ev.eventId);
+      const toPerson = (uid: string) => (uid === myServerId ? ME_ID : `${SERVER_USER_PREFIX}${uid}`);
+      const fromId = toPerson(ev.fromUserId);
+      const toId = toPerson(ev.toUserId);
+      const giftId = ev.giftId as GiftId;
+      const value = ev.coins;
+      const charm = Math.floor(charmFromCoins(value));
+      add({ id: mid(), kind: "gift", fromId, toId, giftId, count: ev.count, charm, earned: ev.earned });
+      addIntimacy(fromId, toId, value);
+      addCharm(toId, value);
+      trackReceived(toId, giftId, ev.count);
+      setGiftCounts((g) => ({ ...g, [toId]: (g[toId] ?? 0) + value }));
+      playGift({ giftId, fromName: nameOf(fromId), toName: nameOf(toId), count: ev.count, combo, charm, earned: ev.earned });
+      giftListener.current?.(fromId, toId, value);
+      pkListener.current?.(fromId, toId, value);
+      if (toId === ME_ID) toast(`${nameOf(fromId)} sent you ${giftById(giftId).name}${ev.count > 1 ? ` ×${ev.count}` : ""} · +${charm} charm · +${ev.earned.toLocaleString("en-IN")} coins`, "gold");
+      // Room points and level, from the server's total
+      if (room.server) {
+        const before = roomLevel(room.basePoints).level;
+        const after = roomLevel(ev.roomPoints).level;
+        applyRoomPoints(room.server.id, ev.roomPoints);
+        if (after > before) window.setTimeout(() => toast(`${room.name} reached room level ${after}!`, "gold"), 3000);
+      }
+    },
+    [myServerId, add, addIntimacy, addCharm, trackReceived, playGift, nameOf, toast, room.server, room.basePoints, room.name, applyRoomPoints],
+  );
+  useEffect(() => {
+    const serverId = room.server?.id;
+    if (!serverId) return;
+    return subscribe(roomGiftsTopic(serverId), (body) => {
+      const ev = readGiftEvent(body);
+      if (ev && ev.roomId === serverId) showServerGift(ev);
+    });
+  }, [room.server?.id, showServerGift]);
+
   /** Send a gift; package gifts (free) come out of your Bag instead of your coins. */
   /**
    * Send a gift. combo: which send this is in a row from the Combo button
@@ -843,6 +1043,31 @@ export function useRoomSession(room: Room) {
         return false;
       }
       const gift = giftById(giftId);
+      // Backend rooms: the server charges the real price and tells everyone (Bag gifts stay on this device for now)
+      if (room.server && !free) {
+        const serverId = room.server.id;
+        const uid = rs.userIdOf(toId);
+        if (!uid || toId === ME_ID) {
+          toast(toId === ME_ID ? "You can't send a gift to yourself" : "You can only send gifts to people in this room");
+          return false;
+        }
+        if (coins < gift.cost * count) {
+          toast("Not enough coins. Tap your coin balance to recharge.", "error");
+          clearCombo();
+          return false;
+        }
+        sendRoomGift(serverId, giftId, uid, count)
+          .then((ev) => {
+            showServerGift(ev, combo);
+            void refreshCoins();
+            armCombo({ giftId, n: combo, send: () => sendGiftRef.current(giftId, toId, count, false, combo + 1) });
+          })
+          .catch((e) => {
+            toast(e instanceof Error && e.message ? e.message : "The gift wasn't sent. Try again.", "error");
+            clearCombo();
+          });
+        return true;
+      }
       if (!free && !spend(gift.cost * count)) {
         toast("Not enough coins. Tap your coin balance to recharge.", "error");
         clearCombo();
@@ -865,7 +1090,7 @@ export function useRoomSession(room: Room) {
       if (!free) armCombo({ giftId, n: combo, send: () => sendGiftRef.current(giftId, toId, count, false, combo + 1) });
       return true;
     },
-    [spend, toast, add, playGift, profile.name, person, addRoomGift, addIntimacy, addCharm, trackReceived, room, armCombo, clearCombo],
+    [spend, toast, add, playGift, profile.name, person, addRoomGift, addIntimacy, addCharm, trackReceived, room, armCombo, clearCombo, rs, coins, showServerGift, refreshCoins],
   );
   const sendGiftRef = useRef(sendGift);
   sendGiftRef.current = sendGift;
@@ -915,12 +1140,38 @@ export function useRoomSession(room: Room) {
 
   const setVideo = useCallback(
     (v: VideoState) => {
+      if (room.server) {
+        // Everyone in the room switches to it; the chat line comes from the server's update
+        const id = room.server.id;
+        (v ? roomMediaApi.setVideo(id, v.id, v.title) : roomMediaApi.removeVideo(id))
+          .then((r) => applyMedia(r, false))
+          .catch((e) => toast(e instanceof Error && e.message ? e.message : "Couldn't change the video.", "error"));
+        return;
+      }
       setVideoState(v);
       if (v) add({ id: mid(), kind: "video", authorId: ME_ID, title: v.title });
       else add({ id: mid(), kind: "system", text: `${profile.name} removed the video.` });
     },
-    [add, profile.name],
+    [add, profile.name, room.server, applyMedia, toast],
   );
+
+  /** Backend rooms: the shared play state the YouTube player follows (and reports to, if you may control it). */
+  const videoSync = useMemo<VideoSync | undefined>(() => {
+    const v = media?.video;
+    const serverId = room.server?.id;
+    if (!live || !v || !serverId) return undefined;
+    return {
+      key: `${media.version}:${v.updatedAt}:${v.playing}`,
+      playing: v.playing,
+      positionNow: () => (v.playing ? v.position + (Date.now() + clockOffset.current - v.updatedAt) / 1000 : v.position),
+      canControl: canModerate || seated,
+      onControl: (action, position) =>
+        void roomMediaApi
+          .control(serverId, action, position)
+          .then((r) => applyMedia(r, false))
+          .catch((e) => toast(e instanceof Error && e.message ? e.message : "Couldn't change the video.", "error")),
+    };
+  }, [live, media, room.server?.id, canModerate, seated, applyMedia, toast]);
 
   // Live rooms: speaking comes from LiveKit's active speakers. You are "me"; the owner's seat lights up when the owner speaks.
   const liveSpeaking = useMemo(() => (participants ? participants.members.filter((m) => m.speaking).map((m) => m.personId) : null), [participants]);
@@ -1000,6 +1251,7 @@ export function useRoomSession(room: Room) {
     giftListener,
     pkListener,
     video,
+    videoSync,
     setVideo,
     addSystem,
     vacate,

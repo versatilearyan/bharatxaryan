@@ -1,6 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SERVER_USER_PREFIX, useServerRooms } from "@/lib/app/server-rooms";
+import { auctionApi, readAuction, roomAuctionTopic, type ServerAuction } from "@/lib/api/room-games";
+import { subscribe } from "@/lib/realtime/stomp";
 import { GIFTS, giftById } from "@/lib/app/data";
 import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
@@ -46,13 +49,17 @@ const pick = <T,>(arr: readonly T[]) => arr[Math.floor(Math.random() * arr.lengt
  * volume, and gifts are not refunded. The biggest gift volume when the timer ends
  * wins. In BFF mode the winner and the person on the seat become a tag.
  *
- * In rooms you don't moderate, the owner's side and other people's gifts are simulated.
+ * Backend rooms: the server runs it (seat, timer, real gifts as bids, winner,
+ * tags) and everyone sees the same auction. Demo rooms: in rooms you don't
+ * moderate, the owner's side and other people's gifts are simulated.
  */
 export function useAuction(s: RoomSession) {
-  const { toast, formTag } = useApp();
+  const { toast, formTag, loadServerTags } = useApp();
   const person = usePeople();
   const active = s.mode === "kharidari";
-  const [a, setA] = useState<AuctionState>({
+  const serverId = s.room.server?.id ?? null;
+  const { myId } = useServerRooms();
+  const [localA, setA] = useState<AuctionState>({
     phase: "idle",
     itemId: null,
     mode: "bff",
@@ -65,6 +72,120 @@ export function useAuction(s: RoomSession) {
     winner: null,
     tagResult: null,
   });
+  /* ---- Backend rooms: the server's auction ---- */
+  const [srv, setSrv] = useState<ServerAuction | null>(null);
+  const srvVersion = useRef(-1);
+  const srvReported = useRef(-1);
+  const offset = useRef(0);
+  const pid = useCallback((u: string) => (u === myId ? ME_ID : `${SERVER_USER_PREFIX}${u}`), [myId]);
+  const nm = useCallback((id: string) => (id === ME_ID ? "You" : person(id).name), [person]);
+  const applySrv = useCallback(
+    (m: ServerAuction, broadcast: boolean) => {
+      offset.current = m.serverTime - Date.now();
+      const report = broadcast && m.event && m.version > srvReported.current;
+      if (report) srvReported.current = m.version;
+      if (m.version >= srvVersion.current) {
+        srvVersion.current = m.version;
+        setSrv(m);
+      }
+      if (!report || !m.event) return;
+      const ss = sRef.current;
+      const item = m.itemId ? pid(m.itemId) : null;
+      const actor = m.event.actorId ? pid(m.event.actorId) : null;
+      const rel = relationshipById((RELATIONSHIPS.some((r) => r.id === m.relation) ? m.relation : "besties") as RelationshipId);
+      const prizeText = m.mode === "bff" ? rel.label : m.offer;
+      switch (m.event.type) {
+        case "SAT":
+          if (item) ss.addSystem(`${nm(item)} sat on the auction seat`);
+          break;
+        case "DECLARED":
+          if (item) ss.addSystem(`${nm(item)} declared: ${rel.label}${m.declaration ? `. “${m.declaration}”` : ""}`);
+          break;
+        case "STARTED":
+          if (item && m.startGiftId) {
+            const g = giftById(m.startGiftId as GiftId);
+            ss.addSystem(`🔨 Kharidari started (${m.mode === "bff" ? "BFF" : "Ordinary bidding"}): ${item === ME_ID ? "you" : person(item).name} for ${prizeText}. Starting price: ${g.name} (${m.startPrice})`);
+          }
+          break;
+        case "NO_SALE":
+          if (actor) ss.addSystem(`No bids reached the starting price for ${nm(actor)}. Kharidari closed.`);
+          break;
+        case "SOLD": {
+          if (!m.winner || !item) break;
+          const winner = pid(m.winner.userId);
+          const volume = m.winner.total.toLocaleString("en-IN");
+          const itemName = item === ME_ID ? "you" : person(item).name;
+          if (m.mode === "bff" && m.tagResult) {
+            const kind = m.tagResult.kind;
+            if (kind === "new") ss.addSystem(`🎉 ${nm(winner)} won ${itemName} with ${volume} of gifts. New tag: ${rel.label}!`);
+            else if (kind === "existing") ss.addSystem(`🎉 ${nm(winner)} won ${itemName} again. Their ${volume} of gifts went into their tag's intimacy.`);
+            else ss.addSystem(`🎉 ${nm(winner)} won ${itemName} with ${volume} of gifts, but an intimate space is full, so no new tag.`);
+            if (winner === ME_ID || item === ME_ID) {
+              const other = nm(winner === ME_ID ? item : winner);
+              toast(kind === "new" ? `You and ${other} are now ${rel.label}` : kind === "existing" ? `+${volume} intimacy with ${other}` : "Your intimate space is full. Remove a tag to make room.", kind === "full" ? "error" : "gold");
+              void loadServerTags("me");
+            }
+          } else {
+            ss.addSystem(`🎉 ${nm(winner)} won “${m.offer}” from ${itemName} with ${volume} of gifts`);
+            if (winner === ME_ID) toast(`You won “${m.offer}” from ${person(item).name}`, "gold");
+            else if (item === ME_ID) toast(`${person(winner).name} won “${m.offer}” from you!`, "gold");
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    [pid, nm, person, toast, loadServerTags],
+  );
+  useEffect(() => {
+    srvVersion.current = -1;
+    srvReported.current = -1;
+    setSrv(null);
+    if (!serverId) return;
+    let off = false;
+    auctionApi
+      .get(serverId)
+      .then((m) => !off && applySrv(m, false))
+      .catch(() => {});
+    const stop = subscribe(roomAuctionTopic(serverId), (body) => {
+      const m = readAuction(body);
+      if (m && m.roomId === serverId) applySrv(m, true);
+    });
+    return () => {
+      off = true;
+      stop();
+    };
+  }, [serverId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const serverA = useMemo<AuctionState | null>(() => {
+    if (!srv) return null;
+    return {
+      phase: srv.phase,
+      itemId: srv.itemId ? pid(srv.itemId) : null,
+      mode: srv.mode,
+      relation: (RELATIONSHIPS.some((r) => r.id === srv.relation) ? srv.relation : "besties") as RelationshipId,
+      declaration: srv.declaration,
+      offer: srv.offer,
+      startGift: (srv.startGiftId as GiftId) ?? null,
+      endsAt: srv.endsAt ? srv.endsAt - offset.current : 0,
+      bids: srv.bids.map((b) => ({ id: pid(b.userId), total: b.total })),
+      winner: srv.winner ? { id: pid(srv.winner.userId), total: srv.winner.total } : null,
+      tagResult: srv.tagResult ? { kind: srv.tagResult.kind, token: (["bicycle", "scooter", "cottage"].includes(srv.tagResult.token) ? srv.tagResult.token : "bicycle") as TokenId } : null,
+    };
+  }, [srv, pid]);
+  const a: AuctionState = serverId ? (serverA ?? { ...localA, phase: "idle", itemId: null, bids: [], winner: null, tagResult: null }) : localA;
+
+  const server = useCallback(
+    (run: (id: string) => Promise<ServerAuction>) => {
+      if (!serverId) return;
+      run(serverId)
+        .then((m) => applySrv(m, false))
+        .catch((e) => toast(e instanceof Error && e.message ? e.message : "That didn't work. Try again.", "error"));
+    },
+    [serverId, applySrv, toast],
+  );
+
   const [now, setNow] = useState(() => Date.now());
   const ref = useRef(a);
   ref.current = a;
@@ -72,7 +193,7 @@ export function useAuction(s: RoomSession) {
   sRef.current = s;
 
   const top = a.bids[0] ?? null;
-  const startPrice = a.startGift ? giftById(a.startGift).cost : 0;
+  const startPrice = serverId && srv ? srv.startPrice : a.startGift ? giftById(a.startGift).cost : 0;
   const myTotal = a.bids.find((b) => b.id === ME_ID)?.total ?? 0;
   const secondsLeft = a.phase === "bidding" ? Math.max(0, Math.ceil((a.endsAt - now) / 1000)) : 0;
   const nameOf = useCallback((id: string) => (id === ME_ID ? "You" : person(id).name), [person]);
@@ -80,6 +201,8 @@ export function useAuction(s: RoomSession) {
 
   // Gifts sent to the auction seat while bidding is open are bids
   useEffect(() => {
+    // Backend rooms: the server counts real gifts as bids
+    if (serverId) return;
     s.giftListener.current = (fromId, toId, value) => {
       setA((st) => {
         if (st.phase !== "bidding" || toId !== st.itemId || fromId === st.itemId) return st;
@@ -92,7 +215,7 @@ export function useAuction(s: RoomSession) {
     return () => {
       s.giftListener.current = null;
     };
-  }, [s.giftListener]);
+  }, [s.giftListener, serverId]);
 
   const sitOnAuction = useCallback(
     (id: string) => {
@@ -103,13 +226,18 @@ export function useAuction(s: RoomSession) {
         if (id === ME_ID) toast("Your owner seat is fixed. Seat someone else on the auction seat.");
         return;
       }
+      if (serverId) {
+        const uid = id === ME_ID ? undefined : id.startsWith(SERVER_USER_PREFIX) ? id.slice(SERVER_USER_PREFIX.length) : null;
+        if (uid !== null) server((rid) => auctionApi.sit(rid, uid));
+        return;
+      }
       sRef.current.vacate(id);
       // Other people declare their tag straight away; you set yours from the auction seat
       const sim = id !== ME_ID;
       setA((x) => ({ ...x, itemId: id, winner: null, bids: [], tagResult: null, declaration: sim ? pick(DECLARATIONS) : "", relation: sim ? pick(RELATIONSHIPS).id : x.relation }));
       sRef.current.addSystem(`${nameOf(id)} sat on the auction seat`);
     },
-    [nameOf, toast],
+    [nameOf, toast, serverId, server],
   );
 
   const leaveAuction = useCallback(() => {
@@ -117,8 +245,9 @@ export function useAuction(s: RoomSession) {
       toast("You can't leave the auction seat while bidding is open");
       return;
     }
+    if (serverId) return server((rid) => auctionApi.leave(rid));
     setA((x) => ({ ...x, itemId: null, phase: "idle", winner: null, bids: [], tagResult: null, declaration: "" }));
-  }, [toast]);
+  }, [toast, serverId, server]);
 
   /** The person on the auction seat declares the tag they want before bidding starts. */
   const declare = useCallback(
@@ -130,16 +259,21 @@ export function useAuction(s: RoomSession) {
         return;
       }
       const text = declaration.trim().slice(0, DECLARATION_MAX);
+      if (serverId) return server((rid) => auctionApi.declare(rid, relation, text));
       setA((x) => ({ ...x, relation, declaration: text }));
       const rel = relationshipById(relation);
       sRef.current.addSystem(`You declared: ${rel.label}${text ? `. “${text}”` : ""}`);
     },
-    [toast],
+    [toast, serverId, server],
   );
 
-  const configure = useCallback((patch: Partial<Pick<AuctionState, "mode" | "offer" | "startGift">>) => {
-    setA((x) => (x.phase === "bidding" ? x : { ...x, ...patch }));
-  }, []);
+  const configure = useCallback(
+    (patch: Partial<Pick<AuctionState, "mode" | "offer" | "startGift">>) => {
+      if (serverId) return server((rid) => auctionApi.configure(rid, { mode: patch.mode, offer: patch.offer, startGiftId: patch.startGift ?? undefined }));
+      setA((x) => (x.phase === "bidding" ? x : { ...x, ...patch }));
+    },
+    [serverId, server],
+  );
 
   const start = useCallback(
     (by: "me" | "sim" = "me") => {
@@ -157,13 +291,17 @@ export function useAuction(s: RoomSession) {
         if (by === "me") toast("Pick a starting price gift in Settings first");
         return;
       }
+      if (serverId) {
+        if (by === "me") server((rid) => auctionApi.start(rid));
+        return;
+      }
       setA((x) => ({ ...x, phase: "bidding", endsAt: Date.now() + ROUND_MS, bids: [], winner: null, tagResult: null }));
       const g = giftById(st.startGift);
       sRef.current.addSystem(
         `🔨 Kharidari started (${st.mode === "bff" ? "BFF" : "Ordinary bidding"}): ${st.itemId === ME_ID ? "you" : person(st.itemId).name} for ${prize(st)}. Starting price: ${g.name} (${g.cost})`,
       );
     },
-    [toast, person],
+    [toast, person, serverId, server],
   );
 
   const finish = useCallback(() => {
@@ -206,8 +344,9 @@ export function useAuction(s: RoomSession) {
 
   const endNow = useCallback(() => {
     if (!sRef.current.canModerate) return;
+    if (serverId) return server((rid) => auctionApi.end(rid));
     finish();
-  }, [finish]);
+  }, [finish, serverId, server]);
 
   // Clock
   useEffect(() => {
@@ -216,21 +355,21 @@ export function useAuction(s: RoomSession) {
     return () => window.clearInterval(t);
   }, [active, a.phase]);
 
-  // Close the round when the timer runs out
+  // Close the round when the timer runs out (backend rooms: the server does)
   useEffect(() => {
-    if (active && a.phase === "bidding" && now >= a.endsAt) finish();
-  }, [active, a.phase, a.endsAt, now, finish]);
+    if (!serverId && active && a.phase === "bidding" && now >= a.endsAt) finish();
+  }, [active, a.phase, a.endsAt, now, finish, serverId]);
 
-  // After a sale, the auction seat clears for the next round
+  // After a sale, the auction seat clears for the next round (backend rooms: the server does)
   useEffect(() => {
-    if (a.phase !== "sold") return;
+    if (serverId || a.phase !== "sold") return;
     const t = window.setTimeout(() => setA((x) => ({ ...x, phase: "idle", itemId: null, bids: [], winner: null, tagResult: null })), 9000);
     return () => window.clearTimeout(t);
-  }, [a.phase]);
+  }, [a.phase, serverId]);
 
   // Simulated room: someone sits on the auction seat, the owner starts a round, people send gifts
   useEffect(() => {
-    if (!active) return;
+    if (!active || serverId) return;
     const t = window.setInterval(() => {
       const st = ref.current;
       const ss = sRef.current;
@@ -264,7 +403,7 @@ export function useAuction(s: RoomSession) {
       }
     }, 3000);
     return () => window.clearInterval(t);
-  }, [active, sitOnAuction, start]);
+  }, [active, sitOnAuction, start, serverId]);
 
   /** Send a gift to the person on the auction seat. Spends your coins right away. */
   const bid = useCallback(

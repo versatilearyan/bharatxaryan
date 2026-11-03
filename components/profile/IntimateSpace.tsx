@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Check, ChevronDown, Gavel, Lock, Plus, Trash2 } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
@@ -27,6 +27,11 @@ export function IntimateSpace({ personId }: { personId: string }) {
   const mine = personId === ME_ID;
   const owner = person(personId);
   const name = mine ? profile.name : owner.name;
+  // Backend users: their BFF tags come from the server
+  const { loadServerTags } = useApp();
+  useEffect(() => {
+    if (personId === "me" || personId.startsWith("srv-user:")) void loadServerTags(personId);
+  }, [personId, loadServerTags]);
   const tags = [...tagsOf(personId)].sort((x, y) => y.intimacy - x.intimacy);
   // 3 slots for everyone, one more per VIP level, up to the max
   const slots = Math.min(TAG_SLOTS, Math.max(BASE_SLOTS + (mine ? vip.level : 0), tags.length));

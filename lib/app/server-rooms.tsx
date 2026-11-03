@@ -19,12 +19,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { closeRoom, getPublicRooms, leaveRoom, roomErrorText, type VoiceRoom, type VoiceRoomType } from "@/lib/api/voice-rooms";
 import { useMe } from "./me-store";
 import { ME_ID, useApp } from "./store";
-import type { Cover, CoverMotif, CoverTheme, Gender, NameFont, Room, RoomType } from "./types";
+import type { Cover, CoverMotif, CoverTheme, Gender, NameFont, Room, RoomSettings, RoomType } from "./types";
 import type { AvatarLook } from "@/components/mock/Avatar";
 
 const PREFS_KEY = "panchayat-server-room-prefs-v1";
 /** Room ids in the app are prefixed so they never clash with the sample rooms. */
 export const SERVER_ROOM_PREFIX = "srv-";
+/** Room.password for a backend room that has one: the real password stays on the server. */
+export const SERVER_PASSWORD_MARK = "••••";
 export const serverRoomAppId = (id: string) => `${SERVER_ROOM_PREFIX}${id}`;
 /** The app's person id for a backend user, e.g. "srv-user:42". */
 export const userPersonId = (userId: string) => `srv-user:${userId}`;
@@ -80,19 +82,28 @@ export function toAppRoom(v: VoiceRoom, myId: string | undefined, prefs: ServerR
     topic: v.description ?? "",
     hostId: host,
     type: APP_TYPE[v.roomType],
-    category: prefs.category ?? "Live",
-    cover: prefs.cover ?? { theme: THEMES[h % THEMES.length], motif: MOTIFS[(h >> 3) % MOTIFS.length] },
-    // No participant counts in the backend response: never invent one
-    members: 0,
+    category: v.category ?? prefs.category ?? "Live",
+    // The room's own cover (set by the owner or an admin), else the one picked on create, else a stable default
+    cover:
+      v.coverTheme && v.coverMotif
+        ? { theme: v.coverTheme as CoverTheme, motif: v.coverMotif as CoverMotif }
+        : (prefs.cover ?? { theme: THEMES[h % THEMES.length], motif: MOTIFS[(h >> 3) % MOTIFS.length] }),
+    coverImage: v.coverImageUrl,
+    announcement: v.announcement,
+    // The server never sends the password: this marker only says the room is locked (checked by the server)
+    password: v.hasPassword ? SERVER_PASSWORD_MARK : undefined,
+    members: v.memberCount ?? 0,
+    fans: v.fanCount,
     seats: Math.max(2, Math.min(12, prefs.seats ?? Math.min(v.maxParticipants ?? 10, 10))),
     vip: false,
     live: true,
     isPrivate: v.isPrivate,
     permanent: prefs.permanent ?? true,
-    basePoints: 0,
+    // Room points from real gifts (the server adds them); the level comes from these
+    basePoints: v.points ?? 0,
     seated: [host],
     createdByMe: mine,
-    settings: {},
+    settings: v.settings as Partial<RoomSettings>,
     server: { id: v.id, ownerId: v.ownerId, mine, status: v.status, description: v.description, maxParticipants: v.maxParticipants },
   };
 }
@@ -105,6 +116,10 @@ type ServerRoomsValue = ListState & {
   rememberPrefs: (id: string, prefs: ServerRoomPrefs) => void;
   /** Add a room you just created without waiting for the next list load. */
   addCreated: (v: VoiceRoom) => void;
+  /** Replace a room with a newer version from the server (live settings, counts). */
+  applyRoom: (v: VoiceRoom) => void;
+  /** A gift landed: the room's points are now `points`. */
+  applyRoomPoints: (id: string, points: number) => void;
   /** The backend id of the signed-in user, when the profile has loaded. */
   myId?: string;
   /**
@@ -175,6 +190,16 @@ export function ServerRoomsProvider({ children }: { children: ReactNode }) {
   // (private rooms never appear in it) and the room you're in, so a refresh
   // never pulls the room out from under you mid-call.
   const [pinned, setPinned] = useState<Record<string, VoiceRoom>>({});
+  /** A newer version of a room (live settings update): replace it wherever it's shown. */
+  const applyRoom = useCallback((v: VoiceRoom) => {
+    setPinned((p) => (v.id in p ? { ...p, [v.id]: v } : p));
+    setList((l) => (l.rooms.some((r) => r.id === v.id) ? { ...l, rooms: l.rooms.map((r) => (r.id === v.id ? v : r)) } : l));
+  }, []);
+  const applyRoomPoints = useCallback((id: string, points: number) => {
+    const bump = (r: VoiceRoom) => (r.id === id && (r.points ?? 0) < points ? { ...r, points } : r);
+    setPinned((p) => (id in p ? { ...p, [id]: bump(p[id]) } : p));
+    setList((l) => (l.rooms.some((r) => r.id === id) ? { ...l, rooms: l.rooms.map(bump) } : l));
+  }, []);
   const addCreated = useCallback((v: VoiceRoom) => {
     setPinned((p) => ({ ...p, [v.id]: v }));
     setList((l) => ({ ...l, status: l.status === "idle" ? "ready" : l.status, rooms: [v, ...l.rooms.filter((r) => r.id !== v.id)] }));
@@ -274,8 +299,8 @@ export function ServerRoomsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<ServerRoomsValue>(
-    () => ({ ...list, refresh, rememberPrefs, addCreated, myId, closeActive, closing, rememberPeople }),
-    [list, refresh, rememberPrefs, addCreated, myId, closeActive, closing, rememberPeople],
+    () => ({ ...list, refresh, rememberPrefs, addCreated, applyRoom, applyRoomPoints, myId, closeActive, closing, rememberPeople }),
+    [list, refresh, rememberPrefs, addCreated, applyRoom, applyRoomPoints, myId, closeActive, closing, rememberPeople],
   );
   return (
     <Ctx.Provider value={value}>

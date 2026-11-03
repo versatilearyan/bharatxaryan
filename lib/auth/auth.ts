@@ -11,7 +11,7 @@
  * Every call goes through lib/api/client.ts.
  */
 import { api } from "@/lib/api/client";
-import { clearToken, saveToken } from "./token";
+import { clearToken, readToken, saveToken } from "./token";
 import { GOOGLE_CLIENT_ID_SETTING } from "@/lib/config";
 import type { Gender } from "@/lib/app/types";
 
@@ -43,12 +43,12 @@ export function maskEmail(email: string) {
   return `${user.slice(0, 2)}${"*".repeat(Math.max(1, user.length - 3))}${user.slice(-1)}@${domain}`;
 }
 
-type TokenResponse = { message?: string; accessToken?: string; tokenType?: string; profileCompleted?: boolean; email?: string; fullName?: string; name?: string };
+type TokenResponse = { message?: string; accessToken?: string; tokenType?: string; refreshToken?: string; profileCompleted?: boolean; email?: string; fullName?: string; name?: string };
 
 /** Keep the backend JWT and turn the response into an AuthUser. */
 function accept(r: TokenResponse | null, method: AuthMethod, fallbackEmail: string, fallbackName?: string): AuthUser {
   if (!r || typeof r.accessToken !== "string" || !r.accessToken) throw new Error("The server didn't send a sign-in token. Try again.");
-  saveToken(r.accessToken, r.tokenType);
+  saveToken(r.accessToken, r.tokenType, typeof r.refreshToken === "string" ? r.refreshToken : undefined);
   return {
     method,
     email: cleanEmail(typeof r.email === "string" && r.email ? r.email : fallbackEmail),
@@ -101,6 +101,9 @@ export async function completeProfileRequest(details: { name: string; gender: Ge
 }
 
 export function signOutLocally() {
+  // End this device's session on the server too (best effort; the refresh token stops working)
+  const refreshToken = readToken()?.refreshToken;
+  if (refreshToken) void api("/api/v1/auth/logout", { method: "POST", body: { refreshToken } }).catch(() => {});
   clearToken();
   // Stop Google from signing the same account straight back in
   window.google?.accounts.id.disableAutoSelect();

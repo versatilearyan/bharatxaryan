@@ -41,6 +41,20 @@ export type VoiceRoom = {
   /** e.g. ACTIVE or CLOSED, as the backend sends it. */
   status?: string;
   createdAt?: string;
+  /* Settings the owner or an admin chose (shared with everyone). */
+  category?: string;
+  coverTheme?: string;
+  coverMotif?: string;
+  coverImageUrl?: string;
+  announcement?: string;
+  /** The room is locked with a password (the password itself is never sent here). */
+  hasPassword: boolean;
+  /** Display and chat settings: background, banText, noImages, ... */
+  settings: Record<string, unknown>;
+  memberCount?: number;
+  fanCount?: number;
+  /** Room points from gifts (the room level comes from these). */
+  points?: number;
 };
 
 /** What POST /voice-rooms/{id}/join returns: where and how to connect to LiveKit. */
@@ -161,6 +175,16 @@ export function readVoiceRoom(raw: unknown): VoiceRoom | null {
     ownerId: str(firstOf(r, ROOM_FIELDS.ownerId)),
     status: str(firstOf(r, ROOM_FIELDS.status))?.toUpperCase(),
     createdAt: str(r.createdAt),
+    category: str(r.category),
+    coverTheme: str(r.coverTheme),
+    coverMotif: str(r.coverMotif),
+    coverImageUrl: httpsUrl(r.coverImageUrl) ?? undefined,
+    announcement: str(r.announcement),
+    hasPassword: r.hasPassword === true,
+    settings: r.settings && typeof r.settings === "object" && !Array.isArray(r.settings) ? (r.settings as Record<string, unknown>) : {},
+    memberCount: num(r.memberCount),
+    fanCount: num(r.fanCount),
+    points: num(r.points),
   };
 }
 
@@ -278,8 +302,94 @@ export async function createRoom(payload: CreateVoiceRoomRequest): Promise<Voice
   return r;
 }
 
+/** Passwords entered this visit, per room, sent again when voice joins or reconnects. Never stored. */
+const roomPasswords = new Map<string, string>();
+export const rememberRoomPassword = (roomId: string, password: string) => roomPasswords.set(roomId, password);
+
 export async function joinRoom(roomId: string): Promise<JoinVoiceRoomResponse> {
-  return readJoin(await api<unknown>(`${path(roomId)}/join`, { method: "POST", auth: true, forbiddenIsAccess: true }));
+  const password = roomPasswords.get(roomId);
+  return readJoin(await api<unknown>(`${path(roomId)}/join`, { method: "POST", auth: true, forbiddenIsAccess: true, body: password ? { password } : undefined }));
+}
+
+/* ---- Settings, password, cover, join and follow ---- */
+
+/** Fields left out are not changed. password "" removes it; announcement "" clears it. */
+export type RoomSettingsPatch = {
+  name?: string;
+  description?: string;
+  category?: string;
+  coverTheme?: string;
+  coverMotif?: string;
+  removeCoverImage?: boolean;
+  announcement?: string;
+  password?: string;
+  settings?: Record<string, unknown>;
+};
+
+async function roomAnswer(p: Promise<unknown>): Promise<VoiceRoom> {
+  const r = readVoiceRoom(await p);
+  if (!r) throw new ApiError("The room's answer couldn't be read.", 200, "http");
+  return r;
+}
+
+/** Owner and admins: change room settings. Everyone in the room gets the new version live. */
+export const updateRoomSettings = (roomId: string, patch: RoomSettingsPatch) =>
+  roomAnswer(api<unknown>(`${path(roomId)}/settings`, { method: "PATCH", auth: true, forbiddenIsAccess: true, body: patch }));
+
+/** Owner and admins: upload a cover picture (JPG, PNG or WebP, up to 5 MB). */
+export function uploadRoomCover(roomId: string, file: Blob): Promise<VoiceRoom> {
+  const form = new FormData();
+  form.append("file", file, "cover.jpg");
+  return roomAnswer(api<unknown>(`${path(roomId)}/cover`, { method: "POST", auth: true, forbiddenIsAccess: true, body: form, timeoutMs: 60_000 }));
+}
+
+/** Owner and admins: the room's current password (null when there's none). */
+export async function getRoomPassword(roomId: string): Promise<string | null> {
+  const d = one(await api<unknown>(`${path(roomId)}/settings/private`, { auth: true, forbiddenIsAccess: true }));
+  return d && typeof d.password === "string" ? d.password : null;
+}
+
+/** true when the password is right (and remembered for joining); false when wrong. */
+export async function checkRoomPassword(roomId: string, password: string): Promise<boolean> {
+  try {
+    await api<unknown>(`${path(roomId)}/password-check`, { method: "POST", auth: true, forbiddenIsAccess: true, body: { password } });
+    rememberRoomPassword(roomId, password);
+    return true;
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 423) return false;
+    throw e;
+  }
+}
+
+export const setRoomMembership = (roomId: string, on: boolean) =>
+  roomAnswer(api<unknown>(`${path(roomId)}/membership`, { method: on ? "PUT" : "DELETE", auth: true, forbiddenIsAccess: true }));
+
+export const setRoomFollow = (roomId: string, on: boolean) =>
+  roomAnswer(api<unknown>(`${path(roomId)}/follow`, { method: on ? "PUT" : "DELETE", auth: true, forbiddenIsAccess: true }));
+
+/** Backend room ids you joined and follow. */
+export async function getMyRoomRelations(): Promise<{ joined: string[]; followed: string[] }> {
+  const d = one(await api<unknown>("/api/v1/voice-rooms/me/relations", { auth: true, forbiddenIsAccess: true }));
+  const ids = (v: unknown) => (Array.isArray(v) ? v.map(str).filter((x): x is string => Boolean(x)) : []);
+  return { joined: ids(d?.joined), followed: ids(d?.followed) };
+}
+
+/** Live room updates (settings, member and fan counts): { roomId, room, event }. */
+export const roomInfoTopic = (roomId: string) => `/topic/voice-rooms/${encodeURIComponent(roomId)}/info`;
+
+export type RoomInfoMessage = { room: VoiceRoom; event?: { type: string; actorId?: string; changed: string[] } };
+
+export function readRoomInfo(raw: unknown): RoomInfoMessage | null {
+  const d = one(raw);
+  const room = d ? readVoiceRoom(d.room) : null;
+  if (!d || !room) return null;
+  const ev = d.event && typeof d.event === "object" ? (d.event as Record<string, unknown>) : undefined;
+  return {
+    room,
+    event: ev && typeof ev.type === "string"
+      ? { type: ev.type, actorId: str(ev.actorId), changed: Array.isArray(ev.changed) ? ev.changed.filter((x): x is string => typeof x === "string") : [] }
+      : undefined,
+  };
 }
 
 export async function leaveRoom(roomId: string): Promise<void> {
@@ -314,6 +424,7 @@ export function roomErrorText(e: unknown, action: "load" | "join" | "create" | "
   if (e instanceof ApiError) {
     if (e.code === "network" || e.code === "timeout" || e.code === "ngrok_interstitial" || e.code === "config" || e.code === "unauthorized") return e.message;
     if (e.status === 404) return "This room doesn't exist any more.";
+    if (e.status === 423) return "This room needs the right password.";
     if (e.status === 409) return action === "close" ? "This room is already closed." : e.message;
     if (e.status === 403 || e.code === "forbidden")
       return action === "close"

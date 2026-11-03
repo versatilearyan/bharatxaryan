@@ -390,6 +390,11 @@ export function RoomSettingsScreen({ s }: { s: RoomSession }) {
             multiline
             onClose={() => setPicker(null)}
             onSave={(v) => {
+              // Backend rooms: saved on the server and shown to everyone (with the system line)
+              if (s.room.server) {
+                s.updateRoom({ announcement: v.trim() });
+                return;
+              }
               setAnnouncement(s.room, v.trim());
               s.addSystem(`${s.actor} updated the announcement`);
             }}

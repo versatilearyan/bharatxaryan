@@ -12,7 +12,7 @@
  *   setUnauthorizedHandler); a failed sign-in call never does, so there is no
  *   redirect loop.
  */
-import { authHeader, readToken } from "@/lib/auth/token";
+import { authHeader, clearToken, isFresh, readToken, saveToken, type Stored } from "@/lib/auth/token";
 import { API_BASE_URL_SETTING, backendOrigin } from "@/lib/config";
 
 /**
@@ -57,7 +57,80 @@ export function setUnauthorizedHandler(fn: typeof onUnauthorized) {
  */
 type Options = { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown; auth?: boolean; timeoutMs?: number; forbiddenIsAccess?: boolean };
 
-export async function api<T>(path: string, { method = "GET", body, auth = false, timeoutMs = DEFAULT_TIMEOUT_MS, forbiddenIsAccess = false }: Options = {}): Promise<T> {
+/* ---- Sessions: keep the short access token fresh with the refresh token ---- */
+
+let refreshing: Promise<Stored | null> | null = null;
+
+async function callRefresh(stale: Stored): Promise<Stored | null> {
+  // Another tab may have refreshed while we waited for the lock: use its token
+  const now = readToken();
+  if (!now) return null;
+  if (now.accessToken !== stale.accessToken && isFresh(now)) return now;
+  if (!now.refreshToken) {
+    clearToken();
+    return null;
+  }
+  let res: Response;
+  try {
+    const headers: Record<string, string> = { Accept: "application/json", "Content-Type": "application/json" };
+    if (SKIP_NGROK_WARNING) headers["ngrok-skip-browser-warning"] = "1";
+    res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, { method: "POST", headers, body: JSON.stringify({ refreshToken: now.refreshToken }) });
+  } catch {
+    // Offline or server down: not a sign-out, the session may still be good
+    throw new ApiError("Can't reach the server. Check your connection and try again.", 0, "network");
+  }
+  if (res.status === 401 || res.status === 400) {
+    // The session ended (expired, signed out elsewhere, or already used)
+    clearToken();
+    return null;
+  }
+  const data = (await res.json().catch(() => null)) as { accessToken?: unknown; tokenType?: unknown; refreshToken?: unknown } | null;
+  if (!res.ok || !data || typeof data.accessToken !== "string" || !data.accessToken) {
+    throw new ApiError("The server had a problem. Try again in a moment.", res.status, "http");
+  }
+  saveToken(data.accessToken, typeof data.tokenType === "string" ? data.tokenType : "Bearer", typeof data.refreshToken === "string" ? data.refreshToken : now.refreshToken);
+  return readToken();
+}
+
+/**
+ * The access token to send, renewed first when it has under a minute left
+ * (or always, with force). null = signed out. Only one refresh runs at a time,
+ * across tabs too (each refresh token works once).
+ */
+export async function freshToken(force = false): Promise<Stored | null> {
+  const t = readToken();
+  if (!t) return null;
+  if (!force && isFresh(t)) return t;
+  if (!t.refreshToken) return isFresh(t, 0) ? t : null;
+  if (!refreshing) {
+    const run = () => callRefresh(t);
+    const locks = typeof navigator !== "undefined" ? (navigator as Navigator & { locks?: { request: (name: string, cb: () => Promise<Stored | null>) => Promise<Stored | null> } }).locks : undefined;
+    const started: Promise<Stored | null> = locks ? Promise.resolve(locks.request("panchayat-token-refresh", run)) : run();
+    refreshing = started.finally(() => {
+      refreshing = null;
+    });
+  }
+  return refreshing;
+}
+
+export async function api<T>(path: string, options: Options = {}): Promise<T> {
+  try {
+    return await request<T>(path, options);
+  } catch (e) {
+    // The server didn't accept a token we thought was good: renew it once and try again
+    if (options.auth && e instanceof RetryWithNewToken) {
+      const t = await freshToken(true);
+      if (t) return request<T>(path, options, true);
+      onUnauthorized?.("rejected");
+      throw new ApiError("Your session has ended. Please sign in again.", 401, "unauthorized");
+    }
+    throw e;
+  }
+}
+
+class RetryWithNewToken extends Error {}
+
+async function request<T>(path: string, { method = "GET", body, auth = false, timeoutMs = DEFAULT_TIMEOUT_MS, forbiddenIsAccess = false }: Options = {}, retried = false): Promise<T> {
   if (!API_BASE_URL) throw new ApiError("The app isn't connected to a server yet. Set BACKEND_URL in .env.local.", 0, "config");
 
   const headers: Record<string, string> = { Accept: "application/json" };
@@ -66,7 +139,7 @@ export async function api<T>(path: string, { method = "GET", body, auth = false,
   if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
   if (SKIP_NGROK_WARNING) headers["ngrok-skip-browser-warning"] = "1";
   if (auth) {
-    const token = readToken();
+    const token = await freshToken();
     if (!token) {
       onUnauthorized?.("expired");
       throw new ApiError("Your session has ended. Please sign in again.", 401, "unauthorized");
@@ -106,6 +179,7 @@ export async function api<T>(path: string, { method = "GET", body, auth = false,
 
   const { message, fields } = readError(data);
   if (auth && (res.status === 401 || (res.status === 403 && !forbiddenIsAccess))) {
+    if (!retried && readToken()?.refreshToken) throw new RetryWithNewToken();
     onUnauthorized?.("rejected");
     throw new ApiError("Your session has ended. Please sign in again.", res.status, res.status === 401 ? "unauthorized" : "forbidden", fields);
   }

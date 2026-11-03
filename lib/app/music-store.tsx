@@ -269,6 +269,8 @@ function useMusicState() {
   }, []);
   const setVolume = useCallback((v: number) => setVolumeState(Math.max(0, Math.min(1, v))), []);
 
+  const audioElement = useCallback(() => audio.current, []);
+
   // Leaving the room stops its music
   useEffect(() => {
     if (activeRoomId) return;
@@ -281,6 +283,8 @@ function useMusicState() {
     library, songById, contributions, isLive, contribute, approveNow, removeContribution, favourites, toggleFavourite, now,
     queue, index, current, playing, repeat, setRepeat, pos, volume, setVolume, order, removeFromQueue, playAt, toggle, next, seek,
     musicOff, setMusicOff,
+    /** The element the current song plays in (streamed into a live room's call by whoever plays it). */
+    audioElement,
   };
 }
 

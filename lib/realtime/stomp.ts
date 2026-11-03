@@ -20,6 +20,7 @@
 import { Client, type StompSubscription } from "@stomp/stompjs";
 import { useSyncExternalStore } from "react";
 import { authHeader, readToken } from "@/lib/auth/token";
+import { freshToken } from "@/lib/api/client";
 import { CHAT_WS_URL_SETTING } from "@/lib/config";
 
 export type StompStatus = "idle" | "connecting" | "connected" | "reconnecting" | "auth-failed";
@@ -100,8 +101,9 @@ function ensure() {
     heartbeatIncoming: 20_000,
     heartbeatOutgoing: 20_000,
     debug: () => {},
-    beforeConnect: () => {
-      const now = readToken();
+    beforeConnect: async () => {
+      // Renew an expiring access token first, so a reconnect after a long time still signs in
+      const now = await freshToken().catch(() => readToken());
       if (now) c.connectHeaders = authHeader(now);
     },
     onConnect: () => {

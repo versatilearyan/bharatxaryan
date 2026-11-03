@@ -15,6 +15,8 @@ import { LevelPill, VipBadgeFor } from "@/components/profile/IdTags";
 import { nameTone } from "@/lib/app/fonts";
 import { VipBadge } from "@/components/effects/VipFx";
 import { useRoomFx } from "./useRoomFx";
+import { getContribution, type ContributionPeriod } from "@/lib/api/gifts";
+import { SERVER_USER_PREFIX, useServerRooms } from "@/lib/app/server-rooms";
 
 type Tab = "online" | "members" | "contribution";
 export type Period = "Daily" | "Weekly" | "Total";
@@ -165,8 +167,38 @@ function RankBadge({ rank }: { rank: number }) {
   );
 }
 
-/** The room's contribution board for a period: coins gifted here per person, highest first (sample values plus your own gifts). */
-export function useContributionBoard(s: RoomSession, period: Period) {
+type Board = { rows: { id: string; coins: number }[]; mine: number; myRank: number; loading?: boolean; error?: string };
+
+/**
+ * The room's contribution board for a period: coins gifted here per person, highest first.
+ * Backend rooms: the server's real totals (daily, weekly since Monday, all time), loaded
+ * again whenever a gift lands. Demo rooms: sample values plus your own gifts.
+ */
+export function useContributionBoard(s: RoomSession, period: Period): Board {
+  const sample = useSampleBoard(s, period);
+  const { myId } = useServerRooms();
+  const serverId = s.room.server?.id ?? null;
+  const giftsSeen = Object.values(s.giftCounts).reduce((a, b) => a + b, 0);
+  const [live, setLive] = useState<Board | null>(null);
+  useEffect(() => {
+    if (!serverId) return;
+    let off = false;
+    setLive((b) => (b ? { ...b, loading: true } : { rows: [], mine: 0, myRank: 0, loading: true }));
+    getContribution(serverId, period.toLowerCase() as ContributionPeriod)
+      .then((d) => {
+        if (off) return;
+        const pid = (uid: string) => (uid === myId ? ME_ID : `${SERVER_USER_PREFIX}${uid}`);
+        setLive({ rows: d.rows.map((r) => ({ id: pid(r.userId), coins: r.coins })), mine: d.me.coins, myRank: d.me.rank ?? 0 });
+      })
+      .catch((e) => !off && setLive({ rows: [], mine: 0, myRank: 0, error: e instanceof Error ? e.message : "Couldn't load the board." }));
+    return () => {
+      off = true;
+    };
+  }, [serverId, period, giftsSeen, myId]);
+  return serverId ? (live ?? { rows: [], mine: 0, myRank: 0, loading: true }) : sample;
+}
+
+function useSampleBoard(s: RoomSession, period: Period): Board {
   const { myContrib } = useApp();
   const mine = myContrib[s.room.id] ?? 0;
   return useMemo(() => {
@@ -178,20 +210,18 @@ export function useContributionBoard(s: RoomSession, period: Period) {
       return { id: p.id, coins: period === "Total" ? total : Math.round(total * periodShare) };
     });
     rows.push({ id: ME_ID, coins: mine });
-    return rows.filter((r) => r.coins > 0).sort((a, b) => b.coins - a.coins);
+    const sorted = rows.filter((r) => r.coins > 0).sort((a, b) => b.coins - a.coins);
+    return { rows: sorted, mine, myRank: sorted.findIndex((r) => r.id === ME_ID) + 1 };
   }, [s.room.id, s.room.basePoints, s.room.hostId, period, mine]);
 }
 
 function Contribution({ s }: { s: RoomSession }) {
   const person = usePeople();
-  const { myContrib } = useApp();
   const [period, setPeriod] = useState<Period>("Daily");
   const [help, setHelp] = useState(false);
-  const mine = myContrib[s.room.id] ?? 0;
 
   const board = useContributionBoard(s, period);
-
-  const myRank = board.findIndex((r) => r.id === ME_ID) + 1;
+  const { mine, myRank } = board;
 
   return (
     <div className="relative flex min-h-[60vh] flex-col">
@@ -205,10 +235,12 @@ function Contribution({ s }: { s: RoomSession }) {
           <CircleHelp className="h-5 w-5" />
         </button>
       </div>
-      {help ? <p className="mx-5 mb-2 rounded-xl bg-cream/[0.05] p-3 text-[12px] text-muted">Contribution counts the coins each person has gifted in this room. Sample values, plus your real demo gifts.</p> : null}
+      {help ? <p className="mx-5 mb-2 rounded-xl bg-cream/[0.05] p-3 text-[12px] text-muted">{s.room.server ? "Contribution counts the coins each person has gifted in this room. Daily resets at midnight (India time), weekly on Monday." : "Contribution counts the coins each person has gifted in this room. Sample values, plus your real demo gifts."}</p> : null}
+      {board.error ? <p className="mx-5 mb-2 text-[12px] text-pink">{board.error}</p> : null}
+      {s.room.server && !board.loading && !board.error && !board.rows.length ? <p className="mx-5 my-6 text-center text-[13px] text-muted">No gifts here yet in this period.</p> : null}
 
       <ol className="flex-1 pb-24">
-        {board.slice(0, 20).map((r, i) => {
+        {board.rows.slice(0, 20).map((r, i) => {
           const p = person(r.id);
           return (
             <li key={r.id}>

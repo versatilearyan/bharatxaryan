@@ -19,6 +19,7 @@ import { CheckoutSheet, type CheckoutItem } from "@/components/market/CheckoutSh
 import { WalletImage } from "@/components/redpacket/RedPacket";
 import { useWalletCatalog } from "@/lib/app/use-wallet";
 import { walletImageSrc } from "@/lib/api/wallet";
+import { checkRoomPassword } from "@/lib/api/voice-rooms";
 import { formatInr } from "@/lib/app/redpacket";
 import { CATEGORIES, PEOPLE, TASKS, gameById } from "@/lib/app/data";
 import { RoomTypeBadge } from "@/components/rooms/RoomCards";
@@ -599,12 +600,30 @@ function JoinRoomSheet({ open, onClose }: { open: boolean; onClose: () => void }
 }
 
 function RoomPasswordSheet({ roomId, onClose }: { roomId: string | null; onClose: () => void }) {
-  const { roomById, unlockRoom, enterRoom } = useApp();
+  const { roomById, unlockRoom, enterRoom, toast } = useApp();
   const room = roomId ? roomById(roomId) : undefined;
   const [pw, setPw] = useState("");
   const [wrong, setWrong] = useState(false);
+  const [checking, setChecking] = useState(false);
   const submit = () => {
-    if (!room) return;
+    if (!room || checking) return;
+    // Backend rooms: the server checks it (and remembers it for joining the call)
+    if (room.server) {
+      const serverId = room.server.id;
+      setChecking(true);
+      checkRoomPassword(serverId, pw)
+        .then((ok) => {
+          if (ok) {
+            unlockRoom(room.id);
+            setWrong(false);
+            enterRoom(room.id);
+          } else setWrong(true);
+          setPw("");
+        })
+        .catch((e) => toast(e instanceof Error && e.message ? e.message : "Couldn't check the password. Try again.", "error"))
+        .finally(() => setChecking(false));
+      return;
+    }
     if (pw === room.password) {
       unlockRoom(room.id);
       setPw("");
@@ -652,7 +671,7 @@ function RoomPasswordSheet({ roomId, onClose }: { roomId: string | null; onClose
           <Button type="submit" className="mt-3 w-full" disabled={pw.length !== 4}>
             Enter room
           </Button>
-          <p className="mt-3 text-center text-[11px] text-muted">Demo password for sample rooms: 2580</p>
+          {room?.server ? null : <p className="mt-3 text-center text-[11px] text-muted">Demo password for sample rooms: 2580</p>}
         </form>
       ) : null}
     </BottomSheet>

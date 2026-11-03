@@ -9,13 +9,14 @@
  * SameSite cookie instead, drop this file and send requests with
  * `credentials: "include"`.
  *
- * There is no refresh token: when the JWT expires the person signs in again.
- * Never log the token.
+ * Sessions: sign-in also returns a refresh token (days). The short access token
+ * (minutes) is swapped for a new pair before it runs out (freshToken() in
+ * lib/api/client.ts), so people stay signed in. Never log either token.
  */
 
 const TOKEN_KEY = "panchayat-auth-token-v1";
 
-type Stored = { accessToken: string; tokenType: string };
+export type Stored = { accessToken: string; tokenType: string; refreshToken?: string };
 
 /** Seconds since epoch from the JWT's `exp`, or null if it has none or can't be read. Not a signature check. */
 function expiryOf(jwt: string): number | null {
@@ -29,9 +30,10 @@ function expiryOf(jwt: string): number | null {
   }
 }
 
-export function saveToken(accessToken: string, tokenType = "Bearer") {
+export function saveToken(accessToken: string, tokenType = "Bearer", refreshToken?: string) {
   try {
-    window.localStorage.setItem(TOKEN_KEY, JSON.stringify({ accessToken, tokenType: tokenType || "Bearer" } satisfies Stored));
+    const data: Stored = { accessToken, tokenType: tokenType || "Bearer", ...(refreshToken ? { refreshToken } : {}) };
+    window.localStorage.setItem(TOKEN_KEY, JSON.stringify(data));
   } catch {
     /* storage unavailable: requests this visit will fail with 401 and ask to sign in again */
   }
@@ -45,15 +47,26 @@ export function clearToken() {
   }
 }
 
-/** The stored token if it's still in date; an expired one is cleared and null returned. */
+/** Whether this access token still has more than `slackMs` left. */
+export function isFresh(t: Stored, slackMs = 60_000): boolean {
+  const exp = expiryOf(t.accessToken);
+  return exp === null || exp * 1000 > Date.now() + slackMs;
+}
+
+/**
+ * The stored session, or null when signed out. A session counts while its
+ * access token is in date or it has a refresh token to get a new one, so this
+ * is the "am I signed in?" check. For a request, use freshToken() instead,
+ * which renews an expiring access token first.
+ */
 export function readToken(): Stored | null {
   if (typeof window === "undefined") return null;
   try {
     const s = JSON.parse(window.localStorage.getItem(TOKEN_KEY) ?? "null") as Stored | null;
     if (!s || typeof s.accessToken !== "string" || !s.accessToken) return null;
-    const exp = expiryOf(s.accessToken);
-    // 30 seconds of slack so a token doesn't expire mid-request
-    if (exp !== null && exp * 1000 <= Date.now() + 30_000) {
+    if (s.refreshToken) return s;
+    // No refresh token (signed in before sessions existed): 30 seconds of slack so it doesn't expire mid-request
+    if (!isFresh(s, 30_000)) {
       clearToken();
       return null;
     }
@@ -75,4 +88,18 @@ export function msUntilExpiry(): number | null {
   if (!t) return null;
   const exp = expiryOf(t.accessToken);
   return exp === null ? null : exp * 1000 - Date.now();
+}
+
+/** Your backend user id, from the stored access token's `sub` claim (not a signature check). */
+export function myUserIdFromToken(): string | null {
+  const t = readToken();
+  if (!t) return null;
+  try {
+    const part = t.accessToken.split(".")[1];
+    if (!part) return null;
+    const json = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(part.length / 4) * 4, "=")));
+    return typeof json.sub === "string" && /^\d+$/.test(json.sub) ? json.sub : null;
+  } catch {
+    return null;
+  }
 }

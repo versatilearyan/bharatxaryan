@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ConnectionError, ConnectionErrorReason, ConnectionState, DisconnectReason, MediaDeviceFailure, Room, RoomEvent, Track, type Participant, type RemoteTrack } from "livekit-client";
+import { AudioPresets, ConnectionError, ConnectionErrorReason, ConnectionState, DisconnectReason, MediaDeviceFailure, Room, RoomEvent, Track, type LocalTrackPublication, type Participant, type RemoteTrack, type RemoteTrackPublication } from "livekit-client";
 import { joinRoom, roomErrorText } from "@/lib/api/voice-rooms";
 
 /**
@@ -28,7 +28,33 @@ export type VoicePerson = {
   micOn: boolean;
   /** The published microphone track's SID, needed for a moderator mute. */
   micSid?: string;
+  /** "Title — Artist" when they're playing a song into the room. */
+  music?: string;
 };
+
+/** Songs go into the call as their own audio track named "music:<title>". */
+const MUSIC_PREFIX = "music:";
+
+/**
+ * One Web Audio graph per <audio> element (an element can only be connected
+ * once): the song keeps playing on this device's speakers, and a copy goes to
+ * a stream that can be published to the room.
+ */
+const graphs = new WeakMap<HTMLAudioElement, { ctx: AudioContext; dest: MediaStreamAudioDestinationNode }>();
+function musicStream(el: HTMLAudioElement) {
+  let g = graphs.get(el);
+  if (!g) {
+    const ctx = new AudioContext();
+    const source = ctx.createMediaElementSource(el);
+    const dest = ctx.createMediaStreamDestination();
+    source.connect(ctx.destination);
+    source.connect(dest);
+    g = { ctx, dest };
+    graphs.set(el, g);
+  }
+  if (g.ctx.state === "suspended") void g.ctx.resume();
+  return g.dest.stream;
+}
 
 export type LiveVoice = {
   status: VoiceStatus;
@@ -49,6 +75,10 @@ export type LiveVoice = {
   /** Ask the browser to start audio after it blocked autoplay. */
   startAudio: () => void;
   retry: () => void;
+  /** Send a song into the call, or stop (null). */
+  setMusic: (el: HTMLAudioElement | null, title: string) => void;
+  /** Mute other people's songs on this device. */
+  setRemoteMusicMuted: (muted: boolean) => void;
 };
 
 export function micErrorText(e: unknown): string {
@@ -86,6 +116,7 @@ function snapshot(room: Room): VoicePerson[] {
     speaking: p.isSpeaking,
     micOn: p.isMicrophoneEnabled,
     micSid: p.getTrackPublication(Track.Source.Microphone)?.trackSid,
+    music: [...p.trackPublications.values()].find((t) => t.trackName?.startsWith(MUSIC_PREFIX))?.trackName.slice(MUSIC_PREFIX.length),
   }));
 }
 
@@ -101,10 +132,17 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
   const [attempt, setAttempt] = useState(0);
   const roomRef = useRef<Room | null>(null);
   const speakerRef = useRef(true);
+  /** The song you're sending into the call, if any. */
+  const musicPub = useRef<{ name: string; pub: LocalTrackPublication } | null>(null);
+  /** Changes to your song run one at a time. */
+  const musicQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const remoteMusicMuted = useRef(false);
 
   useEffect(() => {
     if (!serverRoomId) return;
     let cancelled = false;
+    // A new connection: no song is going out on it yet
+    musicPub.current = null;
     const room = new Room({ adaptiveStream: false, dynacast: false, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     roomRef.current = room;
     // Hidden <audio> elements for everyone else's voice
@@ -123,9 +161,15 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
     };
 
     room
-      .on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
+      .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication) => {
         if (track.kind !== Track.Kind.Audio) return;
-        audioBox.appendChild(track.attach());
+        const el = track.attach();
+        // Other people's songs: silent for listeners who turned music off
+        if (pub.trackName?.startsWith(MUSIC_PREFIX)) {
+          el.dataset.music = "1";
+          el.muted = remoteMusicMuted.current;
+        }
+        audioBox.appendChild(el);
         applySpeaker();
         sync();
       })
@@ -139,7 +183,11 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       .on(RoomEvent.TrackMuted, sync)
       .on(RoomEvent.TrackUnmuted, sync)
       .on(RoomEvent.LocalTrackPublished, sync)
-      .on(RoomEvent.LocalTrackUnpublished, sync)
+      .on(RoomEvent.LocalTrackUnpublished, (pub: LocalTrackPublication) => {
+        // The server took away permission to talk (seat lost or muted): the song stopped going out
+        if (musicPub.current?.pub === pub) musicPub.current = null;
+        sync();
+      })
       .on(RoomEvent.ParticipantNameChanged, sync)
       .on(RoomEvent.AudioPlaybackStatusChanged, () => !cancelled && setCanPlayAudio(room.canPlaybackAudio))
       .on(RoomEvent.MediaDevicesError, (e: Error) => !cancelled && setError(micErrorText(e)))
@@ -233,6 +281,42 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
     }
   }, []);
 
+  /**
+   * Send a song into the call (el = the <audio> it plays in), or stop sending
+   * it (null). Needs permission to talk; without it the song only plays here.
+   */
+  const setMusic = useCallback((el: HTMLAudioElement | null, title: string) => {
+    const run = async () => {
+      const room = roomRef.current;
+      const name = `${MUSIC_PREFIX}${title.slice(0, 120)}`;
+      const cur = musicPub.current;
+      if (cur && (!el || cur.name !== name)) {
+        musicPub.current = null;
+        if (cur.pub.track) await room?.localParticipant.unpublishTrack(cur.pub.track, true).catch(() => {});
+      }
+      if (!el || !room || room.state !== ConnectionState.Connected || musicPub.current) return;
+      const source = musicStream(el).getAudioTracks()[0];
+      if (!source) return;
+      try {
+        // A copy for each send, so stopping it never stops the song on this device
+        const pub = await room.localParticipant.publishTrack(source.clone(), { name, source: Track.Source.Unknown, dtx: false, red: false, audioPreset: AudioPresets.music });
+        musicPub.current = { name, pub };
+      } catch {
+        /* no permission to talk right now: the song only plays on this device */
+      }
+      setPeople(snapshot(room));
+    };
+    musicQueue.current = musicQueue.current.then(run, run);
+  }, []);
+
+  /** Mute or unmute other people's songs on this device ("Music off"). */
+  const setRemoteMusicMuted = useCallback((muted: boolean) => {
+    remoteMusicMuted.current = muted;
+    document.querySelectorAll<HTMLAudioElement>("[data-live-voice] audio[data-music]").forEach((a) => {
+      a.muted = muted;
+    });
+  }, []);
+
   const setSpeaker = useCallback((on: boolean) => {
     speakerRef.current = on;
     const room = roomRef.current;
@@ -247,5 +331,5 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
   if (!serverRoomId) return null;
-  return { status, error, removed, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry };
+  return { status, error, removed, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry, setMusic, setRemoteMusicMuted };
 }

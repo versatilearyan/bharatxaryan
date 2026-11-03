@@ -39,7 +39,7 @@ export function WatchTogetherRoom({ s }: { s: RoomSession }) {
         {s.video ? (
           <>
             <div className="relative aspect-video overflow-hidden rounded-2xl bg-[#0c0b0f] ring-1 ring-line">
-              <YouTubePlayer videoId={s.video.id} onChooseAnother={() => setSheet("add")} />
+              <YouTubePlayer videoId={s.video.id} onChooseAnother={() => setSheet("add")} sync={s.videoSync} />
             </div>
             <div className="mt-2 flex items-center gap-2">
               <YouTubeMark className="h-4 w-6 shrink-0" />

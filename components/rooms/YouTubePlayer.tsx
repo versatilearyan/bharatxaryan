@@ -1,11 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ExternalLink, RefreshCw } from "lucide-react";
 import { playerErrorMessage, watchUrl } from "@/lib/app/youtube";
 
 /* Minimal typing for the YouTube IFrame Player API */
-type YTPlayer = { destroy: () => void };
+type YTPlayer = {
+  destroy: () => void;
+  playVideo?: () => void;
+  pauseVideo?: () => void;
+  seekTo?: (seconds: number, allowSeekAhead: boolean) => void;
+  getCurrentTime?: () => number;
+  /** -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued */
+  getPlayerState?: () => number;
+};
 type YTNamespace = {
   Player: new (
     el: HTMLElement,
@@ -13,7 +21,7 @@ type YTNamespace = {
       videoId: string;
       host?: string;
       playerVars?: Record<string, number | string>;
-      events?: { onError?: (e: { data: number }) => void; onReady?: () => void };
+      events?: { onError?: (e: { data: number }) => void; onReady?: () => void; onStateChange?: (e: { data: number }) => void };
     },
   ) => YTPlayer;
 };
@@ -54,16 +62,57 @@ function loadApi(): Promise<YTNamespace> {
  * private, removed, age-restricted or non-embeddable videos are caught and
  * shown as a friendly message instead of a broken player.
  */
-export function YouTubePlayer({ videoId, onChooseAnother }: { videoId: string; onChooseAnother: () => void }) {
+/**
+ * Watching together in a backend room: the room's shared play state.
+ * key changes with every update from the server; positionNow() is where the
+ * video should be right now. canControl: your play/pause goes to everyone.
+ */
+export type VideoSync = {
+  key: string;
+  playing: boolean;
+  positionNow: () => number;
+  canControl: boolean;
+  onControl: (action: "play" | "pause", position: number) => void;
+};
+
+export function YouTubePlayer({ videoId, onChooseAnother, sync }: { videoId: string; onChooseAnother: () => void; sync?: VideoSync }) {
   const mount = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<number | null>(null);
   const [fallback, setFallback] = useState(false);
+  const playerRef = useRef<YTPlayer | null>(null);
+  const ready = useRef(false);
+  const syncRef = useRef(sync);
+  syncRef.current = sync;
+  /** Changes made by this code (not the person) are ignored until then. */
+  const quietUntil = useRef(0);
+
+  /** Line the player up with the room: same position (within 2 s), playing or paused. */
+  const follow = useCallback(() => {
+    const p = playerRef.current;
+    const s = syncRef.current;
+    if (!p || !ready.current || !s) return;
+    quietUntil.current = Date.now() + 1500;
+    const want = Math.max(0, s.positionNow());
+    const have = p.getCurrentTime?.() ?? 0;
+    if (Math.abs(have - want) > 2) p.seekTo?.(want, true);
+    const state = p.getPlayerState?.();
+    if (s.playing && state !== 1 && state !== 3) p.playVideo?.();
+    if (!s.playing && (state === 1 || state === 3)) p.pauseVideo?.();
+  }, []);
+  // Every update from the room, and a drift check every few seconds
+  useEffect(() => follow(), [sync?.key, follow]);
+  useEffect(() => {
+    if (!sync) return;
+    const t = window.setInterval(follow, 5000);
+    return () => window.clearInterval(t);
+  }, [Boolean(sync), follow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setError(null);
     setFallback(false);
     let player: YTPlayer | null = null;
     let cancelled = false;
+    ready.current = false;
     loadApi()
       .then((YT) => {
         if (cancelled || !mount.current) return;
@@ -73,19 +122,37 @@ export function YouTubePlayer({ videoId, onChooseAnother }: { videoId: string; o
           videoId,
           host: "https://www.youtube-nocookie.com",
           playerVars: { playsinline: 1, rel: 0, modestbranding: 1, origin: window.location.origin },
-          events: { onError: (e) => setError(e.data) },
+          events: {
+            onError: (e) => setError(e.data),
+            onReady: () => {
+              ready.current = true;
+              follow();
+            },
+            onStateChange: (e) => {
+              const s = syncRef.current;
+              const p = playerRef.current;
+              if (!s || !p || Date.now() < quietUntil.current) return;
+              if (e.data !== 1 && e.data !== 2) return;
+              // Someone who may control it played, paused or jumped: tell the room. Anyone else snaps back to the room.
+              if (s.canControl) s.onControl(e.data === 1 ? "play" : "pause", p.getCurrentTime?.() ?? 0);
+              else window.setTimeout(follow, 300);
+            },
+          },
         });
+        playerRef.current = player;
       })
       .catch(() => !cancelled && setFallback(true));
     return () => {
       cancelled = true;
+      ready.current = false;
+      playerRef.current = null;
       try {
         player?.destroy();
       } catch {
         /* already gone */
       }
     };
-  }, [videoId]);
+  }, [videoId, follow]);
 
   return (
     <div className="relative h-full w-full bg-black">

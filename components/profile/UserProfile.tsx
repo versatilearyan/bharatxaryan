@@ -182,6 +182,11 @@ export function UserProfileBody({ personId }: { personId: string }) {
   const mine = personId === ME_ID;
   const received = receivedOf(personId);
   const wall = giftWallStats(received);
+  // Backend users: their BFF tags come from the server
+  const { loadServerTags } = useApp();
+  useEffect(() => {
+    if (personId === "me" || personId.startsWith("srv-user:")) void loadServerTags(personId);
+  }, [personId, loadServerTags]);
   const tags = [...tagsOf(personId)].sort((x, y) => y.intimacy - x.intimacy);
   const guards = guardiansOf(personId);
   const guardTotal = guards.reduce((a, g) => a + g.value, 0);
