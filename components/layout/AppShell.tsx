@@ -73,11 +73,11 @@ function Frame() {
   const mini = activeRoomId && !roomOpen ? "64px" : "0px";
   return (
     <>
-      <div className="flex h-[100dvh] w-full justify-center overflow-hidden bg-ink min-[480px]:bg-[radial-gradient(circle_at_50%_0%,#2a2a30,#18181b_70%)]">
+      <div className="flex h-[100dvh] w-full justify-center overflow-clip bg-ink min-[480px]:bg-[radial-gradient(circle_at_50%_0%,#2a2a30,#18181b_70%)]">
         <div
           id="main"
           style={{ "--mini": mini } as React.CSSProperties}
-          className="relative h-full w-full overflow-hidden bg-ink min-[480px]:max-w-[420px] min-[480px]:shadow-[0_0_0_1px_rgb(255_255_255/0.04),0_30px_80px_-10px_rgb(0_0_0/0.75)]"
+          className="relative h-full w-full overflow-clip bg-ink min-[480px]:max-w-[420px] min-[480px]:shadow-[0_0_0_1px_rgb(255_255_255/0.04),0_30px_80px_-10px_rgb(0_0_0/0.75)]"
         >
           {signedIn ? (
             <>

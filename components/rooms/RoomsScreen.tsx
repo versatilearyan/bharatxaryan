@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Hash, Plus, RefreshCw, Radio, SearchX } from "lucide-react";
+import { Compass, Hash, Plus, RefreshCw, Radio, SearchX } from "lucide-react";
+import { RoomCover } from "./RoomCover";
 import { Chips, IconButton, SearchField, SectionTitle } from "@/components/ui/kit";
 import { RoomCard, RoomRow } from "./RoomCards";
 import { personById } from "@/lib/app/data";
@@ -13,11 +14,17 @@ import type { Room } from "@/lib/app/types";
 const FILTERS = ["All", "Voice", "YouTube", "Kharidari", "VIP"] as const;
 type Filter = (typeof FILTERS)[number];
 
+const TOP = ["My room", "All"] as const;
+type Top = (typeof TOP)[number];
+const MINE = ["Recents", "Joined", "Following"] as const;
+type Mine = (typeof MINE)[number];
+
 const matches = (r: Room, f: Filter) =>
   f === "All" || (f === "VIP" ? r.vip : f === "Voice" ? r.type === "voice" : f === "Kharidari" ? r.type === "kharidari" : r.type === "watch");
 
 export function RoomsScreen() {
-  const { rooms, myRooms, push, setSheet, isJoined, isFollowingRoom } = useApp();
+  const { rooms, push, setSheet } = useApp();
+  const [top, setTop] = useState<Top>("All");
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("All");
 
@@ -38,7 +45,22 @@ export function RoomsScreen() {
     <div className="app-scroll h-full pb-[calc(96px+var(--mini,0px)+env(safe-area-inset-bottom))]">
       <header className="pt-safe sticky top-0 z-20 bg-ink/90 backdrop-blur-xl">
         <div className="flex h-14 items-center justify-between px-4">
-          <h1 className="font-display text-[24px] font-extrabold text-cream">Rooms</h1>
+          <h1 className="sr-only">Rooms</h1>
+          <div role="tablist" aria-label="Rooms" className="flex items-baseline gap-4">
+            {TOP.map((t) => (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={top === t}
+                onClick={() => setTop(t)}
+                className={`relative font-display font-extrabold transition-all ${top === t ? "text-[24px] text-cream" : "text-[17px] text-cream/45 hover:text-cream/70"}`}
+              >
+                {t}
+                {top === t ? <motion.span layoutId="rooms-top" className="absolute -bottom-1 left-1/2 h-1 w-5 -translate-x-1/2 rounded-full bg-coral" /> : null}
+              </button>
+            ))}
+          </div>
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setSheet({ kind: "join-room" })} className="flex h-10 items-center gap-1 rounded-full bg-cream/[0.08] px-3.5 text-[12.5px] font-bold text-cream">
               <Hash className="h-4 w-4" aria-hidden /> Join by ID
@@ -48,31 +70,17 @@ export function RoomsScreen() {
             </IconButton>
           </div>
         </div>
-        <div className="space-y-3 px-4 pb-3">
+        {top === "All" ? <div className="space-y-3 px-4 pb-3">
           <SearchField value={q} onChange={setQ} placeholder="Search rooms, hosts or room ID" />
           <Chips items={FILTERS} value={filter} onChange={setFilter} label="Room type" />
-        </div>
+        </div> : null}
       </header>
 
-      {browsing ? (
+      {top === "My room" ? (
+        <MyRoomTab onFind={() => setTop("All")} />
+      ) : browsing ? (
         <>
           <LiveRooms />
-          {myRooms.length ? (
-            <Section title="Your rooms">
-              {myRooms.map((r) => (
-                <RoomRow key={r.id} room={r} />
-              ))}
-            </Section>
-          ) : null}
-          {rooms.some((r) => !r.createdByMe && (isJoined(r.id) || isFollowingRoom(r.id))) ? (
-            <Section title="Joined & following">
-              {rooms
-                .filter((r) => !r.createdByMe && (isJoined(r.id) || isFollowingRoom(r.id)))
-                .map((r) => (
-                  <RoomRow key={r.id} room={r} />
-                ))}
-            </Section>
-          ) : null}
           <section className="mt-3">
             <SectionTitle>Recommended</SectionTitle>
             <div className="no-scrollbar flex gap-3 overflow-x-auto px-4 pb-1">
@@ -132,14 +140,92 @@ export function RoomsScreen() {
         </section>
       )}
 
-      <motion.button
-        type="button"
-        whileTap={{ scale: 0.94 }}
-        onClick={() => push({ kind: "create-room" })}
-        className="absolute bottom-[calc(80px+var(--mini,0px)+env(safe-area-inset-bottom))] right-4 z-20 flex h-12 items-center gap-2 rounded-full bg-coral px-5 font-bold text-white shadow-[0_12px_30px_-8px_rgb(244_81_91/0.8)]"
-      >
-        <Plus className="h-5 w-5" aria-hidden /> Create Room
-      </motion.button>
+    </div>
+  );
+}
+
+/** "My room": your own room on top, then rooms you visited, joined or follow. */
+function MyRoomTab({ onFind }: { onFind: () => void }) {
+  const { rooms, myRooms, push, isJoined, isFollowingRoom, recentRoomIds, openRoom, roomLevelOf } = useApp();
+  const [tab, setTab] = useState<Mine>("Recents");
+  const mine = myRooms[0];
+  const list =
+    tab === "Recents"
+      ? recentRoomIds.map((id) => rooms.find((r) => r.id === id)).filter((r): r is Room => !!r && r.id !== mine?.id)
+      : rooms.filter((r) => !r.createdByMe && r.id !== mine?.id && (tab === "Joined" ? isJoined(r.id) : isFollowingRoom(r.id)));
+  return (
+    <div className="px-4 pt-2">
+      {mine ? (
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.98 }}
+          onClick={() => openRoom(mine.id)}
+          className="relative flex w-full items-center gap-3 rounded-3xl bg-surface p-3 text-left ring-1 ring-line"
+        >
+          <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl">
+            <RoomCover room={mine} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-display text-[17px] font-bold text-cream">{mine.name}</span>
+            <span className="mt-1 flex items-center gap-1.5 text-[11.5px]">
+              <span className="font-bold text-coral">{mine.type === "watch" ? "YouTube" : mine.type === "kharidari" ? "Kharidari" : "Voice"}</span>
+              {mine.permanent ? <span className="rounded-md bg-gold/15 px-1.5 py-0.5 font-bold text-gold">Lv.{roomLevelOf(mine).level}</span> : null}
+              <span className="truncate text-muted">ID {mine.code}</span>
+            </span>
+          </span>
+          <span className="absolute right-0 top-0 rounded-bl-xl rounded-tr-3xl bg-coral px-2.5 py-0.5 text-[10.5px] font-bold text-white">My room</span>
+        </motion.button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => push({ kind: "create-room" })}
+          className="flex w-full items-center gap-3 rounded-3xl border border-dashed border-cream/20 bg-surface/60 p-3 text-left"
+        >
+          <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-coral/15 text-coral">
+            <Plus className="h-7 w-7" aria-hidden />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-[16px] font-bold text-cream">Create your room</span>
+            <span className="mt-0.5 block text-[12px] text-muted">Your own room shows up here</span>
+          </span>
+        </button>
+      )}
+
+      <div role="tablist" aria-label="My rooms" className="mt-5 flex items-baseline gap-5">
+        {MINE.map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+            className={`relative font-display font-bold transition-all ${tab === t ? "text-[18px] text-cream" : "text-[14px] text-cream/45 hover:text-cream/70"}`}
+          >
+            {t}
+            {tab === t ? <motion.span layoutId="rooms-mine" className="absolute -bottom-1 left-1/2 h-1 w-4 -translate-x-1/2 rounded-full bg-coral" /> : null}
+          </button>
+        ))}
+      </div>
+
+      {list.length ? (
+        <div className="-mx-4 mt-2">
+          {list.map((r) => (
+            <RoomRow key={r.id} room={r} />
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center px-6 pt-14 text-center">
+          <span className="grid h-20 w-20 place-items-center rounded-full bg-cream/[0.06] text-cream/50">
+            <Compass className="h-9 w-9" aria-hidden />
+          </span>
+          <p className="mt-4 text-[13.5px] text-muted">
+            {tab === "Recents" ? "No rooms visited yet" : tab === "Joined" ? "You haven't joined any rooms yet" : "You aren't following any rooms yet"}
+          </p>
+          <button type="button" onClick={onFind} className="mt-5 rounded-full bg-coral px-8 py-2.5 text-[14px] font-bold text-white">
+            Go find rooms
+          </button>
+        </div>
+      )}
     </div>
   );
 }
