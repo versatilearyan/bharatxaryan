@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getRoomChatHistory, readRoomChat, roomChatSend, roomChatTopic, ROOM_CHAT_HISTORY_LIMIT, type RoomChatMessage } from "@/lib/api/voice-room-chat";
+import { readRoomChat, roomChatSend, roomChatTopic, type RoomChatMessage } from "@/lib/api/voice-room-chat";
 import { SERVER_USER_PREFIX, useServerRooms } from "@/lib/app/server-rooms";
 import { ME_ID } from "@/lib/app/store";
 import type { RoomMessage } from "@/lib/app/types";
@@ -11,8 +11,8 @@ import { publish, subscribe, useStompStatus } from "@/lib/realtime/stomp";
 export const SERVER_CHAT_PREFIX = "srv-chat:";
 
 /**
- * A backend room's text chat: recent history over REST once you're in the room,
- * then live messages over STOMP. Each message is delivered once (by the
+ * A backend room's text chat: only what's said after you join (no earlier
+ * chat), live over STOMP, line by line. Each message is delivered once (by the
  * server's id, or sender + time + text when it has none), scoped to this room.
  * Sending goes to STOMP only; your line appears when the server broadcasts it.
  *
@@ -23,7 +23,6 @@ export const SERVER_CHAT_PREFIX = "srv-chat:";
 export function useServerRoomChat(roomId: string | null, ready: boolean, myId: string | undefined, deliver: (list: RoomMessage[], history: boolean) => void) {
   const { rememberPeople } = useServerRooms();
   const [historyError, setHistoryError] = useState("");
-  const [tick, setTick] = useState(0);
   const seen = useRef(new Set<string>());
   const status = useStompStatus();
   const deliverRef = useRef(deliver);
@@ -65,22 +64,8 @@ export function useServerRoomChat(roomId: string | null, ready: boolean, myId: s
     });
   }, [roomId, ready, toLines]);
 
-  // Recent history once you're in (and on Retry)
-  useEffect(() => {
-    if (!roomId || !ready) return;
-    let live = true;
-    setHistoryError("");
-    getRoomChatHistory(roomId, ROOM_CHAT_HISTORY_LIMIT)
-      .then((list) => {
-        if (!live) return;
-        const lines = toLines(list);
-        if (lines.length) deliverRef.current(lines, true);
-      })
-      .catch(() => live && setHistoryError("Couldn't load earlier chat."));
-    return () => {
-      live = false;
-    };
-  }, [roomId, ready, toLines, tick]);
+  // No earlier chat: like a real room, you only see what's said after you walk in.
+  // New lines arrive one by one, live, as people send them.
 
   /** Send a line. Resolves to an error message, or "" when it went out. */
   const send = useCallback(
@@ -97,5 +82,5 @@ export function useServerRoomChat(roomId: string | null, ready: boolean, myId: s
     [roomId, ready],
   );
 
-  return { send, historyError, retryHistory: () => setTick((n) => n + 1), connection: status };
+  return { send, historyError, retryHistory: () => undefined, connection: status };
 }

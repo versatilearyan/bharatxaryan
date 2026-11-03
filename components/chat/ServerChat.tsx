@@ -7,11 +7,12 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { AlertCircle, ChevronLeft, ImagePlus, Loader2, RotateCcw, Send, X } from "lucide-react";
+import { AlertCircle, BellOff, ChevronLeft, ImagePlus, Loader2, MoreVertical, RotateCcw, Send, Users, X } from "lucide-react";
+import { ChatMenuSheet, GroupInfoSheet, useGroupInfo } from "./ChatGroups";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { IconButton } from "@/components/ui/kit";
 import { usePublicProfile } from "@/components/profile/usePublicProfile";
-import { checkChatImage, fetchChatImage, CHAT_TEXT_MAX, type ChatConversation, type ChatMessage } from "@/lib/api/chat";
+import { checkChatImage, fetchChatImage, presenceText, CHAT_TEXT_MAX, type ChatConversation, type ChatMessage } from "@/lib/api/chat";
 import { useChat, type Outgoing } from "@/lib/app/chat-store";
 import { usePeople } from "@/lib/app/people";
 import { SERVER_USER_PREFIX, useServerPeople, useServerRooms } from "@/lib/app/server-rooms";
@@ -107,27 +108,54 @@ function ChatImage({ conversationId, messageId }: { conversationId: string; mess
 /* Inbox                                                               */
 /* ------------------------------------------------------------------ */
 
+/** "Riya is typing…", "Riya and Dev are typing…", "3 people are typing…" */
+export function typingLine(names: string[]) {
+  if (!names.length) return "";
+  if (names.length === 1) return `${names[0]} is typing…`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing…`;
+  return `${names.length} people are typing…`;
+}
+
 function InboxRow({ c, onOpen }: { c: ChatConversation; onOpen: (personId: string) => void }) {
   const person = usePeople();
   const known = useServerPeople();
-  const personId = c.otherUserId ? `${SERVER_USER_PREFIX}${c.otherUserId}` : "";
+  const chat = useChat();
+  const group = c.kind === "GROUP";
+  const personId = !group && c.otherUserId ? `${SERVER_USER_PREFIX}${c.otherUserId}` : "";
   // The response may not name the person: their public profile does (fetched once)
   usePublicProfile(personId && !c.otherName && !known[personId]?.name ? personId : "");
   const p = personId ? person(personId) : null;
   const name = c.otherName ?? (personId && known[personId]?.name) ?? (c.otherUserId ? `User ${c.otherUserId}` : "Chat");
   const unread = c.unreadCount ?? 0;
+  const online = !group && c.otherUserId ? (chat.presence[c.otherUserId]?.online ?? c.otherOnline) : false;
+  const typers = Object.values(chat.typing[c.id] ?? {});
+  const lastFrom = group && c.lastSenderId ? (c.lastSenderId === chat.myId ? "You: " : `${(known[`${SERVER_USER_PREFIX}${c.lastSenderId}`]?.name ?? "").split(" ")[0] || "Someone"}: `) : c.lastSenderId && c.lastSenderId === chat.myId ? "You: " : "";
   return (
     <li>
-      <motion.button type="button" whileTap={{ scale: 0.985 }} onClick={() => onOpen(personId || `${SERVER_CONV_PREFIX}${c.id}`)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-cream/[0.03]" aria-label={`Chat with ${name}${unread ? `, ${unread} unread` : ""}`}>
-        {p ? <PersonAvatar person={p} size={52} /> : <span className="h-[52px] w-[52px] rounded-full bg-surface" />}
+      <motion.button type="button" whileTap={{ scale: 0.985 }} onClick={() => onOpen(personId || `${SERVER_CONV_PREFIX}${c.id}`)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-cream/[0.03]" aria-label={`${group ? "Group" : "Chat with"} ${name}${unread ? `, ${unread} unread` : ""}`}>
+        <span className="relative shrink-0">
+          {group ? (
+            <span className="grid h-[52px] w-[52px] place-items-center rounded-full bg-gradient-to-br from-[#7b5cff] to-[#f4515b] text-white">
+              <Users className="h-6 w-6" aria-hidden />
+            </span>
+          ) : p ? (
+            <PersonAvatar person={p} size={52} />
+          ) : (
+            <span className="block h-[52px] w-[52px] rounded-full bg-surface" />
+          )}
+          {online ? <span className="absolute bottom-0.5 right-0.5 h-3 w-3 rounded-full bg-speak ring-2 ring-ink" aria-label="Online" /> : null}
+        </span>
         <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5">
             <span className={`truncate text-[15px] ${unread ? "font-bold text-cream" : "font-semibold text-cream/90"}`}>{name}</span>
+            {c.muted ? <BellOff className="h-3.5 w-3.5 shrink-0 text-muted" aria-label="Muted" /> : null}
             <span className="ml-auto shrink-0 text-[11px] text-muted">{ago(c.lastAt)}</span>
           </span>
           <span className="mt-0.5 flex items-center gap-2">
-            <span className={`truncate text-[13px] ${unread ? "text-cream/85" : "text-muted"}`}>{c.lastMessage ?? ""}</span>
-            {unread ? <span className="ml-auto grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-coral px-1.5 text-[10.5px] font-bold text-white">{unread}</span> : null}
+            <span className={`truncate text-[13px] ${typers.length ? "text-speak" : unread ? "text-cream/85" : "text-muted"}`}>
+              {typers.length ? (group ? typingLine(typers) : "typing…") : c.blockedByMe ? "Blocked" : c.lastMessage ? `${lastFrom}${c.lastMessage}` : group ? `${c.memberCount ?? ""} members` : ""}
+            </span>
+            {unread ? <span className={`ml-auto grid h-5 min-w-5 shrink-0 place-items-center rounded-full px-1.5 text-[10.5px] font-bold text-white ${c.muted ? "bg-muted/60" : "bg-coral"}`}>{unread}</span> : null}
           </span>
         </span>
       </motion.button>
@@ -193,11 +221,12 @@ export function ServerInbox({ query }: { query: string }) {
 /* Conversation                                                        */
 /* ------------------------------------------------------------------ */
 
-function Bubble({ m, mine }: { m: ChatMessage; mine: boolean }) {
+function Bubble({ m, mine, from }: { m: ChatMessage; mine: boolean; from?: string }) {
   const image = m.type === "IMAGE";
   return (
     <div className={`flex ${mine ? "justify-end" : "justify-start"}`} data-message-id={m.id}>
       <div className={`max-w-[78%] rounded-3xl ${image ? "p-1.5" : "px-3.5 py-2"} text-[14px] leading-snug ${mine ? "rounded-br-lg bg-coral text-white" : "rounded-bl-lg bg-surface text-cream"}`}>
+        {from ? <span className={`block text-[11.5px] font-bold text-gold ${image ? "px-2 pt-1" : ""}`}>{from}</span> : null}
         {image ? <ChatImage conversationId={m.conversationId} messageId={m.id} /> : <span className="whitespace-pre-wrap break-words">{m.text ?? ""}</span>}
         <span className={`ml-2 inline-block translate-y-0.5 text-[10px] ${mine ? "text-white/70" : "text-muted"} ${image ? "px-2" : ""}`}>{fmt(m.at)}</span>
       </div>
@@ -269,6 +298,24 @@ export function ServerConversationView({ personId }: { personId: string }) {
     return () => closeThread(convId);
   }, [convId, openThread, closeThread]);
 
+  // The chat as the list knows it: group or direct, muted, blocked, who's online
+  const conv = convId ? chat.inbox.data?.find((c) => c.id === convId) : undefined;
+  const group = conv?.kind === "GROUP";
+  const { info: groupInfo, setInfo: setGroupInfo } = useGroupInfo(convId, Boolean(group));
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const otherId = userId ?? conv?.otherUserId ?? null;
+  const { watchPresence, loadInbox } = chat;
+  useEffect(() => {
+    if (!chat.inbox.data) loadInbox();
+  }, [chat.inbox.data, loadInbox]);
+  useEffect(() => {
+    if (otherId && !group) watchPresence([otherId]);
+  }, [otherId, group, watchPresence]);
+  const typers = convId ? Object.values(chat.typing[convId] ?? {}) : [];
+  const memberName = (id?: string) => (id ? (groupInfo?.members.find((m) => m.userId === id)?.name ?? person(`${SERVER_USER_PREFIX}${id}`).name) : "");
+  const blocked = conv?.blockedByMe ? "byMe" : conv?.blockedMe ? "me" : null;
+
   const thread = convId ? chat.threads[convId] : undefined;
   const messages = thread?.messages ?? [];
   const pending = chat.outgoing.filter((o) => o.conversationId === convId);
@@ -333,13 +380,36 @@ export function ServerConversationView({ personId }: { personId: string }) {
           <IconButton label="Back" onClick={pop} className="!bg-transparent">
             <ChevronLeft className="h-6 w-6" />
           </IconButton>
-          <button type="button" disabled={!userId} onClick={() => setSheet({ kind: "person", personId })} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-            {p ? <PersonAvatar person={p} size={38} /> : null}
+          <button type="button" disabled={!userId && !group} onClick={() => (group ? setInfoOpen(true) : setSheet({ kind: "person", personId }))} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+            {group ? (
+              <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#7b5cff] to-[#f4515b] text-white">
+                <Users className="h-5 w-5" aria-hidden />
+              </span>
+            ) : p ? (
+              <span className="relative shrink-0">
+                <PersonAvatar person={p} size={38} />
+                {otherId && chat.presence[otherId]?.online ? <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-speak ring-2 ring-ink" /> : null}
+              </span>
+            ) : null}
             <span className="min-w-0">
-              <span className="block truncate text-[15px] font-bold text-cream">{name}</span>
-              {live ? <span className="block text-[11px] text-muted" role="status">{live}</span> : null}
+              <span className="block truncate text-[15px] font-bold text-cream">{group ? (groupInfo?.name ?? conv?.otherName ?? "Group") : name}</span>
+              <span className={`block truncate text-[11px] ${typers.length ? "text-speak" : "text-muted"}`} role="status">
+                {live ||
+                  (typers.length
+                    ? group
+                      ? typingLine(typers)
+                      : "typing…"
+                    : group
+                      ? `${groupInfo?.members.length ?? conv?.memberCount ?? ""} members${groupInfo ? ` · ${groupInfo.members.filter((m) => (chat.presence[m.userId] ?? m).online).length} online` : ""}`
+                      : presenceText(otherId ? chat.presence[otherId] : undefined))}
+              </span>
             </span>
           </button>
+          {conv ? (
+            <IconButton label={group ? "Group info" : "Chat options"} onClick={() => (group ? setInfoOpen(true) : setMenuOpen(true))} className="!bg-transparent">
+              <MoreVertical className="h-5 w-5" />
+            </IconButton>
+          ) : null}
         </div>
       </header>
 
@@ -373,14 +443,45 @@ export function ServerConversationView({ personId }: { personId: string }) {
           </p>
         ) : null}
         {thread && !thread.loading && !thread.error && messages.length === 0 && pendingImages.length === 0 ? <p className="pt-10 text-center text-[13px] text-muted">No messages yet. Say hi 👋</p> : null}
-        {messages.map((m) => (
-          <Bubble key={m.id} m={m} mine={Boolean(chat.myId && m.senderId === chat.myId)} />
-        ))}
+        {messages.map((m, i) => {
+          const mine = Boolean(chat.myId && m.senderId === chat.myId);
+          // Groups: the sender's name over the first of their messages in a row
+          const from = group && !mine && messages[i - 1]?.senderId !== m.senderId ? memberName(m.senderId) : undefined;
+          return <Bubble key={m.id} m={m} mine={mine} from={from} />;
+        })}
+        {typers.length ? (
+          <div className="flex justify-start" aria-live="polite">
+            <span className="flex items-center gap-1.5 rounded-3xl rounded-bl-lg bg-surface px-3.5 py-2.5 text-[12px] text-muted">
+              <span className="flex gap-0.5" aria-hidden>
+                {[0, 1, 2].map((d) => (
+                  <motion.span key={d} className="h-1.5 w-1.5 rounded-full bg-cream/60" animate={{ y: [0, -3, 0] }} transition={{ duration: 0.8, repeat: Infinity, delay: d * 0.15 }} />
+                ))}
+              </span>
+              {group ? typingLine(typers) : `${name} is typing`}
+            </span>
+          </div>
+        ) : null}
         {pendingImages.map((o) => (
           <PendingImage key={o.tempId} o={o} onRetry={() => chat.retry(o.tempId)} onDiscard={() => chat.discard(o.tempId)} />
         ))}
       </div>
 
+      {blocked ? (
+        <div className="border-t border-line bg-cream/[0.04] px-4 py-2.5 text-center text-[12.5px] text-muted" role="status">
+          {blocked === "byMe" ? (
+            <>
+              You blocked {name}.{" "}
+              <button type="button" onClick={() => setMenuOpen(true)} className="font-bold text-gold underline">
+                Unblock
+              </button>
+            </>
+          ) : (
+            "You can't reply to this chat."
+          )}
+        </div>
+      ) : null}
+      {convId && group ? <GroupInfoSheet open={infoOpen} onClose={() => setInfoOpen(false)} conversationId={convId} group={groupInfo} onChanged={setGroupInfo} /> : null}
+      {!group ? <ChatMenuSheet open={menuOpen} onClose={() => setMenuOpen(false)} c={conv} name={name} personId={personId} /> : null}
       {failedText || pickError ? (
         <p className="border-t border-line bg-coral/10 px-4 py-2 text-[12px] font-semibold text-coral" role="alert">
           {failedText?.error ?? pickError}
@@ -410,14 +511,18 @@ export function ServerConversationView({ personId }: { personId: string }) {
           />
           <input
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder={`Message ${name}`}
-            aria-label={`Message ${name}`}
+            onChange={(e) => {
+              setDraft(e.target.value);
+              if (convId) chat.setTyping(convId, e.target.value.trim().length > 0);
+            }}
+            onBlur={() => convId && chat.setTyping(convId, false)}
+            placeholder={`Message ${group ? (groupInfo?.name ?? conv?.otherName ?? "the group") : name}`}
+            aria-label={`Message ${group ? (groupInfo?.name ?? "the group") : name}`}
             maxLength={CHAT_TEXT_MAX}
-            disabled={busy || !convId}
+            disabled={busy || !convId || Boolean(blocked)}
             className="h-11 min-w-0 flex-1 rounded-full bg-surface px-4 text-[14px] text-cream ring-1 ring-line placeholder:text-muted/70 focus:outline-none focus:ring-gold/40 disabled:opacity-60"
           />
-          <motion.button whileTap={{ scale: 0.9 }} type="submit" disabled={!draft.trim() || busy || !convId} aria-label="Send" className="grid h-11 w-11 place-items-center rounded-full bg-coral text-white disabled:opacity-40">
+          <motion.button whileTap={{ scale: 0.9 }} type="submit" disabled={!draft.trim() || busy || !convId || Boolean(blocked)} aria-label="Send" className="grid h-11 w-11 place-items-center rounded-full bg-coral text-white disabled:opacity-40">
             {busy ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-[18px] w-[18px]" />}
           </motion.button>
         </div>

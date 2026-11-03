@@ -23,7 +23,12 @@ import { checkRoomPassword } from "@/lib/api/voice-rooms";
 import { formatInr } from "@/lib/app/redpacket";
 import { CATEGORIES, PEOPLE, TASKS, gameById } from "@/lib/app/data";
 import { RoomTypeBadge } from "@/components/rooms/RoomCards";
-import { useApp } from "@/lib/app/store";
+import { ME_ID, useApp } from "@/lib/app/store";
+import { usePeople } from "@/lib/app/people";
+import { serverRoomAppId, toAppRoom, useServerRooms, userPersonId } from "@/lib/app/server-rooms";
+import { searchServer, type FoundUser } from "@/lib/api/search";
+import type { VoiceRoom } from "@/lib/api/voice-rooms";
+import { myUserIdFromToken } from "@/lib/auth/token";
 import type { GameId } from "@/lib/app/types";
 import { EXP_SOURCES, GAME_WIN_EXP } from "@/lib/app/progress";
 import { LevelPill } from "@/components/profile/IdTags";
@@ -450,7 +455,7 @@ function CopyId({ id, label }: { id: string; label: string }) {
   );
 }
 
-/** Digits-only code field shared by the "find user" and "join room" sheets. */
+/** The search field shared by the "find people" and "join room" sheets: a 7-digit ID or a name. */
 function CodeField({ value, onChange, onSubmit, label, placeholder }: { value: string; onChange: (v: string) => void; onSubmit: () => void; label: string; placeholder: string }) {
   return (
     <form
@@ -465,80 +470,109 @@ function CodeField({ value, onChange, onSubmit, label, placeholder }: { value: s
         <input
           autoFocus
           value={value}
-          onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 8))}
-          inputMode="numeric"
+          onChange={(e) => onChange(e.target.value.slice(0, 40))}
+          enterKeyHint="search"
           aria-label={label}
           placeholder={placeholder}
           className="min-w-0 flex-1 bg-transparent font-display text-[17px] font-bold tracking-[0.12em] text-cream placeholder:font-sans placeholder:text-[14px] placeholder:font-normal placeholder:tracking-normal placeholder:text-muted/70 focus:outline-none"
         />
       </label>
-      <Button type="submit" disabled={value.length < 4}>
+      <Button type="submit" disabled={value.trim().length < 2}>
         Search
       </Button>
     </form>
   );
 }
 
+/** Server search (GET /api/v1/search): a 7-digit ID finds that person and that room; text searches names. */
+function useIdSearch() {
+  const [state, setState] = useState<{ q: string; loading: boolean; error: string | null; users: FoundUser[]; rooms: VoiceRoom[] } | null>(null);
+  const run = (q: string) => {
+    const term = q.trim();
+    if (!term) return;
+    setState({ q: term, loading: true, error: null, users: [], rooms: [] });
+    searchServer(term)
+      .then((r) => setState({ q: term, loading: false, error: null, ...r }))
+      .catch((e) => setState({ q: term, loading: false, error: e instanceof Error && e.message ? e.message : "Search didn't work. Try again.", users: [], rooms: [] }));
+  };
+  return { state, run, reset: () => setState(null) };
+}
+
 function FindUserSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { profile, toggleFollow, openConversation } = useApp();
+  const { push, openConversation } = useApp();
+  const { rememberPeople } = useServerRooms();
+  const person = usePeople();
+  const myId = myUserIdFromToken();
   const [q, setQ] = useState("");
-  const [searched, setSearched] = useState<string | null>(null);
-  const found = searched ? PEOPLE.find((p) => p.uid === searched) : undefined;
-  const isMe = searched === profile.userId;
+  const search = useIdSearch();
+  const found = search.state?.users ?? [];
+  const close = () => {
+    onClose();
+    setQ("");
+    search.reset();
+  };
+  const remember = (u: FoundUser) => rememberPeople({ [userPersonId(u.id)]: { name: u.name, avatarUrl: u.avatarUrl } });
+  const openProfile = (u: FoundUser) => {
+    // Their name and picture show straight away; the profile loads the rest
+    remember(u);
+    close();
+    push({ kind: "user-profile", personId: userPersonId(u.id) });
+  };
   return (
-    <BottomSheet
-      open={open}
-      onClose={() => {
-        onClose();
-        setQ("");
-        setSearched(null);
-      }}
-      title="Add friend by ID"
-    >
+    <BottomSheet open={open} onClose={close} title="Find people">
       <div className="px-5 pb-6">
-        <p className="mb-3 text-[12.5px] text-muted">Every Panchayat user has a number ID on their profile. Ask a friend for theirs.</p>
-        <CodeField value={q} onChange={setQ} onSubmit={() => setSearched(q)} label="User ID" placeholder="Enter user ID, e.g. 208114" />
-        <div className="mt-4" aria-live="polite">
-          {isMe ? (
-            <p className="rounded-2xl bg-cream/[0.05] p-4 text-center text-[13px] text-muted">That&apos;s your own ID.</p>
-          ) : found ? (
-            <div className="flex items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line">
-              <PersonAvatar person={found} size={52} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-bold text-cream">{found.name}</span>
-                <span className="block truncate text-[11.5px] text-muted">
-                  ID {found.uid} · Lv.{found.level} · {found.city}
-                </span>
-              </span>
-              <button
-                type="button"
-                onClick={() => toggleFollow(found.id)}
-                aria-label={profile.following.includes(found.id) ? `Remove ${found.name}` : `Add ${found.name}`}
-                className={`grid h-9 w-9 place-items-center rounded-full ${profile.following.includes(found.id) ? "bg-cream/10 text-cream" : "bg-coral text-white"}`}
-              >
-                {profile.following.includes(found.id) ? <UserCheck className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
-              </button>
-              <button type="button" onClick={() => openConversation(found.id)} aria-label={`Message ${found.name}`} className="grid h-9 w-9 place-items-center rounded-full bg-cream/[0.08] text-cream">
-                <MessageCircle className="h-4 w-4" />
-              </button>
-            </div>
-          ) : searched ? (
+        <p className="mb-3 text-[12.5px] text-muted">Search by someone&apos;s 7-digit ID (it&apos;s on their profile) or by name.</p>
+        <CodeField value={q} onChange={setQ} onSubmit={() => search.run(q)} label="User ID or name" placeholder="e.g. 6372289" />
+        <div className="mt-4 space-y-2" aria-live="polite">
+          {search.state?.loading ? (
+            <p className="py-4 text-center text-[13px] text-muted">Searching…</p>
+          ) : search.state?.error ? (
+            <p className="rounded-2xl bg-coral/10 p-3 text-center text-[13px] text-coral">{search.state.error}</p>
+          ) : found.length ? (
+            found.map((u) => {
+              const me = u.id === myId;
+              return (
+                <div key={u.id} className="flex items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line">
+                  <PersonAvatar person={{ ...person(userPersonId(u.id)), photo: u.avatarUrl, frame: "none" }} size={48} />
+                  <button type="button" onClick={() => !me && openProfile(u)} className="min-w-0 flex-1 text-left">
+                    <span className="block truncate text-[15px] font-bold text-cream">{u.name}</span>
+                    <span className="block truncate text-[11.5px] text-muted">
+                      ID {u.publicId}
+                      {u.vipLevel ? ` · VIP ${u.vipLevel}` : ""}
+                      {me ? " · That's you" : ""}
+                    </span>
+                  </button>
+                  {!me ? (
+                    <>
+                      <button type="button" onClick={() => openProfile(u)} aria-label={`Open ${u.name}'s profile`} className="grid h-9 w-9 place-items-center rounded-full bg-coral text-white">
+                        <UserPlus className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          remember(u);
+                          close();
+                          openConversation(userPersonId(u.id));
+                        }}
+                        aria-label={`Message ${u.name}`}
+                        className="grid h-9 w-9 place-items-center rounded-full bg-cream/[0.08] text-cream"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              );
+            })
+          ) : search.state ? (
             <p className="flex flex-col items-center gap-2 rounded-2xl bg-cream/[0.05] p-4 text-center text-[13px] text-muted">
               <SearchX className="h-6 w-6" aria-hidden />
-              No user with ID {searched}. Check the number and try again.
+              No one found for “{search.state.q}”. Check the ID and try again.
             </p>
-          ) : (
-            <p className="text-[11.5px] text-muted">
-              Try a sample ID: {PEOPLE.slice(0, 3).map((p, i) => (
-                <button key={p.id} type="button" onClick={() => { setQ(p.uid); setSearched(p.uid); }} className="font-semibold text-gold">
-                  {i ? ", " : ""}{p.uid}
-                </button>
-              ))}
-            </p>
-          )}
+          ) : null}
         </div>
         <p className="mt-4 text-center text-[11.5px] text-muted">
-          Your ID is <span className="font-bold text-cream">{profile.userId}</span>
+          Your ID is <span className="font-bold text-cream">{person(ME_ID).uid}</span>
         </p>
       </div>
     </BottomSheet>
@@ -546,53 +580,58 @@ function FindUserSheet({ open, onClose }: { open: boolean; onClose: () => void }
 }
 
 function JoinRoomSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { rooms, openRoom } = useApp();
+  const { openRoom } = useApp();
+  const { addCreated, myId } = useServerRooms();
   const [q, setQ] = useState("");
-  const [searched, setSearched] = useState<string | null>(null);
-  const found = searched ? rooms.find((r) => r.code === searched) : undefined;
+  const search = useIdSearch();
+  const found = search.state?.rooms ?? [];
+  const close = () => {
+    onClose();
+    setQ("");
+    search.reset();
+  };
+  const join = (v: VoiceRoom) => {
+    // Keep it in your list (a private or quiet room may not be in the public one), then go in
+    addCreated(v);
+    close();
+    openRoom(serverRoomAppId(v.id));
+  };
   return (
-    <BottomSheet
-      open={open}
-      onClose={() => {
-        onClose();
-        setQ("");
-        setSearched(null);
-      }}
-      title="Join by room ID"
-    >
+    <BottomSheet open={open} onClose={close} title="Join by room ID">
       <div className="px-5 pb-6">
-        <p className="mb-3 text-[12.5px] text-muted">Every room has a number ID under its name. Enter it to jump straight in.</p>
-        <CodeField value={q} onChange={setQ} onSubmit={() => setSearched(q)} label="Room ID" placeholder="Enter room ID" />
-        <div className="mt-4" aria-live="polite">
-          {found ? (
-            <div className="flex items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line">
-              <span className="h-14 w-14 shrink-0 overflow-hidden rounded-xl">
-                <RoomCover room={found} />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[15px] font-bold text-cream">{found.name}</span>
-                <span className="mt-1 flex items-center gap-1.5 text-[11.5px] text-muted">
-                  <RoomTypeBadge type={found.type} /> ID {found.code}
-                </span>
-              </span>
-              <Button onClick={() => openRoom(found.id)}>
-                <DoorOpen className="h-4 w-4" /> Join
-              </Button>
-            </div>
-          ) : searched ? (
+        <p className="mb-3 text-[12.5px] text-muted">Every room has a 7-digit ID under its name. Enter it (or the room&apos;s name) to jump straight in.</p>
+        <CodeField value={q} onChange={setQ} onSubmit={() => search.run(q)} label="Room ID or name" placeholder="e.g. 8782798" />
+        <div className="mt-4 space-y-2" aria-live="polite">
+          {search.state?.loading ? (
+            <p className="py-4 text-center text-[13px] text-muted">Searching…</p>
+          ) : search.state?.error ? (
+            <p className="rounded-2xl bg-coral/10 p-3 text-center text-[13px] text-coral">{search.state.error}</p>
+          ) : found.length ? (
+            found.map((v) => {
+              const room = toAppRoom(v, myId);
+              return (
+                <div key={v.id} className="flex items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line">
+                  <span className="h-14 w-14 shrink-0 overflow-hidden rounded-xl">
+                    <RoomCover room={room} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[15px] font-bold text-cream">{room.name}</span>
+                    <span className="mt-1 flex items-center gap-1.5 text-[11.5px] text-muted">
+                      <RoomTypeBadge type={room.type} /> ID {room.code}
+                    </span>
+                  </span>
+                  <Button onClick={() => join(v)}>
+                    <DoorOpen className="h-4 w-4" /> Join
+                  </Button>
+                </div>
+              );
+            })
+          ) : search.state ? (
             <p className="flex flex-col items-center gap-2 rounded-2xl bg-cream/[0.05] p-4 text-center text-[13px] text-muted">
               <SearchX className="h-6 w-6" aria-hidden />
-              No room with ID {searched}. It may have closed, or the number is wrong.
+              No live room found for “{search.state.q}”. It may have closed, or the number is wrong.
             </p>
-          ) : (
-            <p className="text-[11.5px] text-muted">
-              Try a sample ID: {rooms.slice(0, 3).map((r, i) => (
-                <button key={r.id} type="button" onClick={() => { setQ(r.code); setSearched(r.code); }} className="font-semibold text-gold">
-                  {i ? ", " : ""}{r.code}
-                </button>
-              ))}
-            </p>
-          )}
+          ) : null}
         </div>
       </div>
     </BottomSheet>

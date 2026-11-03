@@ -123,12 +123,8 @@ export const PROPOSAL_LINES = [
 ];
 
 const ago = (days: number) => Date.now() - days * DAY_MS;
-export const SAMPLE_COUPLES: Couple[] = [
-  { id: "cp-riya-ishaan", a: "riya", b: "ishaan", ring: "chand-titli", rings: ["chand-titli", "samundar-lehar", "gulabi-dil", "phool-kali"], since: ago(80), love: 381_013, blessings: 248, blessedBy: ["meher", "kabir", "tara", "dev"] },
-  { id: "cp-zoya-dev", a: "zoya", b: "dev", ring: "taara-boond", rings: ["taara-boond", "titli-rani"], since: ago(41), love: 96_420, blessings: 87, blessedBy: ["naina", "riya", "anaya"] },
-  { id: "cp-tara-arjun", a: "tara", b: "arjun", ring: "laal-bel", rings: ["laal-bel"], since: ago(18), love: 24_310, blessings: 31, blessedBy: ["saanvi", "vikram"] },
-  { id: "cp-naina-kabir", a: "naina", b: "kabir", ring: "moti-seep", rings: ["moti-seep"], since: ago(6), love: 3_120, blessings: 6, blessedBy: ["rohan"] },
-];
+/** No sample couples. */
+export const SAMPLE_COUPLES: Couple[] = [];
 export const partnerIn = (c: Couple, id: string) => (c.a === id ? c.b : c.a);
 
 /* ---------------- Ranking ---------------- */

@@ -46,29 +46,7 @@ function useGiftNewsState() {
   }, []);
   const dismiss = useCallback((id: string) => setQueue((q) => q.filter((x) => x.id !== id)), []);
 
-  // Demo: now and then someone else sends a big gift somewhere in Panchayat
-  const roomsRef = useRef(rooms);
-  useEffect(() => {
-    roomsRef.current = rooms;
-  }, [rooms]);
-  useEffect(() => {
-    const big = GIFTS.filter((g) => g.news && !g.packageOnly).map((g) => g.id);
-    if (!big.length) return;
-    let t = 0;
-    const next = (ms: number) => {
-      t = window.setTimeout(() => {
-        const room = pick(roomsRef.current.filter((r) => !r.createdByMe && r.type !== "kharidari"));
-        const people = (room?.seated.length ? room.seated : PEOPLE.map((p) => p.id)).filter((id) => id !== ME_ID);
-        if (room && people.length >= 2) {
-          const fromId = pick(people);
-          announce({ fromId, toId: pick(people.filter((id) => id !== fromId)), giftId: pick(big), count: pick([1, 1, 1, 5]), roomId: room.id, message: pick(SIM_MESSAGES) });
-        }
-        next(55_000 + Math.random() * 45_000);
-      }, ms);
-    };
-    next(30_000);
-    return () => window.clearTimeout(t);
-  }, [announce]);
+  // (No made-up gift announcements: only real gifts are announced.)
 
   return { news: queue[0], announce, dismiss };
 }

@@ -136,32 +136,7 @@ function useRedPacketState() {
     return () => window.clearInterval(t);
   }, []);
 
-  // Demo: now and then someone drops a red packet somewhere in Panchayat
-  const roomsRef = useRef(rooms);
-  const activeRef = useRef(activeRoomId);
-  useEffect(() => {
-    roomsRef.current = rooms;
-    activeRef.current = activeRoomId;
-  }, [rooms, activeRoomId]);
-  useEffect(() => {
-    let t = 0;
-    const next = (ms: number) => {
-      t = window.setTimeout(() => {
-        const list = roomsRef.current.filter((r) => !r.createdByMe && r.type !== "kharidari");
-        // Sometimes it lands in the room you're sitting in
-        const here = activeRef.current ? roomsRef.current.find((r) => r.id === activeRef.current) : undefined;
-        const room = here && Math.random() < 0.35 ? here : list[Math.floor(Math.random() * list.length)];
-        if (room) {
-          const fromId = room.seated.find((id) => id !== ME_ID) ?? PEOPLE[Math.floor(Math.random() * PEOPLE.length)].id;
-          const roll = Math.random();
-          drop(roll < 0.6 ? "rp-10k" : roll < 0.9 ? "rp-50k" : "rp-80k", room.id, fromId, COVERS[Math.floor(Math.random() * COVERS.length)].id);
-        }
-        next(50_000 + Math.random() * 40_000);
-      }, ms);
-    };
-    next(18_000);
-    return () => window.clearTimeout(t);
-  }, [drop]);
+  // (No made-up red packet drops: only real ones show.)
 
   const dismissBanner = useCallback((id: string) => setBanners((b) => b.filter((x) => x !== id)), []);
   const dropById = useCallback((id: string) => drops.find((d) => d.id === id), [drops]);

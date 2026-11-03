@@ -79,9 +79,5 @@ export const partnerOf = (tag: Tag, personId: string) => (tag.a === personId ? t
 export const pairKey = (x: string, y: string) => [x, y].sort().join("|");
 
 /** Sample tags between other people so rooms show linked seats. */
-export const SAMPLE_TAGS: Tag[] = [
-  { id: "t-zoya-kabir", a: "kabir", b: "zoya", relation: "besties", token: "scooter", intimacy: 3600, createdAt: Date.UTC(2026, 8, 2), roomName: "Kharidari Bazaar" },
-  { id: "t-riya-kabir", a: "riya", b: "kabir", relation: "bro", token: "cottage", intimacy: 14200, createdAt: Date.UTC(2026, 6, 19), roomName: "Sunday chai adda" },
-  { id: "t-naina-rohan", a: "rohan", b: "naina", relation: "brosis", token: "bicycle", intimacy: 760, createdAt: Date.UTC(2026, 9, 1), roomName: "Kharidari Bazaar" },
-  { id: "t-meher-saanvi", a: "meher", b: "saanvi", relation: "confidant", token: "scooter", intimacy: 5600, createdAt: Date.UTC(2026, 7, 11), roomName: "Late night Antakshari" },
-];
+/** No sample tags: your tags come from the server. */
+export const SAMPLE_TAGS: Tag[] = [];

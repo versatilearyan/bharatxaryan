@@ -54,13 +54,8 @@ const DAY = 86_400_000;
 const ago = (d: number) => Date.now() - d * DAY;
 const m = (id: string, role: ParivarRole, contribution: number, days: number): ParivarMember => ({ id, role, contribution, joinedAt: ago(days) });
 
-export const SAMPLE_PARIVARS: Parivar[] = [
-  { id: "pv-chai", code: "880101", name: "Chai Wale Parivar", tag: "CHAI", emblem: "🪔", color: "#e7bc72", announcement: "Har shaam 9 baje Sunday chai adda mein milte hain. Check in daily!", joinMode: "approval", xp: 182_400, weekXp: 14_820, members: [m("riya", "mukhiya", 64_200, 210), m("kabir", "up-mukhiya", 41_900, 180), m("meher", "sadasya", 18_300, 90)], createdAt: ago(210) },
-  { id: "pv-darbar", code: "880214", name: "Dilli Darbar", tag: "DLI", emblem: "👑", color: "#f4515b", announcement: "Royal vibes only. Gift wars every Friday.", joinMode: "open", xp: 64_000, weekXp: 9_340, members: [m("dev", "mukhiya", 30_100, 120), m("zoya", "up-mukhiya", 21_800, 110)], createdAt: ago(120) },
-  { id: "pv-mor", code: "880377", name: "Mor Mandali", tag: "MOR", emblem: "🦚", color: "#19c3b2", announcement: "Shayari, ghazals and good company 🌙", joinMode: "open", xp: 21_500, weekXp: 6_120, members: [m("naina", "mukhiya", 12_400, 60), m("anaya", "sadasya", 5_200, 40)], createdAt: ago(60) },
-  { id: "pv-sixer", code: "880452", name: "Sixer Squad", tag: "SIX", emblem: "🏏", color: "#3fa7ff", announcement: "Cricket commentary rooms on match days. Apply with your fav player!", joinMode: "approval", xp: 7_800, weekXp: 3_050, members: [m("vikram", "mukhiya", 4_900, 30), m("rohan", "sadasya", 1_800, 12)], createdAt: ago(30) },
-  { id: "pv-sur", code: "880519", name: "Sur Sangam", tag: "SUR", emblem: "🎵", color: "#8f6bff", announcement: "Antakshari every night. Sab ka swagat hai!", joinMode: "open", xp: 1_200, weekXp: 900, members: [m("aditya", "mukhiya", 1_200, 6)], createdAt: ago(6) },
-];
+/** No sample families. */
+export const SAMPLE_PARIVARS: Parivar[] = [];
 
 export const PARIVAR_CHATTER = [
   "Sab log check in kar lo aaj 🙏",

@@ -50,6 +50,20 @@ export type ChatConversation = {
   lastMessageType?: string;
   lastAt?: string;
   unreadCount?: number;
+  /** DIRECT (two people) or GROUP. For groups otherName is the group's name. */
+  kind: "DIRECT" | "GROUP";
+  memberCount?: number;
+  /** Your role in a group: OWNER, ADMIN or MEMBER. */
+  myRole?: "OWNER" | "ADMIN" | "MEMBER";
+  /** You muted this chat (no alerts). */
+  muted?: boolean;
+  /** Direct chats: you blocked them / they blocked you (no messages either way). */
+  blockedByMe?: boolean;
+  blockedMe?: boolean;
+  /** Direct chats: the other person has the app open. */
+  otherOnline?: boolean;
+  otherPublicId?: string;
+  lastSenderId?: string;
 };
 
 export type ChatPage = { messages: ChatMessage[]; page: number; last: boolean };
@@ -167,6 +181,15 @@ export function readConversation(raw: unknown, myId?: string): ChatConversation 
     lastMessageType: last?.type ?? first(d, ["lastMessageType"])?.toUpperCase(),
     lastAt: last?.createdAt ?? first(d, ["lastMessageAt", "lastMessageTime", "updatedAt"]),
     unreadCount: unread,
+    kind: d.kind === "GROUP" ? "GROUP" : "DIRECT",
+    memberCount: typeof d.memberCount === "number" ? d.memberCount : undefined,
+    myRole: d.myRole === "OWNER" || d.myRole === "ADMIN" || d.myRole === "MEMBER" ? d.myRole : undefined,
+    muted: d.muted === true,
+    blockedByMe: d.blockedByMe === true,
+    blockedMe: d.blockedMe === true,
+    otherOnline: d.otherOnline === true,
+    otherPublicId: str(d.otherPublicId),
+    lastSenderId: str(d.lastSenderId),
   };
 }
 
@@ -263,4 +286,81 @@ export function chatErrorText(e: unknown, action: "load" | "send" | "image" | "o
     if (e.message) return e.message;
   }
   return action === "send" || action === "image" ? "Couldn't send. Try again." : "Couldn't load. Try again.";
+}
+
+/* ---------------- groups, mute, block, online ---------------- */
+
+export type GroupRole = "OWNER" | "ADMIN" | "MEMBER";
+export type GroupMember = { userId: string; publicId: string; name: string; avatarUrl?: string; role: GroupRole; online: boolean; lastSeenAt?: string };
+export type GroupInfo = { conversationId: string; kind: "DIRECT" | "GROUP"; name: string; myRole: GroupRole; muted: boolean; members: GroupMember[] };
+export type Presence = { online: boolean; lastSeenAt?: string };
+
+const role = (v: unknown): GroupRole => (v === "OWNER" || v === "ADMIN" ? v : "MEMBER");
+
+export function readGroupInfo(raw: unknown): GroupInfo | null {
+  const d = obj(raw);
+  const id = d ? str(d.conversationId) : undefined;
+  if (!d || !id) return null;
+  return {
+    conversationId: id,
+    kind: d.kind === "GROUP" ? "GROUP" : "DIRECT",
+    name: str(d.name) ?? "Group",
+    myRole: role(d.myRole),
+    muted: d.muted === true,
+    members: Array.isArray(d.members)
+      ? d.members.flatMap((m) => {
+          const o = obj(m);
+          const userId = o ? str(o.userId) : undefined;
+          return o && userId
+            ? [{ userId, publicId: str(o.publicId) ?? "", name: str(o.name) ?? `User ${str(o.publicId) ?? ""}`, avatarUrl: str(o.avatarUrl), role: role(o.role), online: o.online === true, lastSeenAt: str(o.lastSeenAt) }]
+            : [];
+        })
+      : [],
+  };
+}
+
+const groupCall = async (path: string, method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE", body?: unknown) => {
+  const r = await api<unknown>(path, { method, auth: true, forbiddenIsAccess: true, body });
+  return readGroupInfo(r);
+};
+const ids = (list: string[]) => list.map(asId);
+
+export const createGroup = async (name: string, memberIds: string[]) => {
+  const g = await groupCall("/api/v1/chat/groups", "POST", { name, memberIds: ids(memberIds) });
+  if (!g) throw new ApiError("The group was made, but the answer couldn't be read.", 200, "http");
+  return g;
+};
+export const getGroupInfo = (conversationId: string) => groupCall(`${conv(conversationId)}/info`, "GET");
+export const renameGroup = (conversationId: string, name: string) => groupCall(conv(conversationId), "PATCH", { name });
+export const addGroupMembers = (conversationId: string, userIds: string[]) => groupCall(`${conv(conversationId)}/members`, "POST", { userIds: ids(userIds) });
+/** Remove someone (owner/admins) or leave (your own id). */
+export const removeGroupMember = (conversationId: string, userId: string) => api<unknown>(`${conv(conversationId)}/members/${encodeURIComponent(userId)}`, { method: "DELETE", auth: true, forbiddenIsAccess: true });
+export const setGroupAdmin = (conversationId: string, userId: string, on: boolean) => groupCall(`${conv(conversationId)}/admins/${encodeURIComponent(userId)}`, "PUT", { on });
+export const setChatMuted = (conversationId: string, on: boolean) => api<unknown>(`${conv(conversationId)}/mute`, { method: "PUT", auth: true, forbiddenIsAccess: true, body: { on } });
+export const setUserBlocked = (userId: string, on: boolean) => api<unknown>(`/api/v1/chat/blocks/${encodeURIComponent(userId)}`, { method: on ? "PUT" : "DELETE", auth: true, forbiddenIsAccess: true });
+
+export async function getPresence(userIds: string[]): Promise<Record<string, Presence>> {
+  const list = userIds.filter((x) => /^\d+$/.test(x)).slice(0, 200);
+  if (!list.length) return {};
+  const d = obj(await api<unknown>(`/api/v1/presence?ids=${list.join(",")}`, { auth: true, forbiddenIsAccess: true })) ?? {};
+  const out: Record<string, Presence> = {};
+  for (const [k, v] of Object.entries(d)) {
+    const o = obj(v);
+    if (o) out[k] = { online: o.online === true, lastSeenAt: str(o.lastSeenAt) };
+  }
+  return out;
+}
+
+/** "online", "last seen 5m ago", or "" when unknown. */
+export function presenceText(p?: Presence): string {
+  if (!p) return "";
+  if (p.online) return "online";
+  const at = p.lastSeenAt ? Date.parse(p.lastSeenAt) : NaN;
+  if (!Number.isFinite(at)) return "";
+  const m = Math.max(0, Math.round((Date.now() - at) / 60_000));
+  if (m < 1) return "last seen just now";
+  if (m < 60) return `last seen ${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `last seen ${h}h ago`;
+  return `last seen ${new Date(at).toLocaleDateString([], { day: "numeric", month: "short" })}`;
 }

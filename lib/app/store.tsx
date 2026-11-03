@@ -118,7 +118,8 @@ export const settingsOf = (room: Room): RoomSettings => {
 /** Price of a permanent room in demo coins. Temporary rooms are free. */
 export const PERMANENT_ROOM_COST = 1000;
 
-const STORAGE_KEY = "panchayat-demo-v2";
+// v3: the sample people, rooms, chats and coins were removed; older saves held them
+const STORAGE_KEY = "panchayat-app-v3";
 /** v3: sessions from the real backend. Older mock sessions have no token and are dropped. */
 const SESSION_KEY = "panchayat-session-v3";
 

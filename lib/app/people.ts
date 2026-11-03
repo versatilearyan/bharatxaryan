@@ -6,6 +6,8 @@ import { useMe } from "./me-store";
 import { SERVER_USER_PREFIX, useServerPeople } from "./server-rooms";
 import { ME_ID, useApp } from "./store";
 import { activeVipLevel } from "./vip-cosmetics";
+import { publicUserId } from "./public-ids";
+import { myUserIdFromToken } from "@/lib/auth/token";
 import type { Person } from "./types";
 
 /** Resolves a person id to a Person, including "me" (built from the editable demo profile). */
@@ -23,7 +25,8 @@ export function usePeople() {
       if (id === ME_ID) {
         return {
           id: ME_ID,
-          uid: profile.userId,
+          // Your 7-digit public ID from your backend account (the sample one only without the backend)
+          uid: myUserIdFromToken() ? publicUserId(myUserIdFromToken()) : profile.userId,
           name: profile.name,
           photo: profile.photo,
           vip: myVip,
@@ -45,7 +48,7 @@ export function usePeople() {
         const sp = serverPeople[id];
         return {
           id,
-          uid: userId,
+          uid: publicUserId(userId),
           // The backend's display name; "User 42" only when no name was sent
           name: sp?.name || (userId === "unknown" ? "Room owner" : `User ${userId}`),
           photo: sp?.avatarUrl,

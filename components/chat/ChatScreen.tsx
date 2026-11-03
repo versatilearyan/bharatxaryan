@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { PenSquare, UserPlus } from "lucide-react";
+import { PenSquare, UserPlus, Users } from "lucide-react";
+import { CreateGroupSheet } from "./ChatGroups";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { DemoNote, IconButton, SearchField } from "@/components/ui/kit";
@@ -26,6 +27,7 @@ export function ChatScreen() {
   const person = usePeople();
   const [q, setQ] = useState("");
   const [picker, setPicker] = useState(false);
+  const [newGroup, setNewGroup] = useState(false);
 
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -112,6 +114,22 @@ export function ChatScreen() {
           <UserPlus className="h-5 w-5 text-coral" aria-hidden />
           <span className="text-[14px] font-semibold text-cream">Find someone by user ID</span>
         </button>
+        {server ? (
+          <button
+            type="button"
+            onClick={() => {
+              setPicker(false);
+              setNewGroup(true);
+            }}
+            className="mx-5 mb-2 flex w-[calc(100%-2.5rem)] items-center gap-3 rounded-2xl bg-cream/[0.05] px-4 py-3 text-left ring-1 ring-line"
+          >
+            <Users className="h-5 w-5 text-gold" aria-hidden />
+            <span className="min-w-0">
+              <span className="block text-[14px] font-semibold text-cream">New group</span>
+              <span className="block text-[11.5px] text-muted">Chat with several people. You'll be its admin.</span>
+            </span>
+          </button>
+        ) : null}
         {server ? <p className="px-5 pb-6 pt-2 text-[13px] text-muted">To message someone, open their profile and tap Chat.</p> : null}
         <ul className="pb-4">
           {(server ? [] : PEOPLE).map((p) => (
@@ -134,6 +152,7 @@ export function ChatScreen() {
           ))}
         </ul>
       </BottomSheet>
+      <CreateGroupSheet open={newGroup} onClose={() => setNewGroup(false)} />
     </div>
   );
 }

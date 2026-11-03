@@ -14,6 +14,7 @@
  *   room calls POST /close instead), then refreshes the list. The LiveKit
  *   connection itself is closed by the room screen (useLiveVoice).
  */
+import { publicRoomId } from "./public-ids";
 import type { VipProfileFields } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -75,7 +76,8 @@ export function toAppRoom(v: VoiceRoom, myId: string | undefined, prefs: ServerR
   const mine = Boolean(myId && v.ownerId && v.ownerId === myId);
   const h = hash(v.id);
   const host = mine ? ME_ID : ownerPersonId(v.ownerId);
-  const numeric = /^\d+$/.test(v.id) ? v.id : String(100000 + (h % 900000));
+  // The room's 7-digit public ID (the one people share and search by), never the database id
+  const numeric = /^\d+$/.test(v.id) ? publicRoomId(v.id) : String(1000000 + (h % 9000000));
   return {
     id: serverRoomAppId(v.id),
     code: numeric,

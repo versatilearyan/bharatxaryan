@@ -25,43 +25,15 @@ const p = (
   ...extra,
 });
 
-export const PEOPLE: Person[] = [
-  p("riya", "Riya", { bg: "#7a2f45", skin: "#c98b6b", hair: "#1d1216", hairStyle: 1, outfit: "#f4515b" }, { nameFont: "dancing", frame: "none", level: 48, vip: 4, followers: 48200, city: "Jaipur", bio: "Host of Sunday chai adda. Ludo shark, ghazal lover.", tags: ["Chai Adda", "Music"] }),
-  p("kabir", "Kabir", { bg: "#2f4a63", skin: "#a8715a", hair: "#181214", hairStyle: 0, outfit: "#e7bc72" }, { frame: "none", level: 36, followers: 22100, city: "Pune", bio: "Cricket stats nerd. Carrom on weekends.", tags: ["Cricket", "Gaming"] }),
-  p("meher", "Meher", { bg: "#7a5a2a", skin: "#e0a98a", hair: "#3b2318", hairStyle: 2, outfit: "#ff687c" }, { frame: "none", level: 41, vip: 2, followers: 31800, city: "Lucknow", bio: "Shayari at midnight, Antakshari at dawn.", tags: ["Poetry", "Music"] }),
-  p("arjun", "Arjun", { bg: "#4a3a6e", skin: "#8d5a44", hair: "#141012", hairStyle: 3, outfit: "#8fa8ff" }, { level: 22, followers: 5400, city: "Bengaluru", bio: "Chess 1800. Will explain the Sicilian to anyone.", tags: ["Gaming", "Study"] }),
-  p("zoya", "Zoya", { bg: "#6e2f3f", skin: "#d39a7c", hair: "#2a1a14", hairStyle: 2, outfit: "#e7bc72" }, { nameFont: "pacifico", level: 29, followers: 12900, city: "Hyderabad", bio: "Bollywood quizmaster. Ask me anything from 1975.", tags: ["Bollywood"] }),
-  p("dev", "Dev", { bg: "#2f5a49", skin: "#b07a5e", hair: "#1a1412", hairStyle: 0, outfit: "#ff8a6e" }, { frame: "none", level: 53, vip: 5, followers: 67300, city: "Mumbai", bio: "Running the late-night movie club.", tags: ["Movies", "Chai Adda"] }),
-  p("tara", "Tara", { bg: "#6a3a5a", skin: "#e8b597", hair: "#5a2e1e", hairStyle: 1, outfit: "#fff1d5" }, { nameFont: "yatra", level: 18, followers: 3100, city: "Kochi", bio: "Lo-fi playlists and long study rooms.", tags: ["Study", "Music"] }),
-  p("ishaan", "Ishaan", { bg: "#3d4470", skin: "#9c6a52", hair: "#120e10", hairStyle: 3, outfit: "#f4515b" }, { frame: "none", level: 33, followers: 9800, city: "Delhi", bio: "Pool, puns and the occasional open mic.", tags: ["Gaming", "Comedy"] }),
-  p("naina", "Naina", { bg: "#5a2f63", skin: "#c48a6a", hair: "#24161a", hairStyle: 1, outfit: "#c9a0ff" }, { level: 27, followers: 8700, city: "Indore", bio: "Bhajan mornings, karaoke nights.", tags: ["Devotional", "Music"], online: false }),
-  p("vikram", "Vikram", { bg: "#634a2f", skin: "#a06a4e", hair: "#16100e", hairStyle: 0, outfit: "#6fe0a6" }, { level: 39, vip: 3, followers: 18400, city: "Chandigarh", bio: "Kabaddi commentator in another life.", tags: ["Cricket", "Comedy"] }),
-  p("anaya", "Anaya", { bg: "#2f5563", skin: "#e2ad8f", hair: "#4a2a1a", hairStyle: 2, outfit: "#ffb199" }, { frame: "none", level: 24, followers: 6200, city: "Goa", bio: "Sunsets, ukulele, and Draw & Guess.", tags: ["Music", "Gaming"] }),
-  p("rohan", "Rohan", { bg: "#3a2f63", skin: "#b88466", hair: "#1c1416", hairStyle: 3, outfit: "#e7bc72" }, { level: 15, followers: 2200, city: "Kolkata", bio: "Adda is a way of life.", tags: ["Chai Adda", "Poetry"], online: false }),
-  p("saanvi", "Saanvi", { bg: "#63302f", skin: "#d8a284", hair: "#2a1814", hairStyle: 1, outfit: "#ff687c" }, { level: 31, vip: 1, followers: 11200, city: "Ahmedabad", bio: "Garba season all year.", tags: ["Music", "Devotional"] }),
-  p("aditya", "Aditya", { bg: "#2f6352", skin: "#9a6448", hair: "#141012", hairStyle: 0, outfit: "#8fa8ff" }, { level: 20, followers: 4100, city: "Nagpur", bio: "UPSC aspirant, chess for breaks.", tags: ["Study", "Gaming"] }),
-];
+/** No sample people: everyone shown comes from the server. */
+export const PEOPLE: Person[] = [];
 
 export const personById = (id: string) => PEOPLE.find((x) => x.id === id);
 
 export const CATEGORIES = ["Chai Adda", "Music", "Gaming", "Bollywood", "Cricket", "Poetry", "Study", "Devotional", "Movies", "Comedy"] as const;
 
-export const ROOMS: Room[] = [
-  { id: "r-chai", code: "208114", name: "Sunday chai adda", topic: "Ludo finals + gossip", hostId: "riya", type: "voice", category: "Chai Adda", cover: { theme: "dusk", motif: "banyan" }, members: 128, seats: 10, vip: false, live: true, isPrivate: false, permanent: true, basePoints: 1_850_000, seated: ["riya", "kabir", "meher", "arjun", "tara"], admins: ["kabir", "me"], announcement: "Join and follow 🫶 Ludo finals at 9!", fans: 269 },
-  { id: "r-antakshari", code: "311907", name: "Late night Antakshari", topic: "Old Hindi songs only", hostId: "meher", type: "voice", category: "Music", cover: { theme: "night", motif: "lanterns" }, members: 342, seats: 10, vip: false, live: true, isPrivate: false, permanent: true, basePoints: 3_400_000, seated: ["meher", "saanvi", "anaya", "rohan"] },
-  { id: "r-royal", code: "100001", name: "The Royal Darbar", topic: "Invite-only ghazal evening", hostId: "dev", type: "voice", category: "Music", cover: { theme: "gold", motif: "temple" }, members: 86, seats: 10, vip: true, live: true, isPrivate: false, permanent: true, basePoints: 12_600_000, seated: ["dev", "riya", "vikram", "meher"] },
-  { id: "r-movie", code: "450220", name: "Movie night: dusk club", topic: "Watch together, talk after", hostId: "dev", type: "watch", category: "Movies", cover: { theme: "ember", motif: "river" }, members: 214, seats: 10, vip: false, live: true, isPrivate: false, permanent: true, basePoints: 2_100_000, seated: ["dev", "zoya", "ishaan"] },
-  { id: "r-cricket", code: "520118", name: "Cricket highlights watch-along", topic: "Replays and hot takes", hostId: "kabir", type: "watch", category: "Cricket", cover: { theme: "monsoon", motif: "kites" }, members: 97, seats: 10, vip: false, live: true, isPrivate: false, permanent: true, basePoints: 640_000, seated: ["kabir", "vikram"] },
-  { id: "r-quiz", code: "612480", name: "Bollywood quiz hour", topic: "Guess the film from one dialogue", hostId: "zoya", type: "voice", category: "Bollywood", cover: { theme: "rose", motif: "lanterns" }, members: 176, seats: 10, vip: false, live: true, isPrivate: false, permanent: true, basePoints: 980_000, seated: ["zoya", "ishaan", "naina", "aditya", "anaya", "kabir"] },
-  { id: "r-study", code: "733051", name: "Silent study café", topic: "Lo-fi study videos, mics off, 50/10", hostId: "tara", type: "watch", category: "Study", cover: { theme: "monsoon", motif: "huts" }, members: 64, seats: 6, vip: false, live: true, isPrivate: false, permanent: true, basePoints: 120_000, seated: ["tara", "aditya", "arjun"] },
-  { id: "r-garba", code: "804411", name: "Garba practice circle", topic: "Garba tutorials, then we practise", hostId: "saanvi", type: "watch", category: "Devotional", cover: { theme: "rose", motif: "temple" }, members: 58, seats: 6, vip: false, live: true, isPrivate: false, permanent: true, basePoints: 260_000, seated: ["saanvi", "naina"] },
-  { id: "r-carrom", code: "915002", name: "Carrom champions", topic: "Queen cover practice", hostId: "kabir", type: "voice", category: "Gaming", cover: { theme: "gold", motif: "huts" }, members: 41, seats: 10, vip: false, live: false, isPrivate: false, permanent: true, basePoints: 45_000, seated: ["kabir", "rohan"], password: "2580" },
-  { id: "r-shayari", code: "102233", name: "Mehfil-e-shayari", topic: "Read one sher, earn applause", hostId: "meher", type: "voice", category: "Poetry", cover: { theme: "night", motif: "river" }, members: 120, seats: 10, vip: true, live: true, isPrivate: false, permanent: true, basePoints: 5_400_000, seated: ["meher", "rohan", "riya"] },
-  { id: "r-standup", code: "117760", name: "Open mic: desi stand-up", topic: "Watch classic sets, then try yours", hostId: "ishaan", type: "watch", category: "Comedy", cover: { theme: "ember", motif: "lanterns" }, members: 233, seats: 6, vip: false, live: true, isPrivate: false, permanent: true, basePoints: 1_200_000, seated: ["ishaan", "vikram", "zoya"] },
-  { id: "r-lofi", code: "121905", name: "Lo-fi & rain sounds", topic: "Music videos on loop", hostId: "tara", type: "watch", category: "Music", cover: { theme: "night", motif: "huts" }, members: 89, seats: 10, vip: false, live: true, isPrivate: false, permanent: true, basePoints: 420_000, seated: ["tara", "anaya"] },
-  { id: "r-kharidari", code: "777001", name: "Kharidari Bazaar", topic: "Bid gifts for Besties, Bro or Sibling", hostId: "vikram", type: "kharidari", category: "Chai Adda", cover: { theme: "night", motif: "lanterns" }, members: 311, seats: 9, vip: false, live: true, isPrivate: false, permanent: true, basePoints: 4_300_000, seated: ["vikram", "zoya", "kabir", "naina", "rohan"], announcement: "Kharidari every night. Biggest gift volume wins the tag, no refunds 😄", fans: 1840 },
-  { id: "r-vipmovie", code: "100777", name: "Velvet screening room", topic: "VIP premiere watch party", hostId: "riya", type: "watch", category: "Movies", cover: { theme: "gold", motif: "lanterns" }, members: 44, seats: 10, vip: true, live: true, isPrivate: false, permanent: true, basePoints: 7_900_000, seated: ["riya", "dev"] },
-];
+/** No sample rooms: the room lists are the server's live rooms. */
+export const ROOMS: Room[] = [];
 
 export const GAMES: Game[] = [
   { id: "chess", name: "Chess", players: "2 players", online: 4210, blurb: "Classic chess with voice. Challenge a friend or someone in your room." },
@@ -277,18 +249,8 @@ export const SAMPLE_VIDEOS = [
   { id: "R6MlUcmOul8", title: "Tears of Steel" },
 ];
 
-export const ROOM_CHATTER = [
-  "Haha this is the best room tonight 😂",
-  "Who's up for Ludo after this?",
-  "Chai ready ☕ what did I miss?",
-  "Hello everyone 👋",
-  "That was such a good line!",
-  "Next round I'm definitely winning 🏆",
-  "Can someone share the song name?",
-  "Good vibes only ✨",
-  "Mic is so clear today",
-  "Wah wah! 👏",
-];
+/** No made-up chat lines in rooms. */
+export const ROOM_CHATTER: string[] = [];
 
 export const EMOJIS = [
   "😂", "😍", "🥰", "😎", "🤩", "😭", "🙏", "👏", "🔥", "❤️", "💯", "✨",
@@ -298,79 +260,33 @@ export const EMOJIS = [
 
 export const REACTIONS = ["👏", "😂", "🔥", "❤️", "🎉", "🙏"];
 
+/** Blank until the server's profile (GET /users/me) fills it in: no sample name, ID or bio. */
 export const INITIAL_PROFILE: Profile = {
-  name: "Aryan",
-  handle: "@aryan",
-  userId: "759072",
-  bio: "Here for Ludo, late-night chai and good music.",
+  name: "",
+  handle: "",
+  userId: "",
+  bio: "",
   look: { bg: "#3a2f55", skin: "#b07a5e", hair: "#16100e", hairStyle: 0, outfit: "#f4515b" },
   frame: "none",
   // Everyone starts at Lv.1
   level: 1,
   xp: 0,
   xpNext: 212,
-  favoriteGames: ["ludo", "chess", "carrom"],
-  following: ["riya", "dev"],
+  favoriteGames: [],
+  following: [],
 };
 
-export const INITIAL_COINS = 43900;
+/** Your real balance loads from the server (GET /wallet/balance); nothing made up before it does. */
+export const INITIAL_COINS = 0;
 
 const now = Date.now();
 const mins = (m: number) => now - m * 60_000;
 
-export const CONVERSATIONS: Conversation[] = [
-  {
-    id: "c-riya",
-    personId: "riya",
-    unread: 2,
-    messages: [
-      { id: "1", from: "them", text: "Ludo finals in my room at 9 tonight!", at: mins(48) },
-      { id: "2", from: "me", text: "I'm in. Saving my lucky dice 🎲", at: mins(45) },
-      { id: "3", from: "them", text: "Bring Kabir too, we need a fourth", at: mins(6) },
-      { id: "4", from: "them", text: "And chai ☕", at: mins(5) },
-    ],
-  },
-  {
-    id: "c-dev",
-    personId: "dev",
-    unread: 1,
-    messages: [
-      { id: "1", from: "them", text: "Movie night pick: something classic or something new?", at: mins(90) },
-      { id: "2", from: "them", text: "Vote in the room, I've added a poll", at: mins(32) },
-    ],
-  },
-  {
-    id: "c-meher",
-    personId: "meher",
-    unread: 0,
-    messages: [
-      { id: "1", from: "me", text: "Your sher yesterday was beautiful", at: mins(300) },
-      { id: "2", from: "them", text: "Shukriya 🙏 come to the mehfil tonight", at: mins(280) },
-    ],
-  },
-  {
-    id: "c-kabir",
-    personId: "kabir",
-    unread: 0,
-    messages: [{ id: "1", from: "them", text: "Carrom rematch? I owe you one", at: mins(1440) }],
-  },
-  {
-    id: "c-tara",
-    personId: "tara",
-    unread: 0,
-    messages: [
-      { id: "1", from: "them", text: "Study room is open if you need focus time", at: mins(2900) },
-      { id: "2", from: "me", text: "Joining after lunch", at: mins(2880) },
-    ],
-  },
-];
+/** No sample chats: conversations come from the server. */
+export const CONVERSATIONS: Conversation[] = [];
 
-export const NOTICES: Notice[] = [
-  { id: "n1", kind: "gift", title: "Riya sent you a Rose", body: "In Sunday chai adda", at: "2m", read: false },
-  { id: "n2", kind: "room", title: "Dev started Movie night: dusk club", body: "214 people are watching together", at: "18m", read: false },
-  { id: "n3", kind: "friend", title: "Anaya followed you", body: "Say hi in Chat", at: "1h", read: false },
-  { id: "n4", kind: "system", title: "Daily tasks refreshed", body: "Claim up to 600 demo coins today", at: "6h", read: true },
-];
+/** No sample notifications. */
+export const NOTICES: Notice[] = [];
 
 export const TASKS = [
   { id: "t1", title: "Check in today", reward: 50, goal: 1, progress: 1 },

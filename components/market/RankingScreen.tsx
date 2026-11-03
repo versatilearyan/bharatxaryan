@@ -1,6 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { getRanking, type Ranking, type RankingType } from "@/lib/api/rankings";
+import type { VoiceRoom } from "@/lib/api/voice-rooms";
+import { serverRoomAppId, toAppRoom, userPersonId, useServerRooms } from "@/lib/app/server-rooms";
 import { motion } from "framer-motion";
 import { ChevronLeft, Heart } from "lucide-react";
 import { RingArt } from "@/components/art/RingArt";
@@ -38,7 +41,53 @@ export function RankingScreen() {
   const [period, setPeriod] = useState<RankPeriod>("today");
   const unit = RANK_TABS.find((t) => t.id === tab)?.unit ?? "";
 
+  // Signed in: Popularity (charm), VIP (coins spent) and Room come from the server's real gifts
+  const { myId, rememberPeople } = useServerRooms();
+  const serverType: RankingType | null = myId ? (tab === "popularity" ? "charm" : tab === "vip" ? "wealth" : tab === "room" ? "room" : null) : null;
+  const [srv, setSrv] = useState<{ key: string; data: Ranking | null; error: string }>({ key: "", data: null, error: "" });
+  const srvKey = serverType ? `${serverType}:${period}` : "";
+  useEffect(() => {
+    if (!serverType) return;
+    let live = true;
+    const key = `${serverType}:${period}`;
+    setSrv((s) => (s.key === key ? s : { key, data: null, error: "" }));
+    getRanking(serverType, period)
+      .then((data) => {
+        if (!live) return;
+        setSrv({ key, data, error: "" });
+        // Names and pictures for the people in it
+        const add: Record<string, { name: string; avatarUrl?: string }> = {};
+        for (const r of data.rows) if (r.userId && r.userId !== myId) add[userPersonId(r.userId)] = { name: r.name, avatarUrl: r.avatarUrl };
+        if (Object.keys(add).length) rememberPeople(add);
+      })
+      .catch((e) => live && setSrv({ key, data: null, error: e instanceof Error && e.message ? e.message : "Couldn't load the ranking." }));
+    return () => {
+      live = false;
+    };
+  }, [serverType, period, myId, rememberPeople]);
+
+  const serverRows = useMemo<Row[] | null>(() => {
+    if (!serverType) return null;
+    const data = srv.key === srvKey ? srv.data : null;
+    if (!data) return [];
+    if (serverType === "room") {
+      return data.rows.map((r) => {
+        const appId = serverRoomAppId(r.roomId ?? "");
+        const room = rooms.find((x) => x.id === appId) ?? toAppRoom({ id: r.roomId ?? "", name: r.name, roomType: "VOICE", isPrivate: false, settings: {} } as VoiceRoom, myId);
+        return { key: appId, room, title: r.name, value: r.value, mine: room.hostId === ME_ID, open: () => (r.live ? openRoom(appId) : undefined) };
+      });
+    }
+    const list: Row[] = data.rows.map((r) => {
+      const mine = r.userId === myId;
+      const pid = mine ? ME_ID : userPersonId(r.userId ?? "");
+      return { key: pid, people: [person(pid)], title: mine ? person(ME_ID).name : r.name, value: r.value, mine, open: () => (mine ? setTab("profile") : openProfile(pid)) };
+    });
+    if (!list.some((r) => r.mine) && data.me.value > 0) list.push({ key: ME_ID, people: [person(ME_ID)], title: person(ME_ID).name, value: data.me.value, mine: true, open: () => setTab("profile") });
+    return list.sort((a, b) => b.value - a.value);
+  }, [serverType, srv, srvKey, rooms, myId, person, openRoom, openProfile, setTab]);
+
   const rows = useMemo<Row[]>(() => {
+    if (serverRows) return serverRows;
     const share = periodShare(period);
     const myToday = (v: number) => (period === "yesterday" ? 0 : v);
     if (tab === "popularity" || tab === "vip") {
@@ -71,7 +120,7 @@ export function RankingScreen() {
         open: () => openRoom(r.id),
       }))
       .sort((a, b) => b.value - a.value);
-  }, [tab, period, charmOf, vipPoints, couples, myCouple, rooms, roomPointsOf, person, openProfile, openRoom, push, setTab]);
+  }, [serverRows, tab, period, charmOf, vipPoints, couples, myCouple, rooms, roomPointsOf, person, openProfile, openRoom, push, setTab]);
 
   const top = [rows[1], rows[0], rows[2]];
   const myIndex = rows.findIndex((r) => r.mine);
@@ -144,7 +193,7 @@ export function RankingScreen() {
               </button>
             </li>
           ))}
-          {rows.length <= 3 ? <li className="px-4 py-6 text-center text-[13px] text-muted">Nobody else here yet.</li> : null}
+          {serverType && srv.error ? <li className="px-4 py-6 text-center text-[13px] text-coral">{srv.error}</li> : serverType && !(srv.key === srvKey && srv.data) ? <li className="px-4 py-6 text-center text-[13px] text-muted">Loading…</li> : rows.length <= 3 ? <li className="px-4 py-6 text-center text-[13px] text-muted">{rows.length ? "Nobody else here yet." : "Nobody here yet. Gifts sent in rooms count."}</li> : null}
         </ol>
       </div>
 

@@ -6,7 +6,8 @@ import { dayKey } from "./progress";
 import { CHECKIN_XP, GIFT_COINS_PER_XP, PARIVAR_CHATTER, PARIVAR_CREATE_COST, SAMPLE_PARIVARS, deputyCap, memberCap, parivarLevel, type Parivar, type ParivarChat, type ParivarRole } from "./parivar";
 import { ME_ID, useApp } from "./store";
 
-const STORAGE_KEY = "panchayat-parivar-v1";
+// v2: sample families removed
+const STORAGE_KEY = "panchayat-parivar-v2";
 type Saved = { parivars: Parivar[]; applied: string | null; requests: string[]; chat: Record<string, ParivarChat[]>; checkin: string };
 type NewParivar = Pick<Parivar, "name" | "tag" | "emblem" | "color" | "announcement" | "joinMode">;
 
