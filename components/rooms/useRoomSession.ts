@@ -227,10 +227,13 @@ export function useRoomSession(room: Room) {
           break;
         case "KICKED":
         case "BANNED":
-          addSystem(`${a} removed ${t} from the room`);
+          addSystem(`${a} ${e.type === "BANNED" ? "banned" : "kicked"} ${t} out of the room`);
           if (toMe && !removedRef.current) {
             removedRef.current = true;
-            toast(e.type === "BANNED" ? "You were banned from this room" : "You were removed from this room. You can come back in 10 minutes.", "error");
+            toast(
+              e.type === "BANNED" ? `${a} banned you from this room.` : `${a} kicked you out of this room. You can join again in 10 minutes.`,
+              "error",
+            );
             leaveRoom();
           }
           break;
@@ -242,12 +245,26 @@ export function useRoomSession(room: Room) {
   );
   // Kicked or banned, seen by the voice call (removed from it, or joining again refused): leave the room screen
   const removedRef = useRef(false);
+  const removedStatus = voice?.status;
+  const removedText = voice?.error;
   useEffect(() => {
     if (!voice?.removed || removedRef.current) return;
-    removedRef.current = true;
-    toast("You were removed from this room", "error");
-    leaveRoom();
-  }, [voice?.removed, toast, leaveRoom]);
+    // Joining again refused: the server's answer says why (kicked: minutes left; or banned)
+    if (removedStatus === "error") {
+      removedRef.current = true;
+      toast(removedText || "You can't join this room right now.", "error");
+      leaveRoom();
+      return;
+    }
+    // Dropped from the call: the kick or ban message (with who did it) is usually a moment behind. Wait for it briefly.
+    const t = window.setTimeout(() => {
+      if (removedRef.current) return;
+      removedRef.current = true;
+      toast("You were kicked out of this room.", "error");
+      leaveRoom();
+    }, 1500);
+    return () => window.clearTimeout(t);
+  }, [voice?.removed, removedStatus, removedText, toast, leaveRoom]);
   const onRoomClosed = useCallback(() => {
     toast("The owner closed this room");
     leaveRoom();

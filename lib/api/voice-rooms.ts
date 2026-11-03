@@ -431,7 +431,10 @@ export function roomErrorText(e: unknown, action: "load" | "join" | "create" | "
         ? "Only the room's owner can close it."
         : action === "mute"
           ? "Only the owner or an admin can mute people."
-          : action === "join" || action === "participants"
+          : action === "join"
+            ? // Kicked (with minutes left) or banned: the server says which
+              e.message || "You don't have access to this room."
+            : action === "participants"
             ? "You don't have access to this room."
             : e.message;
     return e.message;

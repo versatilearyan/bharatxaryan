@@ -15,6 +15,7 @@
  *   connection itself is closed by the room screen (useLiveVoice).
  */
 import type { VipProfileFields } from "@/lib/api/users";
+import { ApiError } from "@/lib/api/client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { closeRoom, getPublicRooms, leaveRoom, roomErrorText, type VoiceRoom, type VoiceRoomType } from "@/lib/api/voice-rooms";
 import { useMe } from "./me-store";
@@ -251,7 +252,14 @@ export function ServerRoomsProvider({ children }: { children: ReactNode }) {
         if (close) toast("Room closed");
         if (close || !room?.server?.mine) unpin(serverId);
       })
-      .catch((e) => toast(roomErrorText(e, close ? "close" : "leave"), "error"))
+      .catch((e) => {
+        // Already out of the room (kicked, banned, or the server dropped you): nothing to report
+        if (!close && e instanceof ApiError && e.status === 404) {
+          if (!room?.server?.mine) unpin(serverId);
+          return;
+        }
+        toast(roomErrorText(e, close ? "close" : "leave"), "error");
+      })
       .finally(() => {
         leaving.current.delete(serverId);
         void refresh();
