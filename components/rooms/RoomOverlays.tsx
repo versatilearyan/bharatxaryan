@@ -33,6 +33,7 @@ export function RoomOverlays({ s }: { s: RoomSession }) {
     <>
       <RoomProfileCard s={s} onGift={(id) => setGiftTo(id)} />
       <SeatMenuSheet s={s} />
+      <SeatInvitePrompt s={s} />
       <RoomInfoSheet s={s} />
       <RoomSettingsScreen s={s} />
       <RoomPeopleSheet s={s} />
@@ -268,6 +269,8 @@ function SeatMenuSheet({ s }: { s: RoomSession }) {
   const id = index !== null ? s.seats[index] : null;
   const mine = id === ME_ID;
   const closed = index !== null && s.closedSeats.includes(index);
+  /** Listeners, and people on other seats (accepting moves them here). Never the owner or you. */
+  const invitable = [...s.listenerIds, ...s.seatedIds.filter((x) => x !== ME_ID && x !== s.room.hostId && x !== s.seats[0] && x !== id)];
 
   const Line = ({ label, onClick, danger }: { label: string; onClick: () => void; danger?: boolean }) => (
     <button type="button" onClick={onClick} className={`block w-full border-b border-line py-3.5 text-center text-[15px] font-semibold ${danger ? "text-[#ff8a8f]" : "text-cream"}`}>
@@ -301,9 +304,11 @@ function SeatMenuSheet({ s }: { s: RoomSession }) {
           </>
         ) : inviting ? (
           <ul>
-            {s.listenerIds.length === 0 ? <p className="py-4 text-center text-[13px] text-muted">Nobody is waiting off the mic right now.</p> : null}
-            {s.listenerIds.map((pid) => {
+            {invitable.length === 0 ? <p className="py-4 text-center text-[13px] text-muted">Nobody else is in the room right now.</p> : null}
+            {invitable.map((pid) => {
               const p = person(pid);
+              const from = s.seats.indexOf(pid);
+              const waiting = s.pendingInvites.find((i) => i.id === pid);
               return (
                 <li key={pid}>
                   <button
@@ -315,8 +320,13 @@ function SeatMenuSheet({ s }: { s: RoomSession }) {
                     className="flex w-full items-center gap-3 py-2 text-left"
                   >
                     <PersonAvatar person={p} size={40} />
-                    <span className="flex-1 text-[14px] font-semibold text-cream">{p.name}</span>
-                    <span className="rounded-full bg-coral px-3 py-1 text-[12px] font-bold text-white">Invite</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[14px] font-semibold text-cream">{p.name}</span>
+                      <span className="block text-[11.5px] text-muted">
+                        {waiting ? `Invite to seat No.${waiting.seat + 1} waiting…` : from >= 0 ? `On seat No.${from + 1}` : "Listening"}
+                      </span>
+                    </span>
+                    <span className="rounded-full bg-coral px-3 py-1 text-[12px] font-bold text-white">{from >= 0 ? "Move here" : "Invite"}</span>
                   </button>
                 </li>
               );
@@ -349,7 +359,7 @@ function SeatMenuSheet({ s }: { s: RoomSession }) {
                     close();
                   }}
                 />
-                <Line label="Invite someone" onClick={() => setInviting(true)} />
+                {s.canModerate && !id ? <Line label="Invite someone" onClick={() => setInviting(true)} /> : null}
               </>
             ) : (
               <p className="py-3 text-center text-[12px] text-muted">This seat belongs to the owner.</p>
@@ -361,5 +371,77 @@ function SeatMenuSheet({ s }: { s: RoomSession }) {
         </button>
       </div>
     </BottomSheet>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Seat invite prompt                                                   */
+/* ------------------------------------------------------------------ */
+
+/** The owner or an admin invited you to a seat: accept or refuse. Gone when it expires or is answered. */
+function SeatInvitePrompt({ s }: { s: RoomSession }) {
+  const person = usePeople();
+  const { profile } = useApp();
+  const inv = s.seatInvite;
+  const [now, setNow] = useState(() => Date.now());
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setBusy(false);
+    if (!inv) return;
+    setNow(Date.now());
+    const t = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(t);
+  }, [inv]);
+  const left = inv ? Math.max(0, Math.ceil((inv.expiresAt - now) / 1000)) : 0;
+  const open = Boolean(inv) && left > 0;
+  const by = inv ? (inv.by === ME_ID ? profile.name : person(inv.by).name) : "";
+  const moving = s.mySeat > 0;
+
+  return (
+    <AnimatePresence>
+      {open && inv ? (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 px-6" role="dialog" aria-modal="true" aria-label="Seat invite">
+          <motion.div
+            initial={{ scale: 0.92, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.92, opacity: 0 }}
+            className="w-full max-w-[320px] rounded-3xl bg-white p-5 text-center shadow-2xl"
+          >
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#ff7d8e] to-[#f4515b] text-white">
+              <Mic className="h-6 w-6" />
+            </div>
+            <p className="mt-3 text-[16px] font-extrabold text-[#1d1a22]">Seat invite</p>
+            <p className="mt-1.5 text-[13.5px] leading-snug text-[#4d4656]">
+              <span className="font-bold">{by}</span> invited you {moving ? `to move from seat No.${s.mySeat + 1} to` : "to"} seat No.{inv.seat + 1}.
+            </p>
+            <p className="mt-1 text-[11.5px] text-[#8d8796]">Expires in {left}s</p>
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setBusy(true);
+                  void s.declineSeatInvite().finally(() => setBusy(false));
+                }}
+                className="flex h-11 items-center justify-center gap-1.5 rounded-full bg-[#f1edf4] text-[14px] font-bold text-[#4d4656] disabled:opacity-60"
+              >
+                <X className="h-4 w-4" /> Refuse
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setBusy(true);
+                  void s.acceptSeatInvite().finally(() => setBusy(false));
+                }}
+                className="flex h-11 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#ff7d8e] to-[#f4515b] text-[14px] font-bold text-white disabled:opacity-60"
+              >
+                <Check className="h-4 w-4" /> Accept
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      ) : null}
+    </AnimatePresence>
   );
 }

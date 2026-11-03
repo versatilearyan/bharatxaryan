@@ -200,8 +200,21 @@ export function useRoomSession(room: Room) {
           if (toMe && e.type === "SEAT_MUTED") toast("The owner or an admin muted your seat", "error");
           break;
         case "SEAT_INVITED":
-          addSystem(`${a} invited ${t} to seat No.${seatNo}`);
-          if (toMe) toast(`You're on seat ${seatNo}. Tap the mic to unmute.`, "gold");
+          // The invited person answers in the invite prompt (RoomOverlays)
+          addSystem(`${a} invited ${t} ${e.on ? "to move to" : "to"} seat No.${seatNo}`);
+          break;
+        case "SEAT_INVITE_ACCEPTED":
+          // actor = the invited person, target = who invited them
+          addSystem(`${a} accepted the invite and ${e.on ? "moved to" : "took"} seat No.${seatNo}`);
+          if (e.actorId === ME_ID) toast(`You're on seat ${seatNo}. Tap the mic to unmute.`, "gold");
+          else if (toMe) toast(`${a} accepted your seat invite`);
+          break;
+        case "SEAT_INVITE_DECLINED":
+          addSystem(`${a} refused the invite to seat No.${seatNo}`);
+          if (toMe) toast(`${a} refused your seat invite`);
+          break;
+        case "SEAT_INVITE_CANCELLED":
+          if (toMe) toast("The seat invite was taken back");
           break;
         case "REMOVED_FROM_MIC":
           addSystem(`${a} removed ${t} from the mic`);
@@ -781,7 +794,10 @@ export function useRoomSession(room: Room) {
       if (!canModerate) return;
       if (live) {
         const uid = rs.userIdOf(id);
-        if (uid) void rs.run((rid) => roomStateApi.inviteToSeat(rid, uid, index));
+        if (uid)
+          void rs
+            .run((rid) => roomStateApi.inviteToSeat(rid, uid, index))
+            .then((ok) => ok && toast(`Invite sent to ${person(id).name}. Waiting for them to accept.`));
         return;
       }
       const target = index ?? seats.findIndex((x, i) => i > 0 && x === null && !closedSeats.includes(i));
@@ -800,6 +816,12 @@ export function useRoomSession(room: Room) {
     },
     [canModerate, seats, closedSeats, toast, actor, addSystem, person, room, live, rs],
   );
+
+  /** Backend rooms: a seat invite waiting for your answer, and every one still open (for the inviters' lists). */
+  const pendingInvites = useMemo(() => srv?.invites ?? [], [srv]);
+  const seatInvite = useMemo(() => pendingInvites.find((i) => i.id === ME_ID) ?? null, [pendingInvites]);
+  const acceptSeatInvite = useCallback(() => rs.run((rid) => roomStateApi.acceptSeatInvite(rid)), [rs]);
+  const declineSeatInvite = useCallback(() => rs.run((rid) => roomStateApi.declineSeatInvite(rid)), [rs]);
 
   const kick = useCallback(
     (id: string) => {
@@ -1220,6 +1242,10 @@ export function useRoomSession(room: Room) {
     toggleForceMute,
     removeFromMic,
     inviteToSeat,
+    pendingInvites,
+    seatInvite,
+    acceptSeatInvite,
+    declineSeatInvite,
     kick,
     ban,
     kicked,

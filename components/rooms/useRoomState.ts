@@ -27,6 +27,8 @@ export type LiveRoomState = {
   micOrder: boolean;
   queue: { id: string; seat: number }[];
   open: boolean;
+  /** Seat invites waiting for an answer; expiresAt is on this device's clock. */
+  invites: { id: string; seat: number; by: string; expiresAt: number }[];
 };
 
 /** A change someone made, in person ids, for system lines and notices. */
@@ -52,6 +54,8 @@ export function useRoomState(
   const version = useRef(-1);
   /** Newest version whose event was already reported. */
   const reported = useRef(-1);
+  /** Server clock minus this device's clock. */
+  const offset = useRef(0);
   const stomp = useStompStatus();
   const handlers = useRef({ onEvent, onError, onClosed });
   handlers.current = { onEvent, onError, onClosed };
@@ -71,6 +75,7 @@ export function useRoomState(
       if (report) reported.current = s.version;
       if (s.version >= version.current) {
         version.current = s.version;
+        offset.current = s.serverTime - Date.now();
         setRaw(s);
       }
       if (report && s.event) {
@@ -143,6 +148,7 @@ export function useRoomState(
       micOrder: raw.micOrder,
       queue: raw.queue.map((q) => ({ id: toPerson(q.userId), seat: q.seat })),
       open: raw.open,
+      invites: raw.invites.map((q) => ({ id: toPerson(q.userId), seat: q.seat, by: toPerson(q.byUserId), expiresAt: q.expiresAt - offset.current })),
     };
     // myServerId changes who "me" is
   }, [raw, toPerson, myServerId]); // eslint-disable-line react-hooks/exhaustive-deps

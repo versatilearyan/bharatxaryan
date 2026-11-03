@@ -29,6 +29,9 @@ export type RoomEventType =
   | "SEAT_MUTED"
   | "SEAT_UNMUTED"
   | "SEAT_INVITED"
+  | "SEAT_INVITE_ACCEPTED"
+  | "SEAT_INVITE_DECLINED"
+  | "SEAT_INVITE_CANCELLED"
   | "REMOVED_FROM_MIC"
   | "ADMIN_ADDED"
   | "ADMIN_REMOVED"
@@ -53,6 +56,10 @@ export type RoomState = {
   queue: { userId: string; seat: number }[];
   /** The owner or an admin is in the room. */
   open: boolean;
+  /** Seat invites waiting for an answer. expiresAt is on the server's clock (ms). */
+  invites: { userId: string; seat: number; byUserId: string; expiresAt: number }[];
+  /** The server's clock when this was sent (ms). */
+  serverTime: number;
   event?: RoomEvent | null;
 };
 
@@ -90,6 +97,15 @@ export function readRoomState(raw: unknown): RoomState | RoomClosedNotice | null
         })
       : [],
     open: d.open === true,
+    invites: Array.isArray(d.invites)
+      ? d.invites.flatMap((q) => {
+          const o = obj(q);
+          const u = id(o?.userId);
+          const by = id(o?.byUserId);
+          return u && by && typeof o?.seat === "number" && typeof o?.expiresAt === "number" ? [{ userId: u, seat: o.seat, byUserId: by, expiresAt: o.expiresAt }] : [];
+        })
+      : [],
+    serverTime: typeof d.serverTime === "number" ? d.serverTime : Date.now(),
     event: type ? { type, actorId: id(ev?.actorId), targetId: id(ev?.targetId), seat: typeof ev?.seat === "number" ? ev.seat : undefined, on: typeof ev?.on === "boolean" ? ev.on : undefined } : null,
   };
 }
@@ -121,6 +137,9 @@ export const roomStateApi = {
   setSeatClosed: (roomId: string, seat: number, on: boolean) => call(roomId, `/seats/${seat}/closed`, "PUT", { on }),
   setSeatMuted: (roomId: string, seat: number, on: boolean) => call(roomId, `/seats/${seat}/muted`, "PUT", { on }),
   inviteToSeat: (roomId: string, userId: string, seat?: number) => call(roomId, "/seats/invite", "POST", { userId: n(userId), seat }),
+  acceptSeatInvite: (roomId: string) => call(roomId, "/seats/invite/accept"),
+  declineSeatInvite: (roomId: string) => call(roomId, "/seats/invite/decline"),
+  cancelSeatInvite: (roomId: string, userId: string) => call(roomId, "/seats/invite/cancel", "POST", { userId: n(userId) }),
   removeFromMic: (roomId: string, userId: string) => call(roomId, "/seats/remove", "POST", { userId: n(userId) }),
   setAdmin: (roomId: string, userId: string, on: boolean) => call(roomId, `/admins/${encodeURIComponent(userId)}`, "PUT", { on }),
   kick: (roomId: string, userId: string) => call(roomId, "/kick", "POST", { userId: n(userId) }),
