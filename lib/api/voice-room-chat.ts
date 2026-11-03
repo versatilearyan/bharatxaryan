@@ -89,5 +89,11 @@ export async function getRoomChatHistory(roomId: string, limit = ROOM_CHAT_HISTO
     .sort(byTime);
 }
 
+/** POST /api/voice-rooms/{roomId}/chat: send a line over plain HTTP (when the live connection is reconnecting). */
+export async function sendRoomChatHttp(roomId: string, message: string): Promise<RoomChatMessage | null> {
+  const body = await api<unknown>(`/api/voice-rooms/${encodeURIComponent(roomId)}/chat`, { method: "POST", auth: true, forbiddenIsAccess: true, body: { message } });
+  return readRoomChat(body);
+}
+
 export const roomChatTopic = (roomId: string) => `/topic/voice-rooms/${encodeURIComponent(roomId)}/chat`;
 export const roomChatSend = (roomId: string) => `/app/voice-rooms/${encodeURIComponent(roomId)}/chat`;

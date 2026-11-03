@@ -118,3 +118,46 @@ export async function getShopProduct(id: string) {
   const data = await api<unknown>(`/api/v1/shop/products/${encodeURIComponent(id)}`, { auth: true });
   return readProduct(one(data));
 }
+
+/* ---------------- buying with coins ---------------- */
+
+export type BuyResult = { productId: string; name: string; owned: number; coinsSpent: number; balance: number };
+export type OwnedShopItem = ShopProduct & { quantity: number; lastBoughtAt?: string };
+
+const newRequestId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+
+/**
+ * POST /shop/products/{id}/buy. The server charges the catalog price in coins;
+ * the request id makes a retry safe (never charged twice).
+ */
+export async function buyShopProduct(id: string, quantity = 1, requestId = newRequestId()): Promise<BuyResult> {
+  const d = (await api<unknown>(`/api/v1/shop/products/${encodeURIComponent(id)}/buy`, { method: "POST", auth: true, forbiddenIsAccess: true, body: { quantity, requestId } })) as Record<string, unknown> | null;
+  return { productId: str(d?.productId) ?? id, name: str(d?.name) ?? "", owned: num(d?.owned) ?? 0, coinsSpent: num(d?.coinsSpent) ?? 0, balance: num(d?.balance) ?? 0 };
+}
+
+/** GET /shop/me/items: what you bought. */
+export async function getMyShopItems(): Promise<OwnedShopItem[]> {
+  const d = await api<unknown>("/api/v1/shop/me/items", { auth: true, forbiddenIsAccess: true });
+  if (!Array.isArray(d)) return [];
+  return d.flatMap((raw) => {
+    const o = raw as Record<string, unknown>;
+    const id = str(o?.productId);
+    if (!id) return [];
+    return [
+      {
+        id,
+        name: str(o.name) ?? "Item",
+        description: str(o.description),
+        categoryId: str(o.categoryId),
+        categoryName: str(o.categoryName),
+        rarity: str(o.rarity),
+        assetUrl: str(o.assetUrl),
+        assetType: readAssetType(o.assetType),
+        price: num(o.price),
+        quantity: num(o.quantity) ?? 1,
+        lastBoughtAt: str(o.lastBoughtAt),
+      },
+    ];
+  });
+}

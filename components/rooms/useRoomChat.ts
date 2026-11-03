@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { readRoomChat, roomChatSend, roomChatTopic, type RoomChatMessage } from "@/lib/api/voice-room-chat";
+import { readRoomChat, roomChatSend, roomChatTopic, sendRoomChatHttp, type RoomChatMessage } from "@/lib/api/voice-room-chat";
 import { SERVER_USER_PREFIX, useServerRooms } from "@/lib/app/server-rooms";
 import { ME_ID } from "@/lib/app/store";
 import type { RoomMessage } from "@/lib/app/types";
@@ -20,7 +20,9 @@ export const SERVER_CHAT_PREFIX = "srv-chat:";
  * chat is yours to read. `deliver(list, history)` adds lines to the room's
  * message list (history goes before any live lines already shown).
  */
-export function useServerRoomChat(roomId: string | null, ready: boolean, myId: string | undefined, deliver: (list: RoomMessage[], history: boolean) => void) {
+export function useServerRoomChat(roomId: string | null, ready: boolean, myId: string | undefined, deliver: (list: RoomMessage[], history: boolean) => void, onSendError?: (message: string) => void) {
+  const sendErrorRef = useRef(onSendError);
+  sendErrorRef.current = onSendError;
   const { rememberPeople } = useServerRooms();
   const [historyError, setHistoryError] = useState("");
   const seen = useRef(new Set<string>());
@@ -75,11 +77,19 @@ export function useServerRoomChat(roomId: string | null, ready: boolean, myId: s
       try {
         publish(roomChatSend(roomId), { message: text });
         return "";
-      } catch (e) {
-        return e instanceof Error ? e.message : "Couldn't send. Try again.";
+      } catch {
+        // The live connection is reconnecting: send over plain HTTP instead, and show the line from the answer
+        sendRoomChatHttp(roomId, text)
+          .then((m) => {
+            if (!m) return;
+            const lines = toLines([m]);
+            if (lines.length) deliverRef.current(lines, false);
+          })
+          .catch((e) => sendErrorRef.current?.(e instanceof Error && e.message ? e.message : "Couldn't send. Try again."));
+        return "";
       }
     },
-    [roomId, ready],
+    [roomId, ready, toLines],
   );
 
   return { send, historyError, retryHistory: () => undefined, connection: status };

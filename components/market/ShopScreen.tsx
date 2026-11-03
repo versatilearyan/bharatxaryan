@@ -13,7 +13,7 @@ import { walletImageSrc, type WalletRedPacket } from "@/lib/api/wallet";
 import { ShopProductAsset } from "./ShopProductAsset";
 import { useApp, type ShopTab } from "@/lib/app/store";
 import { ApiError } from "@/lib/api/client";
-import { getShopCategories, getShopProduct, getShopProducts, type ShopCategory, type ShopProduct } from "@/lib/api/shop";
+import { buyShopProduct, getShopCategories, getShopProduct, getShopProducts, type ShopCategory, type ShopProduct } from "@/lib/api/shop";
 
 const RARITY_TINT: Record<string, string> = { common: "#aaa6b0", rare: "#7fdcff", epic: "#b48bff", legendary: "#e7bc72" };
 const rarityTint = (r?: string) => (r ? RARITY_TINT[r.toLowerCase()] : undefined) ?? "#aaa6b0";
@@ -34,7 +34,10 @@ type Load<T> = { status: "loading" } | { status: "error"; message: string } | { 
  * in coins; buying them waits for a backend purchase endpoint.
  */
 export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; initialPay?: RedPacketId }) {
-  const { pop, push, coins, setSheet, toast } = useApp();
+  const { pop, push, coins, setSheet, toast, refreshCoins } = useApp();
+  /** The item waiting for "Buy X for N coins?" */
+  const [confirm, setConfirm] = useState<ShopProduct | null>(null);
+  const [buying, setBuying] = useState(false);
   const [categories, setCategories] = useState<Load<ShopCategory[]>>({ status: "loading" });
   const [tab, setTab] = useState<TabKey | null>(initialTab === "packets" ? PACKETS : null);
   const wallet = useWalletCatalog(tab === PACKETS);
@@ -94,7 +97,29 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
   const tabs: { key: TabKey; label: string }[] =
     categories.status === "ok" ? [{ key: ALL, label: "All" }, ...categories.data.map((c) => ({ key: catKey(c.id), label: c.name })), { key: PACKETS, label: "Red packets" }] : [];
   const current = tab && tab !== PACKETS ? products[tab] : undefined;
-  const buy = (p: ShopProduct) => toast(`Buying ${p.name} isn't open yet. It will work once the shop's purchase service is live.`);
+  const buy = (p: ShopProduct) => {
+    if (p.price === undefined) return toast("This item doesn't have a price yet.");
+    if (coins < p.price) {
+      toast("Not enough coins. Add coins to buy this.", "error");
+      setSheet({ kind: "coins" });
+      return;
+    }
+    setOpenId(null);
+    setConfirm(p);
+  };
+  const confirmBuy = () => {
+    const p = confirm;
+    if (!p || buying) return;
+    setBuying(true);
+    buyShopProduct(p.id)
+      .then((r) => {
+        setConfirm(null);
+        void refreshCoins();
+        toast(`${p.name} is yours${r.owned > 1 ? ` (you have ${r.owned})` : ""}. Find it in your Bag.`, "gold");
+      })
+      .catch((e) => toast(e instanceof Error && e.message ? e.message : "The purchase didn't go through. Try again.", "error"))
+      .finally(() => setBuying(false));
+  };
 
   return (
     <div className="app-scroll h-full bg-ink pb-8">
@@ -177,6 +202,29 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
         </div>
       )}
 
+      <BottomSheet open={Boolean(confirm)} onClose={() => !buying && setConfirm(null)} title="Buy this item?">
+        {confirm ? (
+          <div className="px-5 pb-6">
+            <div className="flex items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line">
+              <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-black/20">
+                <ShopProductAsset url={confirm.assetUrl} type={confirm.assetType} name={confirm.name} className="h-full w-full" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[15px] font-bold text-cream">{confirm.name}</span>
+                <span className="mt-0.5 flex items-center gap-1 text-[13px] font-bold text-gold">
+                  <Coin className="h-4 w-4" /> {(confirm.price ?? 0).toLocaleString("en-IN")}
+                </span>
+              </span>
+            </div>
+            <p className="mt-3 text-[12.5px] text-muted">
+              You have {formatCoins(coins)} coins. After buying: {formatCoins(Math.max(0, coins - (confirm.price ?? 0)))}.
+            </p>
+            <button type="button" onClick={confirmBuy} disabled={buying} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gold text-[15px] font-bold text-ink disabled:opacity-60">
+              {buying ? "Buying…" : <>Buy for <Coin className="h-4 w-4" /> {(confirm.price ?? 0).toLocaleString("en-IN")}</>}
+            </button>
+          </div>
+        ) : null}
+      </BottomSheet>
       <ProductSheet id={openId} preview={current?.status === "ok" ? current.data.find((p) => p.id === openId) : undefined} onClose={() => setOpenId(null)} onBuy={buy} />
 
       {/* Red packets are bought from the backend's catalogue (purpose RED_PACKET); a sample packet has no backend product and can't be bought online */}

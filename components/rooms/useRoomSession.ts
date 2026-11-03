@@ -160,7 +160,7 @@ export function useRoomSession(room: Room) {
       }),
     [],
   );
-  const roomChat = useServerRoomChat(room.server?.id ?? null, inRoom, myServerId, deliverServerChat);
+  const roomChat = useServerRoomChat(room.server?.id ?? null, inRoom, myServerId, deliverServerChat, (m) => toast(m, "error"));
   useEffect(() => {
     if (roomChat.historyError) addSystem(roomChat.historyError);
   }, [roomChat.historyError, addSystem]);

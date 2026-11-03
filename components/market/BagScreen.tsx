@@ -22,6 +22,9 @@ import { useRedPackets } from "@/lib/app/redpacket-store";
 import { ME_ID, useApp } from "@/lib/app/store";
 import { useMe } from "@/lib/app/me-store";
 import { useRewards } from "@/lib/app/rewards-store";
+import { getMyShopItems, type OwnedShopItem } from "@/lib/api/shop";
+import { ShopProductAsset } from "./ShopProductAsset";
+import { useEffect as useEffectBag } from "react";
 import { rewardTypeText } from "./RewardWon";
 import { Gift as GiftIcon, Music } from "lucide-react";
 import type { GiftId } from "@/lib/app/types";
@@ -48,6 +51,19 @@ export function BagScreen() {
   const srv = useBagServer(true, me, now);
   // Spend rewards you won (server): effects to wear, gifts to send for free
   const rw = useRewards();
+  // Shop items you bought with coins (GET /shop/me/items)
+  const [bought, setBought] = useState<OwnedShopItem[]>([]);
+  useEffectBag(() => {
+    let live = true;
+    getMyShopItems()
+      .then((list) => live && setBought(list))
+      .catch(() => {
+        /* the rest of the Bag still shows */
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
   const meStore = useMe();
   const rewardBadge = (expiresAt: string | null) => (expiresAt ? short(Date.parse(expiresAt), now) : "Permanent");
   const wearServer = (id: string, on: boolean, name: string) =>
@@ -243,7 +259,23 @@ export function BagScreen() {
       ? { label: `Give to ${person(myCouple.a === ME_ID ? myCouple.b : myCouple.a).name}`, run: () => giveRing(ring.id) }
       : { label: "💍 Propose", run: () => (setOpen(null), setFinding(true)) };
 
+  const boughtItems: Entry[] = bought.map((b) => ({
+    key: `shop-${b.id}`,
+    name: b.name,
+    kind: b.categoryName ?? "Shop item",
+    art: (
+      <span className="block h-[70px] w-[70px] overflow-hidden rounded-lg">
+        <ShopProductAsset url={b.assetUrl} type={b.assetType} name={b.name} className="h-full w-full" />
+      </span>
+    ),
+    badge: "Permanent",
+    count: b.quantity > 1 ? b.quantity : undefined,
+    source: "Bought in the Shop",
+    tint: ITEM_TINT,
+    note: b.description,
+  }));
   const items: Entry[] = [
+    ...boughtItems,
     ...rewardGifts,
     ...srv.items,
     // Signed in, your red packets are the server's inventory
