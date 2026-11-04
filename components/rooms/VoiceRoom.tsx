@@ -90,7 +90,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
       <CreatePkSheet open={sheet === "pk"} onClose={close} />
       <MusicSheet open={sheet === "music"} onClose={close} />
       <EmojiSheet open={sheet === "emoji"} onClose={close} s={s} onInsert={(e) => setDraft((d) => d + e)} />
-      <InviteSheet open={sheet === "invite"} onClose={close} roomName={s.room.name} />
+      <InviteSheet open={sheet === "invite"} onClose={close} roomName={s.room.name} roomId={s.room.server?.id} roomCode={s.room.code} />
       <RoomMenuSheet
         open={sheet === "menu"}
         onClose={close}

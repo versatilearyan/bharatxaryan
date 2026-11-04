@@ -120,7 +120,7 @@ export function WatchTogetherRoom({ s }: { s: RoomSession }) {
       <AddVideoModal open={sheet === "add"} onClose={close} onAdd={(v) => s.setVideo(v)} />
       <GiftPanel open={sheet === "gift"} onClose={close} s={s} />
       <EmojiSheet open={sheet === "emoji"} onClose={close} s={s} onInsert={(e) => setDraft((d) => d + e)} />
-      <InviteSheet open={sheet === "invite"} onClose={close} roomName={s.room.name} />
+      <InviteSheet open={sheet === "invite"} onClose={close} roomName={s.room.name} roomId={s.room.server?.id} roomCode={s.room.code} />
       <RoomMenuSheet
         open={sheet === "menu"}
         onClose={close}

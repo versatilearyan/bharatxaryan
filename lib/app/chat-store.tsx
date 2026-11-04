@@ -27,6 +27,7 @@ import {
   mergeMessages,
   readMessage,
   sendImageMessage,
+  rememberChatPhoto,
   sendTextMessage,
   type ChatConversation,
   type ChatMessage,
@@ -275,6 +276,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       try {
         const m = o.kind === "text" ? await sendTextMessage(o.conversationId, o.text ?? "") : await sendImageMessage(o.conversationId, o.file!, me);
         if (e !== epoch.current) return false;
+        if (m && o.kind === "image" && o.file) rememberChatPhoto(m.conversationId, m.id, o.file);
         if (m) take({ ...m, senderId: m.senderId ?? me });
         else void loadPage(o.conversationId, 0);
         setOutgoing((list) => {

@@ -6,7 +6,8 @@ import { BadgeCheck, Crown, Gem, MessageSquareQuote, Palette, Sparkles, Armchair
 import { SunsetScene } from "@/components/art/SunsetScene";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, DemoNote, ScreenHeader } from "@/components/ui/kit";
-import { COINS_PER_GROWTH, VIP_PRICE_INR, VIP_THRESHOLDS, formatPoints } from "@/lib/app/levels";
+import { COINS_PER_GROWTH, VIP_PRICE_INR, VIP_THRESHOLDS, formatPoints, vipLevel } from "@/lib/app/levels";
+import { useMe } from "@/lib/app/me-store";
 import { CheckoutSheet } from "@/components/market/CheckoutSheet";
 import { formatInr } from "@/lib/app/redpacket";
 import { VIP_TIERS } from "@/lib/app/data";
@@ -24,7 +25,13 @@ const THEMES = [
 
 /** VIP benefits and tiers. VIP is a monthly subscription paid at checkout; levels grow with coins spent while VIP. */
 export function VipBenefits() {
-  const { pop, profile, vip, vipUntil, buyVip, endVip, setTab, toast } = useApp();
+  const { pop, profile, vip: localVip, vipUntil, buyVip, endVip, setTab, toast } = useApp();
+  // Signed in: your VIP level and growth points are the server's (every 100 coins spent while VIP)
+  const me = useMe();
+  useEffect(() => me.refresh(true), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const srvPoints = me.stats.data?.vipPoints;
+  const srvActive = me.profile.data?.vipActive;
+  const vip = srvPoints !== undefined && srvActive !== undefined ? vipLevel(srvPoints, srvActive) : localVip;
   const [tier, setTier] = useState(Math.max(1, vip.level));
   const [paying, setPaying] = useState(false);
   // Follow your level when it changes (bought or ended)
@@ -109,6 +116,52 @@ export function VipBenefits() {
           </div>
         </div>
       </div>
+
+      {/* Growth rate: how VIP growth is earned, and the points for every level */}
+      <section className="mx-4 mt-4 overflow-hidden rounded-3xl bg-gradient-to-b from-[#2a1620] to-[#1a0e14] p-4 ring-1 ring-gold/25" aria-labelledby="growth-rate">
+        <div className="flex items-center justify-between">
+          <h2 id="growth-rate" className="font-display text-[16px] font-extrabold text-cream">
+            Growth rate
+          </h2>
+          <span className="rounded-full bg-gold/15 px-2.5 py-1 text-[11.5px] font-extrabold text-gold">
+            1 pt / {COINS_PER_GROWTH} <Coin className="-mt-0.5 inline h-3 w-3" />
+          </span>
+        </div>
+        <ul className="mt-3 grid grid-cols-3 gap-2 text-center">
+          {(
+            [
+              ["🎁", "Gifts in rooms"],
+              ["💝", "Profile, CP & BFF gifts"],
+              ["🛍️", "Shop purchases"],
+            ] as const
+          ).map(([icon, label]) => (
+            <li key={label} className="rounded-2xl bg-black/25 px-1.5 py-2.5 ring-1 ring-white/5">
+              <span className="block text-[20px]" aria-hidden>
+                {icon}
+              </span>
+              <span className="mt-0.5 block text-[11px] font-semibold leading-tight text-cream/80">{label}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-2.5 text-[11.5px] leading-relaxed text-cream/60">
+          Only while you&apos;re VIP. Gifts sent from your Bag don&apos;t count. Your level never drops while VIP is active; when it ends, growth starts again with your next subscription.
+        </p>
+        <div className="mt-3 overflow-hidden rounded-2xl ring-1 ring-white/10">
+          {VIP_THRESHOLDS.map((pts, i) => {
+            const lv = i + 1;
+            const here = vip.level === lv;
+            const done = vip.level > lv;
+            return (
+              <div key={lv} className={`flex items-center gap-3 px-3 py-2 text-[12.5px] ${here ? "bg-gold/15" : i % 2 ? "bg-black/20" : "bg-black/10"}`}>
+                <span className={`w-12 font-display font-extrabold italic ${here ? "text-gold" : done ? "text-cream/70" : "text-cream/45"}`}>VIP {lv}</span>
+                <span className={`flex-1 ${here ? "font-bold text-cream" : "text-cream/65"}`}>{lv === 1 ? "Subscribe" : `${pts.toLocaleString("en-IN")} pts`}</span>
+                <span className="text-[11px] text-cream/45">{lv === 1 ? "" : `${(pts * COINS_PER_GROWTH).toLocaleString("en-IN")} coins`}</span>
+                {done ? <span className="text-[12px] text-speak">✓</span> : here ? <span className="rounded-full bg-gold px-1.5 text-[10px] font-extrabold text-ink">YOU</span> : <span className="w-3" />}
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <CheckoutSheet
         item={

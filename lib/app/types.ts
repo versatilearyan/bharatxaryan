@@ -127,6 +127,8 @@ export type Game = {
   online: number;
   tag?: "NEW" | "HOT";
   blurb: string;
+  /** Not playable yet: shown as "Coming soon". */
+  soon?: boolean;
 };
 
 export type GiftCategory = "Popular" | "Cute" | "Romantic" | "Celebration" | "Royal" | "Legendary";

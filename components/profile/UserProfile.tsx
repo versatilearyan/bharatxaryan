@@ -1,8 +1,11 @@
 "use client";
 
+import { useGiftsReceived } from "./useGiftsReceived";
 import { friendsApi, type FollowStatus } from "@/lib/api/social";
 import { cpApi, daysOf, type CpCouple } from "@/lib/api/cp";
 import { ServerProposeSheet, useCpEvents } from "@/components/market/ServerCp";
+import { CpRing } from "@/components/market/CpRing";
+import { ProfileCpPill } from "@/components/rooms/RoomSocial";
 import { myUserIdFromToken } from "@/lib/auth/token";
 import { CpBannerPill } from "@/components/market/CpParts";
 import { SvgaAnim, preloadSvga, warnSvga } from "@/components/effects/SvgaAnim";
@@ -109,7 +112,7 @@ function ProfileEntry({ src, name, avatar }: { src: EffectSet; name: string; ava
 
 /** Banner, avatar, name, level, VIP, charm, ID and bio. */
 export function ProfileHero({ personId, topLeft, topRight, vipFresh = true }: { personId: string; topLeft?: ReactNode; topRight?: ReactNode; vipFresh?: boolean }) {
-  const { profile, toast, push } = useApp();
+  const { profile, toast, push, session } = useApp();
   const person = usePeople();
   const p = person(personId);
   // VIP cosmetics from this person's own profile response (yours: GET /users/me; theirs: GET /users/{id}/profile)
@@ -137,7 +140,11 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true }: { 
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ink/20 to-ink" />
         {/* Their CP: ring, blessings and partner, opening the couple's Love Home */}
-        <CpBannerPill personId={personId} variant="profile" onOpen={() => push({ kind: "love-home", personId })} className="absolute bottom-3 right-3 z-10" />
+        {session && (personId === ME_ID || personId.startsWith("srv-user:")) ? (
+          <ProfileCpPill personId={personId} onOpen={() => push({ kind: "love-home", personId })} className="absolute bottom-3 right-3 z-10" />
+        ) : (
+          <CpBannerPill personId={personId} variant="profile" onOpen={() => push({ kind: "love-home", personId })} className="absolute bottom-3 right-3 z-10" />
+        )}
         <div className="pt-safe absolute inset-x-0 top-0 z-10 flex items-center justify-between p-3">
           <span>{topLeft}</span>
           <span>{topRight}</span>
@@ -187,7 +194,8 @@ export function UserProfileBody({ personId }: { personId: string }) {
   const person = usePeople();
   const p = person(personId);
   const mine = personId === ME_ID;
-  const received = receivedOf(personId);
+  const serverGifts = useGiftsReceived(personId);
+  const received = serverGifts ? serverGifts.gifts : receivedOf(personId);
   const wall = giftWallStats(received);
   // Backend users: their BFF tags come from the server
   const { loadServerTags } = useApp();
@@ -228,11 +236,11 @@ export function UserProfileBody({ personId }: { personId: string }) {
         <button type="button" onClick={() => push({ kind: "stats", personId })} className="mx-4 mt-3 block w-[calc(100%-2rem)] rounded-2xl bg-surface px-4 py-3 text-left ring-1 ring-line">
           <span className="flex items-center justify-between text-[12.5px]">
             <span className="font-semibold text-cream">Level {myStats.data ? myStats.data.level : stat(undefined)}</span>
-            <span className="text-muted">{stat(myStats.data?.expPoints)} EXP</span>
+            <span className="text-muted">{myStats.data && myStats.data.expToNext ? `${formatCount(myStats.data.expInLevel)} / ${formatCount(myStats.data.expToNext)} EXP` : `${stat(myStats.data?.expPoints)} EXP`}</span>
           </span>
           {/* The backend sends total EXP only, not the EXP needed for the next level, so the bar shows how far into this level's curve you are */}
           <span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-cream/10">
-            <motion.span className="block h-full rounded-full bg-gradient-to-r from-coral to-gold" initial={{ width: 0 }} animate={{ width: `${myStats.data ? Math.min(100, (myStats.data.expPoints / expToNext(Math.max(1, myStats.data.level))) * 100) : 0}%` }} />
+            <motion.span className="block h-full rounded-full bg-gradient-to-r from-coral to-gold" initial={{ width: 0 }} animate={{ width: `${myStats.data ? Math.min(100, myStats.data.expToNext ? (myStats.data.expInLevel / myStats.data.expToNext) * 100 : (myStats.data.expPoints / expToNext(Math.max(1, myStats.data.level))) * 100) : 0}%` }} />
           </span>
           <span className="mt-1.5 block text-[11px] text-muted">Win games, talk in rooms and finish tasks to level up.</span>
         </button>
@@ -375,7 +383,7 @@ function ServerCpPanel({ personId }: { personId: string }) {
               ),
             )}
             <span className="absolute -bottom-2 left-1/2 -translate-x-1/2">
-              <RingArt id={c.ring as RingId} size={24} />
+              <CpRing id={c.ring} size={24} />
             </span>
           </span>
           <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-cream">
@@ -942,7 +950,8 @@ export function UserRoomsScreen({ personId }: { personId: string }) {
 
 export function GiftWallScreen({ personId }: { personId: string }) {
   const { pop, receivedOf } = useApp();
-  const received = receivedOf(personId);
+  const serverGifts = useGiftsReceived(personId);
+  const received = serverGifts ? serverGifts.gifts : receivedOf(personId);
   const wall = giftWallStats(received);
   return (
     <div className="app-scroll h-full bg-ink pb-8">

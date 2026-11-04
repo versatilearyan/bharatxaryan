@@ -1,12 +1,14 @@
 import type WebSocket from "ws";
 import { Game } from "./Game.js";
 import { GAME_OVER, INIT_GAME, MOVE, SocketMessageSchema } from "./messages.js";
+import { ChessRooms } from "./Rooms.js";
 
 // User, Game
 
 export class GameManager {
     private games: Game[];
     private pendingUser: WebSocket | null;
+    private rooms = new ChessRooms();
 
     constructor() {
         this.games = [];
@@ -18,6 +20,7 @@ export class GameManager {
     }
 
     removeUser(socket: WebSocket){
+        this.rooms.drop(socket);
         // If they were waiting for a match, take them out of the queue
         if (this.pendingUser === socket) {
             this.pendingUser = null;
@@ -52,6 +55,9 @@ export class GameManager {
                 console.log("Ignoring message that isn't valid JSON");
                 return;
             }
+
+            // Chess rooms (create / join by code / queue / watch)
+            if (this.rooms.handle(socket, parsedData)) return;
 
             const result = SocketMessageSchema.safeParse(parsedData);
             if (!result.success) {

@@ -5,6 +5,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, Crown, Flame, HelpCircle, LogOut, Play, Users } from "lucide-react";
 import { CELLS, HOME, MY_GAME_QUEUE, STRIDE, gameTopic, jackarooApi, readGame, readYou, type JGame, type JMove, type JPlayer, type JYou } from "@/lib/api/jackaroo";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { GameLobby } from "@/components/games/GameLobby";
+import { ChatInviteSheet } from "@/components/social/Invites";
 import { notify } from "@/lib/app/notify";
 import { useApp } from "@/lib/app/store";
 import { myUserIdFromToken } from "@/lib/auth/token";
@@ -57,6 +59,7 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
   const [card, setCard] = useState<number | null>(null);
   const [swapFrom, setSwapFrom] = useState<number | null>(null);
   const [help, setHelp] = useState(false);
+  const [inviting, setInviting] = useState(false);
   const offset = useRef(0);
   const [now, setNow] = useState(Date.now());
 
@@ -153,17 +156,11 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
     </button>
   );
 
-  if (!roomId)
-    return (
-      <div className="h-full bg-ink p-3">
-        {back}
-        <p className="mt-20 text-center text-[13px] text-muted">Open Jackaroo from inside a room.</p>
-      </div>
-    );
+  if (!roomId) return <GameLobby title="Ludo" art="ludo" blurb="Race your pieces home with cards instead of dice. Team up, cut your friends' pieces and chat on voice." />;
 
   if (game === undefined)
     return (
-      <div className="h-full bg-[#0f1220] p-3">
+      <div className="h-full bg-[#1a1018] p-3">
         {back}
         <div className="mx-auto mt-32 h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-gold" aria-label="Loading" />
       </div>
@@ -177,10 +174,15 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
   const won = game?.status === "FINISHED" && myId ? game.winners.includes(myId) : false;
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden bg-[radial-gradient(120%_80%_at_50%_0%,#2a2350,#0f1220_60%)]">
+    <div className="relative flex h-full flex-col overflow-hidden bg-[radial-gradient(130%_80%_at_50%_0%,#4a1626_0%,#2a1430_45%,#141018_100%)]">
       <header className="pt-safe flex items-center gap-2 px-3 pb-1 pt-2">
         {back}
-        <h1 className="flex-1 font-display text-[19px] font-extrabold text-cream">Jackaroo</h1>
+        <h1 className="flex-1 font-display text-[19px] font-extrabold text-cream">Ludo</h1>
+        {game && game.code && game.status !== "FINISHED" ? (
+          <button type="button" onClick={() => setInviting(true)} className="flex h-10 items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7b5cff] to-[#ff7fa8] px-3 text-[12px] font-extrabold text-white" aria-label={`Invite friends. Table code ${game.code}`}>
+            <span className="font-mono tracking-wider">{game.code}</span> · Invite
+          </button>
+        ) : null}
         <button type="button" onClick={() => setHelp(true)} aria-label="How to play" className="grid h-10 w-10 place-items-center rounded-full bg-black/30 text-cream/80">
           <HelpCircle className="h-5 w-5" />
         </button>
@@ -197,7 +199,7 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
           <motion.div animate={{ rotate: [0, 8, -8, 0] }} transition={{ duration: 3, repeat: Infinity }} className="text-[64px]" aria-hidden>
             🎲
           </motion.div>
-          <p className="mt-2 font-display text-[20px] font-extrabold text-cream">Play Jackaroo</p>
+          <p className="mt-2 font-display text-[20px] font-extrabold text-cream">Play Ludo</p>
           <p className="mt-1 text-[13px] text-cream/60">A card and marble race for 2 or 4 players. Teams sit opposite each other.</p>
           <button type="button" disabled={busy} onClick={() => act(() => jackarooApi.open(roomId))} className="mt-6 flex h-12 items-center gap-2 rounded-full bg-gradient-to-r from-[#7b5cff] to-[#ff7fa8] px-7 text-[15px] font-extrabold text-white shadow-[0_10px_30px_-10px_rgba(123,92,255,0.8)]">
             <Play className="h-5 w-5" /> Open a table
@@ -207,11 +209,11 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
         <>
           {/* Board */}
           <div className="relative mx-auto mt-1 aspect-square w-full max-w-[440px] px-2">
-            <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="h-full w-full" role="img" aria-label="Jackaroo board">
+            <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="h-full w-full" role="img" aria-label="Ludo board">
               <defs>
                 <radialGradient id="jk-felt" cx="50%" cy="45%" r="60%">
-                  <stop offset="0" stopColor="#3a2f6e" />
-                  <stop offset="1" stopColor="#1a1638" />
+                  <stop offset="0" stopColor="#4a1e34" />
+                  <stop offset="1" stopColor="#24131f" />
                 </radialGradient>
               </defs>
               <circle cx={C} cy={C} r={R + 22} fill="url(#jk-felt)" stroke="#ffd98a55" strokeWidth="2" />
@@ -350,12 +352,12 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
                       className={`relative flex h-[92px] w-[64px] flex-col justify-between rounded-xl bg-gradient-to-b from-white to-[#f1ecff] p-1.5 shadow-xl ring-2 ${sel ? "ring-gold" : usable ? "ring-white/60" : "ring-transparent opacity-60"}`}
                       aria-label={`Card ${rankOf(c)} ${suitOf(c)}`}
                     >
-                      <span className={`text-left text-[15px] font-extrabold leading-none ${isRed(c) ? "text-[#d6203d]" : "text-[#1a1638]"}`}>
+                      <span className={`text-left text-[15px] font-extrabold leading-none ${isRed(c) ? "text-[#d6203d]" : "text-[#24131f]"}`}>
                         {rankOf(c)}
                         <br />
                         {suitOf(c)}
                       </span>
-                      <span className={`self-center text-[26px] leading-none ${isRed(c) ? "text-[#d6203d]" : "text-[#1a1638]"}`}>{suitOf(c)}</span>
+                      <span className={`self-center text-[26px] leading-none ${isRed(c) ? "text-[#d6203d]" : "text-[#24131f]"}`}>{suitOf(c)}</span>
                       {game.you!.mustBurn && myTurn ? <Flame className="absolute right-1 top-1 h-3.5 w-3.5 text-[#ff7a3d]" /> : null}
                     </motion.button>
                   );
@@ -392,7 +394,7 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
                   </motion.span>
                 ))
               : null}
-            <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 18 }} className="w-full max-w-[320px] rounded-3xl bg-gradient-to-b from-[#3a2f6e] to-[#1a1638] p-6 text-center ring-1 ring-gold/50">
+            <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 260, damping: 18 }} className="w-full max-w-[320px] rounded-3xl bg-gradient-to-b from-[#4a1e34] to-[#24131f] p-6 text-center ring-1 ring-gold/50">
               <Crown className="mx-auto h-12 w-12 text-gold" />
               <p className="mt-2 font-display text-[22px] font-extrabold text-cream">{won ? "You won!" : "Game over"}</p>
               <p className="mt-1 text-[13px] text-cream/70">{game.last}</p>
@@ -409,7 +411,8 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
         ) : null}
       </AnimatePresence>
 
-      <BottomSheet open={help} onClose={() => setHelp(false)} title="How to play Jackaroo">
+      {game && roomId ? <ChatInviteSheet open={inviting} onClose={() => setInviting(false)} kind="GAME" roomId={roomId} gameId={game.id} code={game.code} title="Invite to Ludo" /> : null}
+      <BottomSheet open={help} onClose={() => setHelp(false)} title="How to play Ludo">
         <div className="space-y-2 px-5 pb-6 text-[13px] text-cream/85">
           <p>Get all your marbles round the board and into your home lane. In 4 players, you win with your teammate (sitting opposite).</p>
           <ul className="list-disc space-y-1 pl-5">

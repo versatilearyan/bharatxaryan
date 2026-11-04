@@ -1,5 +1,8 @@
 "use client";
 
+import { NearbyScreen } from "@/components/discover/NearbyScreen";
+import { ChessHub } from "@/components/games/ChessHub";
+import { SarpanchScreen } from "@/components/sarpanch/Sarpanch";
 import { RewardWon } from "@/components/market/RewardWon";
 import { PaymentReturn } from "@/components/market/PaymentReturn";
 import { AnimatePresence, motion } from "framer-motion";
@@ -28,6 +31,7 @@ import { DiscoverScreen } from "@/components/discover/DiscoverScreen";
 import { ProfileScreen } from "@/components/profile/ProfileScreen";
 import { MomentsScreen } from "@/components/social/MomentsScreen";
 import { CpProposalPrompt } from "@/components/market/ServerCp";
+import { VipLevelUpPrompt } from "@/components/vip/VipLevelUp";
 import { JackarooScreen } from "@/components/games/jackaroo/JackarooScreen";
 import { IntimateSpace } from "@/components/profile/IntimateSpace";
 import { GiftWallScreen, GuardScreen, UserProfileScreen, UserRoomsScreen } from "@/components/profile/UserProfile";
@@ -91,6 +95,7 @@ function Frame() {
               <ActiveRoomHost />
               <GlobalSheets />
               <CpProposalPrompt />
+              <VipLevelUpPrompt />
               <PaymentReturn />
               <GiftOverlay />
               <RedPacketBanner />
@@ -188,10 +193,14 @@ function ScreenView({ screen }: { screen: Screen }) {
     case "parivar":
       return <ParivarHome id={screen.id} />;
     case "chess":
-      return <ChessScreen />;
+      return <ChessHub />;
     case "moments":
       return <MomentsScreen personId={screen.personId} />;
     case "jackaroo":
       return <JackarooScreen roomId={screen.roomId} />;
+    case "sarpanch":
+      return <SarpanchScreen />;
+    case "nearby":
+      return <NearbyScreen />;
   }
 }

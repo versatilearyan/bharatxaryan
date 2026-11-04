@@ -10,7 +10,7 @@
  */
 import type { VipProfileFields } from "@/lib/api/users";
 import type { RewardEffects } from "@/lib/api/rewards";
-import { VIP_SETS, type EffectSet, type GiftSet, type VipSet } from "./effects";
+import { VIP_SETS, giftSetById, isGiftSetId, type EffectSet, type GiftSet, type VipSet } from "./effects";
 import type { GiftId, GiftSetId } from "./types";
 import type { Effects } from "./market-store";
 
@@ -68,8 +68,22 @@ export function serverEffects(v: ServerVip): Effects {
 export function profileEffects(v: Partial<VipProfileFields> | null | undefined): Effects | undefined {
   if (!v || typeof v.vipActive !== "boolean") return undefined;
   // Not VIP: no VIP cosmetics, but rewards they won and wear still show
-  if (!v.vipActive) return rewardFx(v.rewardEffects);
-  return serverEffects({ vipLevel: v.vipLevel ?? null, badgeUrl: v.badgeUrl ?? null, frameUrl: v.frameUrl ?? null, bubbleUrl: v.bubbleUrl ?? null, entryAnimationUrl: v.entryAnimationUrl ?? null, rewardEffects: v.rewardEffects });
+  const base = !v.vipActive
+    ? rewardFx(v.rewardEffects)
+    : serverEffects({ vipLevel: v.vipLevel ?? null, badgeUrl: v.badgeUrl ?? null, frameUrl: v.frameUrl ?? null, bubbleUrl: v.bubbleUrl ?? null, entryAnimationUrl: v.entryAnimationUrl ?? null, rewardEffects: v.rewardEffects });
+  return withGiftSets(base, v.giftSetWear);
+}
+
+/** Gift-set pieces someone chose to wear (Storm Guardian frame, page effect, …) show over the rest. */
+function withGiftSets(base: Effects | undefined, w: VipProfileFields["giftSetWear"]): Effects | undefined {
+  if (!w) return base;
+  const set = (id?: string) => (id && isGiftSetId(id) ? giftSetById(id) : undefined);
+  const out: Effects = { ...(base ?? {}) };
+  if (set(w.frame)) out.frame = set(w.frame);
+  if (set(w.bubble)) out.bubble = set(w.bubble);
+  if (set(w.entry)) out.entry = set(w.entry);
+  if (set(w.page)) out.page = set(w.page);
+  return out;
 }
 
 /** The VIP level to style a name with, or undefined when not VIP. undefined `vipActive`: not known. */

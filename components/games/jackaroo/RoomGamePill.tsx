@@ -38,7 +38,7 @@ export function RoomGamePill({ roomId, inRoom }: { roomId?: string; inRoom: bool
           <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 1.6, repeat: Infinity }} aria-hidden>
             🎲
           </motion.span>
-          Jackaroo · {g.status === "WAITING" ? `${g.players.length}/4 · Join` : "Watch"}
+          🎲 Ludo · {g.status === "WAITING" ? `${g.players.length}/4 · Join` : "Watch"}
         </motion.button>
       ) : null}
     </AnimatePresence>

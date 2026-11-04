@@ -10,7 +10,7 @@ const server = createServer((_req, res) => {
   res.end("DevChess server is running");
 });
 
-const wss = new WebSocketServer({ server, maxPayload: 1024 });
+const wss = new WebSocketServer({ server, maxPayload: 2048 });
 const gameManager = new GameManager();
 
 const isAlive = new WeakMap<WebSocket, boolean>();

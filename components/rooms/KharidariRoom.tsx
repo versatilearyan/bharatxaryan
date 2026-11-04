@@ -294,7 +294,7 @@ export function KharidariRoom({ s, a }: { s: RoomSession; a: Auction }) {
       <GiftPanel open={sheet === "gift"} onClose={close} s={s} />
       <GiftPanel open={sheet === "bid-gift"} onClose={close} s={s} initialTo={a.itemId ?? undefined} />
       <EmojiSheet open={sheet === "emoji"} onClose={close} s={s} onInsert={(e) => setDraft((d) => d + e)} />
-      <InviteSheet open={sheet === "invite"} onClose={close} roomName={s.room.name} />
+      <InviteSheet open={sheet === "invite"} onClose={close} roomName={s.room.name} roomId={s.room.server?.id} roomCode={s.room.code} />
       <RoomMenuSheet open={sheet === "menu"} onClose={close} s={s} onInvite={() => setSheet("invite")} />
 
       {/* Owner: pick who sits on the auction seat */}

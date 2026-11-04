@@ -30,6 +30,9 @@ import { nameFace } from "@/lib/app/fonts";
 import { ParivarTag } from "@/components/parivar/ParivarScreens";
 import { LevelPill } from "@/components/profile/IdTags";
 import { ANIMATED_EMOTES, EmoteBurst, GAME_EMOTES } from "./Emotes";
+import { MentionPicker, MentionText, mentions, useMentionAlerts } from "./Mentions";
+import { SeatCpRing, SeatTagBadge } from "./RoomSocial";
+import { ChatInviteSheet } from "@/components/social/Invites";
 
 /* ------------------------------------------------------------------ */
 /* Top bar                                                             */
@@ -341,7 +344,9 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
       ) : null}
       {/* Empty seats have no label (as in the reference); the space is kept so rows don't jump */}
       <span className={`relative z-[2] mt-1 truncate font-bold ${owner ? "text-cream/60" : (p && vipName(p.vip, "room")) || "text-cream"} ${p || owner ? "" : numbered ? "hidden" : "invisible"}`} style={{ ...nameFace(p?.nameFont), maxWidth: Math.max(72, size * 1.3), fontSize: size >= 70 ? 15 : size < 50 ? 11 : 12.5, marginTop: frame ? size * 0.14 : undefined }}>
-        {p ? (p.id === ME_ID ? "You" : p.name) : owner ? owner.name : "Empty"}
+        {p ? <SeatCpRing personId={p.id} /> : null}
+        {p ? <SeatTagBadge personId={p.id} /> : null}
+        {p ? p.name : owner ? owner.name : "Empty"}
       </span>
       {id && s.giftCounts[id] ? (
         <span className="-mt-0.5 rounded-full bg-gold/15 px-1.5 text-[9.5px] font-bold text-gold">♥ {formatCount(s.giftCounts[id])}</span>
@@ -479,6 +484,7 @@ function SeatGrid({ s, gold, width, gridRef }: { s: RoomSession; gold: boolean; 
 
 export function RoomChat({ s, className = "" }: { s: RoomSession; className?: string }) {
   const { fxFor } = useRoomFx(s);
+  useMentionAlerts(s);
   const ref = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
   useEffect(() => {
@@ -520,6 +526,7 @@ function Announcement({ s }: { s: RoomSession }) {
 
 function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRoomFx>["fxFor"] }) {
   const person = usePeople();
+  const myName = useApp().profile.name;
   // A bubble file that can't be played falls back to the plain bubble
   const [failedBubble, setFailedBubble] = useState("");
   const base = "w-fit max-w-[92%] rounded-2xl px-3 py-1.5 text-[12.5px] leading-snug";
@@ -602,7 +609,9 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
                     inner box (x 9–90%, y 19–81% of the file) is stretched over it */}
                 <p className="relative mx-2 my-2.5 flex min-h-[34px] w-fit min-w-[96px] max-w-[230px] items-center px-3 py-1.5 text-[12.5px] font-semibold leading-snug text-white [text-shadow:0_1px_2px_rgb(120_10_30/0.7)]">
                   <VipBubbleArt set={bubble} onError={() => setFailedBubble(bubble.bubble)} />
-                  <span className="relative break-words">{m.text}</span>
+                  <span className="relative break-words">
+                    <MentionText text={m.text} />
+                  </span>
                 </p>
               </div>
             </div>
@@ -616,7 +625,7 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
                 {fx.badge ? <VipBadge set={fx.badge} level={p.vip} size={16} className="ml-1" /> : null}
                   <ParivarTag personId={p.id} className="ml-1 !px-1 !text-[9px]" />
               </span>
-              {m.text}
+              <MentionText text={m.text} />
             </p>
           </div>
         );
@@ -624,7 +633,7 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
     }
   })();
   return (
-    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className={m.kind === "text" && m.authorId !== ME_ID && mentions(m.text, myName) ? "rounded-2xl bg-gold/[0.08] ring-1 ring-gold/40" : undefined}>
       {body}
     </motion.div>
   );
@@ -703,9 +712,10 @@ export function ChatInput({ s, value, setValue, compact = false }: { s: RoomSess
         // Cleared only when the line went out (a backend room may be offline)
         if (s.send(value) !== false) setValue("");
       }}
-      className={`flex h-10 min-w-0 flex-1 items-center rounded-full bg-cream/[0.08] pl-3.5 pr-1 ring-1 ring-line focus-within:ring-gold/40 ${compact ? "" : ""}`}
+      className={`relative flex h-10 min-w-0 flex-1 items-center rounded-full bg-cream/[0.08] pl-3.5 pr-1 ring-1 ring-line focus-within:ring-gold/40 ${compact ? "" : ""}`}
     >
-      <input value={value} onChange={(e) => setValue(e.target.value)} disabled={s.chatBlocked} placeholder={s.chatBlocked ? "Text chat is off in this room" : "Say something…"} aria-label="Message the room" className="min-w-0 flex-1 bg-transparent text-[13px] text-cream placeholder:text-muted/70 focus:outline-none" maxLength={200} />
+      <MentionPicker s={s} value={value} onPick={setValue} />
+      <input value={value} onChange={(e) => setValue(e.target.value)} disabled={s.chatBlocked} placeholder={s.chatBlocked ? "Text chat is off in this room" : "Say something… (@ to mention)"} aria-label="Message the room" className="min-w-0 flex-1 bg-transparent text-[13px] text-cream placeholder:text-muted/70 focus:outline-none" maxLength={200} />
       {value.trim() ? (
         <button type="submit" aria-label="Send message" className="grid h-8 w-8 place-items-center rounded-full bg-coral text-white">
           <Send className="h-3.5 w-3.5" />
@@ -792,7 +802,13 @@ export function EmojiSheet({ open, onClose, s, onInsert }: { open: boolean; onCl
   );
 }
 
-export function InviteSheet({ open, onClose, roomName }: { open: boolean; onClose: () => void; roomName: string }) {
+/** Invite people: in live rooms into your chats and to your friends (with Join); otherwise the demo list. */
+export function InviteSheet({ open, onClose, roomName, roomId, roomCode }: { open: boolean; onClose: () => void; roomName: string; roomId?: string; roomCode?: string }) {
+  if (roomId) return <ChatInviteSheet open={open} onClose={onClose} kind="ROOM" roomId={roomId} code={roomCode} title={`Invite to ${roomName}`} />;
+  return <DemoInviteSheet open={open} onClose={onClose} roomName={roomName} />;
+}
+
+function DemoInviteSheet({ open, onClose, roomName }: { open: boolean; onClose: () => void; roomName: string }) {
   const { profile, toast } = useApp();
   const [sent, setSent] = useState<string[]>([]);
   const friends = PEOPLE.filter((p) => profile.following.includes(p.id) || p.online).slice(0, 8);
@@ -963,7 +979,7 @@ export function RoomMenuSheet({ open, onClose, s, extra, onInvite }: { open: boo
           {s.room.server ? (
             <Item
               icon={<span className="text-[19px] leading-none">🎲</span>}
-              label="Jackaroo"
+              label="Ludo"
               onClick={() => {
                 onClose();
                 push({ kind: "jackaroo", roomId: s.room.server!.id });

@@ -8,6 +8,9 @@ import { VIP_SETS, bestSet, giftSetById, isGiftSetId, unlockedSets, type EffectS
 /** The effects to draw for someone: each is the set it comes from. `page` is the profile page effect. */
 export type Effects = { frame?: EffectSet; bubble?: EffectSet; entry?: EffectSet; badge?: VipSet; page?: GiftSet; bubbleClass?: string };
 import { ME_ID, useApp } from "./store";
+import { api } from "@/lib/api/client";
+import { recordServerVisit } from "@/components/profile/ServerVisitors";
+import { emitSync } from "./sync";
 import type { GiftId, GiftSetId } from "./types";
 
 const STORAGE_KEY = "panchayat-market-v1";
@@ -155,6 +158,28 @@ function useMarketState() {
   const wearBubble = useCallback((bubble: BubbleId | EffectSetId | null) => setEquip((e) => ({ ...e, bubble })), []);
   const wearEntry = useCallback((set: EffectSetId | null) => setEquip((e) => ({ ...e, entry: set })), []);
   const wearPage = useCallback((set: GiftSetId | null) => setEquip((e) => ({ ...e, page: set })), []);
+
+  // Signed in: the gift-set pieces you wear are saved on the server, so others see them on your profile and in rooms
+  const { session } = useApp();
+  const wearKey = JSON.stringify({
+    frame: isGiftSetId(equip.animFrame) && giftSets.includes(equip.animFrame) ? equip.animFrame : null,
+    bubble: isGiftSetId(equip.bubble) && giftSets.includes(equip.bubble) ? equip.bubble : null,
+    entry: isGiftSetId(equip.entry) && giftSets.includes(equip.entry) ? equip.entry : null,
+    page: equip.page && giftSets.includes(equip.page) ? equip.page : null,
+  });
+  const sentWear = useRef<string | null>(null);
+  useEffect(() => {
+    if (!hydrated || !session || sentWear.current === wearKey) return;
+    const t = window.setTimeout(() => {
+      sentWear.current = wearKey;
+      api<unknown>("/api/v1/users/me/gift-set-wear", { method: "PUT", auth: true, forbiddenIsAccess: true, body: JSON.parse(wearKey) })
+        .then(() => emitSync("my-cosmetics"))
+        .catch(() => {
+          sentWear.current = null;
+        });
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [hydrated, session, wearKey]);
 
   // Sending a gift that comes with a set unlocks it and puts every piece on
   const lastFx = useRef<number | null>(null);
@@ -417,6 +442,8 @@ function useMarketState() {
   const recordVisit = useCallback(
     (id: string) => {
       if (id === ME_ID) return;
+      // Backend people: the server records the visit (they see it in their visitor log)
+      if (id.startsWith("srv-user:")) recordServerVisit(id.slice(9));
       setVisited((list) => addVisit(list, id));
       if (Math.random() < 0.4) window.setTimeout(() => addVisitor(id), 6000 + Math.random() * 6000);
     },

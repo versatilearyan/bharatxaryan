@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api/client";
-import { genderFromApi, getPublicProfile, readHair } from "@/lib/api/users";
+import { genderFromApi, getPublicProfile, readHair, type PublicUserProfile } from "@/lib/api/users";
 import { NAME_FONTS } from "@/lib/app/fonts";
 import { SERVER_USER_PREFIX, useServerRooms, type ServerPerson } from "@/lib/app/server-rooms";
 import { onSync } from "@/lib/app/sync";
@@ -31,6 +31,8 @@ export function usePublicProfile(personId: string) {
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
   const [loadedFor, setLoadedFor] = useState("");
+  /** The profile as the server sent it (charm, level, ID, …) for this person. */
+  const [data, setData] = useState<PublicUserProfile | null>(null);
   const remember = useRef(rememberPeople);
   remember.current = rememberPeople;
 
@@ -38,6 +40,7 @@ export function usePublicProfile(personId: string) {
     if (!usable || !userId) return;
     let live = true;
     setLoadedFor("");
+    setData(null);
     setStatus("loading");
     setError("");
     getPublicProfile(userId)
@@ -59,9 +62,10 @@ export function usePublicProfile(personId: string) {
             gender: genderFromApi(r.gender),
             look: Object.keys(look).length ? look : undefined,
             // This person's own VIP status and links, always replaced (never kept from an older load)
-            vip: { vipActive: r.vipActive, vipLevel: r.vipLevel ?? null, vipExpiresAt: r.vipExpiresAt ?? null, badgeUrl: r.badgeUrl ?? null, frameUrl: r.frameUrl ?? null, bubbleUrl: r.bubbleUrl ?? null, entryAnimationUrl: r.entryAnimationUrl ?? null, rewardEffects: r.rewardEffects },
+            vip: { vipActive: r.vipActive, vipLevel: r.vipLevel ?? null, vipExpiresAt: r.vipExpiresAt ?? null, badgeUrl: r.badgeUrl ?? null, frameUrl: r.frameUrl ?? null, bubbleUrl: r.bubbleUrl ?? null, entryAnimationUrl: r.entryAnimationUrl ?? null, rewardEffects: r.rewardEffects, giftSetWear: r.giftSetWear },
           },
         });
+        setData(r);
         setLoadedFor(personId);
         setStatus("ready");
       })
@@ -83,5 +87,5 @@ export function usePublicProfile(personId: string) {
   useEffect(() => (own ? onSync(["my-cosmetics", "my-profile"], () => setTick((n) => n + 1)) : undefined), [own]);
 
   const retry = useCallback(() => setTick((n) => n + 1), []);
-  return { isBackendUser: userId !== null, loadedFor: usable ? loadedFor : "", status: userId !== null && !usable ? ("not-found" as const) : status, error, retry };
+  return { data: usable && loadedFor === personId ? data : null, isBackendUser: userId !== null, loadedFor: usable ? loadedFor : "", status: userId !== null && !usable ? ("not-found" as const) : status, error, retry };
 }

@@ -5,7 +5,9 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, Globe2, Heart, ImagePlus, Lock, MessageCircle, MoreHorizontal, Play, Send, Trash2, Users, Video, X } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { momentsApi, type Moment, type MomentComment } from "@/lib/api/social";
+import { Toran } from "@/components/ui/Toran";
 import { useApp } from "@/lib/app/store";
+import { MomentAuthor } from "./MomentAuthor";
 import { myUserIdFromToken } from "@/lib/auth/token";
 
 const ago = (t: number) => {
@@ -101,14 +103,15 @@ export function MomentsScreen({ personId }: { personId?: string }) {
   };
 
   return (
-    <div className="relative flex h-full flex-col bg-ink">
-      <header className="flex items-center gap-2 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+10px)]">
+    <div className="relative flex h-full flex-col bg-[radial-gradient(130%_55%_at_50%_0%,#4a1626_0%,#2a1430_42%,#141018_100%)]">
+      <Toran />
+      <header className="relative flex items-center gap-2 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+10px)]">
         <button type="button" onClick={pop} aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full text-cream">
           <ChevronLeft className="h-6 w-6" />
         </button>
-        <h1 className="flex-1 font-display text-[20px] font-extrabold text-cream">Moments</h1>
+        <h1 className="flex-1 bg-gradient-to-r from-[#fff1c9] via-gold to-[#ffb37a] bg-clip-text font-display text-[22px] font-extrabold text-transparent">Moments</h1>
         {!uid ? (
-          <div className="flex rounded-full bg-surface p-1 ring-1 ring-line">
+          <div className="flex rounded-full bg-black/35 p-1 ring-1 ring-gold/20">
             {(["all", "friends"] as const).map((s) => (
               <button key={s} type="button" onClick={() => setScope(s)} className={`relative rounded-full px-3 py-1 text-[12px] font-bold ${scope === s ? "text-ink" : "text-cream/70"}`}>
                 {scope === s ? <motion.span layoutId="moment-scope" className="absolute inset-0 rounded-full bg-gold" transition={{ type: "spring", stiffness: 500, damping: 36 }} /> : null}
@@ -135,22 +138,23 @@ export function MomentsScreen({ personId }: { personId?: string }) {
         ) : null}
         <ul className="space-y-3 px-3 pt-1">
           {items.map((m) => (
-            <motion.li key={m.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="rounded-3xl bg-surface p-3.5 ring-1 ring-line">
+            <motion.li key={m.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#2c1622]/95 to-[#1b1622]/95 p-3.5 shadow-[0_14px_34px_-18px_rgba(0,0,0,0.95)] ring-1 ring-gold/15 before:absolute before:inset-x-6 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-gold/60 before:to-transparent">
               <div className="flex items-center gap-2.5">
-                <button type="button" onClick={() => openProfile(`srv-user:${m.author.userId}`)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
-                  <Avatar src={m.author.avatarUrl} name={m.author.name} />
-                  <span className="min-w-0">
-                    <span className="block truncate text-[14px] font-bold text-cream">{m.author.name}</span>
-                    <span className="flex items-center gap-1 text-[11px] text-muted">
-                      {ago(m.at)} · {m.visibility === "FRIENDS" ? <Users className="h-3 w-3" aria-label="Friends only" /> : <Globe2 className="h-3 w-3" aria-label="Public" />}
-                    </span>
-                  </span>
+                <button type="button" onClick={() => openProfile(`srv-user:${m.author.userId}`)} className="flex min-w-0 flex-1 items-center text-left">
+                  <MomentAuthor
+                    a={m.author}
+                    sub={
+                      <span className="flex items-center gap-1 text-[11px] text-muted">
+                        {ago(m.at)} · {m.visibility === "FRIENDS" ? <Users className="h-3 w-3" aria-label="Friends only" /> : <Globe2 className="h-3 w-3" aria-label="Public" />}
+                      </span>
+                    }
+                  />
                 </button>
                 {m.mine ? <MomentMenu onDelete={() => remove(m)} /> : null}
               </div>
               {m.body ? <p className="mt-2.5 whitespace-pre-wrap break-words text-[14px] leading-relaxed text-cream/90">{m.body}</p> : null}
               {m.media.length ? <MediaGrid media={m.media} onOpen={(i) => setViewer({ list: m.media, i })} /> : null}
-              <div className="mt-3 flex items-center gap-1 border-t border-line pt-2">
+              <div className="mt-3 flex items-center gap-1 border-t border-gold/10 pt-2">
                 <motion.button whileTap={{ scale: 0.85 }} type="button" onClick={() => like(m)} aria-pressed={m.liked} className={`flex h-9 items-center gap-1.5 rounded-full px-3 text-[13px] font-bold ${m.liked ? "text-[#ff5c7a]" : "text-cream/70"}`}>
                   <motion.span key={String(m.liked)} initial={{ scale: m.liked ? 0.4 : 1 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 600, damping: 14 }}>
                     <Heart className="h-[18px] w-[18px]" fill={m.liked ? "currentColor" : "none"} />
@@ -161,6 +165,7 @@ export function MomentsScreen({ personId }: { personId?: string }) {
                   <MessageCircle className="h-[18px] w-[18px]" /> {m.commentCount || ""}
                 </button>
               </div>
+              <CommentPreview m={m} onOpen={() => setCommentsFor(m)} />
             </motion.li>
           ))}
         </ul>
@@ -423,18 +428,18 @@ function CommentsSheet({ moment, onClose, onCount }: { moment: Moment | null; on
           {list === null ? <li className="py-6 text-center text-[13px] text-muted">Loading…</li> : null}
           {list && list.length === 0 ? <li className="py-6 text-center text-[13px] text-muted">No comments yet. Say something nice!</li> : null}
           {(list ?? []).map((c) => (
-            <li key={c.id} className="flex gap-2.5">
+            <li key={c.id} className="flex gap-2.5 rounded-2xl bg-gradient-to-r from-[#2c1622]/80 to-transparent p-2 ring-1 ring-gold/10">
               <button type="button" onClick={() => openProfile(`srv-user:${c.userId}`)}>
                 <Avatar src={c.avatarUrl} name={c.name} size={32} />
               </button>
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] text-cream">
-                  <b>{c.name}</b> {c.replyToName ? <span className="text-gold">@{c.replyToName} </span> : null}
+                <p className="text-[13px] leading-snug text-cream/90">
+                  <b className="text-gold">{c.name}</b> {c.replyToName ? <span className="text-gold">@{c.replyToName} </span> : null}
                   {c.body}
                 </p>
                 <p className="mt-0.5 flex gap-3 text-[11px] text-muted">
                   {ago(c.at)}
-                  <button type="button" onClick={() => setReply(c)} className="font-bold">
+                  <button type="button" onClick={() => setReply(c)} className="font-bold text-cream/70 hover:text-gold">
                     Reply
                   </button>
                   {moment?.mine || c.userId === myUserIdFromToken() ? (
@@ -452,7 +457,7 @@ function CommentsSheet({ moment, onClose, onCount }: { moment: Moment | null; on
             e.preventDefault();
             send();
           }}
-          className="pb-safe sticky bottom-0 border-t border-line bg-ink-2 px-4 py-2.5"
+          className="pb-safe sticky bottom-0 border-t border-gold/15 bg-gradient-to-t from-[#1b1020] to-[#24131f] px-4 py-2.5"
         >
           {reply ? (
             <p className="mb-1.5 flex items-center gap-2 text-[11.5px] text-muted">
@@ -463,13 +468,60 @@ function CommentsSheet({ moment, onClose, onCount }: { moment: Moment | null; on
             </p>
           ) : null}
           <div className="flex items-center gap-2">
-            <input value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} placeholder="Add a comment…" className="h-10 min-w-0 flex-1 rounded-full bg-white/[0.06] px-4 text-[14px] text-cream outline-none ring-1 ring-white/10 focus:ring-gold/50" />
-            <button type="submit" disabled={busy || !text.trim()} aria-label="Send" className="grid h-10 w-10 place-items-center rounded-full bg-coral text-white disabled:opacity-50">
+            <input value={text} onChange={(e) => setText(e.target.value.slice(0, 500))} placeholder="Add a comment…" className="h-10 min-w-0 flex-1 rounded-full bg-black/30 px-4 text-[14px] text-cream outline-none ring-1 ring-gold/20 placeholder:text-cream/40 focus:ring-gold/60" />
+            <button type="submit" disabled={busy || !text.trim()} aria-label="Send" className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-coral to-gold text-white disabled:opacity-50">
               <Send className="h-4 w-4" />
             </button>
           </div>
         </form>
       </div>
     </BottomSheet>
+  );
+}
+
+/** The newest comments under a post, with a box to add one (opens the full comments). */
+function CommentPreview({ m, onOpen }: { m: Moment; onOpen: () => void }) {
+  const [list, setList] = useState<MomentComment[] | null>(null);
+  useEffect(() => {
+    if (!m.commentCount) {
+      setList([]);
+      return;
+    }
+    let live = true;
+    momentsApi
+      .comments(m.id)
+      .then((c) => live && setList(c))
+      .catch(() => live && setList([]));
+    return () => {
+      live = false;
+    };
+  }, [m.id, m.commentCount]);
+  const last = (list ?? []).slice(-2);
+  return (
+    <div className="mt-1 space-y-1.5">
+      {last.map((c) => (
+        <button key={c.id} type="button" onClick={onOpen} className="flex w-full items-start gap-2 text-left">
+          {c.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={c.avatarUrl} alt="" className="mt-0.5 h-6 w-6 shrink-0 rounded-full object-cover" />
+          ) : (
+            <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-cream/10 text-[11px] font-bold text-cream">{c.name.slice(0, 1)}</span>
+          )}
+          <span className="min-w-0 flex-1 rounded-2xl rounded-tl-md bg-[#3a1d2c]/70 px-3 py-1.5 text-[13px] leading-snug ring-1 ring-gold/10">
+            <b className="mr-1.5 text-gold">{c.name}</b>
+            {c.replyToName ? <span className="mr-1 text-gold">@{c.replyToName}</span> : null}
+            <span className="break-words text-cream/80">{c.body}</span>
+          </span>
+        </button>
+      ))}
+      {list && m.commentCount > last.length ? (
+        <button type="button" onClick={onOpen} className="pl-8 text-[12px] font-semibold text-muted hover:text-cream">
+          View all {m.commentCount} comments
+        </button>
+      ) : null}
+      <button type="button" onClick={onOpen} className="flex w-full items-center gap-2 rounded-full bg-black/25 px-3 py-2 text-left text-[12.5px] text-cream/55 ring-1 ring-gold/15">
+        <MessageCircle className="h-4 w-4 text-gold/80" /> Add a comment…
+      </button>
+    </div>
   );
 }

@@ -53,8 +53,9 @@ const newRequestId = () =>
 
 /** Send a gift. Throws ApiError with the server's message (e.g. "Not enough coins…"). */
 /** fromBag: send gifts you won (your server Bag) instead of paying coins. */
-export async function sendRoomGift(roomId: string, giftId: string, toUserId: string, count: number, fromBag = false): Promise<RoomGiftEvent> {
-  const body = { giftId, toUserId: /^\d+$/.test(toUserId) ? Number(toUserId) : toUserId, count, requestId: newRequestId(), fromBag };
+export async function sendRoomGift(roomId: string, giftId: string, toUserId: string, count: number, fromBag = false, message?: string): Promise<RoomGiftEvent> {
+  // message: shown to everyone in the app when the gift is big (the server announces it)
+  const body = { giftId, toUserId: /^\d+$/.test(toUserId) ? Number(toUserId) : toUserId, count, requestId: newRequestId(), fromBag, message: message?.trim() || undefined };
   const raw = await api<unknown>(`/api/v1/voice-rooms/${encodeURIComponent(roomId)}/gifts`, { method: "POST", auth: true, forbiddenIsAccess: true, body });
   const ev = readGiftEvent(raw);
   if (!ev) throw new Error("The gift was sent, but the server's answer couldn't be read.");

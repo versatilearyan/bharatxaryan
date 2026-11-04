@@ -11,6 +11,8 @@ import { useGiftNews } from "@/lib/app/gift-news-store";
 import { usePeople } from "@/lib/app/people";
 import { useRedPackets } from "@/lib/app/redpacket-store";
 import { ME_ID, useApp } from "@/lib/app/store";
+import { useServerRooms } from "@/lib/app/server-rooms";
+import { getRoomById } from "@/lib/api/voice-rooms";
 
 /**
  * The server-wide gift notification: a royal purple and gold ribbon that
@@ -30,16 +32,31 @@ export function GiftBanner() {
     return () => window.clearTimeout(t);
   }, [id, dismiss]);
   const room = n ? roomById(n.roomId) : undefined;
+  // A room we don't know and that isn't a server room: nothing to show
+  const known = Boolean(room || n?.serverRoomId);
   useEffect(() => {
-    if (id && !room) dismiss(id);
-  }, [id, room, dismiss]);
+    if (id && !known) dismiss(id);
+  }, [id, known, dismiss]);
+  const { addCreated } = useServerRooms();
+  const go = async () => {
+    if (!n) return;
+    dismiss(n.id);
+    if (!room && n.serverRoomId) {
+      try {
+        addCreated(await getRoomById(n.serverRoomId));
+      } catch {
+        return;
+      }
+    }
+    openRoom(n.roomId);
+  };
   const here = n?.roomId === activeRoomId;
   const locked = Boolean(room?.password) && room?.hostId !== ME_ID;
   const name = (pid: string) => (pid === ME_ID ? "You" : person(pid).name);
   return (
     <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+50px)] z-[66] h-[48px] overflow-hidden">
       <AnimatePresence>
-        {n && room ? (
+        {n && known ? (
           <motion.div
             key={n.id}
             role="status"
@@ -65,7 +82,7 @@ export function GiftBanner() {
               </span>
               <span className="relative flex min-w-0 flex-1 flex-col overflow-hidden leading-none">
                 <Marquee className="text-[11.5px] font-bold text-white drop-shadow-[0_1px_1px_rgb(40_0_60/0.6)]">
-                  {name(n.fromId)} sent <span className="font-extrabold text-[#ffd98a]">{giftById(n.giftId).name}{n.count > 1 ? ` ×${n.count}` : ""}</span> to {n.toId === n.fromId ? (n.fromId === ME_ID ? "yourself" : "themselves") : name(n.toId)} in {roomKind(room)} {room.code}
+                  {name(n.fromId)} sent <span className="font-extrabold text-[#ffd98a]">{giftById(n.giftId).name}{n.count > 1 ? ` ×${n.count}` : ""}</span> to {n.toId === n.fromId ? (n.fromId === ME_ID ? "yourself" : "themselves") : name(n.toId)} in {room ? `${roomKind(room)} ${room.code}` : (n.roomName ?? "a room")}
                   {n.message ? <span className="font-semibold italic text-[#ffe9bf]"> · “{n.message}”</span> : null}
                 </Marquee>
               </span>
@@ -78,10 +95,7 @@ export function GiftBanner() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => {
-                    dismiss(n.id);
-                    openRoom(n.roomId);
-                  }}
+                  onClick={() => void go()}
                   className="relative shrink-0 rounded-full bg-gradient-to-b from-[#fff3c4] to-[#f0c66a] px-2.5 py-[3px] text-[11px] font-extrabold text-[#5b1fa8] shadow-[0_1px_4px_rgb(0_0_0/0.25)]"
                 >
                   Join

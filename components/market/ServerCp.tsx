@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronLeft, HeartCrack, ImagePlus, Trash2, X } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { RingArt } from "@/components/art/RingArt";
+import { CpRing } from "./CpRing";
 import { Coin } from "@/components/ui/kit";
 import { CP_QUEUE, cpApi, daysOf, nextMilestone, type CpBlessing, type CpCouple, type CpPerson, type CpProposal, type CpRingInfo } from "@/lib/api/cp";
-import { PROPOSAL_LINES, loveLevel, type RingId } from "@/lib/app/market";
+import { PROPOSAL_LINES, loveLevel } from "@/lib/app/market";
 import { notify } from "@/lib/app/notify";
 import { useApp } from "@/lib/app/store";
 import { myUserIdFromToken } from "@/lib/auth/token";
@@ -50,15 +50,9 @@ function Face({ p, size = 64 }: { p?: CpPerson; size?: number }) {
   );
 }
 
-/** A ring's picture: the app's art for known rings, else the catalogue image. */
-function Ring({ id, catalogue, size = 48 }: { id: string; catalogue?: CpRingInfo[]; size?: number }) {
-  const info = catalogue?.find((r) => r.id === id);
-  return info?.imageUrl && !info.imageUrl.startsWith("/rings/") ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={info.imageUrl} alt={info.name} className="object-contain" style={{ width: size, height: size }} />
-  ) : (
-    <RingArt id={id as RingId} size={size} />
-  );
+/** A ring's picture (built-in art, or the picture of a ring added in the admin panel). */
+function Ring({ id, size = 48 }: { id: string; catalogue?: CpRingInfo[]; size?: number }) {
+  return <CpRing id={id} size={size} />;
 }
 
 /**
@@ -402,7 +396,7 @@ function ProposalCard({ p, incoming, busy, onAccept, onDecline, onCancel }: { p:
   return (
     <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="overflow-hidden rounded-3xl bg-gradient-to-br from-[#5a1a36] to-[#24101a] p-4 ring-1 ring-pink/40">
       <div className="flex items-center gap-3">
-        <RingArt id={p.ringId as RingId} size={52} />
+        <CpRing id={p.ringId} size={52} />
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-bold text-cream">{incoming ? `${p.from.name} proposed to you!` : `Waiting for ${p.to.name}…`}</p>
           <p className="text-[11.5px] text-cream/60">{left > 0 ? `${left} day${left === 1 ? "" : "s"} left` : "expiring"}</p>
@@ -623,7 +617,7 @@ export function CpProposalPrompt() {
       <motion.div className="fixed inset-0 z-[96] grid place-items-center bg-black/70 px-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-label="CP proposal">
         <motion.div initial={{ scale: 0.85, y: 20 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 22 }} className="w-full max-w-[330px] overflow-hidden rounded-[28px] bg-gradient-to-b from-[#6b1f3d] to-[#1d0c16] p-5 text-center ring-1 ring-pink/50">
           <motion.div animate={{ rotate: [0, -8, 8, 0], scale: [1, 1.08, 1] }} transition={{ duration: 1.8, repeat: Infinity }} className="mx-auto w-fit">
-            <RingArt id={p.ringId as RingId} size={84} />
+            <CpRing id={p.ringId} size={84} />
           </motion.div>
           <p className="mt-2 font-display text-[19px] font-extrabold text-cream">{p.from.name} proposed!</p>
           {p.message ? <p className="mt-3 rounded-2xl bg-black/30 px-3 py-2 text-[13px] italic text-cream/90">“{p.message}”</p> : null}

@@ -14,6 +14,7 @@ import { gameById } from "@/lib/app/data";
 import { formatPoints, vipLevel } from "@/lib/app/levels";
 import { useMarket } from "@/lib/app/market-store";
 import { ME_ID, useApp } from "@/lib/app/store";
+import { useVisitorStats } from "./ServerVisitors";
 import { useMe } from "@/lib/app/me-store";
 
 export function ProfileScreen() {
@@ -32,7 +33,11 @@ export function ProfileScreen() {
       off = true;
     };
   }, []);
-  const { visitors, newVisitors } = useMarket();
+  const market = useMarket();
+  // Signed in: the server's visitor numbers
+  const srvVisits = useVisitorStats();
+  const visitors = srvVisits ? { length: srvVisits.visitors } : market.visitors;
+  const newVisitors = srvVisits ? srvVisits.newCount : market.newVisitors;
   const me = useMe();
   // Fresh profile and stats each time the tab opens (skipped if loaded in the last 30 s)
   const { refresh } = me;
@@ -90,22 +95,6 @@ export function ProfileScreen() {
         ))}
       </div>
 
-
-      {/* Moments, Friends and CP */}
-      <div className="mx-4 mt-2.5 grid grid-cols-3 gap-2.5">
-        <button type="button" onClick={() => push({ kind: "moments", personId: "me" })} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#3b2a6b] to-[#1b1530] py-3 text-center ring-1 ring-[#8f74ff]/40">
-          <span className="block text-[20px]" aria-hidden>📸</span>
-          <span className="text-[12.5px] font-bold text-cream">Moments</span>
-        </button>
-        <button type="button" onClick={() => setSheet({ kind: "friends" })} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1f4d3f] to-[#10241e] py-3 text-center ring-1 ring-[#4fd6a5]/40">
-          <span className="block text-[20px]" aria-hidden>🤝</span>
-          <span className="text-[12.5px] font-bold text-cream">Friends</span>
-        </button>
-        <button type="button" onClick={() => push({ kind: "love-home", personId: ME_ID })} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#6b1f3d] to-[#2a0d19] py-3 text-center ring-1 ring-[#ff7fa8]/40">
-          <span className="block text-[20px]" aria-hidden>💍</span>
-          <span className="text-[12.5px] font-bold text-cream">CP</span>
-        </button>
-      </div>
 
       <UserProfileBody personId="me" />
 

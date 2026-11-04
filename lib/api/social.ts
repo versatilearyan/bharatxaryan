@@ -9,6 +9,8 @@
  */
 import { api, API_BASE_URL } from "./client";
 import { authHeader, readToken } from "@/lib/auth/token";
+import type { VipProfileFields } from "./users";
+import { readRewardEffects } from "./rewards";
 
 type Obj = Record<string, unknown>;
 const obj = (v: unknown): Obj | null => (v && typeof v === "object" && !Array.isArray(v) ? (v as Obj) : null);
@@ -69,7 +71,17 @@ export const friendsApi = {
 export type MomentMedia = { url: string; type: "IMAGE" | "VIDEO" };
 export type Moment = {
   id: string;
-  author: { userId: string; publicId?: string; name: string; avatarUrl?: string };
+  author: {
+    userId: string;
+    publicId?: string;
+    name: string;
+    avatarUrl?: string;
+    /** What they wear (VIP status, frame, badge, rewards), as on their profile. */
+    vip?: Partial<VipProfileFields>;
+    nameFont?: string;
+    level?: number;
+    charmPoints?: number;
+  };
   body?: string;
   media: MomentMedia[];
   visibility: "PUBLIC" | "FRIENDS";
@@ -88,7 +100,27 @@ export function readMoment(v: unknown): Moment | null {
   const a = obj(o.author) ?? {};
   return {
     id,
-    author: { userId: str(a.userId) ?? "", publicId: str(a.publicId), name: str(a.name) ?? "Someone", avatarUrl: str(a.avatarUrl) },
+    author: {
+      userId: str(a.userId) ?? "",
+      publicId: str(a.publicId),
+      name: str(a.name) ?? "Someone",
+      avatarUrl: str(a.avatarUrl),
+      vip:
+        typeof a.vipActive === "boolean"
+          ? {
+              vipActive: a.vipActive,
+              vipLevel: typeof a.vipLevel === "number" ? a.vipLevel : null,
+              badgeUrl: str(a.badgeUrl) ?? null,
+              frameUrl: str(a.frameUrl) ?? null,
+              bubbleUrl: null,
+              entryAnimationUrl: null,
+              rewardEffects: readRewardEffects(a.rewardEffects),
+            }
+          : undefined,
+      nameFont: str(a.nameFont),
+      level: typeof a.level === "number" ? a.level : undefined,
+      charmPoints: typeof a.charmPoints === "number" ? a.charmPoints : undefined,
+    },
     body: str(o.body),
     media: arr(o.media).flatMap((m) => {
       const x = obj(m);

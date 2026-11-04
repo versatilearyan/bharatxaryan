@@ -37,8 +37,9 @@ function resultText(r: Result, me: Color | null) {
   return r.winner === me ? { title: "You win!", sub: "Checkmate." } : { title: "You lost", sub: "Checkmate." };
 }
 
-export function ChessScreen() {
-  const { pop, profile } = useApp();
+export function ChessScreen({ onExit }: { onExit?: () => void } = {}) {
+  const { pop: popScreen, profile } = useApp();
+  const pop = onExit ?? popScreen;
   const [generation, setGeneration] = useState(0);
   const { socket, failedAttempts } = useChessSocket(generation);
   const chess = useRef(new Chess());
@@ -166,7 +167,7 @@ export function ChessScreen() {
   const opp: Color | null = color ? (color === "white" ? "black" : "white") : null;
 
   return (
-    <div className="app-scroll h-full bg-ink pb-8">
+    <div className="app-scroll h-full bg-[radial-gradient(130%_55%_at_50%_0%,#4a1626_0%,#2a1430_42%,#141018_100%)] pb-8">
       <ScreenHeader title="Chess" sub="Online match" onBack={back} />
 
       {confirmLeave ? (
@@ -187,7 +188,7 @@ export function ChessScreen() {
           active={playing && !myTurn}
         />
 
-        <div className="my-2 overflow-hidden rounded-xl ring-1 ring-line" role="grid" aria-label="Chess board">
+        <div className="my-2 overflow-hidden rounded-xl shadow-[0_10px_40px_-12px_rgba(0,0,0,0.8)] ring-2 ring-gold/25" role="grid" aria-label="Chess board">
           {rows.map((row, i) => (
             <div key={i} className="flex" role="row">
               {row.map((p, j) => {
@@ -230,7 +231,7 @@ export function ChessScreen() {
           active={myTurn}
         />
 
-        <div className="mt-4 rounded-2xl bg-surface p-4 ring-1 ring-line" aria-live="polite">
+        <div className="mt-4 rounded-2xl bg-gradient-to-r from-[#2c1622]/95 to-[#1b1622]/95 p-4 ring-1 ring-gold/20" aria-live="polite">
           {!socket ? (
             <div className="flex items-start gap-3">
               <WifiOff className="mt-0.5 h-5 w-5 shrink-0 text-muted" aria-hidden />

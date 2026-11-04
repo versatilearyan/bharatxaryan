@@ -410,7 +410,8 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
   const person = usePeople();
   const p = packetById(d.packet);
   const mineToSend = d.fromId === ME_ID;
-  const raining = now >= d.rainAt && now < d.endAt && d.left > 0;
+  const raining = now >= d.rainAt && now < d.endAt;
+  const potEmpty = d.left <= 0;
   const counting = now < d.rainAt;
   const over = !counting && !raining;
   const [falling, setFalling] = useState<Falling[]>([]);
@@ -423,25 +424,36 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
     if (!raining) return;
     const t = window.setInterval(() => {
       const key = ++seq.current;
-      setFalling((f) => [...f.slice(-16), { key, x: 2 + Math.random() * 74, dur: 3.2 + Math.random() * 1.6, size: 58 + Math.random() * 16, rot: -18 + Math.random() * 36, tier: d.packet }]);
-    }, 260);
+      setFalling((f) => [...f.slice(-18), { key, x: 3 + Math.random() * 78, dur: 3.4 + Math.random() * 1.4, size: 44 + Math.random() * 12, rot: -16 + Math.random() * 32, tier: d.packet }]);
+    }, 280);
     return () => window.clearInterval(t);
   }, [raining, d.packet]);
 
+  const outOfGrabs = Boolean(d.maxGrabs && d.grabs >= d.maxGrabs);
+  const inFlight = useRef(0);
   const tap = (f: Falling, e: React.PointerEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (mineToSend) return;
-    // The envelope goes at once (instant feedback); the coins show when the server answers
+    // The envelope bursts at once (instant feedback); the coins show when the server answers
     setFalling((list) => list.filter((x) => x.key !== f.key));
     const r = box.current?.getBoundingClientRect();
     const at = { x: e.clientX - (r?.left ?? 0), y: e.clientY - (r?.top ?? 0) };
-    if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(15);
-    void Promise.resolve(grab(d.id)).then((got) => {
-      if (!got) return;
-      setPops((list) => [...list.slice(-8), { key: f.key, x: at.x, y: at.y, n: got }]);
-    });
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(12);
+    // Out of taps or nothing left: say so instead of doing nothing
+    if (outOfGrabs || potEmpty || d.grabs + inFlight.current >= (d.maxGrabs || 10)) {
+      setPops((list) => [...list.slice(-8), { key: f.key, x: at.x, y: at.y, n: 0 }]);
+      return;
+    }
+    inFlight.current++;
+    void Promise.resolve(grab(d.id))
+      .then((got) => {
+        setPops((list) => [...list.slice(-8), { key: f.key, x: at.x, y: at.y, n: got || 0 }]);
+      })
+      .finally(() => {
+        inFlight.current = Math.max(0, inFlight.current - 1);
+      });
   };
-  const outOfGrabs = Boolean(d.maxGrabs && d.grabs >= d.maxGrabs);
 
   if (over && closed) return null;
   const sender = d.fromId === ME_ID ? "Your" : `${person(d.fromId).name}'s`;
@@ -484,8 +496,9 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
                 "Your red packet is raining. The room is looting it!"
               ) : (
                 <>
-                  {outOfGrabs ? "You've grabbed your share! " : "Tap the red packets! "}You: <span className="text-gold">{d.mine.toLocaleString("en-IN")}</span>
-                  {d.maxGrabs ? ` · ${Math.max(0, d.maxGrabs - d.grabs)} taps left` : ""} · Left {d.left.toLocaleString("en-IN")}
+                  {potEmpty ? "All grabbed! " : outOfGrabs ? "You've grabbed your share! " : "Tap the red packets! "}You: <span className="text-gold">{d.mine.toLocaleString("en-IN")}</span>
+                  {d.maxGrabs ? ` · ${Math.max(0, d.maxGrabs - d.grabs)} taps left` : ""} · {Math.max(0, Math.ceil((d.endAt - now) / 1000))}s
+                  <span className="block text-[10.5px] font-semibold text-cream/60">Coins land in your wallet when the rain ends</span>
                 </>
               )}
             </p>
@@ -495,10 +508,10 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
               key={f.key}
               type="button"
               aria-label="Grab red packet"
-              className="absolute touch-manipulation select-none p-3"
-              style={{ left: `${f.x}%`, touchAction: "manipulation" }}
-              initial={{ top: "-14%", rotate: f.rot }}
-              animate={{ top: "108%", rotate: -f.rot }}
+              className="absolute top-0 touch-manipulation select-none p-2.5 will-change-transform"
+              style={{ left: `${f.x}%`, touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              initial={{ y: -90, rotate: f.rot }}
+              animate={{ y: (box.current?.clientHeight ?? 800) + 40, rotate: -f.rot }}
               transition={{ duration: f.dur, ease: "linear" }}
               onAnimationComplete={() => setFalling((list) => list.filter((x) => x.key !== f.key))}
               onPointerDown={(e) => tap(f, e)}
@@ -517,7 +530,13 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
                 transition={{ duration: 0.9 }}
                 onAnimationComplete={() => setPops((list) => list.filter((x) => x.key !== q.key))}
               >
-                <Coin className="h-4 w-4" /> +{q.n.toLocaleString("en-IN")}
+                {q.n > 0 ? (
+                  <>
+                    <Coin className="h-4 w-4" /> +{q.n.toLocaleString("en-IN")}
+                  </>
+                ) : (
+                  <span className="text-[13px] text-cream">{potEmpty ? "All grabbed" : outOfGrabs ? "No taps left" : "Missed"}</span>
+                )}
               </motion.span>
             ))}
           </AnimatePresence>

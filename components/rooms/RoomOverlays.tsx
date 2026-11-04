@@ -7,6 +7,7 @@ import { useServerPeople } from "@/lib/app/server-rooms";
 import { profileEffects } from "@/lib/app/vip-cosmetics";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { CpBannerPill } from "@/components/market/CpParts";
+import { CardCpPill, useRoomSocial } from "./RoomSocial";
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Ban, Check, ChevronRight, Copy, Eye, Gift, Heart, Lock, LockOpen, MessageCircle, Mic, MicOff, Pencil, Shield, ShieldOff, User, UserMinus, UserPlus, UserX, X } from "lucide-react";
@@ -49,7 +50,7 @@ export function RoomOverlays({ s }: { s: RoomSession }) {
 /* ------------------------------------------------------------------ */
 
 function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) => void }) {
-  const { profile, toggleFollow, openConversation, minimizeRoom, toast, membershipOf, openIntimateSpace, openProfile, push } = useApp();
+  const { profile, toggleFollow, openConversation, minimizeRoom, toast, membershipOf, openIntimateSpace, openProfile, push, session } = useApp();
   const person = usePeople();
   const id = s.cardId;
   const p = id ? person(id) : null;
@@ -57,6 +58,8 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
   // and its VIP fields win; until then (or if it fails) their participants record is used
   // (only an answer from this open counts: a kept one from an earlier open could show a cosmetic they've since taken off)
   const pub = usePublicProfile(id && id !== ME_ID ? id : "");
+  // Their CP and BFF tags from the server (for the CP pill, tag title and BFF strip)
+  useRoomSocial(id);
   const roomFx = useRoomFx(s).fxFor(id ?? "", p?.vip);
   const theirVip = useServerPeople()[id ?? ""]?.vip;
   const cardFx = (id && id !== ME_ID && pub.loadedFor === id && profileEffects(theirVip)) || roomFx;
@@ -101,16 +104,29 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
               <X className="h-4 w-4" />
             </button>
             {/* Their CP's photo on the banner, opening the couple's Love Home */}
-            <CpBannerPill
-              personId={id}
-              variant="card"
-              onOpen={() => {
-                close();
-                minimizeRoom();
-                push({ kind: "love-home", personId: id });
-              }}
-              className="absolute bottom-2 right-0"
-            />
+            {session && (id === ME_ID || id.startsWith("srv-user:")) ? (
+              <CardCpPill
+                personId={id}
+                gender={p.gender}
+                onOpen={() => {
+                  close();
+                  minimizeRoom();
+                  push({ kind: "love-home", personId: id });
+                }}
+                className="absolute bottom-2 right-0"
+              />
+            ) : (
+              <CpBannerPill
+                personId={id}
+                variant="card"
+                onOpen={() => {
+                  close();
+                  minimizeRoom();
+                  push({ kind: "love-home", personId: id });
+                }}
+                className="absolute bottom-2 right-0"
+              />
+            )}
           </div>
           <div className="px-5 pb-5">
             <div className="-mt-7 flex items-end gap-3">
@@ -129,9 +145,17 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
                   <span className={`${vipName(p.vip)} truncate`} style={nameFace(p.nameFont)}>{p.name}</span> {cardFx.badge ? <VipBadge set={cardFx.badge} level={p.vip ?? (cardFx.badge.level || undefined)} size={18} animated /> : null} {role ? <RoleBadge role={role} /> : null}
                 </p>
                 <div className="mt-0.5 flex items-center gap-1">
-                  {/* Backend room users: their level isn't sent by the participants API, so none is shown */}
-                  {p.id.startsWith("srv-user:") ? null : <LevelPill level={p.level} gender={p.gender} size="sm" />}
-                  <CharmBadge personId={id} light showCount />
+                  {/* Backend users: their real level and charm from their profile (loaded when the card opens) */}
+                  {p.id.startsWith("srv-user:") ? (
+                    pub.data?.level ? <LevelPill level={pub.data.level} gender={p.gender} size="sm" /> : <span className="h-4 w-9 animate-pulse rounded bg-black/[0.06]" />
+                  ) : (
+                    <LevelPill level={p.level} gender={p.gender} size="sm" />
+                  )}
+                  {p.id.startsWith("srv-user:") ? (
+                    pub.data ? <CharmBadge personId={id} light showCount points={pub.data.charmPoints ?? 0} /> : null
+                  ) : (
+                    <CharmBadge personId={id} light showCount />
+                  )}
                   <span className={`rounded px-1.5 text-[10px] font-bold ${membership.joined ? "bg-[#fff3e6] text-[#f08a24]" : "bg-[#f1edf4] text-[#a5a3bd] line-through"}`}>Member</span>
                   <span className={`rounded px-1.5 text-[10px] font-bold ${membership.followed ? "bg-[#ffe9ea] text-[#f0505c]" : "bg-[#f1edf4] text-[#a5a3bd] line-through"}`}>Fan</span>
                 </div>
@@ -140,15 +164,16 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
             <button
               type="button"
               onClick={() => {
-                navigator.clipboard?.writeText(p.uid).catch(() => {});
-                toast(`ID ${p.uid} copied`);
+                const uid = pub.data?.publicId ?? p.uid;
+                navigator.clipboard?.writeText(uid).catch(() => {});
+                toast(`ID ${uid} copied`);
               }}
               className="mt-2 flex items-center gap-1 text-[13px] font-bold text-[#8d8796]"
             >
-              ID: {p.uid} <Copy className="h-3.5 w-3.5" aria-hidden />
+              ID: {pub.data?.publicId ?? p.uid} <Copy className="h-3.5 w-3.5" aria-hidden />
             </button>
             <TagTitleChip personId={id} className="mt-1.5 !text-[#7a3fa8]" />
-            <p className="mt-1.5 line-clamp-2 text-[13px] text-[#5b5163]">{p.bio}</p>
+            <p className="mt-1.5 line-clamp-2 text-[13px] text-[#5b5163]">{pub.data?.bio ?? p.bio}</p>
             <TagStrip
               personId={id}
               light

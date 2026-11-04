@@ -24,6 +24,8 @@ export type JGame = {
   id: string;
   roomId: string;
   status: "WAITING" | "PLAYING" | "FINISHED" | "CANCELLED";
+  /** The table code friends join with. */
+  code?: string;
   createdBy: string;
   version: number;
   turnEndsAt: number | null;
@@ -66,6 +68,7 @@ export function readGame(v: unknown): JGame | null {
     id,
     roomId: str(o.roomId) ?? "",
     status: (str(o.status) ?? "WAITING") as JGame["status"],
+    code: str(o.code),
     createdBy: str(o.createdBy) ?? "",
     version: num(o.version),
     turnEndsAt: o.turnEndsAt == null ? null : num(o.turnEndsAt),

@@ -72,7 +72,8 @@ export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onCl
   // Only Sunset Romance, Crystal Palace and Storm Guardian get a server notification
   const big = Boolean(selected.news);
   const sent = () => {
-    if (big) announce({ fromId: ME_ID, toId: to, giftId: gift, count: qty, roomId: s.room.id, message });
+    // Backend rooms: the server announces it to everyone (you included); demo rooms announce here
+    if (big && !s.room.server) announce({ fromId: ME_ID, toId: to, giftId: gift, count: qty, roomId: s.room.id, message });
     setMessage("");
     onClose();
   };
@@ -82,10 +83,10 @@ export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onCl
       // Package gifts are free: they come out of your Bag (the server's Bag in backend rooms)
       if (have < qty) return toast(`You only have ${have} ${selected.name} in your package`, "error");
       if (!backend && !takePackage(gift, qty)) return toast(`You only have ${have} ${selected.name} in your package`, "error");
-      s.sendGift(gift, to, qty, true);
+      s.sendGift(gift, to, qty, true, 1, message);
       return sent();
     }
-    if (s.sendGift(gift, to, qty)) sent();
+    if (s.sendGift(gift, to, qty, false, 1, message)) sent();
   };
 
   return (

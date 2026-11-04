@@ -13,6 +13,9 @@ import { useApp } from "@/lib/app/store";
 import { useParivar } from "@/lib/app/parivar-store";
 import { PARIVAR_ENABLED } from "@/lib/app/parivar";
 import { ParivarArt } from "@/components/art/ParivarArt";
+import { DiscoverMoments } from "@/components/social/DiscoverMoments";
+import { SarpanchAnnouncement } from "@/components/sarpanch/Sarpanch";
+import { DiscoverHub } from "./DiscoverHub";
 import { LevelPill, VipBadgeFor } from "@/components/profile/IdTags";
 import { nameTone } from "@/lib/app/fonts";
 
@@ -120,29 +123,10 @@ export function DiscoverScreen() {
         </div>
       ) : (
         <>
-          {/* Parivar */}
-          <section className="mt-5 px-4">
-            <button
-              type="button"
-              onClick={() => (PARIVAR_ENABLED ? push(mineParivar ? { kind: "parivar", id: mineParivar.id } : { kind: "parivar-list" }) : toast("Parivar is coming soon. Get your people ready! 🪔"))}
-              className="relative flex w-full items-center gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-[#5a1a28] via-[#3a1420] to-[#1c1b22] p-3 pr-4 text-left ring-1 ring-gold/30"
-            >
-              <span className="block h-[68px] w-[68px] shrink-0 overflow-hidden rounded-2xl ring-1 ring-gold/30">
-                <ParivarArt />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-display text-[19px] font-extrabold text-cream">Parivar</span>
-                <span className="block text-[12.5px] leading-snug text-cream/70">
-                  {!PARIVAR_ENABLED ? "Families with a Mukhiya, levels, a tag on your name and your own chat." : mineParivar ? `${mineParivar.name} · open your Parivar` : `${parivars.length} Parivars · join one or start your own`}
-                </span>
-              </span>
-              {PARIVAR_ENABLED ? (
-                <span className="rounded-full bg-gold px-3 py-1.5 text-[12px] font-bold text-ink">{mineParivar ? "Open" : "Explore"}</span>
-              ) : (
-                <span className="shrink-0 rounded-full bg-cream/10 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-wide text-gold ring-1 ring-gold/40">Coming soon</span>
-              )}
-            </button>
-          </section>
+          <DiscoverHub />
+
+          <SarpanchAnnouncement />
+          <DiscoverMoments />
 
           {/* Special events */}
           <section className="mt-6" aria-labelledby="events-h">

@@ -145,9 +145,14 @@ function GameModes() {
               className="relative block aspect-square w-full overflow-hidden rounded-2xl text-left ring-1 ring-line"
               aria-label={`${g.name}, ${g.players}`}
             >
-              <GameArt id={g.id} />
+              <span className={g.soon ? "block h-full w-full opacity-60 grayscale-[60%]" : "block h-full w-full"}>
+                <GameArt id={g.id} />
+              </span>
               <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent" />
-              {g.tag ? (
+              {g.soon ? (
+                <span className="absolute right-2 top-2 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-gold ring-1 ring-gold/40">Soon</span>
+              ) : null}
+              {g.tag && !g.soon ? (
                 <Pill tone={g.tag === "NEW" ? "new" : "live"} className="absolute left-2 top-2 !text-[9px]">
                   {g.tag}
                 </Pill>

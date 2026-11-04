@@ -10,6 +10,7 @@ import { useMarket } from "@/lib/app/market-store";
 import { usePeople } from "@/lib/app/people";
 import { useApp } from "@/lib/app/store";
 import { nameFace, nameTone } from "@/lib/app/fonts";
+import { ServerVisitorsScreen } from "./ServerVisitors";
 
 /**
  * Who opened your profile, and whose profiles you opened. Seeing who visited
@@ -17,6 +18,13 @@ import { nameFace, nameTone } from "@/lib/app/fonts";
  * you visited are always free.
  */
 export function VisitorsScreen() {
+  const { session } = useApp();
+  // Signed in: visitors, plans and coins are the server's
+  if (session) return <ServerVisitorsScreen />;
+  return <LocalVisitorsScreen />;
+}
+
+function LocalVisitorsScreen() {
   const { pop, openProfile, coins, setSheet } = useApp();
   const { visitors, visited, visitorsSeenAt, markVisitorsSeen, now, visitorLogOn, visitorLogUntil, buyVisitorLog } = useMarket();
   const person = usePeople();

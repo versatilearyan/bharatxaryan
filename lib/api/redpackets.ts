@@ -54,7 +54,7 @@ export function readRedPacket(raw: unknown): ServerRedPacket | null {
     rainAt: num(d.rainAt),
     endAt: num(d.endAt),
     settled: d.settled === true,
-    maxGrabs: num(d.maxGrabs) || 3,
+    maxGrabs: num(d.maxGrabs) || 10,
     serverTime: num(d.serverTime) || Date.now(),
     event: ev,
     grabberId: str(d.grabberId),
@@ -79,7 +79,7 @@ export async function getCurrentRedPacket(roomId: string) {
 
 export async function grabRedPacket(packetId: string): Promise<GrabResult> {
   const d = obj(await api<unknown>(`/api/v1/red-packets/${encodeURIComponent(packetId)}/grab`, { ...opts, method: "POST" }));
-  return { got: num(d?.got), mine: num(d?.mine), myGrabs: num(d?.myGrabs), maxGrabs: num(d?.maxGrabs) || 3, left: num(d?.left) };
+  return { got: num(d?.got), mine: num(d?.mine), myGrabs: num(d?.myGrabs), maxGrabs: num(d?.maxGrabs) || 10, left: num(d?.left) };
 }
 
 export const roomRedPacketTopic = (roomId: string) => `/topic/voice-rooms/${encodeURIComponent(roomId)}/redpacket`;

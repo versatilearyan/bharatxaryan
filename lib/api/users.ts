@@ -56,6 +56,8 @@ export type VipProfileFields = {
   entryAnimationUrl: string | null;
   /** Spend rewards this person wears (frame, bubble, entry, profile). Shown whether or not they're VIP. */
   rewardEffects?: RewardEffects;
+  /** Gift-set pieces they wear (e.g. the Storm Guardian frame and profile page effect): piece → set id. */
+  giftSetWear?: Partial<Record<"frame" | "bubble" | "entry" | "page", string>>;
 };
 
 /** GET /users/me and the answer to PATCH /users/me. */
@@ -97,6 +99,11 @@ export type PublicUserProfile = Partial<VipProfileFields> & {
   avatarSkinTone?: string;
   avatarOutfit?: string;
   avatarHair?: string;
+  /** Charm points and Active Level, exactly as the server has them. */
+  charmPoints?: number;
+  level?: number;
+  /** The 7-digit ID people see and search by. */
+  publicId?: string;
 };
 
 /** PATCH /users/me. Every field is optional; send only what changed. No image fields. */
@@ -122,7 +129,7 @@ export const FAVORITE_GAMES_MAX = 4;
 export const MIN_AGE_YEARS = 18;
 
 /** GET /users/me/stats. Server-controlled: the app only displays these. */
-export type UserStats = { level: number; expPoints: number; charmPoints: number; vipPoints: number };
+export type UserStats = { level: number; expPoints: number; charmPoints: number; vipPoints: number; expInLevel: number; expToNext: number };
 
 /* ---------- Reading ---------- */
 
@@ -182,7 +189,16 @@ export function readVip(d: Record<string, unknown>): VipProfileFields {
     bubbleUrl: link(d.bubbleUrl),
     entryAnimationUrl: link(d.entryAnimationUrl),
     rewardEffects: readRewardEffects(d.rewardEffects),
+    giftSetWear: readGiftSetWear(d.giftSetWear),
   };
+}
+
+function readGiftSetWear(v: unknown): VipProfileFields["giftSetWear"] {
+  if (!v || typeof v !== "object") return undefined;
+  const o = v as Record<string, unknown>;
+  const out: NonNullable<VipProfileFields["giftSetWear"]> = {};
+  for (const k of ["frame", "bubble", "entry", "page"] as const) if (typeof o[k] === "string" && o[k]) out[k] = o[k] as string;
+  return Object.keys(out).length ? out : undefined;
 }
 
 function readProfile(r: unknown): UserProfileResponse {
@@ -217,6 +233,9 @@ function readPublicProfile(r: unknown): PublicUserProfile {
     favoriteGames: readGames(d.favoriteGames),
     avatarUrl: httpsUrl(d.avatarUrl),
     bannerUrl: httpsUrl(d.bannerUrl),
+    charmPoints: typeof d.charmPoints === "number" && Number.isFinite(d.charmPoints) ? d.charmPoints : undefined,
+    level: typeof d.level === "number" && Number.isFinite(d.level) ? d.level : undefined,
+    publicId: d.publicId == null ? undefined : String(d.publicId),
     ...readLook(d),
     ...readVip(d),
   };
@@ -290,7 +309,7 @@ export async function updateMyProfile(payload: UpdateProfileRequest): Promise<Us
 
 export async function getMyStats(): Promise<UserStats> {
   const d = ((await api<unknown>("/api/v1/users/me/stats", { auth: true })) ?? {}) as Record<string, unknown>;
-  return { level: num(d.level), expPoints: num(d.expPoints), charmPoints: num(d.charmPoints), vipPoints: num(d.vipPoints) };
+  return { level: num(d.level), expPoints: num(d.expPoints), charmPoints: num(d.charmPoints), vipPoints: num(d.vipPoints), expInLevel: num(d.expInLevel), expToNext: num(d.expToNext) };
 }
 
 /** Backend gender → the app's ♂/♀ icon (none for Other / Prefer not to say). */

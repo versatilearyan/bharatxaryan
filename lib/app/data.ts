@@ -38,12 +38,12 @@ export const ROOMS: Room[] = [];
 export const GAMES: Game[] = [
   { id: "chess", name: "Chess", players: "2 players", online: 4210, blurb: "Classic chess with voice. Challenge a friend or someone in your room." },
   { id: "ludo", name: "Ludo", players: "2–4 players", online: 18930, tag: "HOT", blurb: "Roll, race and cut your friends' pieces while you chat." },
-  { id: "micgrab", name: "Mic Grab", players: "Whole room", online: 2780, tag: "NEW", blurb: "A song starts. First to grab the mic and sing the next line wins." },
-  { id: "carrom", name: "Carrom", players: "2–4 players", online: 6420, tag: "NEW", blurb: "Flick the striker, pocket the queen, cover it like a pro." },
-  { id: "pool", name: "Pool", players: "2 players", online: 3390, blurb: "8-ball with a clean cue and friendly trash talk." },
-  { id: "draw", name: "Draw & Guess", players: "3–8 players", online: 5120, blurb: "One draws, everyone guesses. Terrible art encouraged." },
-  { id: "antakshari", name: "Antakshari", players: "Whole room", online: 7650, blurb: "Sing a song that starts with the last letter. Teams welcome." },
-  { id: "cards", name: "Card Night", players: "2–6 players", online: 4870, blurb: "Rummy-style rounds with demo chips only." },
+  { id: "micgrab", soon: true, name: "Mic Grab", players: "Whole room", online: 2780, tag: "NEW", blurb: "A song starts. First to grab the mic and sing the next line wins." },
+  { id: "carrom", soon: true, name: "Carrom", players: "2–4 players", online: 6420, tag: "NEW", blurb: "Flick the striker, pocket the queen, cover it like a pro." },
+  { id: "pool", soon: true, name: "Pool", players: "2 players", online: 3390, blurb: "8-ball with a clean cue and friendly trash talk." },
+  { id: "draw", soon: true, name: "Draw & Guess", players: "3–8 players", online: 5120, blurb: "One draws, everyone guesses. Terrible art encouraged." },
+  { id: "antakshari", soon: true, name: "Antakshari", players: "Whole room", online: 7650, blurb: "Sing a song that starts with the last letter. Teams welcome." },
+  { id: "cards", soon: true, name: "Card Night", players: "2–6 players", online: 4870, blurb: "Rummy-style rounds with demo chips only." },
 ];
 
 export const gameById = (id: string) => GAMES.find((g) => g.id === id);

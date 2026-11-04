@@ -55,7 +55,9 @@ export type Screen =
   | { kind: "chess" }
   /** personId: only that person's Moments ("me" for yours). */
   | { kind: "moments"; personId?: string }
-  | { kind: "jackaroo"; roomId?: string };
+  | { kind: "jackaroo"; roomId?: string }
+  | { kind: "sarpanch" }
+  | { kind: "nearby" };
 
 export type Sheet =
   | { kind: "person"; personId: string }

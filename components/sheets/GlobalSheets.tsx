@@ -33,6 +33,9 @@ import type { GameId } from "@/lib/app/types";
 import { EXP_SOURCES, GAME_WIN_EXP } from "@/lib/app/progress";
 import { LevelPill } from "@/components/profile/IdTags";
 import { FriendsPanel } from "@/components/social/FriendsPanel";
+import { useJoinGameByCode } from "@/components/social/Invites";
+import { ServerTasks } from "./ServerTasks";
+import { looksLikeGameCode } from "@/lib/api/invites";
 
 /** App-level bottom sheets opened from Home, Discover, Profile and rooms. */
 export function GlobalSheets() {
@@ -161,7 +164,13 @@ function NotificationsSheet({ open, onClose }: { open: boolean; onClose: () => v
 }
 
 function TasksSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { claimed, claimTask } = useApp();
+  const { claimed, claimTask, session } = useApp();
+  if (session)
+    return (
+      <BottomSheet open={open} onClose={onClose} title="Daily tasks">
+        <ServerTasks open={open} />
+      </BottomSheet>
+    );
   return (
     <BottomSheet open={open} onClose={onClose} title="Daily tasks">
       <ul className="space-y-2 px-5 pb-4">
@@ -377,35 +386,9 @@ export function WalletError({ message, onRetry }: { message: string; onRetry: ()
 }
 
 function GameSheet({ gameId, onClose }: { gameId: GameId | null; onClose: () => void }) {
-  const { createRoom, profile, addExp, expToday, toast, push } = useApp();
-  const [playing, setPlaying] = useState(false);
-  /** A quick demo match: about 3 seconds, a win earns 20 EXP (up to the daily cap). */
-  const quickMatch = () => {
-    if (playing || !g) return;
-    setPlaying(true);
-    window.setTimeout(() => {
-      setPlaying(false);
-      if (Math.random() < 0.6) {
-        const xp = addExp(GAME_WIN_EXP, "game");
-        toast(xp ? `You won the ${g.name} match! +${xp} EXP` : `You won! Today's game EXP cap (${EXP_SOURCES.game.cap}) is reached.`, "gold");
-      } else toast(`You lost this ${g.name} match. Wins earn ${GAME_WIN_EXP} EXP.`);
-    }, 2800);
-  };
+  const { expToday, push } = useApp();
   const g = gameId ? gameById(gameId) : undefined;
-  const start = () => {
-    if (!g) return;
-    // A game table is a temporary voice room that closes when you leave
-    onClose();
-    createRoom({
-      name: `${profile.name}'s ${g.name} table`,
-      type: "voice",
-      cover: { theme: "ember", motif: "lanterns" },
-      isPrivate: false,
-      seats: g.id === "chess" || g.id === "pool" ? 4 : 8,
-      category: CATEGORIES.includes("Gaming") ? "Gaming" : "Chai Adda",
-      permanent: false,
-    });
-  };
+
   return (
     <BottomSheet open={Boolean(g)} onClose={onClose}>
       {g ? (
@@ -422,10 +405,17 @@ function GameSheet({ gameId, onClose }: { gameId: GameId | null; onClose: () => 
             <span>{g.players}</span>
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-speak" />
-              {formatCount(g.online)} playing (sample)
+              {g.soon ? "Coming soon" : `${formatCount(g.online)} playing`}
             </span>
           </p>
-          {g.id === "chess" ? (
+          {g.soon ? (
+            <>
+              <Button size="lg" className="mt-5 w-full" disabled>
+                Coming soon
+              </Button>
+              <p className="mt-2 text-center text-[11px] text-muted">We&apos;re building {g.name}. It will be playable in an update soon.</p>
+            </>
+          ) : g.id === "chess" ? (
             <>
               <Button
                 size="lg"
@@ -436,21 +426,28 @@ function GameSheet({ gameId, onClose }: { gameId: GameId | null; onClose: () => 
                   push({ kind: "chess" });
                 }}
               >
-                Play online chess
+                Play chess
               </Button>
-              <p className="mt-1.5 text-center text-[11px] text-muted">A real game against another player. No EXP yet.</p>
+              <p className="mt-1.5 text-center text-[11px] text-muted">Watch live chess rooms, join the queue, or play a quick match.</p>
             </>
-          ) : null}
-          <Button size="lg" className={`${g.id === "chess" ? "mt-3" : "mt-5"} w-full`} onClick={quickMatch} disabled={playing}>
-            {playing ? "Playing a quick match…" : "Quick match (demo)"}
-          </Button>
-          <p className="mt-1.5 text-center text-[11px] text-muted">
-            Wins earn {GAME_WIN_EXP} EXP · today {expToday("game")}/{EXP_SOURCES.game.cap}
-          </p>
-          <Button size="lg" variant="soft" className="mt-3 w-full" onClick={start}>
-            Open a {g.name} room
-          </Button>
-          {g.id === "chess" ? null : <p className="mt-2 text-center text-[11px] text-muted">Game boards arrive in a later version. For now you get a voice room to play together.</p>}
+          ) : (
+            <>
+              <Button
+                size="lg"
+                variant="gold"
+                className="mt-5 w-full"
+                onClick={() => {
+                  onClose();
+                  push({ kind: "jackaroo" });
+                }}
+              >
+                Play with friends
+              </Button>
+              <p className="mt-1.5 text-center text-[11px] text-muted">
+                Real multiplayer board game. Share the game code with friends. Wins earn {GAME_WIN_EXP} EXP · today {expToday("game")}/{EXP_SOURCES.game.cap}
+              </p>
+            </>
+          )}
         </div>
       ) : null}
     </BottomSheet>
@@ -599,6 +596,7 @@ function FindUserSheet({ open, onClose }: { open: boolean; onClose: () => void }
 
 function JoinRoomSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { openRoom } = useApp();
+  const joinGame = useJoinGameByCode();
   const { addCreated, myId } = useServerRooms();
   const [q, setQ] = useState("");
   const search = useIdSearch();
@@ -618,7 +616,17 @@ function JoinRoomSheet({ open, onClose }: { open: boolean; onClose: () => void }
     <BottomSheet open={open} onClose={close} title="Join by room ID">
       <div className="px-5 pb-6">
         <p className="mb-3 text-[12.5px] text-muted">Every room has a 7-digit ID under its name. Enter it (or the room&apos;s name) to jump straight in.</p>
-        <CodeField value={q} onChange={setQ} onSubmit={() => search.run(q)} label="Room ID or name" placeholder="e.g. 8782798" />
+        <CodeField
+          value={q}
+          onChange={setQ}
+          onSubmit={() => {
+            // A 6-character game code (letters and digits) opens that game table
+            if (looksLikeGameCode(q)) void joinGame(q).then((ok) => ok && close());
+            else search.run(q);
+          }}
+          label="Room ID, name or game code"
+          placeholder="e.g. 8782798 or K7QX2P"
+        />
         <div className="mt-4 space-y-2" aria-live="polite">
           {search.state?.loading ? (
             <p className="py-4 text-center text-[13px] text-muted">Searching…</p>

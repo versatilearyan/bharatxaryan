@@ -37,6 +37,12 @@ export type ChatMessage = {
   /** ms since epoch from createdAt, for ordering; NaN when unknown. */
   at: number;
   read?: boolean;
+  /** SYSTEM messages from Sarpanch (the official account): a title and an action button. */
+  title?: string;
+  actionLabel?: string;
+  actionUrl?: string;
+  category?: string;
+  official?: boolean;
 };
 
 export type ChatConversation = {
@@ -64,6 +70,17 @@ export type ChatConversation = {
   otherOnline?: boolean;
   otherPublicId?: string;
   lastSenderId?: string;
+  /** PENDING: a message request waiting for your answer (shown under Requests). */
+  requestState?: "ACCEPTED" | "PENDING";
+  /** PENDING / DECLINED: your request to them is waiting; you can send 1 message until they accept. */
+  theirRequestState?: "ACCEPTED" | "PENDING" | "DECLINED";
+  /** The read-only Sarpanch chat, pinned on top. */
+  systemConversation?: boolean;
+  pinned?: boolean;
+  /** The other person is the official account (verified badge). */
+  official?: boolean;
+  /** The public room the other person is in now. */
+  otherRoom?: { roomId: string; name: string; game?: string };
 };
 
 export type ChatPage = { messages: ChatMessage[]; page: number; last: boolean };
@@ -111,6 +128,11 @@ export function readMessage(raw: unknown, fallbackConversationId?: string): Chat
     createdAt,
     at: createdAt ? Date.parse(createdAt) : NaN,
     read,
+    title: str(d.title),
+    actionLabel: str(d.actionLabel),
+    actionUrl: str(d.actionUrl),
+    category: str(d.category),
+    official: d.official === true || type === "SYSTEM",
   };
 }
 
@@ -177,7 +199,7 @@ export function readConversation(raw: unknown, myId?: string): ChatConversation 
     otherUserId,
     otherName: first(d, ["otherUserName", "otherName", "recipientName", "otherFullName"]) ?? (other ? first(other, ["fullName", "name", "displayName"]) : undefined),
     otherAvatarUrl: first(d, ["otherUserAvatarUrl", "otherAvatarUrl"]) ?? (other ? first(other, ["avatarUrl", "profileImageUrl"]) : undefined),
-    lastMessage: last ? (last.type === "IMAGE" ? "📷 Photo" : last.text) : first(d, ["lastMessage", "lastMessagePreview", "lastMessageText"]),
+    lastMessage: last ? (last.type === "IMAGE" ? "📷 Photo" : last.type === "SYSTEM" && last.title ? `${last.title}: ${last.text ?? ""}` : last.text) : first(d, ["lastMessage", "lastMessagePreview", "lastMessageText"]),
     lastMessageType: last?.type ?? first(d, ["lastMessageType"])?.toUpperCase(),
     lastAt: last?.createdAt ?? first(d, ["lastMessageAt", "lastMessageTime", "updatedAt"]),
     unreadCount: unread,
@@ -190,7 +212,42 @@ export function readConversation(raw: unknown, myId?: string): ChatConversation 
     otherOnline: d.otherOnline === true,
     otherPublicId: str(d.otherPublicId),
     lastSenderId: str(d.lastSenderId),
+    requestState: d.requestState === "PENDING" ? "PENDING" : "ACCEPTED",
+    theirRequestState: d.theirRequestState === "PENDING" || d.theirRequestState === "DECLINED" ? d.theirRequestState : "ACCEPTED",
+    systemConversation: d.systemConversation === true,
+    pinned: d.pinned === true,
+    official: d.official === true,
+    otherRoom: (() => {
+      const r = obj(d.otherRoom);
+      const rid = str(r?.roomId);
+      return r && rid ? { roomId: rid, name: str(r.name) ?? "a room", game: str(r.game) } : undefined;
+    })(),
   };
+}
+
+/** Accept a message request: it moves to your chats. */
+export async function acceptChatRequest(conversationId: string) {
+  await api<unknown>(`/api/v1/chat/conversations/${encodeURIComponent(conversationId)}/accept`, { method: "POST", auth: true, forbiddenIsAccess: true });
+}
+
+/** Delete a message request. */
+export async function declineChatRequest(conversationId: string) {
+  await api<unknown>(`/api/v1/chat/conversations/${encodeURIComponent(conversationId)}/decline`, { method: "POST", auth: true, forbiddenIsAccess: true });
+}
+
+export type ActivePerson = { userId: string; name: string; avatarUrl?: string; room?: { roomId: string; name: string; game?: string } };
+
+/** People you chat with or follow who are online now (and show it), with the room they're in. */
+export async function getActiveNow(): Promise<ActivePerson[]> {
+  const raw = await api<unknown>("/api/v1/friends/active?limit=30", { auth: true, forbiddenIsAccess: true });
+  return (Array.isArray(raw) ? raw : []).flatMap((x) => {
+    const o = obj(x);
+    const userId = str(o?.userId);
+    if (!o || !userId) return [];
+    const r = obj(o.room);
+    const rid = str(r?.roomId);
+    return [{ userId, name: str(o.name) ?? "Someone", avatarUrl: str(o.avatarUrl), room: r && rid ? { roomId: rid, name: str(r.name) ?? "a room", game: str(r.game) } : undefined }];
+  });
 }
 
 const conv = (id: string) => `/api/v1/chat/conversations/${encodeURIComponent(id)}`;
@@ -252,11 +309,41 @@ export async function sendImageMessage(conversationId: string, file: File, myId?
 export async function fetchChatImage(conversationId: string, messageId: string, signal?: AbortSignal): Promise<Blob> {
   const t = readToken();
   if (!t) throw new ApiError("Your session has ended. Please sign in again.", 401, "unauthorized");
-  const res = await fetch(`${API_BASE_URL}${conv(conversationId)}/messages/${encodeURIComponent(messageId)}/image`, { headers: { ...authHeader(t), "ngrok-skip-browser-warning": "true" }, cache: "no-store", signal });
+  const res = await fetch(`${API_BASE_URL}${conv(conversationId)}/messages/${encodeURIComponent(messageId)}/image`, { headers: { ...authHeader(t), "ngrok-skip-browser-warning": "true" }, signal });
   if (!res.ok) throw new ApiError(res.status === 404 ? "This image isn't available." : res.status === 403 ? "You can't see this image." : "Couldn't load the image.", res.status, res.status === 401 ? "unauthorized" : "http");
   const blob = await res.blob();
   if (!blob.type.startsWith("image/")) throw new ApiError("Couldn't load the image.", res.status, "http");
   return blob;
+}
+
+/* ---- Photo cache: downloaded once per app session; your own sends never download again ---- */
+
+const photoCache = new Map<string, Promise<Blob>>();
+const PHOTO_CACHE_MAX = 150;
+
+/** A chat photo, from the cache or the server (one automatic retry). */
+export function loadChatPhoto(conversationId: string, messageId: string): Promise<Blob> {
+  const key = `${conversationId}/${messageId}`;
+  const hit = photoCache.get(key);
+  if (hit) {
+    photoCache.delete(key);
+    photoCache.set(key, hit);
+    return hit;
+  }
+  const p = fetchChatImage(conversationId, messageId).catch(async (e) => {
+    if (e instanceof ApiError && (e.status === 403 || e.status === 404 || e.status === 401)) throw e;
+    await new Promise((r) => setTimeout(r, 800));
+    return fetchChatImage(conversationId, messageId);
+  });
+  p.catch(() => photoCache.delete(key));
+  photoCache.set(key, p);
+  while (photoCache.size > PHOTO_CACHE_MAX) photoCache.delete(photoCache.keys().next().value as string);
+  return p;
+}
+
+/** The photo you just sent: shown from your own file, never downloaded. */
+export function rememberChatPhoto(conversationId: string, messageId: string, file: Blob) {
+  photoCache.set(`${conversationId}/${messageId}`, Promise.resolve(file));
 }
 
 export type ReadResult = { conversationId: string; markedAsRead: boolean; updatedCount: number };
@@ -278,6 +365,8 @@ export function chatErrorText(e: unknown, action: "load" | "send" | "image" | "o
   if (e instanceof ApiError) {
     if (e.code === "network" || e.code === "timeout" || e.code === "unauthorized" || e.code === "config" || e.code === "ngrok_interstitial") return e.message;
     if (e.status === 413) return "That image is too big. Pick one under 5 MB.";
+    // A message request that's still waiting, a block, …: the server's own words
+    if (e.status === 403 && e.message && !/session/i.test(e.message)) return e.message;
     if (e.status === 403) return action === "open" ? "You can't message this person." : "You're not part of this chat.";
     if (e.status === 404) return action === "open" ? "This person couldn't be found." : "This chat doesn't exist any more.";
     if (e.status === 429) return "You're sending too fast. Wait a moment.";

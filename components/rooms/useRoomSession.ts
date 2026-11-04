@@ -1159,7 +1159,7 @@ export function useRoomSession(room: Room) {
    * (1 for a normal send). Coin sends offer the Combo button afterwards.
    */
   const sendGift = useCallback(
-    (giftId: GiftId, toId: string, count: number, free = false, combo = 1): boolean => {
+    (giftId: GiftId, toId: string, count: number, free = false, combo = 1, message?: string): boolean => {
       if (!GIFTS_LIVE) {
         toast(GIFTS_SOON_TEXT);
         return false;
@@ -1178,7 +1178,7 @@ export function useRoomSession(room: Room) {
           clearCombo();
           return false;
         }
-        sendRoomGift(serverId, giftId, uid, count, free)
+        sendRoomGift(serverId, giftId, uid, count, free, combo === 1 ? message : undefined)
           .then((ev) => {
             showServerGift(ev, combo);
             if (free) {
