@@ -124,13 +124,13 @@ export function ChessHub() {
 
       {/* Hero */}
       <div className="relative mx-4 mt-1 overflow-hidden rounded-3xl bg-gradient-to-br from-[#5a1a28] via-[#3a1420] to-[#1c1b22] p-4 ring-1 ring-gold/30">
-        <div className="absolute -right-4 -top-1 flex gap-0.5 opacity-90">
+        <div className="absolute right-3 top-2 flex gap-0.5 opacity-90">
           {["wk", "bq", "wn"].map((k, i) => (
             <motion.img
               key={k}
               src={`/chess/${k}.svg`}
               alt=""
-              className="h-16 w-16 drop-shadow-[0_6px_14px_rgba(0,0,0,0.6)]"
+              className="h-12 w-12 drop-shadow-[0_6px_14px_rgba(0,0,0,0.6)]"
               animate={{ y: [0, -6, 0] }}
               transition={{ duration: 2.6, repeat: Infinity, delay: i * 0.35, ease: "easeInOut" }}
             />
