@@ -51,7 +51,7 @@ const THEMES = ["dusk", "rose", "night", "ember", "gold", "monsoon"] as const;
 /** A titled card on the profile; the header opens its page. */
 function Panel({ title, meta, onOpen, children }: { title: string; meta?: ReactNode; onOpen: () => void; children: ReactNode }) {
   return (
-    <section className="mx-4 mt-3 rounded-2xl bg-surface ring-1 ring-line">
+    <section className="mx-4 mt-3 rounded-2xl bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 ring-1 ring-gold/15">
       <button type="button" onClick={onOpen} className="flex w-full items-center gap-2 px-4 pt-3.5 text-left">
         <h2 className="font-display text-[16px] font-bold text-cream">{title}</h2>
         {meta ? <span className="text-[12px] font-semibold text-muted">{meta}</span> : null}
@@ -217,7 +217,7 @@ export function UserProfileBody({ personId }: { personId: string }) {
   return (
     <div className="pb-2">
       {/* Numbers */}
-      <button type="button" onClick={() => push({ kind: "stats", personId })} className="mx-4 mt-4 grid w-[calc(100%-2rem)] grid-cols-4 rounded-2xl bg-surface py-3 ring-1 ring-line" aria-label="Open stats">
+      <button type="button" onClick={() => push({ kind: "stats", personId })} className="mx-4 mt-4 grid w-[calc(100%-2rem)] grid-cols-4 rounded-2xl py-3 bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 ring-1 ring-gold/15" aria-label="Open stats">
         {[
           ["Charm", mine ? stat(myStats.data?.charmPoints) : formatCount(charmOf(personId).points)],
           ["Guard", formatCount(guardTotal)],
@@ -233,7 +233,7 @@ export function UserProfileBody({ personId }: { personId: string }) {
 
       {/* Your level */}
       {mine ? (
-        <button type="button" onClick={() => push({ kind: "stats", personId })} className="mx-4 mt-3 block w-[calc(100%-2rem)] rounded-2xl bg-surface px-4 py-3 text-left ring-1 ring-line">
+        <button type="button" onClick={() => push({ kind: "stats", personId })} className="mx-4 mt-3 block w-[calc(100%-2rem)] rounded-2xl px-4 py-3 text-left bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 ring-1 ring-gold/15">
           <span className="flex items-center justify-between text-[12.5px]">
             <span className="font-semibold text-cream">Level {myStats.data ? myStats.data.level : stat(undefined)}</span>
             <span className="text-muted">{myStats.data && myStats.data.expToNext ? `${formatCount(myStats.data.expInLevel)} / ${formatCount(myStats.data.expToNext)} EXP` : `${stat(myStats.data?.expPoints)} EXP`}</span>
@@ -690,7 +690,7 @@ export function FollowCounts({ personId, following }: { personId: string; follow
   }, [uid, following]);
   if (!uid) return null;
   return (
-    <div className="mx-4 mt-3 grid grid-cols-3 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+    <div className="mx-4 mt-3 grid grid-cols-3 overflow-hidden rounded-2xl bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 ring-1 ring-gold/15">
       {(
         [
           ["Friends", st?.friendsCount],
@@ -703,7 +703,7 @@ export function FollowCounts({ personId, following }: { personId: string; follow
           <span className="text-[11px] text-muted">{label}</span>
         </div>
       ))}
-      {st?.friends ? <p className="col-span-3 border-t border-line py-1.5 text-center text-[11.5px] font-bold text-speak">🤝 You're friends</p> : st?.followsYou ? <p className="col-span-3 border-t border-line py-1.5 text-center text-[11.5px] font-semibold text-muted">Follows you</p> : null}
+      {st?.friends ? <p className="col-span-3 border-t border-gold/10 py-1.5 text-center text-[11.5px] font-bold text-speak">🤝 You're friends</p> : st?.followsYou ? <p className="col-span-3 border-t border-gold/10 py-1.5 text-center text-[11.5px] font-semibold text-muted">Follows you</p> : null}
     </div>
   );
 }
@@ -722,7 +722,7 @@ export function UserProfileScreen({ personId }: { personId: string }) {
   const [gift, setGift] = useState(false);
   const pub = usePublicProfile(personId);
   return (
-    <div className="relative flex h-full flex-col bg-ink">
+    <div className="relative flex h-full flex-col bg-[radial-gradient(130%_60%_at_50%_35%,#3a1424_0%,#221220_45%,#141018_100%)]">
       <div className="app-scroll min-h-0 flex-1 pb-4">
         <ProfileHero
           personId={personId}
@@ -746,28 +746,18 @@ export function UserProfileScreen({ personId }: { personId: string }) {
           </div>
         ) : null}
         {personId.startsWith("srv-user:") ? <FollowCounts personId={personId} following={following} /> : null}
-        {personId.startsWith("srv-user:") ? (
-          <div className="mx-4 mt-2.5 grid grid-cols-2 gap-2.5">
-            <button type="button" onClick={() => push({ kind: "moments", personId })} className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-[#3b2a6b] to-[#1b1530] py-3 text-[13px] font-bold text-cream ring-1 ring-[#8f74ff]/40">
-              <span aria-hidden>📸</span> Moments
-            </button>
-            <button type="button" onClick={() => push({ kind: "love-home", personId })} className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-[#6b1f3d] to-[#2a0d19] py-3 text-[13px] font-bold text-cream ring-1 ring-[#ff7fa8]/40">
-              <span aria-hidden>💍</span> CP space
-            </button>
-          </div>
-        ) : null}
         <UserProfileBody personId={personId} />
       </div>
-      <div className="pb-safe flex gap-2.5 border-t border-line bg-ink-2 px-4 py-3">
+      <div className="pb-safe flex gap-2.5 border-t border-gold/15 bg-gradient-to-t from-[#1b1020] to-[#24131f] px-4 py-3">
         <button
           type="button"
           onClick={() => toggleFollow(personId)}
-          className={`flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full text-[14px] font-bold ${following ? "bg-cream/10 text-cream" : "bg-coral text-white"}`}
+          className={`flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full text-[14px] font-bold ${following ? "bg-cream/10 text-cream ring-1 ring-gold/20" : "bg-gradient-to-r from-coral to-gold text-white shadow-[0_8px_24px_-10px_rgba(244,81,91,0.8)]"}`}
         >
           {following ? <Check className="h-4 w-4" aria-hidden /> : <UserPlus className="h-4 w-4" aria-hidden />}
           {following ? "Following" : "Follow"}
         </button>
-        <button type="button" onClick={() => openConversation(personId)} aria-label="Message" className="grid h-11 w-11 place-items-center rounded-full bg-surface text-cream ring-1 ring-line">
+        <button type="button" onClick={() => openConversation(personId)} aria-label="Message" className="grid h-11 w-11 place-items-center rounded-full bg-[#2c1622] text-cream ring-1 ring-gold/25">
           <MessageCircle className="h-5 w-5" />
         </button>
         <button type="button" onClick={() => setGift(true)} aria-label="Send a gift" className="grid h-11 w-11 place-items-center rounded-full bg-gold text-ink">
@@ -882,7 +872,7 @@ export function GuardScreen({ personId }: { personId: string }) {
       </section>
 
       <h2 className="mx-4 mt-6 font-display text-[17px] font-bold text-cream">Guardians</h2>
-      <ol className="mx-4 mt-2 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+      <ol className="mx-4 mt-2 overflow-hidden rounded-2xl bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 ring-1 ring-gold/15">
         {list.map((g, i) => {
           const gp = person(g.id);
           return (
@@ -936,9 +926,9 @@ export function UserRoomsScreen({ personId }: { personId: string }) {
     <div className="app-scroll h-full bg-ink pb-8">
       <ScreenHeader title={isMe ? "My rooms" : `${person(personId).name}'s rooms`} onBack={pop} />
       <h2 className="mx-4 mt-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Hosting</h2>
-      <ul className="mx-4 mt-2 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">{mine ? <Row r={mine} /> : <li className="px-4 py-3 text-[13px] text-muted">No room yet.</li>}</ul>
+      <ul className="mx-4 mt-2 overflow-hidden rounded-2xl bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 ring-1 ring-gold/15">{mine ? <Row r={mine} /> : <li className="px-4 py-3 text-[13px] text-muted">No room yet.</li>}</ul>
       <h2 className="mx-4 mt-5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Joined</h2>
-      <ul className="mx-4 mt-2 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+      <ul className="mx-4 mt-2 overflow-hidden rounded-2xl bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 ring-1 ring-gold/15">
         {joined.map((r) => (
           <Row key={r.id} r={r} />
         ))}
@@ -962,7 +952,7 @@ export function GiftWallScreen({ personId }: { personId: string }) {
           const n = received[g.id] ?? 0;
           const stars = giftStars(n);
           return (
-            <div key={g.id} className={`flex flex-col items-center rounded-2xl bg-surface py-3 ring-1 ring-line ${n ? "" : "opacity-40 grayscale"}`}>
+            <div key={g.id} className={`flex flex-col items-center rounded-2xl py-3 bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 ring-1 ring-gold/15 ${n ? "" : "opacity-40 grayscale"}`}>
               <span className="h-12 w-12">
                 <GiftArt id={g.id} />
               </span>

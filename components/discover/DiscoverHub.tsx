@@ -13,22 +13,7 @@ import { useApp } from "@/lib/app/store";
 
 const SEEN_KEY = "panchayat-moments-seen";
 
-function TileArt({ kind }: { kind: "cp" | "parivar" }) {
-  if (kind === "cp")
-    return (
-      <svg viewBox="0 0 64 64" className="h-14 w-14" aria-hidden>
-        <defs>
-          <linearGradient id="dh-cp" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#ff9ac0" />
-            <stop offset="1" stopColor="#e2366f" />
-          </linearGradient>
-        </defs>
-        <path d="M12 22 32 8l20 14v26a6 6 0 0 1-6 6H18a6 6 0 0 1-6-6Z" fill="url(#dh-cp)" />
-        <circle cx="26" cy="38" r="9" fill="none" stroke="#fff5f8" strokeWidth="3.5" />
-        <circle cx="38" cy="38" r="9" fill="none" stroke="#ffd6e4" strokeWidth="3.5" />
-        <path d="M32 16l3 4h-6Z" fill="#fff" opacity=".9" />
-      </svg>
-    );
+function TileArt({ kind }: { kind: "parivar" }) {
   return (
     <svg viewBox="0 0 64 64" className="h-14 w-14" aria-hidden>
       <defs>
@@ -82,11 +67,6 @@ export function DiscoverHub() {
     push({ kind: "moments" });
   };
 
-  const tiles: { key: "cp" | "parivar"; label: string; soon?: boolean; onClick: () => void }[] = [
-    { key: "cp", label: "CP", onClick: () => push({ kind: "intimate-space", personId: "me" }) },
-    { key: "parivar", label: "Parivar", soon: true, onClick: () => toast("Parivar is coming soon. Get your people ready! 🪔") },
-  ];
-
   return (
     <section className="mt-4 px-4" aria-label="Discover">
       <motion.button whileTap={{ scale: 0.98 }} type="button" onClick={openMoments} className="flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r from-[#4a1626] via-[#2c1622] to-[#1c1824] px-4 py-3.5 text-left ring-1 ring-gold/25 shadow-[0_10px_30px_-16px_rgba(244,81,91,0.6)]">
@@ -105,17 +85,27 @@ export function DiscoverHub() {
         <ChevronRight className="h-5 w-5 text-muted" aria-hidden />
       </motion.button>
 
-      <div className="mt-3 grid grid-cols-2 gap-2.5">
-        {tiles.map((t) => (
-          <motion.button key={t.key} whileTap={{ scale: 0.95 }} type="button" onClick={t.onClick} className={`relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-b pb-3.5 pt-4 ring-1 ring-gold/20 ${t.key === "cp" ? "from-[#5a1a36] to-[#1f1420]" : "from-[#5a2a14] to-[#1f1614]"}`}>
-            <motion.span whileHover={{ y: -2 }} className={t.soon ? "opacity-75" : undefined}>
-              <TileArt kind={t.key} />
-            </motion.span>
-            <span className="font-display text-[15px] font-bold text-cream">{t.label}</span>
-            {t.soon ? <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-gold ring-1 ring-gold/40">Coming soon</span> : null}
-          </motion.button>
-        ))}
-      </div>
+      <motion.button
+        whileTap={{ scale: 0.98 }}
+        type="button"
+        onClick={() => toast("Parivar is coming soon. Get your people ready! 🪔")}
+        className="relative mt-3 flex w-full items-center gap-3.5 overflow-hidden rounded-3xl bg-gradient-to-r from-[#5a2a14] via-[#3a1420] to-[#1c1824] p-3 pr-4 text-left ring-1 ring-gold/30 shadow-[0_12px_30px_-16px_rgba(231,188,114,0.5)]"
+      >
+        <motion.span
+          className="pointer-events-none absolute -left-10 top-0 h-full w-14 rotate-12 bg-white/10 blur-md"
+          animate={{ x: ["0%", "1100%"] }}
+          transition={{ duration: 3, repeat: Infinity, repeatDelay: 2.5, ease: "easeInOut" }}
+          aria-hidden
+        />
+        <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-black/25 ring-1 ring-gold/25">
+          <TileArt kind="parivar" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block bg-gradient-to-r from-[#fff1c9] via-gold to-[#ffb37a] bg-clip-text font-display text-[19px] font-extrabold text-transparent">Parivar</span>
+          <span className="block text-[12.5px] leading-snug text-cream/70">Families with a Mukhiya, levels, a tag on your name and your own chat.</span>
+        </span>
+        <span className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-gold ring-1 ring-gold/40">Coming soon</span>
+      </motion.button>
     </section>
   );
 }

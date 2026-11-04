@@ -49,7 +49,7 @@ export function ProfileScreen() {
   const serverVip = me.stats.data ? vipLevel(me.stats.data.vipPoints, appVip.level > 0 || me.stats.data.vipPoints > 0) : null;
 
   return (
-    <div className="app-scroll h-full bg-ink pb-[calc(84px+var(--mini,0px)+env(safe-area-inset-bottom))]">
+    <div className="app-scroll h-full bg-[radial-gradient(130%_60%_at_50%_35%,#3a1424_0%,#221220_45%,#141018_100%)] pb-[calc(84px+var(--mini,0px)+env(safe-area-inset-bottom))]">
       <ProfileHero
         personId="me"
         topRight={
@@ -83,7 +83,7 @@ export function ProfileScreen() {
             ["Ranking", <RankingIcon key="r" />, { kind: "ranking" }],
           ] as const
         ).map(([label, icon, screen]) => (
-          <button key={label} type="button" onClick={() => push(screen)} className="relative flex flex-col items-center gap-1 rounded-2xl bg-surface py-3 ring-1 ring-line">
+          <button key={label} type="button" onClick={() => push(screen)} className="relative flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 py-3 ring-1 ring-gold/15">
             <span className="grid h-9 place-items-center" aria-hidden>
               {icon}
             </span>
@@ -100,7 +100,7 @@ export function ProfileScreen() {
 
       {/* Wallet + VIP */}
       <div className="mx-4 mt-3 grid grid-cols-2 gap-3">
-        <button type="button" onClick={() => setSheet({ kind: "coins" })} className="rounded-2xl bg-surface p-4 text-left ring-1 ring-line">
+        <button type="button" onClick={() => setSheet({ kind: "coins" })} className="rounded-2xl bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 p-4 text-left ring-1 ring-gold/15">
           <span className="flex items-center gap-1.5 text-[11.5px] text-muted">
             <Coin className="h-4 w-4" /> Coins
           </span>
@@ -137,7 +137,7 @@ export function ProfileScreen() {
             const g = gameById(id);
             if (!g) return null;
             return (
-              <button key={id} type="button" onClick={() => setSheet({ kind: "game", gameId: id })} className="flex items-center gap-2 rounded-full bg-surface py-1 pl-1 pr-3.5 ring-1 ring-line">
+              <button key={id} type="button" onClick={() => setSheet({ kind: "game", gameId: id })} className="flex items-center gap-2 rounded-full bg-[#2c1622]/90 py-1 pl-1 pr-3.5 ring-1 ring-gold/15">
                 <span className="h-7 w-7 overflow-hidden rounded-full">
                   <GameArt id={id} />
                 </span>
@@ -151,7 +151,7 @@ export function ProfileScreen() {
 
 
       {/* Settings */}
-      <section className="mx-4 mt-6 overflow-hidden rounded-2xl bg-surface ring-1 ring-line" aria-label="Settings">
+      <section className="mx-4 mt-6 overflow-hidden rounded-2xl bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 ring-1 ring-gold/15" aria-label="Settings">
         <Row icon={<Pencil className="h-4.5 w-4.5" />} label="Edit profile" onClick={() => setSheet({ kind: "edit-profile" })} />
         <Row icon={<Bell className="h-4.5 w-4.5" />} label="Notifications" right={<Toggle checked={notify} onChange={(v) => (setNotify(v), toast(v ? "Notifications on" : "Notifications off"))} label="Notifications" />} />
         <Row icon={<Volume2 className="h-4.5 w-4.5" />} label="Room sounds" right={<Toggle checked={sounds} onChange={setSounds} label="Room sounds" />} />
