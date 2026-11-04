@@ -3,8 +3,8 @@
 /**
  * The Bag's server data, for someone signed in to the backend:
  *
- * - VIP decorations: three slots (frame, chat bubble, entry). Each shows what
- *   you're wearing (GET /api/v1/vip/cosmetics/equipped). An empty slot offers
+ * - VIP decorations: every VIP reward you own (all levels; frame, bubble,
+ *   entry and badge), each with Wear / Take off. Shows what you're wearing (GET /api/v1/vip/cosmetics/equipped). An empty slot offers
  *   the matching cosmetic from your VIP level's catalogue
  *   (GET /api/v1/vip/cosmetics?level=) when GET /users/me says your VIP is
  *   active. Wear / take off go to POST / DELETE /vip/cosmetics/{id}/wear; the
@@ -18,7 +18,7 @@
  * VIP is active. There is no "Permanent" because nothing says they are.
  */
 import { useState, type ReactNode } from "react";
-import { VipBubbleArt, VipEntryBanner, VipFrame } from "@/components/effects/VipFx";
+import { VipBadge, VipBubbleArt, VipEntryBanner, VipFrame } from "@/components/effects/VipFx";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { useEquipped } from "@/components/vip/useEquipped";
 import { getCosmeticsByLevel, type CosmeticType, type VipCosmetic } from "@/lib/api/vip-cosmetics";
@@ -52,11 +52,13 @@ export type BagEntry = {
 export type SectionStatus = { loading?: boolean; error?: string; retry?: () => void };
 
 /** The Bag's three VIP slots, by the backend's type names (never by list order). */
-export const BAG_SLOTS: { type: Extract<CosmeticType, "FRAME" | "BUBBLE" | "ENTRY">; name: string; kind: string }[] = [
+export const BAG_SLOTS: { type: CosmeticType; name: string; kind: string }[] = [
   { type: "FRAME", name: "Frame", kind: "Animated frame" },
   { type: "BUBBLE", name: "Bubble", kind: "Chat bubble" },
   { type: "ENTRY", name: "Entry", kind: "Entry effect" },
+  { type: "BADGE", name: "Badge", kind: "VIP badge" },
 ];
+const slotOf = (t: CosmeticType) => BAG_SLOTS.find((x) => x.type === t) ?? { type: t, name: t.charAt(0) + t.slice(1).toLowerCase(), kind: "VIP reward" };
 
 const VIP_TINT = "from-[#3a2d6b] to-[#211a3d]";
 const IMAGE_FORMATS = /^(PNG|JPE?G|WEBP|GIF|AVIF|IMAGE|STATIC)$/;
@@ -73,9 +75,18 @@ const warnImage = (url: string) => {
 };
 
 /** The cosmetic itself, drawn from its real link: SVGA through the existing players, pictures as <img>. */
-function CosmeticArt({ type, url, format, level, me }: { type: "FRAME" | "BUBBLE" | "ENTRY"; url: string; format: string | null; level: number | null; me: Person }) {
+function CosmeticArt({ type, url, format, level, me }: { type: CosmeticType; url: string; format: string | null; level: number | null; me: Person }) {
   const [failed, setFailed] = useState(false);
   const kind = renderKind(format, url);
+  if (type === "BADGE") {
+    if (failed) return <span className="px-2 text-center text-[10.5px] font-semibold text-muted">Couldn&apos;t load</span>;
+    return kind === "svga" ? (
+      <VipBadge set={{ ...layoutFor(level), badge: url, badgeStill: url }} size={30} animated level={level ?? undefined} />
+    ) : (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={url} alt="" className="h-12 w-auto max-w-[96px] object-contain" onError={() => (warnImage(url), setFailed(true))} />
+    );
+  }
   const set: EffectSet = { ...layoutFor(level), frame: "", bubble: "", entry: "", [type === "FRAME" ? "frame" : type === "BUBBLE" ? "bubble" : "entry"]: url };
   const avatar = <PersonAvatar person={{ ...me, frame: "none" }} size={42} />;
   if (failed) return <span className="px-2 text-center text-[10.5px] font-semibold text-muted">Couldn&apos;t load</span>;
@@ -134,75 +145,64 @@ export function useBagServer(enabled: boolean, me: Person, now: number) {
   const vipTime = Number.isFinite(expiresAt) ? timeLeft(expiresAt, now).replace(" left", "") : undefined;
   const until = Number.isFinite(expiresAt) ? ` until ${new Date(expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : "";
 
-  const slot = (s: (typeof BAG_SLOTS)[number]): BagEntry => {
-    const worn: EquippedCosmetic | undefined = eq.items?.find((c) => c.cosmeticType === s.type);
-    // Wear is offered only for something in your inventory (GET /vip/cosmetics/inventory), never just because the catalogue lists it.
-    // Prefer your current level's item; the catalogue only fills in art the inventory row lacks.
-    const ownedOfType = !worn ? (eq.owned ?? []).filter((c) => c.cosmeticType === s.type) : [];
-    const own = ownedOfType.find((c) => lvl !== null && c.vipLevel === lvl) ?? ownedOfType[0];
-    const art = own && !own.url ? catalogue.data?.find((c) => c.id === own.cosmeticId) : undefined;
-    const offer = own ? { id: own.cosmeticId, vipLevel: own.vipLevel ?? art?.vipLevel ?? null, url: own.url ?? art?.url ?? null, format: own.url ? own.format : (art?.format ?? own.format) } : undefined;
-    const locked: VipCosmetic | undefined = !worn && !own && eq.owned ? catalogue.data?.find((c) => c.cosmeticType === s.type) : undefined;
-    const busy = eq.busyId !== null;
-    if (worn) {
-      const level = worn.vipLevel;
-      return {
-        key: `srv-${s.type}`,
-        name: `VIP${level ? ` ${level}` : ""} ${s.name}`,
-        kind: s.kind,
-        art: worn.url ? <CosmeticArt key={worn.url} type={s.type} url={worn.url} format={worn.format} level={level} me={me} /> : <EmptySlot />,
-        badge: active ? vipTime : undefined,
-        // Equipped isn't proof of VIP: it only shows while GET /users/me says VIP is active
-        inUse: active,
-        source: level ? `VIP ${level} reward` : "VIP reward",
-        tint: VIP_TINT,
-        note: active ? `Shows while your VIP is active${until}.` : known ? "Not showing right now: your VIP isn't active." : undefined,
-        action: { label: eq.busyId === worn.cosmeticId ? "Taking off…" : "Take off", run: () => void eq.takeOff(worn.cosmeticId), off: true, disabled: busy },
-      };
-    }
-    if (offer) {
-      const lv = offer.vipLevel ? ` ${offer.vipLevel}` : "";
-      return {
-        key: `srv-${s.type}`,
-        name: `VIP${lv} ${s.name}`,
-        kind: s.kind,
-        art: offer.url ? <CosmeticArt key={offer.url} type={s.type} url={offer.url} format={offer.format} level={offer.vipLevel} me={me} /> : <EmptySlot />,
-        badge: active ? vipTime : undefined,
-        source: `VIP${lv} reward`,
-        tint: VIP_TINT,
-        note: active ? `In your inventory, not worn${until}.` : known ? "In your inventory, but your VIP isn't active." : "In your inventory, not worn.",
-        action: { label: eq.busyId === offer.id ? "Putting on…" : "Wear", run: () => void eq.wear(offer.id), disabled: busy },
-      };
-    }
-    if (locked) {
-      return {
-        key: `srv-${s.type}`,
-        name: `VIP ${locked.vipLevel} ${s.name}`,
-        kind: s.kind,
-        art: <CosmeticArt key={locked.url} type={s.type} url={locked.url} format={locked.format} level={locked.vipLevel} me={me} />,
-        source: `VIP ${locked.vipLevel} reward`,
-        tint: VIP_TINT,
-        note: "Not in your inventory yet, so it can't be worn. Open the Bag again later, or contact support if this stays.",
-      };
-    }
+  const busy = eq.busyId !== null;
+  const wornIds = new Set((eq.items ?? []).map((c) => c.cosmeticId));
+  const typeOrder = (t: CosmeticType) => BAG_SLOTS.findIndex((x) => x.type === t);
+
+  /** One reward you own: worn ones say In use with Take off; the rest offer Wear. */
+  const entryFor = (c: { cosmeticId: string; cosmeticType: CosmeticType; vipLevel: number | null; url: string | null; format: string | null }): BagEntry => {
+    const s = slotOf(c.cosmeticType);
+    const worn = wornIds.has(c.cosmeticId);
+    const art = !c.url ? catalogue.data?.find((x) => x.id === c.cosmeticId) : undefined;
+    const url = c.url ?? art?.url ?? null;
+    const lv = c.vipLevel ? ` ${c.vipLevel}` : "";
     return {
-      key: `srv-${s.type}`,
-      name: `VIP ${s.name}`,
+      key: `srv-${c.cosmeticId}`,
+      name: `VIP${lv} ${s.name}`,
       kind: s.kind,
-      art: <EmptySlot />,
+      art: url ? <CosmeticArt key={url} type={c.cosmeticType} url={url} format={c.format ?? art?.format ?? null} level={c.vipLevel} me={me} /> : <EmptySlot />,
+      badge: active ? vipTime : undefined,
+      inUse: worn && active,
+      source: `VIP${lv} reward`,
       tint: VIP_TINT,
-      note: active ? `Nothing to wear here yet: no ${s.kind.toLowerCase()} has been uploaded for your VIP level.` : "Get VIP to unlock this.",
+      note: worn
+        ? active
+          ? `You're wearing this${until}.`
+          : "Worn, but it only shows while your VIP is active."
+        : active
+          ? `In your Bag. Wear it to swap your current ${s.kind.toLowerCase()}.`
+          : "In your Bag. It shows once your VIP is active.",
+      action: worn
+        ? { label: eq.busyId === c.cosmeticId ? "Taking off…" : "Take off", run: () => void eq.takeOff(c.cosmeticId), off: true, disabled: busy }
+        : { label: eq.busyId === c.cosmeticId ? "Putting on…" : "Wear", run: () => void eq.wear(c.cosmeticId), disabled: busy },
     };
   };
+
+  // Everything you own, plus anything you're wearing that the inventory didn't list
+  const ownedAll = [...(eq.owned ?? [])];
+  for (const w of eq.items ?? []) if (!ownedAll.some((o) => o.cosmeticId === w.cosmeticId)) ownedAll.push({ ...w });
+  ownedAll.sort((a, b) => Number(wornIds.has(b.cosmeticId)) - Number(wornIds.has(a.cosmeticId)) || (b.vipLevel ?? 0) - (a.vipLevel ?? 0) || typeOrder(a.cosmeticType) - typeOrder(b.cosmeticType));
+
+  // Rewards of your level you don't have yet (shown locked, never wearable)
+  const locked: BagEntry[] = (catalogue.data ?? [])
+    .filter((c) => !ownedAll.some((o) => o.cosmeticId === c.id))
+    .map((c) => ({
+      key: `srv-locked-${c.id}`,
+      name: `VIP ${c.vipLevel} ${slotOf(c.cosmeticType).name}`,
+      kind: slotOf(c.cosmeticType).kind,
+      art: <CosmeticArt key={c.url} type={c.cosmeticType} url={c.url} format={c.format} level={c.vipLevel} me={me} />,
+      source: `VIP ${c.vipLevel} reward`,
+      tint: VIP_TINT,
+      note: "Not unlocked yet. Open the Bag again in a moment.",
+    }));
 
   const decorStatus: SectionStatus = {
     loading: signedIn && (((eq.items === null || eq.owned === null) && !eq.error) || (Boolean(lvl) && catalogue.loading) || (!known && profile.loading)),
     error: eq.error || (lvl && catalogue.error ? `Couldn't load your VIP cosmetics. ${catalogue.error}` : ""),
     retry: eq.error ? eq.reload : catalogue.retry,
   };
-  // The three slots only when there's something real to show: you're VIP, or you're wearing something
-  const showSlots = signedIn && eq.items !== null && (active || eq.items.some((c) => BAG_SLOTS.some((s) => s.type === c.cosmeticType)));
-  const decorations = showSlots ? BAG_SLOTS.map(slot) : [];
+  const showSlots = signedIn && eq.items !== null && eq.owned !== null && (active || ownedAll.length > 0);
+  const decorations = showSlots ? [...ownedAll.map(entryFor), ...(eq.owned ? locked : [])] : [];
 
   /* ---- Items: red packets ---- */
   const tail = signedIn ? (readToken()?.accessToken.slice(-16) ?? "") : "";

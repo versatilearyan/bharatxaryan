@@ -131,6 +131,7 @@ function InboxRow({ c, onOpen }: { c: ChatConversation; onOpen: (personId: strin
   const name = c.otherName ?? (personId && known[personId]?.name) ?? (c.otherUserId ? `User ${c.otherUserId}` : "Chat");
   const unread = c.unreadCount ?? 0;
   const online = !group && c.otherUserId ? (chat.presence[c.otherUserId]?.online ?? c.otherOnline) : false;
+  const goToRoom = useGoToRoom();
   const typers = Object.values(chat.typing[c.id] ?? {});
   const lastFrom = group && c.lastSenderId ? (c.lastSenderId === chat.myId ? "You: " : `${(known[`${SERVER_USER_PREFIX}${c.lastSenderId}`]?.name ?? "").split(" ")[0] || "Someone"}: `) : c.lastSenderId && c.lastSenderId === chat.myId ? "You: " : "";
   return (
@@ -161,12 +162,29 @@ function InboxRow({ c, onOpen }: { c: ChatConversation; onOpen: (personId: strin
               {typers.length ? (group ? typingLine(typers) : "typing…") : c.blockedByMe ? "Blocked" : c.lastMessage ? `${lastFrom}${invitePreview(c.lastMessage)}` : group ? `${c.memberCount ?? ""} members` : ""}
             </span>
             {!typers.length && online && c.otherRoom ? (
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-speak/15 px-2 py-0.5 text-[10.5px] font-bold text-speak">
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label={`Join ${c.otherRoom.name}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  void goToRoom(c.otherRoom!.roomId);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void goToRoom(c.otherRoom!.roomId);
+                  }
+                }}
+                className="flex shrink-0 cursor-pointer items-center gap-1 rounded-full bg-speak/15 px-2 py-0.5 text-[10.5px] font-bold text-speak ring-1 ring-speak/30 hover:bg-speak/25"
+              >
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-speak opacity-70" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-speak" />
                 </span>
                 <span className="max-w-[90px] truncate">{c.otherRoom.game ? `🎮 ${c.otherRoom.game}` : `🎙 ${c.otherRoom.name}`}</span>
+                <span aria-hidden>›</span>
               </span>
             ) : null}
             {unread ? <span className={`ml-auto grid h-5 min-w-5 shrink-0 place-items-center rounded-full px-1.5 text-[10.5px] font-bold text-white ${c.muted ? "bg-muted/60" : "bg-coral"}`}>{unread}</span> : null}
@@ -183,8 +201,8 @@ function InboxRow({ c, onOpen }: { c: ChatConversation; onOpen: (personId: strin
  * be joined straight from here.
  */
 function ActiveNow() {
-  const { openConversation, openRoom, setSheet } = useApp();
-  const { addCreated } = useServerRooms();
+  const { setSheet } = useApp();
+  const person = usePeople();
   const chat = useChat();
   const [people, setPeople] = useState<ActivePerson[] | null>(null);
   const load = useCallback(() => {
@@ -205,15 +223,9 @@ function ActiveNow() {
     if (gone) setPeople((list) => (list ?? []).filter((p) => presence[p.userId]?.online !== false));
   }, [presence, people]);
   if (!people || people.length === 0) return null;
-  const join = async (p: ActivePerson) => {
-    if (!p.room) return;
-    try {
-      const v = await getRoomById(p.room.roomId);
-      addCreated(v);
-      openRoom(serverRoomAppId(v.id));
-    } catch {
-      openConversation(`${SERVER_USER_PREFIX}${p.userId}`);
-    }
+  const goToRoom = useGoToRoom();
+  const join = (p: ActivePerson) => {
+    if (p.room) void goToRoom(p.room.roomId);
   };
   return (
     <section aria-label="Active now" className="pb-2">
@@ -227,7 +239,9 @@ function ActiveNow() {
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={p.avatarUrl} alt="" className="h-[54px] w-[54px] rounded-full object-cover ring-2 ring-ink" />
                 ) : (
-                  <span className="grid h-[54px] w-[54px] place-items-center rounded-full bg-gradient-to-br from-[#7b5cff] to-[#ff7fa8] font-display text-[20px] font-extrabold text-white ring-2 ring-ink">{p.name.slice(0, 1).toUpperCase()}</span>
+                  <span className="block rounded-full ring-2 ring-ink">
+                    <PersonAvatar person={{ ...person(`${SERVER_USER_PREFIX}${p.userId}`), frame: "none" }} size={54} />
+                  </span>
                 )}
               </span>
               <span className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full bg-speak ring-2 ring-ink" />
@@ -235,7 +249,7 @@ function ActiveNow() {
             <span className="max-w-full truncate text-[11px] text-cream/85">{p.name.split(" ")[0]}</span>
             {p.room ? (
               <button type="button" onClick={() => void join(p)} className="-mt-0.5 max-w-full truncate rounded-full bg-speak/15 px-1.5 py-0.5 text-[9.5px] font-bold text-speak" aria-label={`Join ${p.room.name}`}>
-                {p.room.game ? `🎮 ${p.room.game}` : `🎙 ${p.room.name}`}
+                {p.room.game ? `🎮 ${p.room.game}` : `🎙 ${p.room.name}`} ›
               </button>
             ) : null}
           </motion.div>
@@ -323,6 +337,21 @@ export function ServerInbox({ query }: { query: string }) {
       {inbox.data && inbox.data.length > 0 && list.length === 0 ? <p className="px-4 pt-10 text-center text-sm text-muted">No chats match “{query}”.</p> : null}
     </section>
   );
+}
+
+/** Opens a public room someone is in (from the chat list or Active now). */
+function useGoToRoom() {
+  const { openRoom, toast } = useApp();
+  const { addCreated } = useServerRooms();
+  return async (roomId: string) => {
+    try {
+      const v = await getRoomById(roomId);
+      addCreated(v);
+      openRoom(serverRoomAppId(v.id));
+    } catch {
+      toast("That room isn't open any more.", "error");
+    }
+  };
 }
 
 /* ------------------------------------------------------------------ */
