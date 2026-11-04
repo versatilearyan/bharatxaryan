@@ -11,9 +11,13 @@
  * NEXT_PUBLIC_API_BASE_URL is only used when NEXT_PUBLIC_USE_API_PROXY=false,
  * for hosting where there's no Next.js server to forward requests.
  */
+<<<<<<< HEAD
 // Only a fallback for local development: production sets BACKEND_URL (server) and
 // NEXT_PUBLIC_CHAT_WS_URL (live connection) in its environment. No tunnel address is hardcoded.
 export const DEFAULT_BACKEND_URL = "http://localhost:8080";
+=======
+export const DEFAULT_BACKEND_URL = "https://api.panchayat.world/";
+>>>>>>> 5860b43 (  feat done)
 const DEFAULT_GOOGLE_CLIENT_ID = "688204337983-ao5gnds2t1p6tq0qn5m9p53ttoo9t1mt.apps.googleusercontent.com";
 
 /** The path in this app that forwards to the backend. */

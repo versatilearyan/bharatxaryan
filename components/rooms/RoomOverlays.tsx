@@ -6,6 +6,7 @@ import { usePublicProfile } from "@/components/profile/usePublicProfile";
 import { useServerPeople } from "@/lib/app/server-rooms";
 import { profileEffects } from "@/lib/app/vip-cosmetics";
 import { RoomCover } from "@/components/rooms/RoomCover";
+import { CpBannerPill } from "@/components/market/CpParts";
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Ban, Check, ChevronRight, Copy, Eye, Gift, Heart, Lock, LockOpen, MessageCircle, Mic, MicOff, Pencil, Shield, ShieldOff, User, UserMinus, UserPlus, UserX, X } from "lucide-react";
@@ -48,7 +49,7 @@ export function RoomOverlays({ s }: { s: RoomSession }) {
 /* ------------------------------------------------------------------ */
 
 function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) => void }) {
-  const { profile, toggleFollow, openConversation, minimizeRoom, toast, membershipOf, openIntimateSpace, openProfile } = useApp();
+  const { profile, toggleFollow, openConversation, minimizeRoom, toast, membershipOf, openIntimateSpace, openProfile, push } = useApp();
   const person = usePeople();
   const id = s.cardId;
   const p = id ? person(id) : null;
@@ -99,6 +100,17 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
             <button type="button" onClick={close} className="absolute right-2.5 top-2.5 grid h-8 w-8 place-items-center rounded-full bg-black/35 text-white" aria-label="Close">
               <X className="h-4 w-4" />
             </button>
+            {/* Their CP's photo on the banner, opening the couple's Love Home */}
+            <CpBannerPill
+              personId={id}
+              variant="card"
+              onOpen={() => {
+                close();
+                minimizeRoom();
+                push({ kind: "love-home", personId: id });
+              }}
+              className="absolute bottom-2 right-0"
+            />
           </div>
           <div className="px-5 pb-5">
             <div className="-mt-7 flex items-end gap-3">

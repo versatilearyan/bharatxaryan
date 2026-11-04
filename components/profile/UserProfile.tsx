@@ -1,5 +1,6 @@
 "use client";
 
+import { CpBannerPill } from "@/components/market/CpParts";
 import { SvgaAnim, preloadSvga, warnSvga } from "@/components/effects/SvgaAnim";
 import { VipAvatar, VipBadge, VipEntryBanner } from "@/components/effects/VipFx";
 import type { EffectSet } from "@/lib/app/effects";
@@ -104,7 +105,7 @@ function ProfileEntry({ src, name, avatar }: { src: EffectSet; name: string; ava
 
 /** Banner, avatar, name, level, VIP, charm, ID and bio. */
 export function ProfileHero({ personId, topLeft, topRight, vipFresh = true }: { personId: string; topLeft?: ReactNode; topRight?: ReactNode; vipFresh?: boolean }) {
-  const { profile, toast } = useApp();
+  const { profile, toast, push } = useApp();
   const person = usePeople();
   const p = person(personId);
   // VIP cosmetics from this person's own profile response (yours: GET /users/me; theirs: GET /users/{id}/profile)
@@ -131,6 +132,8 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true }: { 
           <SunsetScene theme={mine ? "dusk" : THEMES[Math.floor(seeded(`${personId}:banner`) * THEMES.length)]} motif={mine ? "banyan" : "lanterns"} />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-ink/20 to-ink" />
+        {/* Their CP: ring, blessings and partner, opening the couple's Love Home */}
+        <CpBannerPill personId={personId} variant="profile" onOpen={() => push({ kind: "love-home", personId })} className="absolute bottom-3 right-3 z-10" />
         <div className="pt-safe absolute inset-x-0 top-0 z-10 flex items-center justify-between p-3">
           <span>{topLeft}</span>
           <span>{topRight}</span>

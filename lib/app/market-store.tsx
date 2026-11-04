@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { BLESSING_COST, DAY_MS, RINGS, SAMPLE_COUPLES, SHOP_BUBBLES, VISITOR_LOG_PLANS, addVisit, bubbleById, ringById, type BagItem, type BubbleId, type Blessing, type Couple, type RentDays, type RingId, type Visit, type VisitorLogPlanId } from "./market";
+import { BLESSING_COST, DAY_MS, END_REPLY_MS, RINGS, SAMPLE_COUPLES, SHOP_BUBBLES, VISITOR_LOG_PLANS, addVisit, bubbleById, ringById, type BagItem, type BubbleId, type Blessing, type Couple, type RentDays, type RingId, type Visit, type VisitorLogPlanId } from "./market";
 import { PEOPLE, giftById, isGiftOnSale, personById } from "./data";
 import { VIP_SETS, bestSet, giftSetById, isGiftSetId, unlockedSets, type EffectSet, type EffectSetId, type GiftSet, type VipSet } from "./effects";
 
@@ -366,11 +366,40 @@ function useMarketState() {
     return () => window.clearInterval(t);
   }, [myCoupleId, addBlessing, toast]);
 
+  /**
+   * Ending a CP takes both of you: one sends a request, and the CP ends only
+   * when the other accepts it. Either side can take a request back.
+   */
+  const requestEnd = useCallback(() => {
+    if (!myCouple || myCouple.endRequest) return;
+    setMyCouple((m) => (m ? { ...m, endRequest: { by: ME_ID, at: Date.now() } } : m));
+    toast(`Request sent. Your CP ends when ${nameOf(partnerOf(myCouple))} accepts.`);
+  }, [myCouple, toast]);
+  const cancelEnd = useCallback(() => {
+    if (!myCouple?.endRequest) return;
+    const theirs = myCouple.endRequest.by !== ME_ID;
+    setMyCouple((m) => (m ? { ...m, endRequest: undefined } : m));
+    toast(theirs ? `You declined. You and ${nameOf(partnerOf(myCouple))} are still a CP 💞` : "Request taken back. Your CP stays 💞");
+  }, [myCouple, toast]);
+  /** Accept your partner's request: the CP ends. */
   const endCouple = useCallback(() => {
     if (!myCouple) return;
     toast(`You and ${nameOf(partnerOf(myCouple))} are no longer a CP`);
     setMyCouple(null);
   }, [myCouple, toast]);
+  // Demo: your partner answers your request a few seconds after it was sent (still counts after a reload)
+  const endAt = myCouple?.endRequest?.by === ME_ID ? myCouple.endRequest.at : 0;
+  useEffect(() => {
+    if (!endAt) return;
+    const t = window.setTimeout(() => {
+      setMyCouple((m) => {
+        if (!m?.endRequest || m.endRequest.at !== endAt) return m;
+        window.setTimeout(() => toast(`${nameOf(partnerOf(m))} accepted. You're no longer a CP 💔`), 0);
+        return null;
+      });
+    }, Math.max(0, endAt + END_REPLY_MS - Date.now()));
+    return () => window.clearTimeout(t);
+  }, [endAt, toast]);
 
   /* ---- Profile visitors ---- */
   // Names stay hidden until you buy the visitor log
@@ -432,7 +461,7 @@ function useMarketState() {
     [spend, toast],
   );
 
-  return { equip, worn, vipSets, giftSets, vipEffects, wearAnimFrame, wearBubble, wearEntry, wearPage, effectsFor, buyBubble, pkg, addPackage, takePackage, visitors, visited, visitorsSeenAt, newVisitors, markVisitorsSeen, recordVisit, visitorLogUntil, visitorLogOn, buyVisitorLog, bag, now, buyRing, ringsInBag, couples, coupleOf, myCouple, pending, propose, giveRing, endCouple, buyRingForCouple, bless, blessingsOf };
+  return { equip, worn, vipSets, giftSets, vipEffects, wearAnimFrame, wearBubble, wearEntry, wearPage, effectsFor, buyBubble, pkg, addPackage, takePackage, visitors, visited, visitorsSeenAt, newVisitors, markVisitorsSeen, recordVisit, visitorLogUntil, visitorLogOn, buyVisitorLog, bag, now, buyRing, ringsInBag, couples, coupleOf, myCouple, pending, propose, giveRing, endCouple, requestEnd, cancelEnd, buyRingForCouple, bless, blessingsOf };
 }
 
 const partnerOf = (c: Couple) => (c.a === ME_ID ? c.b : c.a);

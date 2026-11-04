@@ -979,7 +979,8 @@ function useAppState() {
       const existing = tagBetween(winner, item);
       if (existing) return "existing";
       if (tagsOf(winner).length >= TAG_SLOTS || tagsOf(item).length >= TAG_SLOTS) return "full";
-      const tag: Tag = { id: `t-${uid()}`, a: winner, b: item, relation, token: tokenFor(giftVolume), intimacy: giftVolume, createdAt: Date.now(), roomName, declaration };
+      // A new tag starts at Lv 1 with no intimacy: the winning bid picks the token but doesn't level it up
+      const tag: Tag = { id: `t-${uid()}`, a: winner, b: item, relation, token: tokenFor(giftVolume), intimacy: 0, createdAt: Date.now(), roomName, declaration };
       setTags((list) => [tag, ...list]);
       return "new";
     },

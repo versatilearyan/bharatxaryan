@@ -631,6 +631,30 @@ export function useRoomSession(room: Room) {
     toast("You left the mic. You're still in the room, listening.");
   }, [toast, isOwner, voice, live, rs]);
 
+  /**
+   * When the room's mode changes (for example to Kharidari), you're lifted off
+   * your seat and have to take one again. The owner keeps the owner's seat.
+   * Backend rooms: your app leaves the seat through the normal leave-seat call
+   * when it sees the new mode.
+   */
+  const lastMode = useRef(mode);
+  // Whether you were on a seat as of the last render (updated by the effect below this one)
+  const wasSeated = useRef(seated);
+  useEffect(() => {
+    if (lastMode.current === mode) return;
+    lastMode.current = mode;
+    if (isOwner || !wasSeated.current) return;
+    if (voice?.micOn) void voice.setMic(false);
+    setMuted(true);
+    if (live) void rs.run((id) => roomStateApi.leaveSeat(id));
+    else setSeats((s) => s.map((x) => (x === ME_ID ? null : x)));
+    toast(`The room changed to ${MODE_LABEL[mode]}. Take a seat again to join the mic.`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+  useEffect(() => {
+    wasSeated.current = seated;
+  }, [seated]);
+
   /** Muted by the owner or an admin: you, or the seat you're on. */
   const adminMutedMe = forceMuted.includes(ME_ID) || (mySeat >= 0 && mutedSeats.includes(mySeat));
   const toggleMute = useCallback(() => {
@@ -907,6 +931,8 @@ export function useRoomSession(room: Room) {
         return;
       }
       setModeState(m);
+      // A new mode starts with the seats cleared: everyone but the owner stands up and joins again
+      setSeats((s) => s.map((x, i) => (i === 0 ? x : null)));
       addSystem(`${actor} changed the mode to ${MODE_LABEL[m]}`);
     },
     [canModerate, mode, toast, addSystem, actor, room.server, applyMedia],

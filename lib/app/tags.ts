@@ -3,7 +3,7 @@
  *
  * A tag is formed when someone wins a BFF Kharidari: the winner and the person on
  * the auction seat become e.g. Besties. Every coin of gifts between the two adds
- * one intimacy point, and intimacy raises the tag level (1–10), which unlocks
+ * one intimacy point, and intimacy slowly raises the tag level (1–10), which unlocks
  * perks in the intimate space.
  */
 import { levelFor } from "./levels";
@@ -58,8 +58,12 @@ export type Tag = {
   declaration?: string;
 };
 
-/** Intimacy needed for tag level 1 … 10. */
-export const TAG_THRESHOLDS = [0, 520, 1314, 3344, 5200, 9999, 13140, 20000, 52000, 99999];
+/**
+ * Intimacy needed for tag level 1 … 10. Slow on purpose, like WePlay: a tag
+ * grows over weeks of gifting, not from one big gift. Lv 10 needs about 1M
+ * coins of gifts between the two.
+ */
+export const TAG_THRESHOLDS = [0, 5_200, 13_140, 33_440, 52_000, 99_990, 131_400, 200_000, 520_000, 999_990];
 export const tagLevel = (intimacy: number) => levelFor(intimacy, TAG_THRESHOLDS);
 
 /** Perks unlocked by tag level, shown in the intimate space. */
@@ -79,5 +83,14 @@ export const partnerOf = (tag: Tag, personId: string) => (tag.a === personId ? t
 export const pairKey = (x: string, y: string) => [x, y].sort().join("|");
 
 /** Sample tags between other people so rooms show linked seats. */
+<<<<<<< HEAD
 /** No sample tags: your tags come from the server. */
 export const SAMPLE_TAGS: Tag[] = [];
+=======
+export const SAMPLE_TAGS: Tag[] = [
+  { id: "t-zoya-kabir", a: "kabir", b: "zoya", relation: "besties", token: "scooter", intimacy: 36_000, createdAt: Date.UTC(2026, 8, 2), roomName: "Kharidari Bazaar" },
+  { id: "t-riya-kabir", a: "riya", b: "kabir", relation: "bro", token: "cottage", intimacy: 142_000, createdAt: Date.UTC(2026, 6, 19), roomName: "Sunday chai adda" },
+  { id: "t-naina-rohan", a: "rohan", b: "naina", relation: "brosis", token: "bicycle", intimacy: 7_600, createdAt: Date.UTC(2026, 9, 1), roomName: "Kharidari Bazaar" },
+  { id: "t-meher-saanvi", a: "meher", b: "saanvi", relation: "confidant", token: "scooter", intimacy: 56_000, createdAt: Date.UTC(2026, 7, 11), roomName: "Late night Antakshari" },
+];
+>>>>>>> 5860b43 (  feat done)

@@ -221,17 +221,6 @@ export function ClosedRoomCard({ s }: { s: RoomSession }) {
   );
 }
 
-export function RoomStatusBanner({ s }: { s: RoomSession }) {
-  if (!s.roomOpen) return null;
-  if (!s.openedByAdmin) return null;
-  return (
-    <div className="relative z-20 mx-4 mt-2 flex items-center gap-2 rounded-2xl px-3 py-2 text-[12px] ring-1" role="status" style={{ background: "rgb(36 179 107 / 0.14)", color: "#9ff0c4", borderColor: "transparent" }}>
-      <span className="h-2 w-2 shrink-0 rounded-full bg-[#5fe39a]" aria-hidden />
-      <span className="min-w-0 flex-1">The owner isn&apos;t here. An admin has opened the room.</span>
-    </div>
-  );
-}
-
 /* ------------------------------------------------------------------ */
 /* Seats                                                               */
 /* ------------------------------------------------------------------ */
@@ -262,6 +251,9 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
   const [failedFrame, setFailedFrame] = useState("");
   // A frame file that can't be played falls back to the normal avatar
   const frame = fx.frame && fx.frame.frame !== failedFrame ? fx.frame : undefined;
+  // Owner's seat while the owner is out of the room: their photo stays, dimmed, with "Leave" on it
+  const ownerAway = isOwnerSeat && !id && !closed && s.room.hostId !== ME_ID && !s.onlineIds.includes(s.room.hostId);
+  const owner = ownerAway ? person(s.room.hostId) : null;
   const pkNow = usePkState()?.pk;
   const pkSide = pkNow ? sideOfSeat(pkNow.mode, index) : null;
 
@@ -309,6 +301,23 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
           )}
           {role ? <RoleBadge role={role} className="absolute -bottom-1.5 left-1/2 -translate-x-1/2" /> : null}
         </motion.button>
+      ) : owner ? (
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.92 }}
+          onClick={() => s.openCard(owner.id)}
+          aria-label={`${owner.name}, owner, left the room`}
+          className="relative"
+        >
+          <span className="relative block rounded-full" style={{ width: size, height: size }}>
+            <span className="block opacity-45 grayscale-[0.6]">
+              <PersonAvatar person={{ ...owner, frame: "none" }} size={size} />
+            </span>
+            <span className="absolute inset-0 grid place-items-center rounded-full bg-black/45 font-bold text-cream/90" style={{ fontSize: size >= 70 ? 14 : size < 50 ? 10.5 : 12 }}>
+              Leave
+            </span>
+          </span>
+        </motion.button>
       ) : (
         <motion.button
           type="button"
@@ -340,8 +349,8 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
         </span>
       ) : null}
       {/* Empty seats have no label (as in the reference); the space is kept so rows don't jump */}
-      <span className={`relative z-[2] mt-1 truncate font-bold ${(p && vipName(p.vip, "room")) || "text-cream"} ${p ? "" : numbered ? "hidden" : "invisible"}`} style={{ ...nameFace(p?.nameFont), maxWidth: Math.max(72, size * 1.3), fontSize: size >= 70 ? 15 : size < 50 ? 11 : 12.5, marginTop: frame ? size * 0.14 : undefined }}>
-        {p ? (p.id === ME_ID ? "You" : p.name) : "Empty"}
+      <span className={`relative z-[2] mt-1 truncate font-bold ${owner ? "text-cream/60" : (p && vipName(p.vip, "room")) || "text-cream"} ${p || owner ? "" : numbered ? "hidden" : "invisible"}`} style={{ ...nameFace(p?.nameFont), maxWidth: Math.max(72, size * 1.3), fontSize: size >= 70 ? 15 : size < 50 ? 11 : 12.5, marginTop: frame ? size * 0.14 : undefined }}>
+        {p ? (p.id === ME_ID ? "You" : p.name) : owner ? owner.name : "Empty"}
       </span>
       {id && s.giftCounts[id] ? (
         <span className="-mt-0.5 rounded-full bg-gold/15 px-1.5 text-[9.5px] font-bold text-gold">♥ {formatCount(s.giftCounts[id])}</span>

@@ -10,7 +10,7 @@ import { usePkState } from "./usePk";
 import { useMusic } from "@/lib/app/music-store";
 import { IconButton } from "@/components/ui/kit";
 import { GiftPanel } from "@/components/gifts/GiftPanel";
-import { ChatInput, ClosedRoomCard, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomStatusBanner, RoomTopBar, SeatLayout } from "./RoomParts";
+import { ChatInput, ClosedRoomCard, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomTopBar, SeatLayout } from "./RoomParts";
 import { LiveVoiceBar } from "./LiveVoiceBar";
 import { BACKGROUNDS } from "./RoomSettings";
 import type { RoomSession } from "./useRoomSession";
@@ -46,7 +46,6 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         </p>
       </div>
 
-      <RoomStatusBanner s={s} />
       <PkPanel s={s} />
 
       {/* Seats: the owner's fixed seat + intimacy seat on top, then linked pairs */}

@@ -9,7 +9,7 @@ import { useApp } from "@/lib/app/store";
 import { AddVideoModal } from "./AddVideoModal";
 import { VipDecor } from "./VoiceRoom";
 import { YouTubeMark, YouTubePlayer } from "./YouTubePlayer";
-import { ChatInput, ClosedRoomCard, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomStatusBanner, RoomTopBar, SeatLayout } from "./RoomParts";
+import { ChatInput, ClosedRoomCard, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomTopBar, SeatLayout } from "./RoomParts";
 import type { RoomSession } from "./useRoomSession";
 
 /** YouTube Watch Together. This is the room's "video" mode: there are no video calls. */
@@ -85,7 +85,6 @@ export function WatchTogetherRoom({ s }: { s: RoomSession }) {
         <span className="text-[10.5px] text-muted">Plays on your device · not synced</span>
       </div>
 
-      <RoomStatusBanner s={s} />
       {/* Seats */}
       <div className="relative z-10 mt-4">
         {s.roomOpen ? (

@@ -101,7 +101,10 @@ export function timeLeft(expiresAt: number, now = Date.now()) {
 /* ---------------- Couples ---------------- */
 
 /** blessings/blessedBy: blessings the couple already had before this device (sample couples). */
-export type Couple = { id: string; a: string; b: string; ring: RingId; rings: RingId[]; since: number; love: number; message?: string; blessings?: number; blessedBy?: string[] };
+/** endRequest: one partner asked to end the CP; it ends only when the other accepts. */
+export type Couple = { id: string; a: string; b: string; ring: RingId; rings: RingId[]; since: number; love: number; message?: string; blessings?: number; blessedBy?: string[]; endRequest?: { by: string; at: number } };
+/** Demo: how long your partner takes to answer a request to end the CP. */
+export const END_REPLY_MS = 8_000;
 export type Blessing = { id: string; by: string; at: number };
 /** A blessing costs 99 coins and adds 99 love to the couple. */
 export const BLESSING_COST = 99;

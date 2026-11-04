@@ -56,10 +56,10 @@ export const VIP_SETS: VipSet[] = [
     badgeStill: "/effects/vip1/badge.png",
     badgeBand: [69, 279],
     tint: "from-[#5a3a12] to-[#2a160c]",
-    // 396×396 canvas: the ring's inner circle is about 258 px wide, centred at (198, 198).
+    // 396×396 canvas: the ring's inner circle is about 279 px wide, centred at (198, 174).
     // The crown sits on top of the ring and the horse and "VIP 1" plaque cover its bottom.
-    frameScale: 1.535,
-    frameY: 0.5,
+    frameScale: 1.42,
+    frameY: 0.44,
     // 212×112 canvas: the plate inside the gold border
     bubbleBox: [0.12, 0.21, 0.89, 0.8],
     // 404×94 canvas: the bar runs from the horse emblem on the left to the fade on the right
@@ -79,8 +79,8 @@ export const VIP_SETS: VipSet[] = [
     tint: "from-[#0f4a36] to-[#0a2219]",
     // Same 396×396 canvas as VIP 1, with a thinner ring: its inner circle is about
     // 272 px wide, centred at (198, 200). Crown on top, horse and "VIP 2" plaque below.
-    frameScale: 1.456,
-    frameY: 0.505,
+    frameScale: 1.4,
+    frameY: 0.47,
     // Same 212×112 bubble and 404×94 entry canvases as VIP 1
     bubbleBox: [0.12, 0.21, 0.89, 0.8],
     entryRatio: "404 / 94",
@@ -99,8 +99,8 @@ export const VIP_SETS: VipSet[] = [
     tint: "from-[#1d2a7a] to-[#0d1338]",
     // 396×396 canvas, blue and gold eagle ring: inner circle about 272 px wide,
     // centred at (198, 196). Crown on top, eagle and "VIP 3" plaque below.
-    frameScale: 1.456,
-    frameY: 0.495,
+    frameScale: 1.4,
+    frameY: 0.47,
     // Same 212×112 bubble and 404×94 entry canvases as VIP 1 and 2
     bubbleBox: [0.12, 0.21, 0.89, 0.8],
     entryRatio: "404 / 94",
@@ -121,8 +121,8 @@ export const VIP_SETS: VipSet[] = [
     tint: "from-[#7a3410] to-[#2e1206]",
     // 396×396 canvas, fiery gold eagle ring: inner circle about 272 px wide,
     // centred at (198, 196). Crown on top, eagle and "VIP 4" plaque below.
-    frameScale: 1.456,
-    frameY: 0.495,
+    frameScale: 1.42,
+    frameY: 0.47,
     // 212×112 bubble: the amber plate inside the gold border
     bubbleBox: [0.12, 0.22, 0.88, 0.79],
     entryRatio: "404 / 94",
@@ -141,8 +141,8 @@ export const VIP_SETS: VipSet[] = [
     tint: "from-[#0d4a4a] to-[#06201f]",
     // 396×396 canvas, teal and gold leopard ring: inner opening about 272 px
     // wide, centred at (198, 198). Leopards on the sides, plaque below.
-    frameScale: 1.456,
-    frameY: 0.5,
+    frameScale: 1.4,
+    frameY: 0.47,
     // 212×112 bubble: the teal plate inside the gold border
     bubbleBox: [0.12, 0.22, 0.88, 0.79],
     // This entry is a wider 440×112 canvas; the left ornament ends near 10%
@@ -162,8 +162,8 @@ export const VIP_SETS: VipSet[] = [
     tint: "from-[#0d3a6a] to-[#061a33]",
     // 396×396 canvas, blue and gold roaring-leopard ring: inner opening about
     // 264 px wide, centred at (198, 194). Crown on top, leopard and plaque below.
-    frameScale: 1.5,
-    frameY: 0.49,
+    frameScale: 1.44,
+    frameY: 0.47,
     // 212×112 bubble: the blue plate inside the gold border
     bubbleBox: [0.13, 0.22, 0.88, 0.79],
     // Same 440×112 canvas as VIP 5; the left ornament ends near 10%
@@ -183,8 +183,8 @@ export const VIP_SETS: VipSet[] = [
     tint: "from-[#0f5a2a] to-[#062211]",
     // 396×396 canvas, green and gold leopard ring: inner opening about 264 px
     // wide, centred at (198, 194). Crown on top, leopard and plaque below.
-    frameScale: 1.5,
-    frameY: 0.49,
+    frameScale: 1.44,
+    frameY: 0.47,
     // 212×112 bubble: the plate inside the gold border
     bubbleBox: [0.13, 0.22, 0.88, 0.79],
     // Same 440×112 canvas as VIP 5 and 6
@@ -228,8 +228,8 @@ export const GIFT_SETS: GiftSet[] = [
     tint: "from-[#16306b] to-[#0b1433]",
     // 260×260 canvas: the ring's opening is about 182 px wide, centred at (136, 126).
     // The guardian stands on the left of the ring and a platform sits under it.
-    frameScale: 1.43,
-    frameY: 0.485,
+    frameScale: 1.38,
+    frameY: 0.47,
     // 750×240 canvas (aryan's new chat bubble): the dark screen inside the blue border runs 10–90% across and 26–63% down
     bubbleBox: [0.11, 0.27, 0.89, 0.63],
     // 660×132 canvas: the guardian's round emblem fills the left quarter, the bar fades out on the right
