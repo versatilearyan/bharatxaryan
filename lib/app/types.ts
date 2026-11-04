@@ -191,7 +191,7 @@ export type Gift = {
 
 export type RoomMessage =
   | { id: string; kind: "system"; text: string }
-  | { id: string; kind: "text"; authorId: string; text: string }
+  | { id: string; kind: "text"; authorId: string; text: string; imageUrl?: string }
   | { id: string; kind: "gift"; fromId: string; toId: string; giftId: GiftId; count: number; charm?: number; earned?: number }
   | { id: string; kind: "video"; authorId: string; title: string }
   | { id: string; kind: "join"; authorId: string };

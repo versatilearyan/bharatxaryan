@@ -3,7 +3,9 @@
 import { BagIcon, RankingIcon, ShopIcon, VisitorsIcon } from "@/components/art/ProfileIcons";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, ChevronRight, Crown, FileText, Info, Pencil, RotateCcw, RotateCw, LogOut, Shield, Volume2 } from "lucide-react";
+import { Bell, ChevronRight, Crown, Eye, FileText, Info, MessageCircle, Pencil, RotateCcw, RotateCw, LogOut, Shield, Smartphone, Volume2 } from "lucide-react";
+import { setNotifyPrefs, useNotifyPrefs, notify as ping } from "@/lib/app/notify";
+import { getPrivacy, setShowOnline } from "@/lib/api/chat";
 import { GameArt } from "@/components/art/GameArt";
 import { Modal } from "@/components/ui/Modal";
 import { ProfileHero, UserProfileBody } from "@/components/profile/UserProfile";
@@ -11,7 +13,7 @@ import { Button, Coin, Toggle, formatCoins } from "@/components/ui/kit";
 import { gameById } from "@/lib/app/data";
 import { formatPoints, vipLevel } from "@/lib/app/levels";
 import { useMarket } from "@/lib/app/market-store";
-import { useApp } from "@/lib/app/store";
+import { ME_ID, useApp } from "@/lib/app/store";
 import { useMe } from "@/lib/app/me-store";
 
 export function ProfileScreen() {
@@ -19,6 +21,17 @@ export function ProfileScreen() {
   const [notify, setNotify] = useState(true);
   const [sounds, setSounds] = useState(true);
   const [confirmReset, setConfirmReset] = useState(false);
+  const alerts = useNotifyPrefs();
+  const [showOnline, setShowOnlineState] = useState<boolean | null>(null);
+  useEffect(() => {
+    let off = false;
+    getPrivacy()
+      .then((p) => !off && setShowOnlineState(p.showOnline))
+      .catch(() => !off && setShowOnlineState(true));
+    return () => {
+      off = true;
+    };
+  }, []);
   const { visitors, newVisitors } = useMarket();
   const me = useMe();
   // Fresh profile and stats each time the tab opens (skipped if loaded in the last 30 s)
@@ -75,6 +88,23 @@ export function ProfileScreen() {
             ) : null}
           </button>
         ))}
+      </div>
+
+
+      {/* Moments, Friends and CP */}
+      <div className="mx-4 mt-2.5 grid grid-cols-3 gap-2.5">
+        <button type="button" onClick={() => push({ kind: "moments", personId: "me" })} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#3b2a6b] to-[#1b1530] py-3 text-center ring-1 ring-[#8f74ff]/40">
+          <span className="block text-[20px]" aria-hidden>📸</span>
+          <span className="text-[12.5px] font-bold text-cream">Moments</span>
+        </button>
+        <button type="button" onClick={() => setSheet({ kind: "friends" })} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1f4d3f] to-[#10241e] py-3 text-center ring-1 ring-[#4fd6a5]/40">
+          <span className="block text-[20px]" aria-hidden>🤝</span>
+          <span className="text-[12.5px] font-bold text-cream">Friends</span>
+        </button>
+        <button type="button" onClick={() => push({ kind: "love-home", personId: ME_ID })} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#6b1f3d] to-[#2a0d19] py-3 text-center ring-1 ring-[#ff7fa8]/40">
+          <span className="block text-[20px]" aria-hidden>💍</span>
+          <span className="text-[12.5px] font-bold text-cream">CP</span>
+        </button>
       </div>
 
       <UserProfileBody personId="me" />
@@ -136,6 +166,33 @@ export function ProfileScreen() {
         <Row icon={<Pencil className="h-4.5 w-4.5" />} label="Edit profile" onClick={() => setSheet({ kind: "edit-profile" })} />
         <Row icon={<Bell className="h-4.5 w-4.5" />} label="Notifications" right={<Toggle checked={notify} onChange={(v) => (setNotify(v), toast(v ? "Notifications on" : "Notifications off"))} label="Notifications" />} />
         <Row icon={<Volume2 className="h-4.5 w-4.5" />} label="Room sounds" right={<Toggle checked={sounds} onChange={setSounds} label="Room sounds" />} />
+        <Row
+          icon={<MessageCircle className="h-4.5 w-4.5" />}
+          label="Message sound"
+          right={<Toggle checked={alerts.sound} onChange={(v) => { setNotifyPrefs({ sound: v }); if (v) ping("alert"); toast(v ? "Message sound on" : "Message sound off"); }} label="Message sound" />}
+        />
+        <Row
+          icon={<Smartphone className="h-4.5 w-4.5" />}
+          label="Vibration"
+          right={<Toggle checked={alerts.vibrate} onChange={(v) => { setNotifyPrefs({ vibrate: v }); if (v) ping("alert"); toast(v ? "Vibration on" : "Vibration off"); }} label="Vibration" />}
+        />
+        <Row
+          icon={<Eye className="h-4.5 w-4.5" />}
+          label="Show my online status"
+          right={
+            <Toggle
+              checked={showOnline ?? true}
+              onChange={(v) => {
+                const was = showOnline;
+                setShowOnlineState(v);
+                setShowOnline(v)
+                  .then((p) => { setShowOnlineState(p.showOnline); toast(p.showOnline ? "People can see when you're online" : "Your online status is hidden"); })
+                  .catch(() => { setShowOnlineState(was); toast("Couldn't change that. Try again."); });
+              }}
+              label="Show my online status"
+            />
+          }
+        />
         <LinkRow href="/about" icon={<Info className="h-4.5 w-4.5" />} label="About Panchayat" />
         <LinkRow href="/privacy" icon={<Shield className="h-4.5 w-4.5" />} label="Privacy" />
         <LinkRow href="/terms" icon={<FileText className="h-4.5 w-4.5" />} label="Terms" />

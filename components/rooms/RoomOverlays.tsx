@@ -25,6 +25,7 @@ import { TagStrip, TagTitleChip } from "./TagParts";
 import { RoomInfoSheet, RoomSettingsScreen } from "./RoomSettings";
 import type { RoomSession } from "./useRoomSession";
 import { nameFace } from "@/lib/app/fonts";
+import { notify } from "@/lib/app/notify";
 import { LevelPill } from "@/components/profile/IdTags";
 
 /** Sheets and cards shared by every room mode: profile card, seat menu, room info, people. */
@@ -34,7 +35,6 @@ export function RoomOverlays({ s }: { s: RoomSession }) {
     <>
       <RoomProfileCard s={s} onGift={(id) => setGiftTo(id)} />
       <SeatMenuSheet s={s} />
-      <SeatInvitePrompt s={s} />
       <RoomInfoSheet s={s} />
       <RoomSettingsScreen s={s} />
       <RoomPeopleSheet s={s} />
@@ -391,12 +391,17 @@ function SeatMenuSheet({ s }: { s: RoomSession }) {
 /* ------------------------------------------------------------------ */
 
 /** The owner or an admin invited you to a seat: accept or refuse. Gone when it expires or is answered. */
-function SeatInvitePrompt({ s }: { s: RoomSession }) {
+export function SeatInvitePrompt({ s }: { s: RoomSession }) {
   const person = usePeople();
-  const { profile } = useApp();
+  const { profile, roomOpen, expandRoom } = useApp();
   const inv = s.seatInvite;
   const [now, setNow] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
+  // One sound per invite, not one per room update
+  const key = inv ? `${inv.by}:${inv.seat}` : "";
+  useEffect(() => {
+    if (key) notify("invite");
+  }, [key]);
   useEffect(() => {
     setBusy(false);
     if (!inv) return;
@@ -407,12 +412,12 @@ function SeatInvitePrompt({ s }: { s: RoomSession }) {
   const left = inv ? Math.max(0, Math.ceil((inv.expiresAt - now) / 1000)) : 0;
   const open = Boolean(inv) && left > 0;
   const by = inv ? (inv.by === ME_ID ? profile.name : person(inv.by).name) : "";
-  const moving = s.mySeat > 0;
+  const moving = s.mySeat >= 0;
 
   return (
     <AnimatePresence>
       {open && inv ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/55 px-6" role="dialog" aria-modal="true" aria-label="Seat invite">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/55 px-6" role="dialog" aria-modal="true" aria-label="Seat invite">
           <motion.div
             initial={{ scale: 0.92, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -423,6 +428,7 @@ function SeatInvitePrompt({ s }: { s: RoomSession }) {
               <Mic className="h-6 w-6" />
             </div>
             <p className="mt-3 text-[16px] font-extrabold text-[#1d1a22]">Seat invite</p>
+            {!roomOpen ? <p className="mt-0.5 text-[11.5px] font-semibold text-[#8d8796]">in {s.room.name}</p> : null}
             <p className="mt-1.5 text-[13.5px] leading-snug text-[#4d4656]">
               <span className="font-bold">{by}</span> invited you {moving ? `to move from seat No.${s.mySeat + 1} to` : "to"} seat No.{inv.seat + 1}.
             </p>
@@ -445,6 +451,7 @@ function SeatInvitePrompt({ s }: { s: RoomSession }) {
                 onClick={() => {
                   setBusy(true);
                   void s.acceptSeatInvite().finally(() => setBusy(false));
+                  if (!roomOpen) expandRoom();
                 }}
                 className="flex h-11 items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-[#ff7d8e] to-[#f4515b] text-[14px] font-bold text-white disabled:opacity-60"
               >

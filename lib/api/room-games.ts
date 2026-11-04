@@ -159,7 +159,7 @@ export const auctionApi = {
 
 /* ---- BFF tags ---- */
 
-export type ServerTag = { id: string; a: string; b: string; relation: string; token: string; intimacy: number; roomName?: string; declaration?: string; createdAt?: string };
+export type ServerTag = { id: string; a: string; b: string; relation: string; token: string; intimacy: number; roomName?: string; declaration?: string; createdAt?: string; nickname?: string; theme?: string };
 
 function readTags(raw: unknown): ServerTag[] {
   return Array.isArray(raw)
@@ -169,7 +169,7 @@ function readTags(raw: unknown): ServerTag[] {
         const a = str(o?.a);
         const b = str(o?.b);
         return o && id && a && b
-          ? [{ id, a, b, relation: str(o.relation) ?? "besties", token: str(o.token) ?? "bicycle", intimacy: num(o.intimacy) ?? 0, roomName: str(o.roomName), declaration: str(o.declaration), createdAt: str(o.createdAt) }]
+          ? [{ id, a, b, relation: str(o.relation) ?? "besties", token: str(o.token) ?? "bicycle", intimacy: num(o.intimacy) ?? 0, roomName: str(o.roomName), declaration: str(o.declaration), createdAt: str(o.createdAt), nickname: str(o.nickname), theme: str(o.theme) }]
           : [];
       })
     : [];
@@ -179,4 +179,10 @@ export const tagsApi = {
   mine: async () => readTags(await api<unknown>("/api/v1/tags/me", opts)),
   of: async (userId: string) => readTags(await api<unknown>(`/api/v1/tags/user/${encodeURIComponent(userId)}`, opts)),
   remove: (tagId: string) => api<unknown>(`/api/v1/tags/${encodeURIComponent(tagId)}`, { ...opts, method: "DELETE" }),
+  /** Either person: change the tag type, pet name ("" clears) or theme ("" clears). */
+  customize: async (tagId: string, patch: { relation?: string; nickname?: string; theme?: string }) => readTags([await api<unknown>(`/api/v1/tags/${encodeURIComponent(tagId)}`, { ...opts, method: "PUT", body: patch })])[0],
+  slots: async (userId?: string) => {
+    const d = obj(await api<unknown>(userId ? `/api/v1/tags/user/${encodeURIComponent(userId)}/slots` : "/api/v1/tags/me/slots", opts));
+    return { used: num(d?.used) ?? 0, slots: num(d?.slots) ?? 5, max: num(d?.max) ?? 12 };
+  },
 };

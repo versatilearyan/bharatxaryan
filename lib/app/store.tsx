@@ -9,7 +9,7 @@
  * kept here too; the backend JWT itself lives in lib/auth/token.ts.
  */
 import { signOutLocally, type AuthUser } from "@/lib/auth/auth";
-import { freshToken, setUnauthorizedHandler } from "@/lib/api/client";
+import { api, freshToken, setUnauthorizedHandler } from "@/lib/api/client";
 import { getMyCoinBalance } from "@/lib/api/wallet";
 import { subscribe } from "@/lib/realtime/stomp";
 import { getMyRoomRelations, setRoomFollow, setRoomMembership } from "@/lib/api/voice-rooms";
@@ -20,7 +20,8 @@ import { CONVERSATIONS, INITIAL_COINS, INITIAL_PROFILE, NOTICES, PEOPLE, ROOMS }
 import { GOLD_NAME_VIP, POINTS_PER_COIN, growthFor, roomLevel, vipLevel } from "./levels";
 import { EXP_SOURCES, FRIEND_EXP, TASK_EXP, charmFromCoins, charmInfo, giftEarnings, dayKey, expToNext, sampleCharm, type ExpSource } from "./progress";
 import { GUARD_PER_DAY, MY_SAMPLE_RECEIVED, sampleGuardians, sampleReceived } from "./social";
-import { RELATIONSHIPS, SAMPLE_TAGS, TAG_SLOTS, pairKey, relationshipById, tagLevel, tokenFor, type RelationshipId, type Tag } from "./tags";
+import { friendsApi } from "@/lib/api/social";
+import { RELATIONSHIPS, SAMPLE_TAGS, TAG_SLOTS, TAG_THEME_IDS, pairKey, relationshipById, tagLevel, tokenFor, type RelationshipId, type Tag } from "./tags";
 /** Relationship ids the app knows, for checking tags from the server. */
 const RELATIONSHIP_IDS: string[] = RELATIONSHIPS.map((r) => r.id);
 import type { RedPacketId } from "./redpacket";
@@ -51,7 +52,10 @@ export type Screen =
   | { kind: "parivar-list" }
   | { kind: "parivar-create" }
   | { kind: "parivar"; id: string }
-  | { kind: "chess" };
+  | { kind: "chess" }
+  /** personId: only that person's Moments ("me" for yours). */
+  | { kind: "moments"; personId?: string }
+  | { kind: "jackaroo"; roomId?: string };
 
 export type Sheet =
   | { kind: "person"; personId: string }
@@ -442,6 +446,46 @@ function useAppState() {
     },
     [toast],
   );
+  // Signed in: the server keeps your Active Level (voice time, games, friends, tasks, coin packs)
+  const syncLevel = useCallback(() => {
+    api<unknown>("/api/v1/users/me/level", { auth: true, forbiddenIsAccess: true })
+      .then((raw) => {
+        const d = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+        const level = Number(d?.level);
+        if (!d || !Number.isFinite(level) || level < 1) return;
+        const xp = Number(d.intoLevel) || 0;
+        const xpNext = Number(d.toNext) || expToNext(level);
+        setProfile((p) => {
+          if (level > p.level && p.level > 0) window.setTimeout(() => toast(`Level up! You're now Lv.${level}`, "gold"), 300);
+          return { ...p, level, xp, xpNext };
+        });
+        const t = d.today && typeof d.today === "object" ? (d.today as Record<string, { got?: number }>) : {};
+        const today: Partial<Record<ExpSource, number>> = {};
+        (["game", "voice", "task", "friend", "purchase"] as ExpSource[]).forEach((k) => {
+          const got = Number(t[k]?.got);
+          if (Number.isFinite(got)) today[k] = got;
+        });
+        const next: ExpLog = { day: dayKey(), today, total: expRef.current.total };
+        expRef.current = next;
+        setExp(next);
+      })
+      .catch(() => undefined);
+  }, [toast]);
+  const levelEmail = session?.email;
+  useEffect(() => {
+    if (!hydrated || !levelEmail) return;
+    syncLevel();
+    const t = window.setInterval(syncLevel, 60_000);
+    const un = subscribe("/user/queue/notify", (body) => {
+      const b = body && typeof body === "object" ? (body as { type?: unknown }) : null;
+      if (b?.type === "LEVEL_UP") syncLevel();
+    });
+    return () => {
+      window.clearInterval(t);
+      un();
+    };
+  }, [hydrated, levelEmail, syncLevel]);
+
   const expToday = useCallback((source: ExpSource) => (exp.day === dayKey() ? (exp.today[source] ?? 0) : 0), [exp]);
 
   /* ---- Charm: received gifts only, coins ÷ 5 ---- */
@@ -700,8 +744,49 @@ function useAppState() {
 
   const updateProfile = useCallback((patch: Partial<Profile>) => setProfile((p) => ({ ...p, ...patch })), []);
 
+  // Signed in: who you follow comes from the server (backend people are "srv-user:<id>")
+  useEffect(() => {
+    if (!hydrated || !sessionEmail) return;
+    let off = false;
+    friendsApi
+      .list("following")
+      .then((l) => {
+        if (off) return;
+        const ids = l.people.map((x) => `srv-user:${x.userId}`);
+        setProfile((p) => ({ ...p, following: [...p.following.filter((x) => !x.startsWith("srv-user:")), ...ids] }));
+      })
+      .catch(() => undefined);
+    return () => {
+      off = true;
+    };
+  }, [hydrated, sessionEmail]);
+
   const toggleFollow = useCallback(
     (personId: string) => {
+      // Backend people: follow on the server; two people who follow each other are friends
+      if (personId.startsWith("srv-user:")) {
+        const uid = personId.slice(9);
+        let was = false;
+        setProfile((p) => {
+          was = p.following.includes(personId);
+          return { ...p, following: was ? p.following.filter((x) => x !== personId) : [...p.following, personId] };
+        });
+        window.setTimeout(() => {
+          (was ? friendsApi.unfollow(uid) : friendsApi.follow(uid))
+            .then((st) => {
+              if (!was) {
+                toast(st.friends ? "You're friends now 🤝" : "Following");
+                addExp(FRIEND_EXP, "friend");
+              } else toast("Unfollowed");
+            })
+            .catch((e) => {
+              // Put it back as it was
+              setProfile((p) => ({ ...p, following: was ? [...p.following, personId] : p.following.filter((x) => x !== personId) }));
+              toast(e instanceof Error && e.message ? e.message : "Couldn't do that. Try again.", "error");
+            });
+        }, 0);
+        return;
+      }
       setProfile((p) => {
         const on = p.following.includes(personId);
         const name = PEOPLE.find((x) => x.id === personId)?.name ?? "them";
@@ -750,9 +835,11 @@ function useAppState() {
       setClaimed((c) => [...c, taskId]);
       setCoins((c) => c + reward);
       const xp = addExp(TASK_EXP, "task");
+      // Signed in: the server counts it too (each task once a day)
+      if (session) void api<unknown>("/api/v1/users/me/exp/task", { method: "POST", auth: true, forbiddenIsAccess: true, body: { taskId: String(taskId).toLowerCase().replace(/[^a-z0-9-]/g, "-").slice(0, 40) } }).then(() => syncLevel()).catch(() => undefined);
       toast(`+${reward} demo coins${xp ? ` · +${xp} EXP` : ""}`, "gold");
     },
-    [claimed, toast, addExp],
+    [claimed, toast, addExp, session, syncLevel],
   );
 
   /**
@@ -952,6 +1039,8 @@ function useAppState() {
   );
 
   /* ---- Tags and intimacy ---- */
+  const tagReload = useRef<number | null>(null);
+  const loadServerTagsRef = useRef<((personId?: string) => Promise<void>) | null>(null);
   const tagsOf = useCallback((personId: string) => tags.filter((t) => t.a === personId || t.b === personId), [tags]);
   const tagBetween = useCallback((x: string, y: string) => tags.find((t) => pairKey(t.a, t.b) === pairKey(x, y)) ?? null, [tags]);
   const nameOf = (id: string) => (id === "me" ? "You" : PEOPLE.find((x) => x.id === id)?.name ?? "Someone");
@@ -965,6 +1054,11 @@ function useAppState() {
       const before = tagLevel(tag.intimacy).level;
       const after = tagLevel(tag.intimacy + amount).level;
       setTags((list) => list.map((t) => (t.id === tag.id ? { ...t, intimacy: t.intimacy + amount } : t)));
+      // Server tags: the server's count is the truth; reload it once the gift has gone through
+      if (tag.id.startsWith("srv-tag:")) {
+        if (tagReload.current) window.clearTimeout(tagReload.current);
+        tagReload.current = window.setTimeout(() => void loadServerTagsRef.current?.("me"), 2500);
+      }
       if (after > before && (x === "me" || y === "me")) window.setTimeout(() => toast(`Your ${relationshipById(tag.relation).label} tag with ${nameOf(x === "me" ? y : x)} reached Lv ${after}!`, "gold"), 2600);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -979,8 +1073,8 @@ function useAppState() {
       const existing = tagBetween(winner, item);
       if (existing) return "existing";
       if (tagsOf(winner).length >= TAG_SLOTS || tagsOf(item).length >= TAG_SLOTS) return "full";
-      // A new tag starts at Lv 1 with no intimacy: the winning bid picks the token but doesn't level it up
-      const tag: Tag = { id: `t-${uid()}`, a: winner, b: item, relation, token: tokenFor(giftVolume), intimacy: 0, createdAt: Date.now(), roomName, declaration };
+      // The winning bid picks the token and counts as the first intimacy (same as the server)
+      const tag: Tag = { id: `t-${uid()}`, a: winner, b: item, relation, token: tokenFor(giftVolume), intimacy: Math.max(0, giftVolume), createdAt: Date.now(), roomName, declaration };
       setTags((list) => [tag, ...list]);
       return "new";
     },
@@ -1007,6 +1101,8 @@ function useAppState() {
         createdAt: t.createdAt ? Date.parse(t.createdAt) || Date.now() : Date.now(),
         roomName: t.roomName ?? "",
         declaration: t.declaration,
+        nickname: t.nickname,
+        theme: t.theme && TAG_THEME_IDS.includes(t.theme) ? (t.theme as Tag["theme"]) : undefined,
       }));
       const who = pid(uid);
       setTags((cur) => [...loaded, ...cur.filter((t) => !(t.id.startsWith("srv-tag:") && (t.a === who || t.b === who)) && !loaded.some((n) => n.id === t.id))]);
@@ -1014,6 +1110,30 @@ function useAppState() {
       /* keeps what this device shows; tried again next time */
     }
   }, []);
+  loadServerTagsRef.current = loadServerTags;
+  /** Change a server tag's type, pet name or theme (either person). */
+  const customizeTag = useCallback(
+    async (id: string, patch: { relation?: RelationshipId; nickname?: string; theme?: string }) => {
+      if (!id.startsWith("srv-tag:")) {
+        setTags((list) => list.map((t) => (t.id === id ? { ...t, ...(patch.relation ? { relation: patch.relation } : {}), ...(patch.nickname !== undefined ? { nickname: patch.nickname || undefined } : {}), ...(patch.theme !== undefined ? { theme: (patch.theme || undefined) as Tag["theme"] } : {}) } : t)));
+        return;
+      }
+      const saved = await tagsApi.customize(id.slice(8), patch);
+      setTags((list) =>
+        list.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                relation: (saved && RELATIONSHIP_IDS.includes(saved.relation) ? saved.relation : t.relation) as RelationshipId,
+                nickname: saved?.nickname,
+                theme: saved?.theme && TAG_THEME_IDS.includes(saved.theme) ? (saved.theme as Tag["theme"]) : undefined,
+              }
+            : t,
+        ),
+      );
+    },
+    [],
+  );
   const breakTag = useCallback(
     (id: string) => {
       if (id.startsWith("srv-tag:")) {
@@ -1041,7 +1161,7 @@ function useAppState() {
   return {
     charmOf, addCharm, addExp, expToday, exp,
     openProfile, trackReceived, receivedOf, guardiansOf, protect, protectedToday,
-    tags, tagsOf, tagBetween, addIntimacy, formTag, breakTag, loadServerTags, openIntimateSpace,
+    tags, tagsOf, tagBetween, addIntimacy, formTag, breakTag, customizeTag, loadServerTags, openIntimateSpace,
     adminsOf, roleIn, setRoomAdmin, membershipOf, isJoined, isFollowingRoom, recentRoomIds, toggleJoinRoom, toggleFollowRoom, announcementOf, setAnnouncement,
     tab, setTab, stack, push, pop, replaceTop, sheet, setSheet,
     profile, updateProfile, toggleFollow,

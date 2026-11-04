@@ -1,10 +1,14 @@
 "use client";
 
+import { friendsApi, type FollowStatus } from "@/lib/api/social";
+import { cpApi, daysOf, type CpCouple } from "@/lib/api/cp";
+import { ServerProposeSheet, useCpEvents } from "@/components/market/ServerCp";
+import { myUserIdFromToken } from "@/lib/auth/token";
 import { CpBannerPill } from "@/components/market/CpParts";
 import { SvgaAnim, preloadSvga, warnSvga } from "@/components/effects/SvgaAnim";
 import { VipAvatar, VipBadge, VipEntryBanner } from "@/components/effects/VipFx";
 import type { EffectSet } from "@/lib/app/effects";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronLeft, ChevronRight, Copy, Gift, Lock, MessageCircle, Shield, ShieldCheck, UserPlus } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
@@ -324,8 +328,79 @@ export function UserProfileBody({ personId }: { personId: string }) {
   );
 }
 
-/** CP (couple): their partner, ring and days together, or a Propose button. */
+/** CP: from the server for backend people (and you, when signed in); the device's demo couple otherwise. */
 function CpPanel({ personId }: { personId: string }) {
+  const { session } = useApp();
+  if (session && (personId === ME_ID || personId.startsWith("srv-user:"))) return <ServerCpPanel personId={personId} />;
+  return <LocalCpPanel personId={personId} />;
+}
+
+/** The server CP: partner, worn ring, days together, love, or a Propose button. */
+function ServerCpPanel({ personId }: { personId: string }) {
+  const { push } = useApp();
+  const person = usePeople();
+  const mine = personId === ME_ID;
+  const [c, setC] = useState<CpCouple | null | undefined>(undefined);
+  const [iHave, setIHave] = useState(false);
+  const [proposing, setProposing] = useState(false);
+  const load = useCallback(() => {
+    const uid = mine ? myUserIdFromToken() : personId.slice(9);
+    if (!uid) return;
+    (mine ? cpApi.mine() : cpApi.of(uid)).then(setC).catch(() => setC(null));
+    if (!mine)
+      Promise.all([cpApi.mine(), cpApi.proposals()])
+        .then(([m, p]) => setIHave(Boolean(m || p.sent)))
+        .catch(() => undefined);
+  }, [mine, personId]);
+  useEffect(load, [load]);
+  useCpEvents(useCallback(() => load(), [load]));
+  const name = mine ? "You" : person(personId).name;
+  const A = c ? c.people[c.a] : undefined;
+  const B = c ? c.people[c.b] : undefined;
+  return (
+    <Panel title="CP" meta={c ? `Lv ${c.level}` : undefined} onOpen={() => push({ kind: "love-home", personId })}>
+      {c === undefined ? (
+        <div className="h-10 animate-pulse rounded-xl bg-cream/[0.06]" />
+      ) : c ? (
+        <div className="flex items-center gap-3">
+          <span className="relative flex items-center">
+            {[A, B].map((x, i) =>
+              x?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={i} src={x.avatarUrl} alt="" className={`h-[38px] w-[38px] rounded-full object-cover ring-2 ring-surface ${i ? "-ml-2" : ""}`} />
+              ) : (
+                <span key={i} className={`grid h-[38px] w-[38px] place-items-center rounded-full bg-pink font-bold text-white ring-2 ring-surface ${i ? "-ml-2" : ""}`}>
+                  {(x?.name ?? "?").slice(0, 1)}
+                </span>
+              ),
+            )}
+            <span className="absolute -bottom-2 left-1/2 -translate-x-1/2">
+              <RingArt id={c.ring as RingId} size={24} />
+            </span>
+          </span>
+          <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-cream">
+            {A?.name ?? "…"} & {B?.name ?? "…"}
+            <span className="block text-[11.5px] text-muted">
+              {daysOf(c.since)} days · {c.love.toLocaleString("en-IN")} love · 💍 {c.rings.length} · 🙏 {c.blessings}
+            </span>
+          </p>
+        </div>
+      ) : (
+        <div className="flex items-center gap-3">
+          <p className="min-w-0 flex-1 text-[12px] leading-snug text-muted">{mine ? "No CP yet. Open someone's profile and propose with a ring." : `${name} doesn't have a CP yet.`}</p>
+          {!mine ? (
+            <button type="button" disabled={iHave} onClick={(e) => (e.stopPropagation(), setProposing(true))} className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-pink px-3.5 text-[12.5px] font-bold text-white disabled:bg-cream/10 disabled:text-muted">
+              💍 {iHave ? "You have a CP" : "Propose"}
+            </button>
+          ) : null}
+        </div>
+      )}
+      {!mine ? <ServerProposeSheet open={proposing} onClose={() => (setProposing(false), load())} toUserId={personId.slice(9)} toName={name} /> : null}
+    </Panel>
+  );
+}
+
+function LocalCpPanel({ personId }: { personId: string }) {
   const { push } = useApp();
   const { coupleOf, myCouple, pending, bless, blessingsOf } = useMarket();
   const person = usePeople();
@@ -585,8 +660,48 @@ function useUserRooms(personId: string) {
 /* Full-page profile for other users                                   */
 /* ------------------------------------------------------------------ */
 
+/** Friends, followers and following for a backend user, and whether you're friends. */
+export function FollowCounts({ personId, following }: { personId: string; following?: boolean }) {
+  const [st, setSt] = useState<FollowStatus | null>(null);
+  const uid = personId.startsWith("srv-user:") ? personId.slice(9) : null;
+  useEffect(() => {
+    if (!uid) return;
+    let off = false;
+    const t = window.setTimeout(
+      () =>
+        friendsApi
+          .status(uid)
+          .then((x) => !off && setSt(x))
+          .catch(() => undefined),
+      following === undefined ? 0 : 600,
+    );
+    return () => {
+      off = true;
+      window.clearTimeout(t);
+    };
+  }, [uid, following]);
+  if (!uid) return null;
+  return (
+    <div className="mx-4 mt-3 grid grid-cols-3 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+      {(
+        [
+          ["Friends", st?.friendsCount],
+          ["Followers", st?.followers],
+          ["Following", st?.followingCount],
+        ] as const
+      ).map(([label, n]) => (
+        <div key={label} className="py-2.5 text-center">
+          <span className="block font-display text-[18px] font-extrabold text-cream">{n ?? "–"}</span>
+          <span className="text-[11px] text-muted">{label}</span>
+        </div>
+      ))}
+      {st?.friends ? <p className="col-span-3 border-t border-line py-1.5 text-center text-[11.5px] font-bold text-speak">🤝 You're friends</p> : st?.followsYou ? <p className="col-span-3 border-t border-line py-1.5 text-center text-[11.5px] font-semibold text-muted">Follows you</p> : null}
+    </div>
+  );
+}
+
 export function UserProfileScreen({ personId }: { personId: string }) {
-  const { pop, profile, toggleFollow, openConversation } = useApp();
+  const { pop, profile, toggleFollow, openConversation, push } = useApp();
   const { recordVisit } = useMarket();
   const following = profile.following.includes(personId);
   // Leave one footprint per opening
@@ -620,6 +735,17 @@ export function UserProfileScreen({ personId }: { personId: string }) {
                 Retry
               </button>
             ) : null}
+          </div>
+        ) : null}
+        {personId.startsWith("srv-user:") ? <FollowCounts personId={personId} following={following} /> : null}
+        {personId.startsWith("srv-user:") ? (
+          <div className="mx-4 mt-2.5 grid grid-cols-2 gap-2.5">
+            <button type="button" onClick={() => push({ kind: "moments", personId })} className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-[#3b2a6b] to-[#1b1530] py-3 text-[13px] font-bold text-cream ring-1 ring-[#8f74ff]/40">
+              <span aria-hidden>📸</span> Moments
+            </button>
+            <button type="button" onClick={() => push({ kind: "love-home", personId })} className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-br from-[#6b1f3d] to-[#2a0d19] py-3 text-[13px] font-bold text-cream ring-1 ring-[#ff7fa8]/40">
+              <span aria-hidden>💍</span> CP space
+            </button>
           </div>
         ) : null}
         <UserProfileBody personId={personId} />

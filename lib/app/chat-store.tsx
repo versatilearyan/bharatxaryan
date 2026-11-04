@@ -36,6 +36,7 @@ import { readToken } from "@/lib/auth/token";
 import { publish, subscribe } from "@/lib/realtime/stomp";
 import { useServerRooms } from "./server-rooms";
 import { useApp } from "./store";
+import { notify } from "./notify";
 
 export type Thread = {
   messages: ChatMessage[];
@@ -105,6 +106,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const me = myId ?? undefined;
   const inboxRef = useRef(inbox);
   inboxRef.current = inbox;
+
 
   // Signed out (or another account): forget everything
   useEffect(() => {
@@ -335,7 +337,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (!known) loadInboxRef.current(true);
       if (m.senderId !== me) {
         if (open.current.has(m.conversationId)) markReadRef.current(m.conversationId);
-        else refreshUnread();
+        else {
+          refreshUnread();
+          // Sound / buzz for a new message, unless that chat is muted (settings: Message sound, Vibration)
+          const c = inboxRef.current.data?.find((x) => x.id === m.conversationId);
+          if (!c?.muted) notify("message");
+        }
       }
     });
   }, [enabled, me, refreshUnread]);

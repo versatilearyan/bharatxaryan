@@ -6,7 +6,7 @@ import { RelationIcon } from "@/components/art/RelationIcon";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
-import { relationshipById, tagLevel, tokenById, type Tag } from "@/lib/app/tags";
+import { relationshipById, tagColors, tagLevel, tokenById, type Tag } from "@/lib/app/tags";
 
 /** "Kabir's Bestie": the nameplate for someone's tag partner. */
 export function useTagTitle() {
@@ -234,12 +234,22 @@ export function TagPairArt({ tag, size = 64 }: { tag: Tag; size?: number }) {
   );
 }
 
-/** A compact tag chip: emoji, relationship and level. */
+/**
+ * A compact tag chip: badge, relationship (or pet name) and level, in the
+ * tag's theme with a gold edge and a shine that passes now and then.
+ */
 export function TagChip({ tag, className = "" }: { tag: Tag; className?: string }) {
   const rel = relationshipById(tag.relation);
+  const c = tagColors(tag);
+  const lv = tagLevel(tag.intimacy).level;
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-bold ${className}`} style={{ background: `${rel.tint}26`, color: rel.tint }}>
-      <RelationIcon id={tag.relation} size={14} /> {rel.label} · Lv{tagLevel(tag.intimacy).level}
+    <span className={`relative inline-flex overflow-hidden rounded-full p-[1px] ${className}`} style={{ background: `linear-gradient(90deg, #ffe3a3, ${c.from}, #e7bc72)` }}>
+      <span className="relative inline-flex items-center gap-1 overflow-hidden rounded-full py-0.5 pl-1 pr-2 text-[10.5px] font-extrabold text-white" style={{ background: `linear-gradient(90deg, ${c.to}, ${c.from})` }}>
+        <BffBadge id={tag.relation} size={14} />
+        <span className="max-w-[110px] truncate">{tag.nickname || rel.label}</span>
+        <span className="rounded-full bg-black/25 px-1 text-[9.5px]">Lv{lv}</span>
+        <motion.span aria-hidden className="pointer-events-none absolute inset-y-0 -left-6 w-5 -skew-x-12 bg-white/35" animate={{ x: [0, 180] }} transition={{ duration: 1.4, repeat: Infinity, repeatDelay: 3.5, ease: "easeInOut" }} />
+      </span>
     </span>
   );
 }
@@ -285,10 +295,15 @@ export function TagTitleChip({ personId, className = "" }: { personId: string; c
   const tagTitle = useTagTitle();
   const best = [...tagsOf(personId)].sort((x, y) => y.intimacy - x.intimacy).find((t) => tagLevel(t.intimacy).level >= 3);
   if (!best) return null;
-  const rel = relationshipById(best.relation);
+  const c = tagColors(best);
+  const title = tagTitle(best, best.a === personId ? best.b : best.a);
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-extrabold ${className}`} style={{ background: `${rel.tint}2a`, color: rel.tint }}>
-      <RelationIcon id={best.relation} size={15} /> {tagTitle(best, best.a === personId ? best.b : best.a)}
+    <span className={`relative inline-flex overflow-hidden rounded-full p-[1px] ${className}`} style={{ background: `linear-gradient(90deg, #ffe3a3, ${c.from}, #e7bc72)` }}>
+      <span className="relative inline-flex items-center gap-1 overflow-hidden rounded-full py-0.5 pl-1 pr-2 text-[11px] font-extrabold text-white" style={{ background: `linear-gradient(90deg, ${c.to}, ${c.from})` }}>
+        <BffBadge id={best.relation} size={15} />
+        <span className="max-w-[160px] truncate">{best.nickname ? `${title} · “${best.nickname}”` : title}</span>
+        <motion.span aria-hidden className="pointer-events-none absolute inset-y-0 -left-6 w-5 -skew-x-12 bg-white/35" animate={{ x: [0, 240] }} transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 4, ease: "easeInOut" }} />
+      </span>
     </span>
   );
 }

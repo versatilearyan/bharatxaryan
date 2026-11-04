@@ -55,7 +55,7 @@ export function setUnauthorizedHandler(fn: typeof onUnauthorized) {
  * forbiddenIsAccess: treat 403 as "you can't do this" (e.g. a private room, or
  * closing someone else's room) instead of a dead session. 401 still signs out.
  */
-type Options = { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown; auth?: boolean; timeoutMs?: number; forbiddenIsAccess?: boolean };
+type Options = { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: unknown; auth?: boolean; timeoutMs?: number; forbiddenIsAccess?: boolean; headers?: Record<string, string> };
 
 /* ---- Sessions: keep the short access token fresh with the refresh token ---- */
 
@@ -130,7 +130,7 @@ export async function api<T>(path: string, options: Options = {}): Promise<T> {
 
 class RetryWithNewToken extends Error {}
 
-async function request<T>(path: string, { method = "GET", body, auth = false, timeoutMs = DEFAULT_TIMEOUT_MS, forbiddenIsAccess = false }: Options = {}, retried = false): Promise<T> {
+async function request<T>(path: string, { method = "GET", body, auth = false, timeoutMs = DEFAULT_TIMEOUT_MS, forbiddenIsAccess = false, headers: extraHeaders }: Options = {}, retried = false): Promise<T> {
   if (!API_BASE_URL) throw new ApiError("The app isn't connected to a server yet. Set BACKEND_URL in .env.local.", 0, "config");
 
   const headers: Record<string, string> = { Accept: "application/json" };
@@ -138,6 +138,7 @@ async function request<T>(path: string, { method = "GET", body, auth = false, ti
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
   if (body !== undefined && !isForm) headers["Content-Type"] = "application/json";
   if (SKIP_NGROK_WARNING) headers["ngrok-skip-browser-warning"] = "1";
+  if (extraHeaders) Object.assign(headers, extraHeaders);
   if (auth) {
     const token = await freshToken();
     if (!token) {

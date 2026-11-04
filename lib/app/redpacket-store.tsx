@@ -2,8 +2,11 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { PEOPLE, personById } from "./data";
-import { COVERS, RAIN_MS, RED_PACKETS, REMOTE_COUNTDOWN_MS, grabShare, othersShare, packetById, type CoverId, type Drop, type RedPacketId } from "./redpacket";
+import { COVERS, RAIN_MS, RED_PACKETS, REMOTE_COUNTDOWN_MS, grabShare, othersShare, packetById, tierForAmount, type CoverId, type Drop, type RedPacketId } from "./redpacket";
 import { ME_ID, useApp } from "./store";
+import { SERVER_ROOM_PREFIX, serverRoomAppId, userPersonId, useServerRooms } from "./server-rooms";
+import { dropRedPacket, getCurrentRedPacket, grabRedPacket, readRedPacket, RED_PACKETS_TOPIC, roomRedPacketTopic, type ServerRedPacket } from "@/lib/api/redpackets";
+import { subscribe } from "@/lib/realtime/stomp";
 
 const STORAGE_KEY = "panchayat-redpacket-v1";
 type Saved = { owned: Partial<Record<RedPacketId, number>> };
@@ -12,7 +15,8 @@ const uid = () => Math.random().toString(36).slice(2, 10);
 const nameOf = (id: string) => personById(id)?.name ?? "Someone";
 
 function useRedPacketState() {
-  const { spend, addCoins, toast, rooms, activeRoomId, resetCount } = useApp();
+  const { spend, addCoins, toast, rooms, activeRoomId, resetCount, signedIn, refreshCoins } = useApp();
+  const { myId, rememberPeople } = useServerRooms();
   /** Red packets you bought and haven't dropped yet. */
   const [owned, setOwned] = useState<Partial<Record<RedPacketId, number>>>({});
   const [drops, setDrops] = useState<Drop[]>([]);
@@ -63,6 +67,69 @@ function useRedPacketState() {
     return d;
   }, []);
 
+  /*
+   * Backend rooms: the server runs the red packet (pot, fair split, grabs,
+   * refund) and tells everyone. Its messages become Drops here; times are put
+   * on this device's clock.
+   */
+  const fromServer = useCallback(
+    (m: ServerRedPacket, banner: boolean) => {
+      const offset = m.serverTime - Date.now();
+      const fromId = m.senderId === myId ? ME_ID : userPersonId(m.senderId);
+      if (fromId !== ME_ID && m.senderName) rememberPeople({ [fromId]: { name: m.senderName } });
+      const id = `srv-rp:${m.id}`;
+      setDrops((list) => {
+        const old = list.find((x) => x.id === id);
+        const d: Drop = {
+          id,
+          serverId: m.id,
+          packet: tierForAmount(m.amount),
+          cover: (COVERS.some((c) => c.id === m.cover) ? m.cover : "red") as CoverId,
+          roomId: serverRoomAppId(m.roomId),
+          fromId,
+          sentAt: old?.sentAt ?? Date.now(),
+          rainAt: m.rainAt - offset,
+          // Ended on the server: end here too
+          endAt: m.settled || m.event === "ENDED" ? Math.min(old?.endAt ?? Date.now(), Date.now()) : m.endAt - offset,
+          left: m.event === "ENDED" ? 0 : m.left,
+          mine: m.mine ?? old?.mine ?? 0,
+          grabs: m.myGrabs ?? old?.grabs ?? 0,
+          maxGrabs: m.maxGrabs,
+        };
+        return [...list.filter((x) => x.id !== id && x.endAt + 8_000 > Date.now()), d];
+      });
+      if (banner) setBanners((b) => (b.includes(id) ? b : [...b, id]));
+    },
+    [myId, rememberPeople],
+  );
+
+  // Red packets dropped anywhere in Panchayat: the banner
+  useEffect(() => {
+    if (!signedIn) return;
+    return subscribe(RED_PACKETS_TOPIC, (body) => {
+      const m = readRedPacket(body);
+      if (m && m.event === "DROPPED") fromServer(m, true);
+    });
+  }, [signedIn, fromServer]);
+
+  // The room you're in: its red packet now, and every grab and the end as they happen
+  const activeServerRoom = activeRoomId?.startsWith(SERVER_ROOM_PREFIX) ? activeRoomId.slice(SERVER_ROOM_PREFIX.length) : null;
+  useEffect(() => {
+    if (!activeServerRoom || !signedIn) return;
+    let live = true;
+    getCurrentRedPacket(activeServerRoom)
+      .then((m) => live && m && fromServer(m, false))
+      .catch(() => {});
+    const stop = subscribe(roomRedPacketTopic(activeServerRoom), (body) => {
+      const m = readRedPacket(body);
+      if (m) fromServer(m, false);
+    });
+    return () => {
+      live = false;
+      stop();
+    };
+  }, [activeServerRoom, signedIn, fromServer]);
+
   /** Buy a red packet with coins. It waits in your wallet until you drop it in a room. */
   const buy = useCallback(
     (packet: RedPacketId) => {
@@ -89,7 +156,18 @@ function useRedPacketState() {
    * otherwise it's bought with coins. The rain starts after `delay`.
    */
   const send = useCallback(
-    (packet: RedPacketId, roomId: string, cover: CoverId, delay: number) => {
+    async (packet: RedPacketId, roomId: string, cover: CoverId, delay: number): Promise<boolean> => {
+      if (roomId.startsWith(SERVER_ROOM_PREFIX)) {
+        try {
+          const m = await dropRedPacket(roomId.slice(SERVER_ROOM_PREFIX.length), packetById(packet).amount, cover, Math.round(delay / 1000));
+          fromServer(m, false);
+          void refreshCoins();
+          return true;
+        } catch (e) {
+          toast(e instanceof Error && e.message ? e.message : "The red packet wasn't sent. Try again.", "error");
+          return false;
+        }
+      }
       if (drops.some((d) => d.roomId === roomId && Date.now() < d.endAt && d.left > 0)) {
         toast("Wait for this red packet rain to finish", "error");
         return false;
@@ -102,15 +180,25 @@ function useRedPacketState() {
       drop(packet, roomId, ME_ID, cover, delay);
       return true;
     },
-    [owned, drops, spend, drop, toast],
+    [owned, drops, spend, drop, toast, fromServer, refreshCoins],
   );
 
   /** Tap a falling envelope: grab a share of what's left in the pot. */
   const grab = useCallback(
-    (dropId: string) => {
+    async (dropId: string): Promise<number> => {
       const d = drops.find((x) => x.id === dropId);
       const t = Date.now();
       if (!d || d.fromId === ME_ID || d.left <= 0 || t < d.rainAt || t > d.endAt || activeRoomId !== d.roomId) return 0;
+      if (d.serverId) {
+        if (d.maxGrabs && d.grabs >= d.maxGrabs) return 0;
+        try {
+          const r = await grabRedPacket(d.serverId);
+          setDrops((list) => list.map((x) => (x.id === dropId ? { ...x, mine: r.mine, grabs: r.myGrabs, left: Math.min(x.left, r.left) } : x)));
+          return r.got;
+        } catch {
+          return 0;
+        }
+      }
       const got = grabShare(packetById(d.packet).amount, d.left);
       setDrops((list) => list.map((x) => (x.id === dropId ? { ...x, left: Math.max(0, x.left - got), mine: x.mine + got, grabs: x.grabs + 1 } : x)));
       addCoins(got);
@@ -131,7 +219,7 @@ function useRedPacketState() {
   useEffect(() => {
     const t = window.setInterval(() => {
       const at = Date.now();
-      setDrops((list) => (list.some((d) => d.left > 0 && at >= d.rainAt && at <= d.endAt) ? list.map((d) => (d.left > 0 && at >= d.rainAt && at <= d.endAt ? { ...d, left: d.left - othersShare(packetById(d.packet).amount, d.left) } : d)) : list));
+      setDrops((list) => (list.some((d) => !d.serverId && d.left > 0 && at >= d.rainAt && at <= d.endAt) ? list.map((d) => (!d.serverId && d.left > 0 && at >= d.rainAt && at <= d.endAt ? { ...d, left: d.left - othersShare(packetById(d.packet).amount, d.left) } : d)) : list));
     }, 350);
     return () => window.clearInterval(t);
   }, []);

@@ -11,6 +11,7 @@ import { charmFromCoins, giftEarnings, voiceExpForMinute } from "@/lib/app/progr
 import { useServerRooms } from "@/lib/app/server-rooms";
 import { muteParticipant, readRoomInfo, roomErrorText, roomInfoTopic, updateRoomSettings, uploadRoomCover, type RoomSettingsPatch } from "@/lib/api/voice-rooms";
 import { subscribe } from "@/lib/realtime/stomp";
+import { api } from "@/lib/api/client";
 import { readGiftEvent, roomGiftsTopic, sendRoomGift, type RoomGiftEvent } from "@/lib/api/gifts";
 import { roomLevel } from "@/lib/app/levels";
 import { readRoomMedia, roomMediaApi, roomMediaTopic, type RoomMedia, type ServerMode } from "@/lib/api/room-media";
@@ -30,7 +31,7 @@ let n = 0;
 const mid = () => `m${Date.now().toString(36)}${(n++).toString(36)}`;
 const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 
-export type FloatingReaction = { id: string; personId: string; emoji: string };
+export type FloatingReaction = { id: string; personId: string; emoji: string; result?: string };
 export type VideoState = { id: string; title: string } | null;
 /** The room's mode is set by the owner: a voice room, YouTube Watch Together, or a Kharidari auction. */
 export type RoomMode = "voice" | "youtube" | "kharidari";
@@ -1047,11 +1048,66 @@ export function useRoomSession(room: Room) {
     [add, chatBlocked, toast, live, roomChat],
   );
 
-  const react = useCallback((emoji: string) => {
-    const r = { id: mid(), personId: ME_ID, emoji };
-    setReactions((list) => [...list, r]);
-    window.setTimeout(() => setReactions((list) => list.filter((x) => x.id !== r.id)), 1800);
+  /** Backend rooms: send a photo to the room chat. Resolves once it went out (or failed with a toast). */
+  const [photoProgress, setPhotoProgress] = useState<number | null>(null);
+  const sendPhoto = useCallback(
+    async (file: File) => {
+      if (chatBlocked) {
+        toast("The owner turned off text chatting in this room");
+        return false;
+      }
+      if (!live) {
+        toast("Photos work in live rooms");
+        return false;
+      }
+      setPhotoProgress(0);
+      const err = await roomChat.sendImage(file, (p) => setPhotoProgress(p));
+      setPhotoProgress(null);
+      if (err) toast(err, "error");
+      return !err;
+    },
+    [chatBlocked, live, roomChat, toast],
+  );
+
+  const showReaction = useCallback((personId: string, emoji: string, result?: string) => {
+    const r = { id: mid(), personId, emoji, result };
+    setReactions((list) => [...list.filter((x) => x.personId !== personId), r]);
+    window.setTimeout(() => setReactions((list) => list.filter((x) => x.id !== r.id)), result ? 3200 : 2000);
   }, []);
+  /** Backend rooms: emotes go through the server so everyone sees them (and the same dice roll). */
+  const react = useCallback(
+    (emoji: string) => {
+      const sid = room.server?.id;
+      if (live && sid) {
+        void api<unknown>(`/api/v1/voice-rooms/${encodeURIComponent(sid)}/emotes`, { method: "POST", auth: true, forbiddenIsAccess: true, body: { emote: emoji } }).catch((e) =>
+          toast(e instanceof Error && e.message ? e.message : "Couldn't send that.", "error"),
+        );
+        return;
+      }
+      showReaction(ME_ID, emoji);
+    },
+    [room.server?.id, live, showReaction, toast],
+  );
+  // Everyone's emotes in this room, live
+  useEffect(() => {
+    const sid = room.server?.id;
+    if (!sid || !inRoom) return;
+    return subscribe(`/topic/voice-rooms/${encodeURIComponent(sid)}/emote`, (body) => {
+      const b = body && typeof body === "object" ? (body as { userId?: unknown; emote?: unknown; result?: unknown }) : null;
+      if (!b || typeof b.emote !== "string" || b.userId == null) return;
+      const uid = String(b.userId);
+      const pid = myServerId && uid === myServerId ? ME_ID : `srv-user:${uid}`;
+      showReaction(pid, b.emote, typeof b.result === "string" ? b.result : undefined);
+      if (typeof b.result === "string" && pid !== ME_ID) {
+        const label = b.emote === "dice" ? `rolled ${b.result} 🎲` : b.emote === "rps" ? `threw ${b.result}` : b.emote === "coin" ? `flipped ${b.result}` : b.emote === "lucky" ? `got lucky number ${b.result} 🍀` : "";
+        if (label) window.setTimeout(() => addSystem(`${person(pid).name} ${label}`), 1000);
+      } else if (typeof b.result === "string") {
+        const label = b.emote === "dice" ? `You rolled ${b.result} 🎲` : b.emote === "rps" ? `You threw ${b.result}` : b.emote === "coin" ? `You flipped ${b.result}` : `Your lucky number: ${b.result} 🍀`;
+        window.setTimeout(() => addSystem(label), 1000);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room.server?.id, inRoom, myServerId, showReaction]);
 
   /**
    * Backend rooms: show a gift from the server (everyone in the room gets the
@@ -1317,6 +1373,8 @@ export function useRoomSession(room: Room) {
     speakingIds,
     messages,
     send,
+    sendPhoto,
+    photoProgress,
     reactions,
     react,
     giftCounts,

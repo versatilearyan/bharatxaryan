@@ -13,7 +13,8 @@ import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
 import type { Room } from "@/lib/app/types";
 import { KharidariRoom } from "./KharidariRoom";
-import { RoomOverlays } from "./RoomOverlays";
+import { RoomOverlays, SeatInvitePrompt } from "./RoomOverlays";
+import { RoomGamePill } from "@/components/games/jackaroo/RoomGamePill";
 import { useAuction, type Auction } from "./useAuction";
 import { PkContext, usePk } from "./usePk";
 import { useRoomSession, type RoomMode, type RoomSession } from "./useRoomSession";
@@ -56,9 +57,12 @@ function ActiveRoom({ room }: { room: Room }) {
       >
         <PkContext.Provider value={pk}>{mode === "youtube" ? <WatchTogetherRoom s={s} /> : mode === "kharidari" ? <KharidariRoom s={s} a={auction} /> : <VoiceRoom s={s} />}</PkContext.Provider>
         <RoomRedPacket s={s} />
+        <RoomGamePill roomId={room.server?.id} inRoom={roomOpen} />
         <RoomOverlays s={s} />
         <EntryEffect s={s} />
       </motion.section>
+      {/* Outside the room screen so it shows even while the room is minimised */}
+      <SeatInvitePrompt s={s} />
       <AnimatePresence>{!roomOpen ? <MiniRoom s={s} mode={mode} a={auction} /> : null}</AnimatePresence>
     </>
   );

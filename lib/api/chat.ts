@@ -364,3 +364,16 @@ export function presenceText(p?: Presence): string {
   if (h < 24) return `last seen ${h}h ago`;
   return `last seen ${new Date(at).toLocaleDateString([], { day: "numeric", month: "short" })}`;
 }
+
+/* ---------------- privacy ---------------- */
+
+/** Whether other people can see you online (and your last seen time, and which room you're in). */
+export async function getPrivacy(): Promise<{ showOnline: boolean }> {
+  const d = obj(await api<unknown>("/api/v1/users/me/privacy", { auth: true, forbiddenIsAccess: true }));
+  return { showOnline: d?.showOnline !== false };
+}
+
+export async function setShowOnline(showOnline: boolean): Promise<{ showOnline: boolean }> {
+  const d = obj(await api<unknown>("/api/v1/users/me/privacy", { auth: true, forbiddenIsAccess: true, method: "PUT", body: { showOnline } }));
+  return { showOnline: d?.showOnline !== false };
+}

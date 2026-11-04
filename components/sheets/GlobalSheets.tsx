@@ -32,6 +32,7 @@ import { myUserIdFromToken } from "@/lib/auth/token";
 import type { GameId } from "@/lib/app/types";
 import { EXP_SOURCES, GAME_WIN_EXP } from "@/lib/app/progress";
 import { LevelPill } from "@/components/profile/IdTags";
+import { FriendsPanel } from "@/components/social/FriendsPanel";
 
 /** App-level bottom sheets opened from Home, Discover, Profile and rooms. */
 export function GlobalSheets() {
@@ -204,8 +205,25 @@ function TasksSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 function FriendsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { profile, rooms, openRoom, openConversation, setSheet } = useApp();
+  const { profile, rooms, openRoom, openConversation, setSheet, session } = useApp();
   const friends = PEOPLE.filter((p) => profile.following.includes(p.id));
+  // Signed in: friends, following, followers and activity come from the server
+  if (session)
+    return (
+      <BottomSheet
+        open={open}
+        onClose={onClose}
+        title="Friends"
+        tall
+        headerRight={
+          <button type="button" onClick={() => setSheet({ kind: "find-user" })} className="flex items-center gap-1 rounded-full bg-coral/15 px-3 py-1.5 text-[12px] font-bold text-pink">
+            <UserPlus className="h-3.5 w-3.5" /> Add by ID
+          </button>
+        }
+      >
+        {open ? <FriendsPanel onClose={onClose} /> : null}
+      </BottomSheet>
+    );
   return (
     <BottomSheet
       open={open}

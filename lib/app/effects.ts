@@ -219,11 +219,11 @@ export const GIFT_SETS: GiftSet[] = [
     id: "storm-guardian",
     name: "Storm Guardian",
     giftId: "storm-guardian",
-    frame: "/gifts/storm-guardian/frame.svga",
+    frame: "/gifts/storm-guardian/frame.svga?v=3",
     bubble: "/gifts/storm-guardian/bubble.svga?v=2",
-    entry: "/gifts/storm-guardian/entry.svga",
+    entry: "/gifts/storm-guardian/entry.svga?v=3",
     // 1080×2340 (aryan's new home page effect), 20 fps, 40 frames
-    page: "/gifts/storm-guardian/page.svga?v=2",
+    page: "/gifts/storm-guardian/page.svga?v=3",
     pageRatio: "1080 / 2340",
     tint: "from-[#16306b] to-[#0b1433]",
     // 260×260 canvas: the ring's opening is about 182 px wide, centred at (136, 126).

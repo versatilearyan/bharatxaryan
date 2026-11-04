@@ -28,8 +28,9 @@ export function GiftOverlay() {
   useEffect(() => {
     if (!giftFx) return;
     const g = giftById(giftFx.giftId);
-    // Video and SVGA gifts close when they end; this is only a safety net (an SVGA may still be downloading)
-    const t = window.setTimeout(finish, g.svga ? 30000 : g.video ? 16000 : g.tier === "legendary" ? 3800 : 2400);
+    // Video and SVGA gifts close when they end; this is only a safety net. SVGA gifts
+    // time their own download and playback (SvgaGift), so a slow connection can't cut them short.
+    const t = window.setTimeout(finish, g.svga ? 120000 : g.video ? 16000 : g.tier === "legendary" ? 3800 : 2400);
     return () => window.clearTimeout(t);
     // A combo updates the gift on screen; that mustn't restart the safety timer
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -389,6 +390,12 @@ function SvgaGift({ fx, onDone }: { fx: GiftFx; onDone: () => void }) {
     const t = window.setTimeout(onDone, 2500);
     return () => window.clearTimeout(t);
   }, [still, onDone]);
+  // Too slow to download: show the picture instead. Once playing, it ends by itself (safety net 20s).
+  useEffect(() => {
+    if (state === "failed") return;
+    const t = window.setTimeout(() => (state === "loading" ? setState("failed") : onDone()), state === "loading" ? 45000 : 20000);
+    return () => window.clearTimeout(t);
+  }, [state, onDone]);
   // Stop the sound when the gift closes early (Skip) or ends
   useEffect(
     () => () => {

@@ -26,6 +26,9 @@ import { ChatScreen } from "@/components/chat/ChatScreen";
 import { ConversationView } from "@/components/chat/ConversationView";
 import { DiscoverScreen } from "@/components/discover/DiscoverScreen";
 import { ProfileScreen } from "@/components/profile/ProfileScreen";
+import { MomentsScreen } from "@/components/social/MomentsScreen";
+import { CpProposalPrompt } from "@/components/market/ServerCp";
+import { JackarooScreen } from "@/components/games/jackaroo/JackarooScreen";
 import { IntimateSpace } from "@/components/profile/IntimateSpace";
 import { GiftWallScreen, GuardScreen, UserProfileScreen, UserRoomsScreen } from "@/components/profile/UserProfile";
 import { StatsScreen } from "@/components/profile/StatsScreen";
@@ -87,6 +90,7 @@ function Frame() {
               <Stack />
               <ActiveRoomHost />
               <GlobalSheets />
+              <CpProposalPrompt />
               <PaymentReturn />
               <GiftOverlay />
               <RedPacketBanner />
@@ -185,5 +189,9 @@ function ScreenView({ screen }: { screen: Screen }) {
       return <ParivarHome id={screen.id} />;
     case "chess":
       return <ChessScreen />;
+    case "moments":
+      return <MomentsScreen personId={screen.personId} />;
+    case "jackaroo":
+      return <JackarooScreen roomId={screen.roomId} />;
   }
 }

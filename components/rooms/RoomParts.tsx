@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Armchair, AudioLines, Bell, Check, ChevronDown, Copy, Gavel, Gift, Hand, Heart, ListOrdered, Lock, LogOut, Megaphone, MicOff, MonitorPlay, MoreHorizontal, Music2, Plus, Power, Send, Share2, Smile, UserPlus, UsersRound, Volume2, X } from "lucide-react";
+import { Armchair, AudioLines, Bell, Check, ChevronDown, Copy, Gavel, Gift, Hand, Heart, ImagePlus, ListOrdered, Lock, LogOut, Megaphone, MicOff, MonitorPlay, MoreHorizontal, Music2, Plus, Power, Send, Share2, Smile, UserPlus, UsersRound, Volume2, X } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { RoomCover } from "./RoomCover";
@@ -29,6 +29,7 @@ import type { RoomSession } from "./useRoomSession";
 import { nameFace } from "@/lib/app/fonts";
 import { ParivarTag } from "@/components/parivar/ParivarScreens";
 import { LevelPill } from "@/components/profile/IdTags";
+import { ANIMATED_EMOTES, EmoteBurst, GAME_EMOTES } from "./Emotes";
 
 /* ------------------------------------------------------------------ */
 /* Top bar                                                             */
@@ -266,17 +267,7 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
     <div className="relative flex flex-col items-center gap-1" data-seat={index}>
       <AnimatePresence>
         {reactions.map((r) => (
-          <motion.span
-            key={r.id}
-            className="pointer-events-none absolute -top-2 z-10 text-[28px]"
-            initial={{ y: 10, opacity: 0, scale: 0.5 }}
-            animate={{ y: -34, opacity: 1, scale: 1.15 }}
-            exit={{ opacity: 0, y: -50 }}
-            transition={{ duration: 0.6 }}
-            aria-hidden
-          >
-            {r.emoji}
-          </motion.span>
+          <EmoteBurst key={r.id} emote={r.emoji} result={r.result} />
         ))}
       </AnimatePresence>
       {p ? (
@@ -583,6 +574,19 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
       case "text": {
         const p = person(m.authorId);
         const fx = fxFor(m.authorId, p.vip);
+        if (m.imageUrl)
+          return (
+            <div className="flex items-start gap-2">
+              <PersonAvatar person={p} size={24} className="mt-0.5" />
+              <div className="min-w-0">
+                <span className={`block text-[11px] font-bold ${m.authorId === ME_ID ? "text-pink" : "text-cream/60"}`} style={nameFace(p.nameFont)}>
+                  <span className={vipName(p.vip, "room")}>{m.authorId === ME_ID ? "You" : p.name}</span>
+                  {fx.badge ? <VipBadge set={fx.badge} level={p.vip} size={16} className="ml-1" /> : null}
+                </span>
+                <ChatPhoto src={m.imageUrl} />
+              </div>
+            </div>
+          );
         const bubble = fx.bubble && fx.bubble.bubble !== failedBubble ? fx.bubble : undefined;
         if (bubble)
           return (
@@ -626,6 +630,70 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
   );
 }
 
+/** A photo in the room chat: a rounded thumbnail that opens full screen. */
+function ChatPhoto({ src }: { src: string }) {
+  const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => !failed && setOpen(true)} className="relative mt-1 block overflow-hidden rounded-2xl bg-black/30 ring-1 ring-white/10" style={{ width: 150, height: loaded ? undefined : 150 }} aria-label="Open photo">
+        {failed ? (
+          <span className="grid h-[150px] w-[150px] place-items-center text-[11px] text-cream/60">Photo unavailable</span>
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt="Photo in chat" loading="lazy" onLoad={() => setLoaded(true)} onError={() => setFailed(true)} className={`block max-h-[220px] w-[150px] object-cover transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`} />
+        )}
+        {!loaded && !failed ? <span className="absolute inset-0 animate-pulse bg-white/[0.06]" aria-hidden /> : null}
+      </button>
+      <AnimatePresence>
+        {open ? (
+          <motion.div className="fixed inset-0 z-[95] grid place-items-center bg-black/90 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)} role="dialog" aria-label="Photo">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <motion.img src={src} alt="Photo in chat" className="max-h-full max-w-full rounded-xl object-contain" initial={{ scale: 0.92 }} animate={{ scale: 1 }} exit={{ scale: 0.92 }} />
+            <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="absolute right-4 top-[calc(env(safe-area-inset-top)+14px)] grid h-9 w-9 place-items-center rounded-full bg-white/15 text-white">
+              <X className="h-5 w-5" />
+            </button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </>
+  );
+}
+
+/** Opens the photo picker and sends the chosen photo to the room chat. Shows upload progress. */
+export function PhotoButton({ s }: { s: RoomSession }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const p = s.photoProgress;
+  // The owner can turn photos off ("No Images"); the owner can still send them
+  if (!s.room.server || (s.settings.noImages && !s.isOwner)) return null;
+  return (
+    <>
+      <input
+        ref={ref}
+        type="file"
+        accept="image/jpeg,image/png"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) void s.sendPhoto(f);
+        }}
+      />
+      <button type="button" disabled={p !== null || s.chatBlocked} onClick={() => ref.current?.click()} aria-label="Send a photo" className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full text-cream/75 hover:text-cream disabled:opacity-50">
+        {p !== null ? (
+          <svg viewBox="0 0 36 36" className="h-7 w-7 -rotate-90" aria-label={`Sending photo, ${Math.round(p * 100)}%`}>
+            <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeOpacity=".2" strokeWidth="3" />
+            <circle cx="18" cy="18" r="15" fill="none" stroke="#f5b54a" strokeWidth="3" strokeLinecap="round" strokeDasharray={`${Math.max(4, p * 94.2)} 94.2`} />
+          </svg>
+        ) : (
+          <ImagePlus className="h-4.5 w-4.5" />
+        )}
+      </button>
+    </>
+  );
+}
+
 /** Text input used in the room control bars. */
 export function ChatInput({ s, value, setValue, compact = false }: { s: RoomSession; value: string; setValue: (v: string) => void; compact?: boolean }) {
   return (
@@ -642,7 +710,9 @@ export function ChatInput({ s, value, setValue, compact = false }: { s: RoomSess
         <button type="submit" aria-label="Send message" className="grid h-8 w-8 place-items-center rounded-full bg-coral text-white">
           <Send className="h-3.5 w-3.5" />
         </button>
-      ) : null}
+      ) : (
+        <PhotoButton s={s} />
+      )}
     </form>
   );
 }
@@ -674,7 +744,47 @@ export function EmojiSheet({ open, onClose, s, onInsert }: { open: boolean; onCl
             </motion.button>
           ))}
         </div>
-        <p className="mt-1.5 text-[11px] text-muted">{s.seated ? "Reactions float above your seat." : "Take a seat to show reactions above your avatar."}</p>
+        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Emotes</p>
+        <div className="mt-2 grid grid-cols-8 gap-1.5">
+          {ANIMATED_EMOTES.map((e) => (
+            <motion.button
+              key={e}
+              type="button"
+              whileTap={{ scale: 0.75, rotate: -10 }}
+              onClick={() => {
+                s.react(e);
+                onClose();
+              }}
+              className="grid aspect-square place-items-center rounded-xl bg-cream/[0.06] text-[22px]"
+              aria-label={`Emote ${e}`}
+            >
+              {e}
+            </motion.button>
+          ))}
+        </div>
+        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Games</p>
+        <div className="mt-2 grid grid-cols-4 gap-2">
+          {GAME_EMOTES.map((g) => (
+            <motion.button
+              key={g.id}
+              type="button"
+              whileTap={{ scale: 0.85 }}
+              onClick={() => {
+                if (!s.room.server) {
+                  s.addSystem("Game emotes work in live rooms");
+                  return;
+                }
+                s.react(g.id);
+                onClose();
+              }}
+              className="flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-b from-[#3a2f6e] to-[#1f1a3d] py-2.5 ring-1 ring-[#8f74ff]/30"
+            >
+              <span className="text-[24px]">{g.icon}</span>
+              <span className="text-[10.5px] font-bold text-cream/80">{g.label}</span>
+            </motion.button>
+          ))}
+        </div>
+        <p className="mt-1.5 text-[11px] text-muted">{s.seated ? "Emotes play above your seat for everyone." : "Take a seat to show emotes above your avatar."}</p>
         <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Add to message</p>
         <EmojiPicker className="mt-2" onPick={onInsert} />
       </div>
@@ -747,7 +857,7 @@ const MODES: { id: RoomMode; icon: ReactNode; hint: string }[] = [
 ];
 
 export function RoomMenuSheet({ open, onClose, s, extra, onInvite }: { open: boolean; onClose: () => void; s: RoomSession; extra?: ReactNode; onInvite?: () => void }) {
-  const { toast, leaveRoom } = useApp();
+  const { toast, leaveRoom, push } = useApp();
   const music = useMusic();
   const live = useServerRooms();
   // Only the owner of a backend room can close it
@@ -850,6 +960,16 @@ export function RoomMenuSheet({ open, onClose, s, extra, onInvite }: { open: boo
         <RoomLevelCard room={s.room} className="mt-4" />
         <div className="mt-4 grid grid-cols-4 gap-2">
           {extra}
+          {s.room.server ? (
+            <Item
+              icon={<span className="text-[19px] leading-none">🎲</span>}
+              label="Jackaroo"
+              onClick={() => {
+                onClose();
+                push({ kind: "jackaroo", roomId: s.room.server!.id });
+              }}
+            />
+          ) : null}
           {onInvite ? <Item icon={<UserPlus className="h-5 w-5" />} label="Invite" onClick={onInvite} /> : null}
           {!s.isOwner ? (
             <Item

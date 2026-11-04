@@ -56,7 +56,32 @@ export type Tag = {
   roomName: string;
   /** What the person on the auction seat declared before the bidding. */
   declaration?: string;
+  /** A pet name the pair chose, like "Chai Partner". */
+  nickname?: string;
+  /** Colour theme the pair chose (TAG_THEMES); none = the relationship's colours. */
+  theme?: TagThemeId;
 };
+
+/** Themes a pair can give their tag card and chip. */
+export const TAG_THEMES = [
+  { id: "rose", label: "Rose", from: "#ff7fa8", to: "#b0245a", glow: "#ff9fc0" },
+  { id: "gold", label: "Royal gold", from: "#ffe29a", to: "#b8741a", glow: "#ffd36b" },
+  { id: "ocean", label: "Ocean", from: "#7fd3ff", to: "#1f5fd1", glow: "#8fd8ff" },
+  { id: "violet", label: "Violet", from: "#c9a6ff", to: "#5b2bb5", glow: "#c39bff" },
+  { id: "emerald", label: "Emerald", from: "#8ff0be", to: "#127a52", glow: "#7ff0b5" },
+  { id: "sunset", label: "Sunset", from: "#ffb27a", to: "#d4334f", glow: "#ffa07a" },
+  { id: "midnight", label: "Midnight", from: "#8a93b8", to: "#1a1f3a", glow: "#9aa6ff" },
+] as const;
+export type TagThemeId = (typeof TAG_THEMES)[number]["id"];
+export const TAG_THEME_IDS = TAG_THEMES.map((t) => t.id) as readonly string[];
+/** The colours a tag shows in: its chosen theme, else its relationship's. */
+export function tagColors(tag: Pick<Tag, "relation" | "theme">) {
+  const t = tag.theme ? TAG_THEMES.find((x) => x.id === tag.theme) : undefined;
+  if (t) return { from: t.from, to: t.to, glow: t.glow };
+  const r = relationshipById(tag.relation);
+  return { from: r.tint, to: r.deep, glow: r.tint };
+}
+export const NICKNAME_MAX = 24;
 
 /**
  * Intimacy needed for tag level 1 … 10. Slow on purpose, like WePlay: a tag
@@ -76,21 +101,13 @@ export const TAG_PERKS = [
   { level: 10, title: "Legend token", detail: "A spinning, sparkling seat token only Lv 10 pairs get." },
 ] as const;
 
-/** Most tags one person can hold. */
-export const TAG_SLOTS = 6;
+/** BFF slots: everyone has BASE_TAG_SLOTS, each VIP level adds one, up to TAG_SLOTS (same as the server). */
+export const BASE_TAG_SLOTS = 5;
+export const TAG_SLOTS = 12;
+export const tagSlotsFor = (vipLevel: number) => Math.min(TAG_SLOTS, BASE_TAG_SLOTS + Math.max(0, vipLevel));
 
 export const partnerOf = (tag: Tag, personId: string) => (tag.a === personId ? tag.b : tag.a);
 export const pairKey = (x: string, y: string) => [x, y].sort().join("|");
 
-/** Sample tags between other people so rooms show linked seats. */
-<<<<<<< HEAD
 /** No sample tags: your tags come from the server. */
 export const SAMPLE_TAGS: Tag[] = [];
-=======
-export const SAMPLE_TAGS: Tag[] = [
-  { id: "t-zoya-kabir", a: "kabir", b: "zoya", relation: "besties", token: "scooter", intimacy: 36_000, createdAt: Date.UTC(2026, 8, 2), roomName: "Kharidari Bazaar" },
-  { id: "t-riya-kabir", a: "riya", b: "kabir", relation: "bro", token: "cottage", intimacy: 142_000, createdAt: Date.UTC(2026, 6, 19), roomName: "Sunday chai adda" },
-  { id: "t-naina-rohan", a: "rohan", b: "naina", relation: "brosis", token: "bicycle", intimacy: 7_600, createdAt: Date.UTC(2026, 9, 1), roomName: "Kharidari Bazaar" },
-  { id: "t-meher-saanvi", a: "meher", b: "saanvi", relation: "confidant", token: "scooter", intimacy: 56_000, createdAt: Date.UTC(2026, 7, 11), roomName: "Late night Antakshari" },
-];
->>>>>>> 5860b43 (  feat done)

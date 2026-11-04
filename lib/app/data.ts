@@ -165,7 +165,7 @@ export const GIFTS: Gift[] = [
     categories: ["Popular", "Legendary"],
     tier: "legendary",
     blurb: "The Storm Guardian lands in a flash of blue lightning.",
-    svga: { src: "/gifts/storm-guardian/gift.svga?v=2", sound: "/gifts/storm-guardian/gift.mp3", icon: "/gifts/storm-guardian/icon-small.png", still: "/gifts/storm-guardian/icon.png" },
+    svga: { src: "/gifts/storm-guardian/gift.svga?v=3", sound: "/gifts/storm-guardian/gift.mp3", icon: "/gifts/storm-guardian/icon-small.png", still: "/gifts/storm-guardian/icon.png" },
     reward: "storm-guardian",
   },
 ];

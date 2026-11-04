@@ -24,6 +24,8 @@ export type RoomChatMessage = {
   senderId?: string;
   senderName?: string;
   text: string;
+  /** A photo message: a signed link to the photo. */
+  imageUrl?: string;
   createdAt?: string;
   at: number;
 };
@@ -52,18 +54,20 @@ export function readRoomChat(raw: unknown): RoomChatMessage | null {
   const d = obj(raw);
   if (!d) return null;
   const text = typeof d.message === "string" ? d.message : typeof d.content === "string" ? d.content : typeof d.text === "string" ? d.text : undefined;
-  if (!text || !text.trim()) return null;
+  const imageUrl = typeof d.imageUrl === "string" && d.imageUrl ? d.imageUrl : undefined;
+  if ((!text || !text.trim()) && !imageUrl) return null;
   const sender = obj(d.sender) ?? obj(d.user);
   const id = first(d, ROOM_CHAT_FIELDS.id);
   const senderId = first(d, ROOM_CHAT_FIELDS.senderId) ?? (sender ? str(sender.id) : undefined);
   const createdAt = first(d, ROOM_CHAT_FIELDS.createdAt);
   return {
-    key: id ? `id:${id}` : `x:${senderId ?? "?"}|${createdAt ?? "?"}|${text}`,
+    key: id ? `id:${id}` : `x:${senderId ?? "?"}|${createdAt ?? "?"}|${text ?? imageUrl}`,
     id,
     roomId: first(d, ROOM_CHAT_FIELDS.roomId),
     senderId,
     senderName: first(d, ROOM_CHAT_FIELDS.senderName) ?? (sender ? first(sender, ["fullName", "name", "displayName"]) : undefined),
-    text,
+    text: text ?? "",
+    imageUrl,
     createdAt,
     at: createdAt ? Date.parse(createdAt) : NaN,
   };

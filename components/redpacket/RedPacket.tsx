@@ -13,7 +13,7 @@ import { ME_ID, useApp } from "@/lib/app/store";
 import type { Room } from "@/lib/app/types";
 import type { RoomSession } from "@/components/rooms/useRoomSession";
 import { walletImageSrc, type RedPacketInventory, type WalletRedPacket } from "@/lib/api/wallet";
-import type { Loaded } from "@/lib/app/use-wallet";
+import { useWalletCatalog, type Loaded } from "@/lib/app/use-wallet";
 
 const TONES = {
   red: { body: ["#ff5a4e", "#d81f2a"], flap: "#b3121f", trim: "#f6d899" },
@@ -263,11 +263,21 @@ export function SendRedPacketSheet({ open, onClose, s, initial }: { open: boolea
   const [packet, setPacket] = useState<RedPacketId>(initial ?? "rp-10k");
   const [cover, setCover] = useState<CoverId>("red");
   const [delay, setDelay] = useState<number>(RAIN_TIMERS[0].ms);
+  const [sending, setSending] = useState(false);
+  // Backend rooms: your Bag's red packets are the server's (bought with rupees)
+  const server = Boolean(s.room.server);
+  const wallet = useWalletCatalog(open && server);
   useEffect(() => {
     if (open && initial) setPacket(initial);
   }, [open, initial]);
   const p = packetById(packet);
-  const have = owned[packet] ?? 0;
+  const serverHave = (() => {
+    const products = wallet.redPackets.data;
+    const inv = wallet.inventory.data;
+    if (!server || !products || !inv) return 0;
+    return products.filter((x) => x.coinValue === p.amount).reduce((n, x) => n + (inv[x.id] ?? 0), 0);
+  })();
+  const have = server ? serverHave : (owned[packet] ?? 0);
   const short = !have && coins < p.amount;
   return (
     <BottomSheet open={open} onClose={onClose} title="🧧 Send a red packet" tall>
@@ -332,13 +342,16 @@ export function SendRedPacketSheet({ open, onClose, s, initial }: { open: boolea
         </div>
         <button
           type="button"
-          disabled={short}
+          disabled={short || sending}
           onClick={() => {
-            if (send(packet, s.room.id, cover, delay)) onClose();
+            setSending(true);
+            void send(packet, s.room.id, cover, delay)
+              .then((ok) => ok && onClose())
+              .finally(() => setSending(false));
           }}
           className="mt-3 h-12 w-full rounded-full bg-gradient-to-r from-[#ff7a1a] to-[#e2242f] text-[15px] font-extrabold text-white disabled:from-cream/10 disabled:to-cream/10 disabled:text-muted"
         >
-          {short ? "Not enough coins" : "Send red packet"}
+          {sending ? "Sending…" : short ? "Not enough coins" : "Send red packet"}
         </button>
       </div>
     </BottomSheet>
@@ -410,19 +423,25 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
     if (!raining) return;
     const t = window.setInterval(() => {
       const key = ++seq.current;
-      setFalling((f) => [...f.slice(-28), { key, x: 4 + Math.random() * 78, dur: 2.2 + Math.random() * 1.4, size: 40 + Math.random() * 18, rot: -25 + Math.random() * 50, tier: d.packet }]);
-    }, 160);
+      setFalling((f) => [...f.slice(-16), { key, x: 2 + Math.random() * 74, dur: 3.2 + Math.random() * 1.6, size: 58 + Math.random() * 16, rot: -18 + Math.random() * 36, tier: d.packet }]);
+    }, 260);
     return () => window.clearInterval(t);
   }, [raining, d.packet]);
 
   const tap = (f: Falling, e: React.PointerEvent) => {
+    e.preventDefault();
     if (mineToSend) return;
-    const got = grab(d.id);
+    // The envelope goes at once (instant feedback); the coins show when the server answers
     setFalling((list) => list.filter((x) => x.key !== f.key));
-    if (!got) return;
     const r = box.current?.getBoundingClientRect();
-    setPops((list) => [...list.slice(-8), { key: f.key, x: e.clientX - (r?.left ?? 0), y: e.clientY - (r?.top ?? 0), n: got }]);
+    const at = { x: e.clientX - (r?.left ?? 0), y: e.clientY - (r?.top ?? 0) };
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(15);
+    void Promise.resolve(grab(d.id)).then((got) => {
+      if (!got) return;
+      setPops((list) => [...list.slice(-8), { key: f.key, x: at.x, y: at.y, n: got }]);
+    });
   };
+  const outOfGrabs = Boolean(d.maxGrabs && d.grabs >= d.maxGrabs);
 
   if (over && closed) return null;
   const sender = d.fromId === ME_ID ? "Your" : `${person(d.fromId).name}'s`;
@@ -465,7 +484,8 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
                 "Your red packet is raining. The room is looting it!"
               ) : (
                 <>
-                  Tap the red packets! You: <span className="text-gold">{d.mine.toLocaleString("en-IN")}</span> · Left {d.left.toLocaleString("en-IN")}
+                  {outOfGrabs ? "You've grabbed your share! " : "Tap the red packets! "}You: <span className="text-gold">{d.mine.toLocaleString("en-IN")}</span>
+                  {d.maxGrabs ? ` · ${Math.max(0, d.maxGrabs - d.grabs)} taps left` : ""} · Left {d.left.toLocaleString("en-IN")}
                 </>
               )}
             </p>
@@ -475,8 +495,8 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
               key={f.key}
               type="button"
               aria-label="Grab red packet"
-              className="absolute"
-              style={{ left: `${f.x}%` }}
+              className="absolute touch-manipulation select-none p-3"
+              style={{ left: `${f.x}%`, touchAction: "manipulation" }}
               initial={{ top: "-14%", rotate: f.rot }}
               animate={{ top: "108%", rotate: -f.rot }}
               transition={{ duration: f.dur, ease: "linear" }}

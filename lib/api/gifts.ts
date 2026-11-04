@@ -77,3 +77,55 @@ export async function getContribution(roomId: string, period: ContributionPeriod
   const me = (d?.me ?? {}) as Record<string, unknown>;
   return { rows, me: { coins: n(me.coins) ?? 0, rank: n(me.rank) ?? null } };
 }
+
+/* ---------------- gifts outside rooms ---------------- */
+
+export type GiftContext = "PROFILE" | "TAG" | "CP" | "MOMENT" | "CHAT";
+export type DirectGiftRow = { id: string; fromUserId: string; toUserId?: string; fromName?: string; fromAvatar?: string; giftId: string; count: number; coins: number; at: number };
+
+/**
+ * A gift from a profile, the BFF or CP space, or a Moment: real coins, the
+ * receiver's share, charm and BFF intimacy, like a room gift.
+ *   POST /api/v1/users/{userId}/gifts { giftId, count, requestId, context }
+ */
+export async function sendDirectGift(toUserId: string, giftId: string, count = 1, context: GiftContext = "PROFILE") {
+  const d = (await api<unknown>(`/api/v1/users/${encodeURIComponent(toUserId)}/gifts`, {
+    auth: true,
+    forbiddenIsAccess: true,
+    method: "POST",
+    body: { giftId, count, requestId: newRequestId(), context },
+  })) as Record<string, unknown> | null;
+  return { coins: Number(d?.coins) || 0, senderBalance: Number(d?.senderBalance) || 0 };
+}
+
+function readRows(raw: unknown): DirectGiftRow[] {
+  return Array.isArray(raw)
+    ? raw.flatMap((x) => {
+        const o = x && typeof x === "object" ? (x as Record<string, unknown>) : null;
+        if (!o || o.id == null || typeof o.giftId !== "string") return [];
+        return [
+          {
+            id: String(o.id),
+            fromUserId: String(o.fromUserId ?? ""),
+            toUserId: o.toUserId == null ? undefined : String(o.toUserId),
+            fromName: typeof o.fromName === "string" ? o.fromName : undefined,
+            fromAvatar: typeof o.fromAvatar === "string" ? o.fromAvatar : undefined,
+            giftId: o.giftId,
+            count: Number(o.count) || 1,
+            coins: Number(o.coins) || 0,
+            at: typeof o.at === "string" ? Date.parse(o.at) || Date.now() : Number(o.at) || Date.now(),
+          },
+        ];
+      })
+    : [];
+}
+
+/** Recent gifts between you and this person, both ways. */
+export async function giftsWithMe(userId: string, limit = 20) {
+  return readRows(await api<unknown>(`/api/v1/users/${encodeURIComponent(userId)}/gifts/with-me?limit=${limit}`, { auth: true, forbiddenIsAccess: true }));
+}
+
+/** Recent gifts this person received from anyone. */
+export async function giftsReceived(userId: string, limit = 20) {
+  return readRows(await api<unknown>(`/api/v1/users/${encodeURIComponent(userId)}/gifts/received?limit=${limit}`, { auth: true, forbiddenIsAccess: true }));
+}

@@ -15,9 +15,17 @@ import { BLESSING_COST, RINGS, daysTogether, loveLevel, partnerIn, ringById, typ
 import { useMarket } from "@/lib/app/market-store";
 import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
+import { ServerLoveHome } from "@/components/market/ServerCp";
 
 /** A couple's shared page: both partners, days together, love level, ring box. */
 export function LoveHome({ personId }: { personId: string }) {
+  const { session } = useApp();
+  // Signed in: CP is on the server (you, and backend people)
+  if (session && (personId === ME_ID || personId.startsWith("srv-user:"))) return <ServerLoveHome personId={personId} />;
+  return <LocalLoveHome personId={personId} />;
+}
+
+function LocalLoveHome({ personId }: { personId: string }) {
   const { pop, push, toast } = useApp();
   const { coupleOf, pending, blessingsOf, bless } = useMarket();
   const person = usePeople();

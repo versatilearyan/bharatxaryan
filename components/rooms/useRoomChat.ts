@@ -6,6 +6,7 @@ import { SERVER_USER_PREFIX, useServerRooms } from "@/lib/app/server-rooms";
 import { ME_ID } from "@/lib/app/store";
 import type { RoomMessage } from "@/lib/app/types";
 import { publish, subscribe, useStompStatus } from "@/lib/realtime/stomp";
+import { sendRoomChatImage } from "@/lib/api/social";
 
 /** Room chat lines from the server have ids starting with this. */
 export const SERVER_CHAT_PREFIX = "srv-chat:";
@@ -41,7 +42,7 @@ export function useServerRoomChat(roomId: string | null, ready: boolean, myId: s
         seen.current.add(m.key);
         const authorId = m.senderId && myId && m.senderId === myId ? ME_ID : `${SERVER_USER_PREFIX}${m.senderId ?? "unknown"}`;
         if (authorId !== ME_ID && m.senderName) names[authorId] = { name: m.senderName };
-        out.push({ id: `${SERVER_CHAT_PREFIX}${m.key}`, kind: "text", authorId, text: m.text });
+        out.push({ id: `${SERVER_CHAT_PREFIX}${m.key}`, kind: "text", authorId, text: m.text, imageUrl: m.imageUrl });
       }
       if (Object.keys(names).length) remember.current(names);
       return out;
@@ -92,5 +93,25 @@ export function useServerRoomChat(roomId: string | null, ready: boolean, myId: s
     [roomId, ready, toLines],
   );
 
-  return { send, historyError, retryHistory: () => undefined, connection: status };
+  /** Send a photo (JPG or PNG, up to 8 MB). Everyone sees it arrive on the room's chat topic. */
+  const sendImage = useCallback(
+    async (file: File, onProgress?: (p: number) => void): Promise<string> => {
+      if (!roomId) return "Chat isn't available here.";
+      if (!ready) return "Wait until you've joined the room.";
+      if (!/^image\/(jpe?g|png)$/i.test(file.type) && !/\.(jpe?g|png)$/i.test(file.name)) return "Send a JPG or PNG photo.";
+      try {
+        const m = readRoomChat(await sendRoomChatImage(roomId, file, onProgress));
+        if (m) {
+          const lines = toLines([m]);
+          if (lines.length) deliverRef.current(lines, false);
+        }
+        return "";
+      } catch (e) {
+        return e instanceof Error && e.message ? e.message : "Couldn't send the photo.";
+      }
+    },
+    [roomId, ready, toLines],
+  );
+
+  return { send, sendImage, historyError, retryHistory: () => undefined, connection: status };
 }

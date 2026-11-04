@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Check, ChevronDown, Gavel, Lock, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronDown, Gavel, Lock, Palette, Plus, Trash2 } from "lucide-react";
+import { sendDirectGift } from "@/lib/api/gifts";
+import { tagsApi } from "@/lib/api/room-games";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { GiftArt } from "@/components/art/GiftArt";
 import { TagPairArt, useTagTitle } from "@/components/rooms/TagParts";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
@@ -11,15 +14,14 @@ import { GIFTS, GIFTS_LIVE, GIFTS_SOON_TEXT, giftById } from "@/lib/app/data";
 import { SoonTag } from "@/components/ui/ComingSoonBadge";
 import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
-import { TAG_PERKS, TAG_SLOTS, TOKENS, partnerOf, relationshipById, tagLevel, tokenById, type Tag } from "@/lib/app/tags";
+import { NICKNAME_MAX, RELATIONSHIPS, TAG_PERKS, TAG_SLOTS, TAG_THEMES, TOKENS, partnerOf, relationshipById, tagColors, tagLevel, tagSlotsFor, tokenById, type RelationshipId, type Tag } from "@/lib/app/tags";
 import type { GiftId } from "@/lib/app/types";
 
-const BASE_SLOTS = 3;
 const QUICK_GIFTS: GiftId[] = GIFTS.filter((g) => !g.packageOnly).slice(0, 4).map((g) => g.id);
 
 /**
  * BFF (the intimate space): someone's tags won in BFF Kharidari, each with its
- * level, intimacy, token and perks. Everyone has 3 slots; VIP adds more.
+ * level, intimacy, token and perks. Everyone has 5 slots; each VIP level adds one, up to 12.
  */
 export function IntimateSpace({ personId }: { personId: string }) {
   const { pop, tagsOf, profile, openRoom, push, vip } = useApp();
@@ -33,8 +35,21 @@ export function IntimateSpace({ personId }: { personId: string }) {
     if (personId === "me" || personId.startsWith("srv-user:")) void loadServerTags(personId);
   }, [personId, loadServerTags]);
   const tags = [...tagsOf(personId)].sort((x, y) => y.intimacy - x.intimacy);
-  // 3 slots for everyone, one more per VIP level, up to the max
-  const slots = Math.min(TAG_SLOTS, Math.max(BASE_SLOTS + (mine ? vip.level : 0), tags.length));
+  // 5 slots for everyone, one more per VIP level, up to 12 (the server's count wins for backend users)
+  const [serverSlots, setServerSlots] = useState<number | null>(null);
+  useEffect(() => {
+    const uid = personId === "me" ? undefined : personId.startsWith("srv-user:") ? personId.slice(9) : null;
+    if (uid === null) return;
+    let off = false;
+    tagsApi
+      .slots(uid)
+      .then((x) => !off && setServerSlots(x.slots))
+      .catch(() => undefined);
+    return () => {
+      off = true;
+    };
+  }, [personId, tags.length]);
+  const slots = Math.min(TAG_SLOTS, Math.max(serverSlots ?? tagSlotsFor(mine ? vip.level : 0), tags.length));
   const empty = mine ? slots - tags.length : 0;
   const invite = () => {
     pop();
@@ -107,6 +122,8 @@ export function IntimateSpace({ personId }: { personId: string }) {
           <li>The winning gift volume unlocks a token: {TOKENS.map((t) => `${t.emoji} ${t.label}${t.min ? ` (${t.min.toLocaleString("en-IN")}+)` : ""}`).join(", ")}.</li>
           <li>Every coin of gifts between you adds 1 intimacy. Intimacy raises the BFF level up to Lv 10.</li>
           <li>Sit beside your BFF in a room and your token shows between your seats.</li>
+          <li>Give your BFF a pet name and a colour theme with Customize. Either of you can change it.</li>
+          <li>Everyone has 5 BFF slots. Each VIP level adds one more, up to {TAG_SLOTS}.</li>
         </ol>
       </section>
       <div className="h-8" />
@@ -116,6 +133,9 @@ export function IntimateSpace({ personId }: { personId: string }) {
 
 function TagCard({ tag, viewer }: { tag: Tag; viewer: string }) {
   const { spend, addIntimacy, addCharm, trackReceived, playGift, profile, toast, breakTag } = useApp();
+  const [editing, setEditing] = useState(false);
+  const [sending, setSending] = useState(false);
+  const c = tagColors(tag);
   const person = usePeople();
   const tagTitle = useTagTitle();
   const [open, setOpen] = useState(false);
@@ -129,8 +149,21 @@ function TagCard({ tag, viewer }: { tag: Tag; viewer: string }) {
   const otherOfMine = tag.a === ME_ID ? tag.b : tag.a;
 
   const gift = (id: GiftId) => {
-    if (!GIFTS_LIVE) return toast(GIFTS_SOON_TEXT);
     const g = giftById(id);
+    // Backend users: a real gift through the server (coins, charm and intimacy are counted there)
+    if (otherOfMine.startsWith("srv-user:")) {
+      if (sending) return;
+      setSending(true);
+      sendDirectGift(otherOfMine.slice(9), id, 1, "TAG")
+        .then(() => {
+          addIntimacy(ME_ID, otherOfMine, g.cost);
+          playGift({ giftId: id, fromName: profile.name, toName: person(otherOfMine).name, count: 1 });
+        })
+        .catch((e) => toast(e instanceof Error && e.message ? e.message : "Couldn't send the gift.", "error"))
+        .finally(() => setSending(false));
+      return;
+    }
+    if (!GIFTS_LIVE) return toast(GIFTS_SOON_TEXT);
     if (!spend(g.cost)) {
       toast("Not enough coins", "error");
       return;
@@ -142,9 +175,20 @@ function TagCard({ tag, viewer }: { tag: Tag; viewer: string }) {
   };
 
   return (
-    <article className="overflow-hidden rounded-3xl ring-1" style={{ background: `linear-gradient(160deg, ${rel.tint}2e, #1c1b22 55%)`, borderColor: rel.tint, ["--tw-ring-color" as string]: `${rel.tint}55` }}>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="w-full p-4 text-left">
+    <article className="relative overflow-hidden rounded-3xl p-[1.5px]" style={{ background: `linear-gradient(135deg, ${c.from}, #e7bc72 45%, ${c.to})`, boxShadow: `0 10px 30px -12px ${c.glow}88` }}>
+     <div className="relative overflow-hidden rounded-[22px]" style={{ background: `radial-gradient(120% 80% at 50% 0%, ${c.from}40, transparent 60%), linear-gradient(165deg, ${c.to}66, #17151d 58%)` }}>
+      {/* A slow shine across the card */}
+      <motion.span aria-hidden className="pointer-events-none absolute inset-y-0 -left-1/2 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent" animate={{ x: ["0%", "450%"] }} transition={{ duration: 3.6, repeat: Infinity, repeatDelay: 2.4, ease: "easeInOut" }} />
+      {lv.level >= 5 ? <span aria-hidden className="pointer-events-none absolute right-3 top-3 text-[13px]">{lv.level >= 10 ? "👑" : "✨"}</span> : null}
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="relative w-full p-4 text-left">
         <TagPairArt tag={tag} size={56} />
+        {tag.nickname ? (
+          <p className="mt-2 text-center">
+            <span className="inline-block rounded-full px-3 py-0.5 font-display text-[13px] font-extrabold text-white shadow" style={{ background: `linear-gradient(90deg, ${c.from}, ${c.to})` }}>
+              “{tag.nickname}”
+            </span>
+          </p>
+        ) : null}
         <div className="mt-2 flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate font-display text-[16px] font-extrabold text-cream">
@@ -154,7 +198,7 @@ function TagCard({ tag, viewer }: { tag: Tag; viewer: string }) {
               {rel.label} · {token.emoji} {token.label} · since {new Date(tag.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} in {tag.roomName}
             </p>
           </div>
-          <span className="shrink-0 rounded-full px-2.5 py-1 font-display text-[13px] font-extrabold text-[#1c1b22]" style={{ background: `linear-gradient(135deg, #fff1d5, ${rel.tint})` }}>
+          <span className="shrink-0 rounded-full px-2.5 py-1 font-display text-[13px] font-extrabold text-[#1c1b22] shadow-[0_0_14px_rgba(255,220,150,0.45)]" style={{ background: `linear-gradient(135deg, #fff1d5, ${c.from})` }}>
             Lv {lv.level}
           </span>
         </div>
@@ -168,7 +212,7 @@ function TagCard({ tag, viewer }: { tag: Tag; viewer: string }) {
             </span>
           </div>
           <div className="mt-1 h-2 overflow-hidden rounded-full bg-black/40" role="progressbar" aria-label={`Intimacy toward level ${lv.level + 1}`} aria-valuenow={Math.round(lv.progress * 100)} aria-valuemin={0} aria-valuemax={100}>
-            <motion.div className="h-full rounded-full" style={{ background: `linear-gradient(90deg, ${rel.tint}, #e7bc72)` }} initial={{ width: 0 }} animate={{ width: `${lv.progress * 100}%` }} transition={{ duration: 0.7 }} />
+            <motion.div className="h-full rounded-full" style={{ background: `linear-gradient(90deg, ${c.from}, #e7bc72)` }} initial={{ width: 0 }} animate={{ width: `${lv.progress * 100}%` }} transition={{ duration: 0.7 }} />
           </div>
         </div>
         <span className="mt-2 flex items-center justify-center gap-1 text-[11.5px] font-semibold text-cream/60">
@@ -216,6 +260,9 @@ function TagCard({ tag, viewer }: { tag: Tag; viewer: string }) {
                   );
                 })}
               </div>
+              <button type="button" onClick={() => setEditing(true)} className="mt-3 flex h-10 w-full items-center justify-center gap-1.5 rounded-full text-[13px] font-bold text-white" style={{ background: `linear-gradient(90deg, ${c.from}, ${c.to})` }}>
+                <Palette className="h-4 w-4" aria-hidden /> Customize tag
+              </button>
               {confirm ? (
                 <div className="mt-3 flex gap-2">
                   <button type="button" onClick={() => setConfirm(false)} className="h-10 flex-1 rounded-full bg-white/10 text-[13px] font-bold text-cream">
@@ -234,6 +281,77 @@ function TagCard({ tag, viewer }: { tag: Tag; viewer: string }) {
           ) : null}
         </div>
       ) : null}
+     </div>
+      {mine ? <TagCustomizeSheet tag={tag} open={editing} onClose={() => setEditing(false)} /> : null}
     </article>
+  );
+}
+
+/** Either person in a tag: change its type, pet name and colour theme. */
+function TagCustomizeSheet({ tag, open, onClose }: { tag: Tag; open: boolean; onClose: () => void }) {
+  const { customizeTag, toast } = useApp();
+  const [relation, setRelation] = useState<RelationshipId>(tag.relation);
+  const [nickname, setNickname] = useState(tag.nickname ?? "");
+  const [theme, setTheme] = useState<string>(tag.theme ?? "");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    setRelation(tag.relation);
+    setNickname(tag.nickname ?? "");
+    setTheme(tag.theme ?? "");
+  }, [open, tag]);
+  const preview = tagColors({ relation, theme: (theme || undefined) as Tag["theme"] });
+  const save = () => {
+    setBusy(true);
+    customizeTag(tag.id, { relation, nickname: nickname.trim(), theme })
+      .then(() => {
+        toast("Tag updated", "gold");
+        onClose();
+      })
+      .catch((e: unknown) => toast(e instanceof Error && e.message ? e.message : "Couldn't save that.", "error"))
+      .finally(() => setBusy(false));
+  };
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Customize tag">
+      <div className="space-y-4 pb-2">
+        <div className="rounded-2xl p-4 text-center" style={{ background: `linear-gradient(135deg, ${preview.from}, ${preview.to})` }}>
+          <p className="font-display text-[17px] font-extrabold text-white drop-shadow">{nickname.trim() ? `“${nickname.trim()}”` : relationshipById(relation).label}</p>
+          <p className="text-[11.5px] font-semibold text-white/80">
+            {relationshipById(relation).label} · Lv {tagLevel(tag.intimacy).level}
+          </p>
+        </div>
+        <div>
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Tag type</p>
+          <div className="grid grid-cols-3 gap-2">
+            {RELATIONSHIPS.map((r) => (
+              <button key={r.id} type="button" onClick={() => setRelation(r.id)} className={`rounded-xl px-2 py-2 text-[12.5px] font-bold ring-1 transition ${relation === r.id ? "text-white ring-transparent" : "text-cream/80 ring-white/10"}`} style={relation === r.id ? { background: `linear-gradient(135deg, ${r.tint}, ${r.deep})` } : undefined}>
+                {r.emoji} {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="block">
+          <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Pet name</span>
+          <input value={nickname} onChange={(e) => setNickname(e.target.value.slice(0, NICKNAME_MAX))} placeholder="Chai Partner, Partner in crime…" className="h-11 w-full rounded-xl bg-white/[0.06] px-3 text-[14px] text-cream outline-none ring-1 ring-white/10 focus:ring-gold/60" />
+          <span className="mt-1 block text-right text-[10.5px] text-muted">
+            {nickname.length}/{NICKNAME_MAX}
+          </span>
+        </label>
+        <div>
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Theme</p>
+          <div className="flex flex-wrap gap-2.5">
+            <button type="button" onClick={() => setTheme("")} aria-pressed={theme === ""} className={`h-10 rounded-full px-3 text-[12px] font-bold ring-2 ${theme === "" ? "text-cream ring-gold" : "text-cream/70 ring-white/10"}`}>
+              Default
+            </button>
+            {TAG_THEMES.map((t) => (
+              <button key={t.id} type="button" onClick={() => setTheme(t.id)} aria-label={t.label} aria-pressed={theme === t.id} className={`h-10 w-10 rounded-full ring-2 transition ${theme === t.id ? "scale-110 ring-gold" : "ring-white/10"}`} style={{ background: `linear-gradient(135deg, ${t.from}, ${t.to})` }} />
+            ))}
+          </div>
+        </div>
+        <button type="button" disabled={busy} onClick={save} className="h-12 w-full rounded-full bg-gradient-to-r from-[#ff7fa8] to-gold text-[15px] font-extrabold text-ink disabled:opacity-60">
+          {busy ? "Saving…" : "Save"}
+        </button>
+      </div>
+    </BottomSheet>
   );
 }

@@ -39,7 +39,7 @@ export const RAIN_TIMERS = [
 /** Packets that someone else drops elsewhere give you longer to join. */
 export const REMOTE_COUNTDOWN_MS = 12_000;
 /** How long the rain lasts once it starts (it ends sooner if the pot is empty). */
-export const RAIN_MS = 9_000;
+export const RAIN_MS = 15_000;
 
 /** A red packet that has been dropped in a room. */
 export type Drop = {
@@ -56,7 +56,13 @@ export type Drop = {
   /** Coins you grabbed from it, and how many envelopes. */
   mine: number;
   grabs: number;
+  /** Set for red packets run by the server (backend rooms): its id there, and how many grabs each person gets. */
+  serverId?: string;
+  maxGrabs?: number;
 };
+
+/** The packet tier for a pot size (server packets carry the amount). */
+export const tierForAmount = (amount: number): RedPacketId => (RED_PACKETS.find((p) => p.amount === amount) ?? RED_PACKETS[0]).id;
 
 /** One tap's share: 1.5% to 6% of the pot, never more than what's left. */
 export function grabShare(amount: number, left: number) {
