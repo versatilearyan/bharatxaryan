@@ -10,11 +10,10 @@ import { ChevronRight } from "lucide-react";
 import { momentsApi } from "@/lib/api/social";
 import { readToken } from "@/lib/auth/token";
 import { useApp } from "@/lib/app/store";
-import { fetchDailyTasks } from "@/components/sheets/ServerTasks";
 
 const SEEN_KEY = "panchayat-moments-seen";
 
-function TileArt({ kind }: { kind: "cp" | "ranking" | "tasks" }) {
+function TileArt({ kind }: { kind: "cp" | "parivar" }) {
   if (kind === "cp")
     return (
       <svg viewBox="0 0 64 64" className="h-14 w-14" aria-hidden>
@@ -30,46 +29,23 @@ function TileArt({ kind }: { kind: "cp" | "ranking" | "tasks" }) {
         <path d="M32 16l3 4h-6Z" fill="#fff" opacity=".9" />
       </svg>
     );
-  if (kind === "ranking")
-    return (
-      <svg viewBox="0 0 64 64" className="h-14 w-14" aria-hidden>
-        <defs>
-          <linearGradient id="dh-rk" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="#fff1c9" />
-            <stop offset=".5" stopColor="#e7bc72" />
-            <stop offset="1" stopColor="#a8701f" />
-          </linearGradient>
-        </defs>
-        <path d="M20 10h24v14a12 12 0 0 1-24 0Z" fill="url(#dh-rk)" />
-        <path d="M20 14h-7a7 7 0 0 0 7 9M44 14h7a7 7 0 0 1-7 9" fill="none" stroke="#e7bc72" strokeWidth="3" />
-        <rect x="29" y="35" width="6" height="8" fill="#c88f35" />
-        <rect x="21" y="43" width="22" height="7" rx="2" fill="url(#dh-rk)" />
-        <path d="m32 15 2 4.2 4.6.6-3.3 3.2.8 4.5L32 25.3l-4.1 2.2.8-4.5-3.3-3.2 4.6-.6Z" fill="#fff8e6" />
-      </svg>
-    );
   return (
     <svg viewBox="0 0 64 64" className="h-14 w-14" aria-hidden>
       <defs>
-        <linearGradient id="dh-tk" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#b9a4ff" />
-          <stop offset="1" stopColor="#6a45e8" />
+        <linearGradient id="dh-pv" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffc06b" />
+          <stop offset="1" stopColor="#f2652e" />
         </linearGradient>
       </defs>
-      <rect x="14" y="10" width="36" height="44" rx="7" fill="url(#dh-tk)" />
-      <rect x="24" y="6" width="16" height="9" rx="3" fill="#e7bc72" />
-      {[22, 32, 42].map((y, i) => (
-        <g key={y}>
-          <circle cx="23" cy={y} r="3.2" fill={i < 2 ? "#4fd6a5" : "#ffffff55"} />
-          <rect x="30" y={y - 2} width="14" height="4" rx="2" fill="#ffffffcc" />
-        </g>
-      ))}
+      <path d="M14 10h36v34L32 56 14 44Z" fill="url(#dh-pv)" />
+      <path d="M14 10h36v6H14Z" fill="#ffe2b0" opacity=".7" />
+      <path d="m32 22 3.6 7.3 8 1.2-5.8 5.6 1.4 8L32 40.3l-7.2 3.8 1.4-8-5.8-5.6 8-1.2Z" fill="#fff6e6" />
     </svg>
   );
 }
 
 export function DiscoverHub() {
-  const { push, setSheet, sheet } = useApp();
-  const [claimable, setClaimable] = useState(0);
+  const { push, toast } = useApp();
   const [latest, setLatest] = useState<{ avatarUrl?: string; name: string; at: number } | null>(null);
   const [fresh, setFresh] = useState(false);
 
@@ -96,14 +72,6 @@ export function DiscoverHub() {
     };
   }, []);
 
-  // A dot on Tasks when a reward is ready to claim (rechecked when the tasks sheet closes)
-  useEffect(() => {
-    if (!readToken() || sheet) return;
-    fetchDailyTasks()
-      .then((t) => setClaimable(t.filter((x) => x.done && !x.claimed).length))
-      .catch(() => undefined);
-  }, [sheet]);
-
   const openMoments = () => {
     try {
       window.localStorage.setItem(SEEN_KEY, String(Date.now()));
@@ -114,10 +82,9 @@ export function DiscoverHub() {
     push({ kind: "moments" });
   };
 
-  const tiles: { key: "cp" | "ranking" | "tasks"; label: string; dot?: boolean; onClick: () => void }[] = [
+  const tiles: { key: "cp" | "parivar"; label: string; soon?: boolean; onClick: () => void }[] = [
     { key: "cp", label: "CP", onClick: () => push({ kind: "intimate-space", personId: "me" }) },
-    { key: "ranking", label: "Ranking", onClick: () => push({ kind: "ranking" }) },
-    { key: "tasks", label: "Tasks", dot: claimable > 0, onClick: () => setSheet({ kind: "tasks" }) },
+    { key: "parivar", label: "Parivar", soon: true, onClick: () => toast("Parivar is coming soon. Get your people ready! 🪔") },
   ];
 
   return (
@@ -138,16 +105,14 @@ export function DiscoverHub() {
         <ChevronRight className="h-5 w-5 text-muted" aria-hidden />
       </motion.button>
 
-      <div className="mt-3 grid grid-cols-3 gap-2.5">
+      <div className="mt-3 grid grid-cols-2 gap-2.5">
         {tiles.map((t) => (
-          <motion.button key={t.key} whileTap={{ scale: 0.95 }} type="button" onClick={t.onClick} className={`relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-b pb-3.5 pt-4 ring-1 ring-gold/20 ${t.key === "cp" ? "from-[#5a1a36] to-[#1f1420]" : t.key === "ranking" ? "from-[#5a3a14] to-[#1f1814]" : "from-[#33206b] to-[#18142a]"}`}>
-            <motion.span whileHover={{ y: -2 }}>
+          <motion.button key={t.key} whileTap={{ scale: 0.95 }} type="button" onClick={t.onClick} className={`relative flex flex-col items-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-b pb-3.5 pt-4 ring-1 ring-gold/20 ${t.key === "cp" ? "from-[#5a1a36] to-[#1f1420]" : "from-[#5a2a14] to-[#1f1614]"}`}>
+            <motion.span whileHover={{ y: -2 }} className={t.soon ? "opacity-75" : undefined}>
               <TileArt kind={t.key} />
             </motion.span>
-            <span className="relative font-display text-[15px] font-bold text-cream">
-              {t.label}
-              {t.dot ? <span className="absolute -right-2.5 -top-0.5 h-2 w-2 rounded-full bg-coral" /> : null}
-            </span>
+            <span className="font-display text-[15px] font-bold text-cream">{t.label}</span>
+            {t.soon ? <span className="absolute right-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-gold ring-1 ring-gold/40">Coming soon</span> : null}
           </motion.button>
         ))}
       </div>

@@ -425,7 +425,7 @@ function ProposalCard({ p, incoming, busy, onAccept, onDecline, onCancel }: { p:
 function RingPicker({ catalogue, bag, chosen, onChoose }: { catalogue: CpRingInfo[]; bag: Record<string, number>; chosen: string | null; onChoose: (id: string) => void }) {
   return (
     <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-      {catalogue.map((r) => (
+      {catalogue.filter((r) => r.onSale || (bag[r.id] ?? 0) > 0).map((r) => (
         <button key={r.id} type="button" aria-pressed={chosen === r.id} onClick={() => onChoose(r.id)} className={`flex w-[92px] shrink-0 flex-col items-center rounded-2xl py-2 ring-1 transition ${chosen === r.id ? "scale-[1.03] bg-pink/15 ring-pink" : "bg-surface ring-line"}`}>
           <Ring id={r.id} catalogue={catalogue} size={46} />
           <span className="line-clamp-1 px-1 text-[11px] font-semibold text-cream">{r.name}</span>

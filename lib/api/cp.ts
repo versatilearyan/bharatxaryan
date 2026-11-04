@@ -28,7 +28,7 @@ const time = (v: unknown) => (typeof v === "string" ? Date.parse(v) || Date.now(
 const opts = { auth: true, forbiddenIsAccess: true } as const;
 const key = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
-export type CpRingInfo = { id: string; name: string; price: number; rarity: string; imageUrl?: string; sortOrder: number };
+export type CpRingInfo = { id: string; name: string; price: number; rarity: string; imageUrl?: string; sortOrder: number; /** Sold now (admin shop rings). Old rings show only to people who own them. */ onSale: boolean };
 export type CpPerson = { userId: string; name: string; avatarUrl?: string };
 export type CpCouple = {
   id: string;
@@ -93,7 +93,7 @@ export const cpApi = {
     ((await api<unknown>("/api/v1/cp/rings", opts)) as unknown[] | null ?? []).flatMap((r) => {
       const o = obj(r);
       const id = str(o?.id);
-      return o && id ? [{ id, name: str(o.name) ?? id, price: num(o.price), rarity: str(o.rarity) ?? "", imageUrl: str(o.imageUrl), sortOrder: num(o.sortOrder) }] : [];
+      return o && id ? [{ id, name: str(o.name) ?? id, price: num(o.price), rarity: str(o.rarity) ?? "", imageUrl: str(o.imageUrl), sortOrder: num(o.sortOrder), onSale: o.onSale !== false }] : [];
     }),
   bag: async () => bagOf(await api<unknown>("/api/v1/cp/me/rings", opts)),
   buy: async (ringId: string) => {
