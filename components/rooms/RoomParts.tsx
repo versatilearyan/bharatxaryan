@@ -266,8 +266,42 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
     else s.takeSeat(index);
   };
 
+  // Someone landing on this seat (sitting down or moving here): a gold pulse at the seat,
+  // and "Seat N" over it when it's you
+  const prevId = useRef<string | null | undefined>(undefined);
+  const [landed, setLanded] = useState(0);
+  useEffect(() => {
+    if (prevId.current !== undefined && id && prevId.current !== id) setLanded((n) => n + 1);
+    prevId.current = id ?? null;
+  }, [id]);
+
   return (
     <div className="relative flex flex-col items-center gap-1" data-seat={index}>
+      <AnimatePresence>
+        {landed ? (
+          <motion.span
+            key={`pulse-${landed}`}
+            initial={{ scale: 0.75, opacity: 0.95 }}
+            animate={{ scale: 1.75, opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.9, ease: "easeOut" }}
+            className="pointer-events-none absolute left-1/2 top-0 z-10 rounded-full border-2 border-gold shadow-[0_0_18px_rgba(231,188,114,0.8)]"
+            style={{ width: size, height: size, marginLeft: -size / 2 }}
+            aria-hidden
+          />
+        ) : null}
+        {landed && id === ME_ID ? (
+          <motion.span
+            key={`label-${landed}`}
+            initial={{ y: 4, opacity: 0, scale: 0.8 }}
+            animate={{ y: -10, opacity: [0, 1, 1, 0], scale: 1 }}
+            transition={{ duration: 1.6, times: [0, 0.15, 0.75, 1] }}
+            className="pointer-events-none absolute -top-5 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full bg-gold px-2 py-0.5 text-[10px] font-extrabold text-ink shadow"
+          >
+            Seat {index}
+          </motion.span>
+        ) : null}
+      </AnimatePresence>
       <AnimatePresence>
         {reactions.map((r) => (
           <EmoteBurst key={r.id} emote={r.emoji} result={r.result} />
@@ -276,6 +310,8 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
       {p ? (
         <motion.button
           type="button"
+          layoutId={`seat-person-${p.id}`}
+          transition={{ type: "spring", stiffness: 380, damping: 30 }}
           whileTap={{ scale: 0.92 }}
           onClick={() => s.openCard(p.id)}
           aria-label={p.id === ME_ID ? "Your seat" : `${p.name}${role ? `, ${role}` : ""}${speaking ? ", speaking" : ""}`}

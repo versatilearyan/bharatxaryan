@@ -8,7 +8,8 @@ import { setNotifyPrefs, useNotifyPrefs, notify as ping } from "@/lib/app/notify
 import { getPrivacy, setShowOnline } from "@/lib/api/chat";
 import { GameArt } from "@/components/art/GameArt";
 import { Modal } from "@/components/ui/Modal";
-import { ProfileHero, UserProfileBody } from "@/components/profile/UserProfile";
+import { FollowCounts, ProfileHero, UserProfileBody } from "@/components/profile/UserProfile";
+import { myUserIdFromToken } from "@/lib/auth/token";
 import { Button, Coin, Toggle, formatCoins } from "@/components/ui/kit";
 import { gameById } from "@/lib/app/data";
 import { formatPoints, vipLevel } from "@/lib/app/levels";
@@ -19,6 +20,7 @@ import { useMe } from "@/lib/app/me-store";
 
 export function ProfileScreen() {
   const { profile, coins, setSheet, push, toast, resetDemo, signOut, session, vip: appVip } = useApp();
+  const myServerId = session ? myUserIdFromToken() : null;
   const [notify, setNotify] = useState(true);
   const [sounds, setSounds] = useState(true);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -96,6 +98,7 @@ export function ProfileScreen() {
       </div>
 
 
+      {myServerId ? <FollowCounts personId={`srv-user:${myServerId}`} onPick={(tab) => setSheet({ kind: "friends", tab })} /> : null}
       <UserProfileBody personId="me" />
 
       {/* Wallet + VIP */}

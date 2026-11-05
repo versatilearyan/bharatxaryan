@@ -35,7 +35,7 @@ export type AuctionState = {
   bids: Bid[];
   winner: Bid | null;
   /** BFF only: what happened to the tag when the round closed. */
-  tagResult: null | { kind: "new" | "existing" | "full"; token: TokenId };
+  tagResult: null | { kind: "new" | "existing" | "full" | "taken"; token: TokenId };
 };
 
 const ROUND_MS = 45_000;
@@ -122,7 +122,10 @@ export function useAuction(s: RoomSession) {
             else ss.addSystem(`🎉 ${nm(winner)} won ${itemName} with ${volume} of gifts, but an intimate space is full, so no new tag.`);
             if (winner === ME_ID || item === ME_ID) {
               const other = nm(winner === ME_ID ? item : winner);
-              toast(kind === "new" ? `You and ${other} are now ${rel.label}` : kind === "existing" ? `+${volume} intimacy with ${other}` : "Your intimate space is full. Remove a tag to make room.", kind === "full" ? "error" : "gold");
+              toast(
+              kind === "new" ? `You and ${other} are now ${rel.label}` : kind === "existing" ? `+${volume} intimacy with ${other}` : kind === "taken" ? `One of you already has a ${rel.label} tag. Each person can have one of each type.` : "Your intimate space is full. Remove a tag to make room.",
+              kind === "full" || kind === "taken" ? "error" : "gold",
+            );
               void loadServerTags("me");
             }
           } else {

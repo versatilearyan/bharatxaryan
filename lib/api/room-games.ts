@@ -100,7 +100,7 @@ export type ServerAuction = {
   endsAt: number;
   bids: { userId: string; total: number }[];
   winner: { userId: string; total: number } | null;
-  tagResult: { kind: "new" | "existing" | "full"; token: string } | null;
+  tagResult: { kind: "new" | "existing" | "full" | "taken"; token: string } | null;
   event?: GameEvent;
 };
 
@@ -132,7 +132,7 @@ export function readAuction(raw: unknown): ServerAuction | null {
         })
       : [],
     winner: w && str(w.userId) ? { userId: str(w.userId)!, total: num(w.total) ?? 0 } : null,
-    tagResult: t && (t.kind === "new" || t.kind === "existing" || t.kind === "full") ? { kind: t.kind, token: str(t.token) ?? "bicycle" } : null,
+    tagResult: t && (t.kind === "new" || t.kind === "existing" || t.kind === "full" || t.kind === "taken") ? { kind: t.kind, token: str(t.token) ?? "bicycle" } : null,
     event: readEvent(d.event),
   };
 }

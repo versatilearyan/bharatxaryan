@@ -63,7 +63,7 @@ export type Sheet =
   | { kind: "person"; personId: string }
   | { kind: "notifications" }
   | { kind: "tasks" }
-  | { kind: "friends" }
+  | { kind: "friends"; tab?: "friends" | "following" | "followers" }
   | { kind: "coins" }
   | { kind: "game"; gameId: GameId }
   | { kind: "edit-profile" }

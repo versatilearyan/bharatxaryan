@@ -1,5 +1,6 @@
 "use client";
 
+import { useServerGuard } from "./useServerGuard";
 import { useGiftsReceived } from "./useGiftsReceived";
 import { friendsApi, type FollowStatus } from "@/lib/api/social";
 import { cpApi, daysOf, type CpCouple } from "@/lib/api/cp";
@@ -203,14 +204,16 @@ export function UserProfileBody({ personId }: { personId: string }) {
     if (personId === "me" || personId.startsWith("srv-user:")) void loadServerTags(personId);
   }, [personId, loadServerTags]);
   const tags = [...tagsOf(personId)].sort((x, y) => y.intimacy - x.intimacy);
-  const guards = guardiansOf(personId);
+  const sg = useServerGuard(personId);
+  const guards = sg.enabled ? (sg.data?.guards ?? []).map((g) => ({ id: g.personId, value: g.guard })) : guardiansOf(personId);
   const guardTotal = guards.reduce((a, g) => a + g.value, 0);
   const rooms = useUserRooms(personId);
   const roomList = [rooms.mine, ...rooms.joined].filter((r): r is Room => Boolean(r));
   const topGifts = GIFTS.filter((g) => (received[g.id] ?? 0) > 0)
     .sort((a, b) => b.cost - a.cost)
     .slice(0, 5);
-  const done = protectedToday(personId);
+  const done = sg.enabled ? Boolean(sg.data?.protectedToday) : protectedToday(personId);
+  const doProtect = () => (sg.enabled ? void sg.protect() : protect(personId));
   const myStats = useMe().stats;
   const stat = (n: number | undefined) => (n === undefined ? (myStats.loading ? "…" : "—") : formatCount(n));
 
@@ -269,8 +272,8 @@ export function UserProfileBody({ personId }: { personId: string }) {
             <motion.button
               type="button"
               whileTap={{ scale: 0.94 }}
-              onClick={() => protect(personId)}
-              disabled={done}
+              onClick={doProtect}
+              disabled={done || sg.busy}
               className={`flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-bold ${done ? "bg-cream/10 text-muted" : "bg-gold text-ink"}`}
             >
               {done ? <ShieldCheck className="h-4 w-4" aria-hidden /> : <Shield className="h-4 w-4" aria-hidden />}
@@ -669,7 +672,7 @@ function useUserRooms(personId: string) {
 /* ------------------------------------------------------------------ */
 
 /** Friends, followers and following for a backend user, and whether you're friends. */
-export function FollowCounts({ personId, following }: { personId: string; following?: boolean }) {
+export function FollowCounts({ personId, following, onPick }: { personId: string; following?: boolean; onPick?: (tab: "friends" | "followers" | "following") => void }) {
   const [st, setSt] = useState<FollowStatus | null>(null);
   const uid = personId.startsWith("srv-user:") ? personId.slice(9) : null;
   useEffect(() => {
@@ -693,16 +696,23 @@ export function FollowCounts({ personId, following }: { personId: string; follow
     <div className="mx-4 mt-3 grid grid-cols-3 overflow-hidden rounded-2xl bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 ring-1 ring-gold/15">
       {(
         [
-          ["Friends", st?.friendsCount],
-          ["Followers", st?.followers],
-          ["Following", st?.followingCount],
+          ["Friends", st?.friendsCount, "friends"],
+          ["Followers", st?.followers, "followers"],
+          ["Following", st?.followingCount, "following"],
         ] as const
-      ).map(([label, n]) => (
-        <div key={label} className="py-2.5 text-center">
-          <span className="block font-display text-[18px] font-extrabold text-cream">{n ?? "–"}</span>
-          <span className="text-[11px] text-muted">{label}</span>
-        </div>
-      ))}
+      ).map(([label, n, tab]) =>
+        onPick ? (
+          <button key={label} type="button" onClick={() => onPick(tab)} className="py-2.5 text-center transition-colors hover:bg-gold/[0.06]">
+            <span className="block font-display text-[18px] font-extrabold text-cream">{n ?? "–"}</span>
+            <span className="text-[11px] text-muted">{label}</span>
+          </button>
+        ) : (
+          <div key={label} className="py-2.5 text-center">
+            <span className="block font-display text-[18px] font-extrabold text-cream">{n ?? "–"}</span>
+            <span className="text-[11px] text-muted">{label}</span>
+          </div>
+        ),
+      )}
       {st?.friends ? <p className="col-span-3 border-t border-gold/10 py-1.5 text-center text-[11.5px] font-bold text-speak">🤝 You're friends</p> : st?.followsYou ? <p className="col-span-3 border-t border-gold/10 py-1.5 text-center text-[11.5px] font-semibold text-muted">Follows you</p> : null}
     </div>
   );
@@ -834,12 +844,15 @@ export function GuardScreen({ personId }: { personId: string }) {
   const person = usePeople();
   const p = person(personId);
   const mine = personId === ME_ID;
-  const list = guardiansOf(personId);
-  const total = list.reduce((a, g) => a + g.value, 0);
+  const sg = useServerGuard(personId);
+  const server = sg.enabled ? (sg.data?.guards ?? []) : null;
+  const list = server ? server.map((g) => ({ id: g.personId, value: g.guard })) : guardiansOf(personId);
+  const total = server ? (sg.data?.total ?? 0) : list.reduce((a, g) => a + g.value, 0);
   const myGuard = list.find((g) => g.id === ME_ID)?.value ?? 0;
-  const done = protectedToday(personId);
+  const done = sg.enabled ? Boolean(sg.data?.protectedToday) : protectedToday(personId);
+  const perDay = sg.data?.protectGuard ?? GUARD_PER_DAY;
   return (
-    <div className="app-scroll h-full bg-ink pb-8">
+    <div className="app-scroll h-full bg-[radial-gradient(130%_60%_at_50%_0%,#3a1424_0%,#221220_45%,#141018_100%)] pb-8">
       <ScreenHeader title="Guard" onBack={pop} />
       <section className="mx-4 mt-1 rounded-3xl bg-gradient-to-br from-[#3a2a14] to-[#1c1b22] p-4 ring-1 ring-gold/25">
         <div className="flex items-center gap-3">
@@ -859,16 +872,17 @@ export function GuardScreen({ personId }: { personId: string }) {
             <motion.button
               type="button"
               whileTap={{ scale: 0.94 }}
-              onClick={() => protect(personId)}
-              disabled={done}
+              onClick={() => (sg.enabled ? void sg.protect() : protect(personId))}
+              disabled={done || sg.busy}
               className={`flex h-9 items-center gap-1.5 rounded-full px-4 text-[13px] font-bold ${done ? "bg-cream/10 text-muted" : "bg-gold text-ink"}`}
             >
               {done ? <ShieldCheck className="h-4 w-4" aria-hidden /> : <Shield className="h-4 w-4" aria-hidden />}
-              {done ? "Protected today" : `Protect +${GUARD_PER_DAY}`}
+              {done ? "Protected today" : `Protect +${perDay}`}
             </motion.button>
           </div>
         ) : null}
-        <p className="mt-2.5 text-[11.5px] text-cream/60">Friends protect each other for free, once a day each, adding {GUARD_PER_DAY} guard. Guard is separate from charm.</p>
+        {sg.error ? <p className="mt-2 text-[12px] font-semibold text-coral">{sg.error}</p> : null}
+        <p className="mt-2.5 text-[11.5px] text-cream/60">Guard = the charm someone gave with gifts and rings, plus {perDay} for each daily protect. Friends protect each other for free, once a day.</p>
       </section>
 
       <h2 className="mx-4 mt-6 font-display text-[17px] font-bold text-cream">Guardians</h2>
@@ -881,7 +895,16 @@ export function GuardScreen({ personId }: { personId: string }) {
                 {i + 1}
               </span>
               <PersonAvatar person={gp} size={40} />
-              <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-cream">{g.id === ME_ID ? "You" : gp.name}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[14px] font-semibold text-cream">{g.id === ME_ID ? "You" : (server?.[i]?.name ?? gp.name)}</span>
+                {server?.[i] ? (
+                  <span className="block truncate text-[11px] text-muted">
+                    💝 {server[i].giftCharm.toLocaleString("en-IN")} gifts
+                    {server[i].ringCharm ? ` · 💍 ${server[i].ringCharm.toLocaleString("en-IN")} rings` : ""}
+                    {server[i].protects ? ` · 🛡 ${server[i].protects}× protected` : ""}
+                  </span>
+                ) : null}
+              </span>
               <span className="flex items-center gap-1 text-[13px] font-bold text-gold">
                 <Shield className="h-3.5 w-3.5" aria-hidden /> {g.value.toLocaleString("en-IN")}
               </span>

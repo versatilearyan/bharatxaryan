@@ -187,7 +187,7 @@ function useMarketState() {
     if (!hydrated || !giftFx || lastFx.current === giftFx.id) return;
     lastFx.current = giftFx.id;
     const set = giftById(giftFx.giftId).reward;
-    if (!set) return;
+    if (!set || !isGiftSetId(set)) return;
     setGiftSets((list) => (list.includes(set) ? list : [...list, set]));
     // Sending it turns on the frame and the profile page effect; the bubble and entry wait in your Bag
     setEquip((e) => ({ ...e, animFrame: set, page: set }));

@@ -12,6 +12,7 @@ import { notify } from "@/lib/app/notify";
 import { useApp } from "@/lib/app/store";
 import { myUserIdFromToken } from "@/lib/auth/token";
 import { subscribe } from "@/lib/realtime/stomp";
+import { friendsApi } from "@/lib/api/social";
 
 const errText = (e: unknown, fallback: string) => (e instanceof Error && e.message ? e.message : fallback);
 const ago = (t: number) => {
@@ -487,7 +488,7 @@ function AddRingSheet({ open, onClose, catalogue, partnerName, onDone }: { open:
 }
 
 /** Propose to a backend user with a ring from your bag (or buy one first). */
-export function ServerProposeSheet({ open, onClose, toUserId, toName }: { open: boolean; onClose: () => void; toUserId: string; toName: string }) {
+export function ServerProposeSheet({ open, onClose, toUserId, toName, initialRing }: { open: boolean; onClose: () => void; toUserId: string; toName: string; initialRing?: string }) {
   const { toast, coins } = useApp();
   const [catalogue, setCatalogue] = useState<CpRingInfo[]>([]);
   const [bag, setBag] = useState<Record<string, number>>({});
@@ -500,10 +501,10 @@ export function ServerProposeSheet({ open, onClose, toUserId, toName }: { open: 
       .then(([cat, b]) => {
         setCatalogue(cat);
         setBag(b);
-        setRing(Object.keys(b)[0] ?? cat[0]?.id ?? null);
+        setRing(initialRing && (b[initialRing] ?? 0) > 0 ? initialRing : (Object.keys(b)[0] ?? cat[0]?.id ?? null));
       })
       .catch((e) => toast(errText(e, "Couldn't load rings."), "error"));
-  }, [open, toast]);
+  }, [open, toast, initialRing]);
   const info = catalogue.find((r) => r.id === ring);
   const owned = ring ? (bag[ring] ?? 0) : 0;
   const send = async () => {
@@ -635,5 +636,53 @@ export function CpProposalPrompt() {
         </motion.div>
       </motion.div>
     </AnimatePresence>
+  );
+}
+
+/**
+ * Propose with a ring from your Bag: pick a friend (or someone you follow),
+ * then the proposal opens with that ring chosen.
+ */
+export function ProposeFromBagSheet({ open, onClose, ringId, ringName }: { open: boolean; onClose: () => void; ringId: string; ringName: string }) {
+  const { toast } = useApp();
+  const [people, setPeople] = useState<{ userId: string; name: string; avatarUrl?: string }[] | null>(null);
+  const [to, setTo] = useState<{ userId: string; name: string } | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    setTo(null);
+    Promise.all([friendsApi.list("friends"), friendsApi.list("following")])
+      .then(([f, g]) => {
+        const seen = new Set<string>();
+        setPeople([...f.people, ...g.people].filter((p) => p.userId && !seen.has(p.userId) && (seen.add(p.userId), true)));
+      })
+      .catch((e) => toast(errText(e, "Couldn't load your friends."), "error"));
+  }, [open, toast]);
+  return (
+    <>
+      <BottomSheet open={open && !to} onClose={onClose} title={`Propose with ${ringName}`}>
+        <div className="px-5 pb-5">
+          <p className="text-[12.5px] text-muted">Pick who you want as your CP. They get your proposal with this ring.</p>
+          {people === null ? <p className="py-6 text-center text-[13px] text-muted">Loading…</p> : null}
+          {people?.length === 0 ? <p className="py-6 text-center text-[13px] text-muted">Make friends or follow someone first, then propose from here.</p> : null}
+          <ul className="mt-3 max-h-[55vh] space-y-2 overflow-y-auto">
+            {(people ?? []).map((p) => (
+              <li key={p.userId}>
+                <button type="button" onClick={() => setTo({ userId: p.userId, name: p.name })} className="flex w-full items-center gap-3 rounded-2xl bg-gradient-to-r from-[#2c1622]/95 to-[#1b1622]/95 p-2.5 text-left ring-1 ring-gold/15">
+                  {p.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
+                  ) : (
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-[#7b5cff] to-coral font-bold text-white">{p.name.slice(0, 1)}</span>
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-cream">{p.name}</span>
+                  <span className="rounded-full bg-gradient-to-r from-pink to-coral px-3 py-1 text-[12px] font-bold text-white">💍 Propose</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </BottomSheet>
+      {to ? <ServerProposeSheet open onClose={() => (setTo(null), onClose())} toUserId={to.userId} toName={to.name} initialRing={ringId} /> : null}
+    </>
   );
 }

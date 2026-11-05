@@ -56,10 +56,10 @@ export const VIP_SETS: VipSet[] = [
     badgeStill: "/effects/vip1/badge.png",
     badgeBand: [69, 279],
     tint: "from-[#5a3a12] to-[#2a160c]",
-    // 396×396 canvas: the ring's inner circle is about 279 px wide, centred at (198, 174).
+    // 396×396 canvas: the photo circle inside the ring is 316 px wide, centred at (198, 198).
     // The crown sits on top of the ring and the horse and "VIP 1" plaque cover its bottom.
-    frameScale: 1.42,
-    frameY: 0.44,
+    frameScale: 1.25,
+    frameY: 0.5,
     // 212×112 canvas: the plate inside the gold border
     bubbleBox: [0.12, 0.21, 0.89, 0.8],
     // 404×94 canvas: the bar runs from the horse emblem on the left to the fade on the right
@@ -77,10 +77,10 @@ export const VIP_SETS: VipSet[] = [
     badgeStill: "/effects/vip2/badge.png",
     badgeBand: [81, 283],
     tint: "from-[#0f4a36] to-[#0a2219]",
-    // Same 396×396 canvas as VIP 1, with a thinner ring: its inner circle is about
-    // 272 px wide, centred at (198, 200). Crown on top, horse and "VIP 2" plaque below.
-    frameScale: 1.4,
-    frameY: 0.47,
+    // Same 396×396 canvas as VIP 1: the photo circle inside the ring is 330 px wide,
+    // centred at (198, 206). Crown on top, horse and "VIP 2" plaque below.
+    frameScale: 1.2,
+    frameY: 0.52,
     // Same 212×112 bubble and 404×94 entry canvases as VIP 1
     bubbleBox: [0.12, 0.21, 0.89, 0.8],
     entryRatio: "404 / 94",
@@ -97,10 +97,10 @@ export const VIP_SETS: VipSet[] = [
     badgeStill: "/effects/vip3/badge.png",
     badgeBand: [89, 259],
     tint: "from-[#1d2a7a] to-[#0d1338]",
-    // 396×396 canvas, blue and gold eagle ring: inner circle about 272 px wide,
-    // centred at (198, 196). Crown on top, eagle and "VIP 3" plaque below.
-    frameScale: 1.4,
-    frameY: 0.47,
+    // 396×396 canvas, blue and gold eagle ring: the photo circle inside the ring is
+    // 304 px wide, centred at (198, 202). Crown on top, eagle and "VIP 3" plaque below.
+    frameScale: 1.3,
+    frameY: 0.51,
     // Same 212×112 bubble and 404×94 entry canvases as VIP 1 and 2
     bubbleBox: [0.12, 0.21, 0.89, 0.8],
     entryRatio: "404 / 94",
@@ -119,10 +119,10 @@ export const VIP_SETS: VipSet[] = [
     badgeCanvas: 230,
     badgeBand: [58, 176],
     tint: "from-[#7a3410] to-[#2e1206]",
-    // 396×396 canvas, fiery gold eagle ring: inner circle about 272 px wide,
-    // centred at (198, 196). Crown on top, eagle and "VIP 4" plaque below.
-    frameScale: 1.42,
-    frameY: 0.47,
+    // 396×396 canvas, fiery gold eagle ring: the photo circle inside the ring is
+    // 320 px wide, centred at (198, 205). Crown on top, eagle and "VIP 4" plaque below.
+    frameScale: 1.24,
+    frameY: 0.52,
     // 212×112 bubble: the amber plate inside the gold border
     bubbleBox: [0.12, 0.22, 0.88, 0.79],
     entryRatio: "404 / 94",
@@ -160,10 +160,10 @@ export const VIP_SETS: VipSet[] = [
     badgeStill: "/effects/vip6/badge.png",
     badgeBand: [79, 255],
     tint: "from-[#0d3a6a] to-[#061a33]",
-    // 396×396 canvas, blue and gold roaring-leopard ring: inner opening about
-    // 264 px wide, centred at (198, 194). Crown on top, leopard and plaque below.
-    frameScale: 1.44,
-    frameY: 0.47,
+    // 396×396 canvas, blue and gold roaring-leopard ring: the photo circle inside the
+    // ring is 310 px wide, centred at (198, 205). Crown on top, leopard and plaque below.
+    frameScale: 1.28,
+    frameY: 0.52,
     // 212×112 bubble: the blue plate inside the gold border
     bubbleBox: [0.13, 0.22, 0.88, 0.79],
     // Same 440×112 canvas as VIP 5; the left ornament ends near 10%
@@ -240,5 +240,10 @@ export const GIFT_SETS: GiftSet[] = [
   },
 ];
 
-export const isGiftSetId = (v: unknown): v is GiftSetId => GIFT_SETS.some((s) => s.id === v);
+/**
+ * Gift sets give no cosmetics any more: sending Storm Guardian is just a gift
+ * (no frame, bubble, entry or profile page effect for anyone).
+ */
+export const GIFT_SET_COSMETICS = false;
+export const isGiftSetId = (v: unknown): v is GiftSetId => GIFT_SET_COSMETICS && GIFT_SETS.some((s) => s.id === v);
 export const giftSetById = (id: GiftSetId) => GIFT_SETS.find((s) => s.id === id) ?? GIFT_SETS[0];

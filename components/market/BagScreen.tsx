@@ -1,5 +1,8 @@
 "use client";
 
+import { cpApi, type CpCouple } from "@/lib/api/cp";
+import { ProposeFromBagSheet } from "./ServerCp";
+import { readToken } from "@/lib/auth/token";
 import { useState, type ReactNode } from "react";
 import { Clock, Loader2, RotateCcw, ShoppingBag } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
@@ -13,7 +16,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { ScreenHeader } from "@/components/ui/kit";
 import { GIFTS_LIVE, GIFTS_SOON_TEXT, giftById } from "@/lib/app/data";
-import { giftSetById, type EffectSet, type GiftSet } from "@/lib/app/effects";
+import { giftSetById, isGiftSetId, type EffectSet, type GiftSet } from "@/lib/app/effects";
 import { bubbleById, timeLeft, type BubbleId, type Ring } from "@/lib/app/market";
 import { useMarket } from "@/lib/app/market-store";
 import { usePeople } from "@/lib/app/people";
@@ -44,6 +47,11 @@ export function BagScreen() {
   const { bag, now, wearAnimFrame, wearBubble, wearEntry, wearPage, equip, worn, vipSets, giftSets, ringsInBag, myCouple, giveRing, pkg } = m;
   const { owned, openSend } = useRedPackets();
   const [finding, setFinding] = useState(false);
+  // Signed in: your CP (null = none) decides whether a shop ring offers "Add to CP" or "Propose"
+  const [serverCp, setServerCp] = useState<CpCouple | null>(null);
+  const [ringBusy, setRingBusy] = useState<string | null>(null);
+  const [proposeRing, setProposeRing] = useState<{ id: string; name: string } | null>(null);
+
   const [open, setOpen] = useState<string | null>(null);
   const person = usePeople();
   const me = person(ME_ID);
@@ -53,6 +61,10 @@ export function BagScreen() {
   const rw = useRewards();
   // Shop items you bought with coins (GET /shop/me/items)
   const [bought, setBought] = useState<OwnedShopItem[]>([]);
+  useEffectBag(() => {
+    if (!readToken()) return;
+    cpApi.mine().then(setServerCp).catch(() => setServerCp(null));
+  }, [bought]);
   useEffectBag(() => {
     let live = true;
     getMyShopItems()
@@ -234,7 +246,7 @@ export function BagScreen() {
   const decorations: Entry[] = [
     ...rewardEffects,
     ...srv.decorations,
-    ...giftSets.map(giftSetById).flatMap(giftSetEntries),
+    ...giftSets.filter(isGiftSetId).map(giftSetById).flatMap(giftSetEntries),
     // On-device VIP sets only when not signed in; signed in, the server's slots replace them
     ...(srv.signedIn ? [] : vipSets.flatMap((s) => setEntries(s, `VIP ${s.level}`, `VIP ${s.level} reward`))),
   ];
@@ -259,10 +271,33 @@ export function BagScreen() {
       ? { label: `Give to ${person(myCouple.a === ME_ID ? myCouple.b : myCouple.a).name}`, run: () => giveRing(ring.id) }
       : { label: "💍 Propose", run: () => (setOpen(null), setFinding(true)) };
 
+  const isRing = (b: OwnedShopItem) => /ring/i.test(b.categoryName ?? "");
+  const ringAct = (b: OwnedShopItem): Entry["action"] =>
+    !srv.signedIn || !isRing(b)
+      ? undefined
+      : serverCp
+        ? {
+            label: ringBusy === b.id ? "Adding…" : "💍 Add to CP",
+            disabled: ringBusy !== null,
+            run: () => {
+              setRingBusy(b.id);
+              cpApi
+                .addRing(`shop-${b.id}`, "BAG")
+                .then(() => {
+                  toast(`${b.name} added to your CP 💞`, "gold");
+                  setBought((list) => list.map((x) => (x.id === b.id ? { ...x, quantity: x.quantity - 1 } : x)).filter((x) => x.quantity > 0));
+                  setOpen(null);
+                })
+                .catch((e) => toast(e instanceof Error && e.message ? e.message : "Couldn't add the ring.", "error"))
+                .finally(() => setRingBusy(null));
+            },
+          }
+        : { label: "💍 Propose", run: () => (setOpen(null), setProposeRing({ id: `shop-${b.id}`, name: b.name })) };
   const boughtItems: Entry[] = bought.map((b) => ({
     key: `shop-${b.id}`,
     name: b.name,
-    kind: b.categoryName ?? "Shop item",
+    kind: isRing(b) ? "CP ring" : (b.categoryName ?? "Shop item"),
+    action: ringAct(b),
     art: (
       <span className="block h-[70px] w-[70px] overflow-hidden rounded-lg">
         <ShopProductAsset url={b.assetUrl} type={b.assetType} name={b.name} className="h-full w-full" />
@@ -272,7 +307,7 @@ export function BagScreen() {
     count: b.quantity > 1 ? b.quantity : undefined,
     source: "Bought in the Shop",
     tint: ITEM_TINT,
-    note: b.description,
+    note: isRing(b) ? (serverCp ? "Add it to your CP's ring box. Its price is added as love and charm." : "Propose to someone with this ring.") : b.description,
   }));
   const items: Entry[] = [
     ...boughtItems,
@@ -401,6 +436,7 @@ export function BagScreen() {
         ) : null}
       </BottomSheet>
       <FindCpSheet open={finding} onClose={() => setFinding(false)} />
+      {proposeRing ? <ProposeFromBagSheet open onClose={() => setProposeRing(null)} ringId={proposeRing.id} ringName={proposeRing.name} /> : null}
     </div>
   );
 }

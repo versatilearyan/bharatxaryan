@@ -41,10 +41,10 @@ function Avatar({ src, name, size = 46, online }: { src?: string; name: string; 
  * Friends show online status, the room they're in and the game there, with
  * a Join button. Updates live as people come online or go offline.
  */
-export function FriendsPanel({ onClose }: { onClose: () => void }) {
+export function FriendsPanel({ onClose, initialTab }: { onClose: () => void; initialTab?: "friends" | "following" | "followers" }) {
   const { openRoom, openProfile, openConversation, setSheet, toast } = useApp();
   const { addCreated } = useServerRooms();
-  const [tab, setTab] = useState<Tab>("friends");
+  const [tab, setTab] = useState<Tab>(initialTab ?? "friends");
   const [lists, setLists] = useState<Partial<Record<Tab, FriendList>>>({});
   const [activity, setActivity] = useState<FriendActivity[] | null>(null);
   const [loading, setLoading] = useState(false);

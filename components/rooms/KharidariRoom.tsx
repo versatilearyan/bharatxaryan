@@ -38,7 +38,7 @@ export function KharidariRoom({ s, a }: { s: RoomSession; a: Auction }) {
   const iAmItem = a.itemId === ME_ID;
   const rel = relationshipById(a.relation);
   const startGift = a.startGift ? giftById(a.startGift) : null;
-  const wonTag = a.phase === "sold" && a.winner && a.itemId && a.tagResult && a.tagResult.kind !== "full" ? tagBetween(a.winner.id, a.itemId) : null;
+  const wonTag = a.phase === "sold" && a.winner && a.itemId && a.tagResult && a.tagResult.kind !== "full" && a.tagResult.kind !== "taken" ? tagBetween(a.winner.id, a.itemId) : null;
   const toLead = Math.max(a.startPrice, (a.top && a.top.id !== ME_ID ? a.top.total + 1 : 0)) - a.myTotal;
   // The starting gift and the next two up, plus a big one to jump ahead
   const affordableUp = GIFTS.filter((g) => g.cost >= Math.min(a.startPrice, 999));
@@ -160,6 +160,7 @@ export function KharidariRoom({ s, a }: { s: RoomSession; a: Auction }) {
                 <p className="text-[12px] font-bold text-gold">
                   🎉 {a.winner.id === ME_ID ? "You" : person(a.winner.id).name} won {a.mode === "bff" ? (item ? (item.id === ME_ID ? "you" : item.name) : "") : `“${a.offer}”`} with {a.winner.total.toLocaleString("en-IN")} of gifts
                   {a.tagResult?.kind === "full" ? <span className="block text-[10.5px] font-semibold text-cream/70">An intimate space is full, so no tag was formed.</span> : null}
+                  {a.tagResult?.kind === "taken" ? <span className="block text-[10.5px] font-semibold text-cream/70">One of them already has this tag type, so no tag was formed.</span> : null}
                 </p>
               )}
             </motion.div>

@@ -46,7 +46,7 @@ export function GlobalSheets() {
       <PersonSheet personId={sheet?.kind === "person" ? sheet.personId : null} onClose={close} />
       <NotificationsSheet open={sheet?.kind === "notifications"} onClose={close} />
       <TasksSheet open={sheet?.kind === "tasks"} onClose={close} />
-      <FriendsSheet open={sheet?.kind === "friends"} onClose={close} />
+      <FriendsSheet open={sheet?.kind === "friends"} onClose={close} tab={sheet?.kind === "friends" ? sheet.tab : undefined} />
       <CoinsSheet open={sheet?.kind === "coins"} onClose={close} />
       <GameSheet gameId={sheet?.kind === "game" ? sheet.gameId : null} onClose={close} />
       <EditProfileSheet open={sheet?.kind === "edit-profile"} onClose={close} />
@@ -213,7 +213,7 @@ function TasksSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
-function FriendsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+function FriendsSheet({ open, onClose, tab }: { open: boolean; onClose: () => void; tab?: "friends" | "following" | "followers" }) {
   const { profile, rooms, openRoom, openConversation, setSheet, session } = useApp();
   const friends = PEOPLE.filter((p) => profile.following.includes(p.id));
   // Signed in: friends, following, followers and activity come from the server
@@ -230,7 +230,7 @@ function FriendsSheet({ open, onClose }: { open: boolean; onClose: () => void })
           </button>
         }
       >
-        {open ? <FriendsPanel onClose={onClose} /> : null}
+        {open ? <FriendsPanel key={tab ?? "friends"} onClose={onClose} initialTab={tab} /> : null}
       </BottomSheet>
     );
   return (

@@ -146,13 +146,19 @@ export function useBagServer(enabled: boolean, me: Person, now: number) {
   const until = Number.isFinite(expiresAt) ? ` until ${new Date(expiresAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : "";
 
   const busy = eq.busyId !== null;
+  // The badge shown on your profile: the highest-level badge you own, up to your VIP level
+  const badgeLevel = (eq.owned ?? [])
+    .filter((o) => o.cosmeticType === "BADGE" && (o.vipLevel ?? 0) <= (lvl ?? 0))
+    .reduce((m, o) => Math.max(m, o.vipLevel ?? 0), 0);
   const wornIds = new Set((eq.items ?? []).map((c) => c.cosmeticId));
   const typeOrder = (t: CosmeticType) => BAG_SLOTS.findIndex((x) => x.type === t);
 
   /** One reward you own: worn ones say In use with Take off; the rest offer Wear. */
   const entryFor = (c: { cosmeticId: string; cosmeticType: CosmeticType; vipLevel: number | null; url: string | null; format: string | null }): BagEntry => {
     const s = slotOf(c.cosmeticType);
-    const worn = wornIds.has(c.cosmeticId);
+    // The badge isn't worn by choice: it's always your current VIP level's badge
+    const badge = c.cosmeticType === "BADGE";
+    const worn = badge ? active && c.vipLevel === badgeLevel : wornIds.has(c.cosmeticId);
     const art = !c.url ? catalogue.data?.find((x) => x.id === c.cosmeticId) : undefined;
     const url = c.url ?? art?.url ?? null;
     const lv = c.vipLevel ? ` ${c.vipLevel}` : "";
@@ -165,23 +171,30 @@ export function useBagServer(enabled: boolean, me: Person, now: number) {
       inUse: worn && active,
       source: `VIP${lv} reward`,
       tint: VIP_TINT,
-      note: worn
+      note: badge
+        ? worn
+          ? "Your VIP badge. It changes automatically when your VIP level goes up."
+          : "An earlier VIP badge. Your badge always follows your current VIP level."
+        : worn
         ? active
           ? `You're wearing this${until}.`
           : "Worn, but it only shows while your VIP is active."
         : active
           ? `In your Bag. Wear it to swap your current ${s.kind.toLowerCase()}.`
           : "In your Bag. It shows once your VIP is active.",
-      action: worn
-        ? { label: eq.busyId === c.cosmeticId ? "Taking off…" : "Take off", run: () => void eq.takeOff(c.cosmeticId), off: true, disabled: busy }
-        : { label: eq.busyId === c.cosmeticId ? "Putting on…" : "Wear", run: () => void eq.wear(c.cosmeticId), disabled: busy },
+      action: badge
+        ? undefined
+        : worn
+          ? { label: eq.busyId === c.cosmeticId ? "Taking off…" : "Take off", run: () => void eq.takeOff(c.cosmeticId), off: true, disabled: busy }
+          : { label: eq.busyId === c.cosmeticId ? "Putting on…" : "Wear", run: () => void eq.wear(c.cosmeticId), disabled: busy },
     };
   };
 
   // Everything you own, plus anything you're wearing that the inventory didn't list
   const ownedAll = [...(eq.owned ?? [])];
   for (const w of eq.items ?? []) if (!ownedAll.some((o) => o.cosmeticId === w.cosmeticId)) ownedAll.push({ ...w });
-  ownedAll.sort((a, b) => Number(wornIds.has(b.cosmeticId)) - Number(wornIds.has(a.cosmeticId)) || (b.vipLevel ?? 0) - (a.vipLevel ?? 0) || typeOrder(a.cosmeticType) - typeOrder(b.cosmeticType));
+  const isOn = (o: { cosmeticId: string; cosmeticType: CosmeticType; vipLevel: number | null }) => (o.cosmeticType === "BADGE" ? active && o.vipLevel === badgeLevel : wornIds.has(o.cosmeticId));
+  ownedAll.sort((a, b) => Number(isOn(b)) - Number(isOn(a)) || (b.vipLevel ?? 0) - (a.vipLevel ?? 0) || typeOrder(a.cosmeticType) - typeOrder(b.cosmeticType));
 
   // Rewards of your level you don't have yet (shown locked, never wearable)
   const locked: BagEntry[] = (catalogue.data ?? [])
