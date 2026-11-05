@@ -15,6 +15,7 @@
  *   GET /chat/unread-count, reloaded after those events (never guessed).
  * - Stale answers (you switched chats, or signed out) are dropped.
  */
+import { announceSarpanch } from "@/components/sarpanch/SarpanchBanner";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   chatErrorText,
@@ -334,6 +335,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           delete rest[m.senderId!];
           return { ...all, [m.conversationId]: rest };
         });
+      // Sarpanch (official) messages also show as a notification banner
+      if (m.type === "SYSTEM" && m.senderId !== me) announceSarpanch({ id: m.id, title: m.title, text: m.text, imageUrl: m.imageUrl });
       const known = takeRef.current(m);
       // A chat that isn't in the list yet (someone new wrote): reload the list once
       if (!known) loadInboxRef.current(true);

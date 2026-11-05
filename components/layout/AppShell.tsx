@@ -1,5 +1,6 @@
 "use client";
 
+import { SarpanchBanner } from "@/components/sarpanch/SarpanchBanner";
 import { NearbyScreen } from "@/components/discover/NearbyScreen";
 import { ChessHub } from "@/components/games/ChessHub";
 import { SarpanchScreen } from "@/components/sarpanch/Sarpanch";
@@ -96,6 +97,7 @@ function Frame() {
               <GlobalSheets />
               <CpProposalPrompt />
               <VipLevelUpPrompt />
+              <SarpanchBanner />
               <PaymentReturn />
               <GiftOverlay />
               <RedPacketBanner />
