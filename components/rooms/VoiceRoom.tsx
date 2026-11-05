@@ -49,11 +49,12 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
       <PkPanel s={s} />
 
       {/* Seats: the owner's fixed seat + intimacy seat on top, then linked pairs */}
-      <div className={`relative z-10 ${pkOn ? "mt-3" : "mt-5"}`}>
+      <div className={`relative z-10 ${pkOn ? "mt-2" : "mt-2.5"}`}>
         {musicOff ? null : <MusicPill className="absolute right-2 top-6 z-20" onlyMe={s.musicOnlyMe} onOpen={() => setSheet("music")} />}
         {s.roomOpen ? (
           <>
-            <SeatLayout s={s} gold={vip} />
+            {/* Slightly smaller seats leave more room for the chat */}
+            <SeatLayout s={s} gold={vip} scale={0.9} />
             <MicOrderBar s={s} />
           </>
         ) : (
@@ -62,11 +63,11 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         {s.voice ? (
           <LiveVoiceBar voice={s.voice} participants={s.participants} />
         ) : (
-          <p className="mt-2 text-center text-[10.5px] text-cream/45">Voice isn&apos;t connected in this web preview. Mic and speaker are local controls.</p>
+          <p className="mt-1 text-center text-[9.5px] text-cream/40">Voice isn&apos;t connected in this web preview.</p>
         )}
       </div>
 
-      <RoomChat s={s} className="relative z-10 mt-2 min-h-0 flex-1 pb-2" />
+      <RoomChat s={s} className="relative z-10 mt-1 min-h-[38%] flex-1 pb-2" />
 
       {/* Controls */}
       <div className={`pb-safe relative z-10 border-t ${vip ? "border-gold/15 bg-[#1a0b11]/90" : "border-line bg-ink/90"} backdrop-blur`}>
