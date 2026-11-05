@@ -41,7 +41,13 @@ export function RoomPeopleSheet({ s }: { s: RoomSession }) {
   useEffect(() => {
     if (s.panel === "online" || s.panel === "members" || s.panel === "contribution") setTab(s.panel);
   }, [s.panel]);
-  const onlineIds = s.onlineIds;
+  // Live rooms: only people really here now (connected to the room's voice). If voice
+  // isn't up for anyone (it failed to connect), keep everyone the server lists.
+  const onlineIds = useMemo(() => {
+    const parts = s.participants;
+    if (!parts || parts.connectedCount <= 0) return s.onlineIds;
+    return s.onlineIds.filter((id) => id === ME_ID || parts.members.find((m) => m.personId === id)?.connected);
+  }, [s.onlineIds, s.participants]);
 
   return (
     <BottomSheet open={open} onClose={onClose} tall className="!bg-[#17161c]">
