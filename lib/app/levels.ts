@@ -19,10 +19,12 @@ export const COINS_PER_GROWTH = 100;
 export const VIP_PRICE_INR = 299;
 
 /** Growth points needed for VIP 1 … VIP 11. VIP 1 needs none: you get it by becoming VIP. */
-export const VIP_THRESHOLDS = [0, 1_000, 5_000, 25_000, 60_000, 140_000, 300_000, 600_000, 1_080_000, 2_000_000, 4_800_000];
+/** (10x the first version; same as the server's VipLevelService.) */
+export const VIP_THRESHOLDS = [0, 10_000, 50_000, 250_000, 600_000, 1_400_000, 3_000_000, 6_000_000, 10_800_000, 20_000_000, 48_000_000];
 
 /** Points needed for room level 1 … 10. Level 1 is free. */
-export const ROOM_THRESHOLDS = [0, 10_000, 50_000, 150_000, 400_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000];
+/** (10x the first version.) */
+export const ROOM_THRESHOLDS = [0, 100_000, 500_000, 1_500_000, 4_000_000, 10_000_000, 25_000_000, 50_000_000, 100_000_000, 250_000_000];
 
 export type LevelInfo = {
   level: number;

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePublicProfile } from "@/components/profile/usePublicProfile";
 import { onMicIn, useLiveCounts } from "@/lib/app/live-counts";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { motion } from "framer-motion";
@@ -18,7 +19,8 @@ export const ROOM_TYPE_ICON = { voice: Mic, watch: MonitorPlay, kharidari: Gavel
 /** Backend rooms: how many people are in the room now (live), else the capacity. */
 const headcount = (room: Room, live?: Record<string, number> | null) => {
   if (!room.server) return formatCount(room.members);
-  const n = live?.[room.server.id];
+  // Once the live counts have loaded, a room missing from them has nobody in it
+  const n = live ? (live[room.server.id] ?? 0) : undefined;
   if (n !== undefined) {
     const mic = onMicIn(room.server.id);
     return mic ? `🎙 ${mic} on mic · ${n} in room` : `${n} in room`;
@@ -38,6 +40,8 @@ export function RoomTypeBadge({ type }: { type: RoomType }) {
 
 /** Horizontal list row, like "Popular rooms" in the reference. */
 export function RoomRow({ room }: { room: Room }) {
+  // The host's real name and photo (not "User 9"), loaded once
+  usePublicProfile(room.server && room.hostId.startsWith("srv-user:") ? room.hostId : "");
   const live = useLiveCounts();
   const { openRoom, roomLevelOf } = useApp();
   const person = usePeople();
@@ -100,6 +104,8 @@ export function RoomRow({ room }: { room: Room }) {
 
 /** Vertical cover card for carousels and grids. */
 export function RoomCard({ room, wide = false }: { room: Room; wide?: boolean }) {
+  // The host's real name and photo (not "User 9"), loaded once
+  usePublicProfile(room.server && room.hostId.startsWith("srv-user:") ? room.hostId : "");
   const live = useLiveCounts();
   const { openRoom } = useApp();
   const person = usePeople();
