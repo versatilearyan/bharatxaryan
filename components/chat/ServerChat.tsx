@@ -125,8 +125,8 @@ function InboxRow({ c, onOpen }: { c: ChatConversation; onOpen: (personId: strin
   const chat = useChat();
   const group = c.kind === "GROUP";
   const personId = !group && c.otherUserId ? `${SERVER_USER_PREFIX}${c.otherUserId}` : "";
-  // The response may not name the person: their public profile does (fetched once)
-  usePublicProfile(personId && !c.otherName && !known[personId]?.name ? personId : "");
+  // Their public profile (name, photo, look), fetched right away so the picture shows in the list
+  usePublicProfile(personId);
   const p = personId ? person(personId) : null;
   const name = c.otherName ?? (personId && known[personId]?.name) ?? (c.otherUserId ? `User ${c.otherUserId}` : "Chat");
   const unread = c.unreadCount ?? 0;

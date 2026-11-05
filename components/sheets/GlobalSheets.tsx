@@ -438,7 +438,7 @@ function GameSheet({ gameId, onClose }: { gameId: GameId | null; onClose: () => 
                 className="mt-5 w-full"
                 onClick={() => {
                   onClose();
-                  push({ kind: "jackaroo" });
+                  push({ kind: "ludo" });
                 }}
               >
                 Play with friends

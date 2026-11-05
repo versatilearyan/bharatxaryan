@@ -57,7 +57,8 @@ export type Screen =
   | { kind: "moments"; personId?: string }
   | { kind: "jackaroo"; roomId?: string }
   | { kind: "sarpanch" }
-  | { kind: "nearby" };
+  | { kind: "nearby" }
+  | { kind: "ludo"; roomId?: string };
 
 export type Sheet =
   | { kind: "person"; personId: string }

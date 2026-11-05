@@ -10,7 +10,8 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronLeft, Hash, Loader2, Plus, Users } from "lucide-react";
 import { createRoom, joinRoom } from "@/lib/api/voice-rooms";
-import { jackarooApi } from "@/lib/api/jackaroo";
+import { LUDO_STAKES, ludoApi } from "@/lib/api/ludo";
+import { Coin } from "@/components/ui/kit";
 import { useJoinGameByCode } from "@/components/social/Invites";
 import { serverRoomAppId, useServerRooms } from "@/lib/app/server-rooms";
 import { useApp } from "@/lib/app/store";
@@ -23,6 +24,7 @@ export function GameLobby({ title, art, blurb }: { title: string; art: GameId; b
   const joinByCode = useJoinGameByCode();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
+  const [stake, setStake] = useState<number>(0);
 
   const create = async () => {
     setBusy("create");
@@ -30,9 +32,9 @@ export function GameLobby({ title, art, blurb }: { title: string; art: GameId; b
       const v = await createRoom({ name: `${profile.name || "My"}'s ${title} table`.slice(0, 60), roomType: "VOICE", isPrivate: false, maxParticipants: 12 });
       addCreated(v);
       await joinRoom(v.id).catch(() => undefined);
-      await jackarooApi.open(v.id);
+      await ludoApi.open(v.id, stake);
       enterRoom(serverRoomAppId(v.id));
-      window.setTimeout(() => push({ kind: "jackaroo", roomId: v.id }), 600);
+      window.setTimeout(() => push({ kind: "ludo", roomId: v.id }), 600);
     } catch (e) {
       toast(e instanceof Error && e.message ? e.message : "Couldn't make a table.", "error");
     } finally {
@@ -70,6 +72,20 @@ export function GameLobby({ title, art, blurb }: { title: string; art: GameId; b
       </motion.div>
 
       <div className="mx-4 mt-5 space-y-3">
+        <div>
+          <p className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-cream/60">Stake · winner takes the pot</p>
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Stake">
+            {LUDO_STAKES.map((v) => (
+              <button key={v} type="button" role="radio" aria-checked={stake === v} onClick={() => setStake(v)} className={`flex h-9 items-center gap-1 rounded-full px-3 text-[12.5px] font-bold ring-1 ${stake === v ? "bg-gold text-ink ring-gold" : "bg-black/30 text-cream ring-white/10"}`}>
+                {v === 0 ? "Free" : (
+                  <>
+                    <Coin className="h-3.5 w-3.5" /> {v.toLocaleString("en-IN")}
+                  </>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
         <motion.button whileTap={{ scale: 0.97 }} type="button" disabled={busy !== null} onClick={() => void create()} className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-coral to-gold text-[16px] font-extrabold text-white shadow-[0_8px_30px_-8px_rgba(244,81,91,0.7)] disabled:opacity-60">
           {busy === "create" ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />} Create a table
         </motion.button>

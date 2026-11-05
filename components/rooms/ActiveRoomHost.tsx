@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { publishActiveVoice } from "@/lib/app/active-voice";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { VipEntryBanner } from "@/components/effects/VipFx";
 import { preloadSvga } from "@/components/effects/SvgaAnim";
@@ -43,6 +44,27 @@ function ActiveRoom({ room }: { room: Room }) {
   // PK battles keep scoring while the room is minimised, like the auction
   const pk = usePk(s);
   const mode = s.mode;
+  // Screens on top of the room (Ludo) use its mic without opening it
+  const sRef = useRef(s);
+  sRef.current = s;
+  useEffect(() => {
+    publishActiveVoice({
+      roomServerId: room.server?.id,
+      seated: s.seated,
+      muted: s.muted,
+      speakingIds: s.speakingIds,
+      toggleMute: () => sRef.current.toggleMute(),
+      sitToTalk: () => {
+        const cur = sRef.current;
+        if (cur.seated) return true;
+        const free = cur.seats.findIndex((id, i) => i > 0 && !id && !cur.closedSeats.includes(i));
+        if (free < 0) return false;
+        cur.takeSeat(free);
+        return true;
+      },
+    });
+  }, [room.server?.id, s.seated, s.muted, s.speakingIds]);
+  useEffect(() => () => publishActiveVoice(null), []);
 
   return (
     <>

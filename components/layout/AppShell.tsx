@@ -1,5 +1,6 @@
 "use client";
 
+import { LudoScreen } from "@/components/games/ludo/LudoScreen";
 import { SarpanchBanner } from "@/components/sarpanch/SarpanchBanner";
 import { NearbyScreen } from "@/components/discover/NearbyScreen";
 import { ChessHub } from "@/components/games/ChessHub";
@@ -204,5 +205,7 @@ function ScreenView({ screen }: { screen: Screen }) {
       return <SarpanchScreen />;
     case "nearby":
       return <NearbyScreen />;
+    case "ludo":
+      return <LudoScreen roomId={screen.roomId} />;
   }
 }

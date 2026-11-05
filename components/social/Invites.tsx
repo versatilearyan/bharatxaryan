@@ -20,7 +20,7 @@ const errText = (e: unknown, f: string) => (e instanceof Error && e.message ? e.
 export function useJoinFromInvite() {
   const { enterRoom, unlockRoom, push, toast, activeRoomId, expandRoom } = useApp();
   const { addCreated } = useServerRooms();
-  return async (roomId: string, invite?: string, gameId?: string) => {
+  return async (roomId: string, invite?: string, gameId?: string, game?: string) => {
     try {
       const appId = serverRoomAppId(roomId);
       if (activeRoomId !== appId) {
@@ -30,7 +30,7 @@ export function useJoinFromInvite() {
         unlockRoom(appId);
         enterRoom(appId);
       } else expandRoom();
-      if (gameId) window.setTimeout(() => push({ kind: "jackaroo", roomId }), 700);
+      if (gameId) window.setTimeout(() => push(game === "JACKAROO" ? { kind: "jackaroo", roomId } : { kind: "ludo", roomId }), 700);
     } catch (e) {
       toast(errText(e, "That room isn't open any more."), "error");
     }
@@ -44,7 +44,7 @@ export function useJoinGameByCode() {
   return async (code: string) => {
     try {
       const g = await gameByCode(code);
-      await join(g.roomId, g.invite, g.gameId);
+      await join(g.roomId, g.invite, g.gameId, g.game);
       return true;
     } catch (e) {
       toast(errText(e, "No game with that code."), "error");
@@ -77,7 +77,7 @@ export function InviteCard({ inv, mine }: { inv: ChatInvite; mine: boolean }) {
             <Lock className="h-3 w-3" /> Private
           </span>
         ) : null}
-        <span className="absolute bottom-1.5 left-2.5 right-2.5 truncate font-display text-[15px] font-extrabold text-white">{game ? `${inv.game === "JACKAROO" ? "Ludo" : (inv.game ?? "Game")} in ${inv.roomName}` : inv.roomName}</span>
+        <span className="absolute bottom-1.5 left-2.5 right-2.5 truncate font-display text-[15px] font-extrabold text-white">{game ? `${inv.game === "JACKAROO" || inv.game === "LUDO" ? "Ludo" : (inv.game ?? "Game")} in ${inv.roomName}` : inv.roomName}</span>
       </div>
       <div className="px-2.5 pb-2.5 pt-2 text-[11.5px] text-cream/75">
         {game ? (
@@ -99,7 +99,7 @@ export function InviteCard({ inv, mine }: { inv: ChatInvite; mine: boolean }) {
             disabled={busy || expired}
             onClick={() => {
               setBusy(true);
-              void join(inv.roomId, inv.invite, game ? inv.gameId : undefined).finally(() => setBusy(false));
+              void join(inv.roomId, inv.invite, game ? inv.gameId : undefined, inv.game).finally(() => setBusy(false));
             }}
             className="mt-2 h-9 w-full rounded-full bg-gradient-to-r from-coral to-gold text-[13px] font-extrabold text-white disabled:opacity-50"
           >

@@ -1018,7 +1018,7 @@ export function RoomMenuSheet({ open, onClose, s, extra, onInvite }: { open: boo
               label="Ludo"
               onClick={() => {
                 onClose();
-                push({ kind: "jackaroo", roomId: s.room.server!.id });
+                push({ kind: "ludo", roomId: s.room.server!.id });
               }}
             />
           ) : null}
