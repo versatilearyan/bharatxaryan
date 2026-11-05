@@ -536,12 +536,9 @@ export function RoomChat({ s, className = "" }: { s: RoomSession; className?: st
       aria-label="Room chat"
     >
       <Announcement s={s} />
-      {/* Gift messages aren't shown in the chat (the gift animation and banner still play) */}
-      {s.messages
-        .filter((m) => m.kind !== "gift")
-        .map((m) => (
-          <ChatLine key={m.id} m={m} fxFor={fxFor} />
-        ))}
+      {s.messages.map((m) => (
+        <ChatLine key={m.id} m={m} fxFor={fxFor} />
+      ))}
     </div>
   );
 }
