@@ -200,6 +200,21 @@ function InboxRow({ c, onOpen }: { c: ChatConversation; onOpen: (personId: strin
  * scroll sideways. Tap: open the chat. People in a room show the room and can
  * be joined straight from here.
  */
+/** A face in Active now: their profile is fetched right away, so the real photo (or look) shows without a tap. */
+function ActiveAvatar({ userId, avatarUrl }: { userId: string; avatarUrl?: string }) {
+  const personId = `${SERVER_USER_PREFIX}${userId}`;
+  usePublicProfile(personId);
+  const person = usePeople();
+  if (avatarUrl)
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={avatarUrl} alt="" className="h-[54px] w-[54px] rounded-full object-cover ring-2 ring-ink" />;
+  return (
+    <span className="block rounded-full ring-2 ring-ink">
+      <PersonAvatar person={{ ...person(personId), frame: "none" }} size={54} />
+    </span>
+  );
+}
+
 function ActiveNow() {
   const { setSheet } = useApp();
   const person = usePeople();
@@ -229,20 +244,13 @@ function ActiveNow() {
   };
   return (
     <section aria-label="Active now" className="pb-2">
-      <p className="px-4 pb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Active now</p>
+      <p className="px-4 pb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Friends online</p>
       <div className="no-scrollbar flex gap-3.5 overflow-x-auto px-4 pb-1">
         {people.map((p, i) => (
           <motion.div key={p.userId} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }} className="flex w-[64px] shrink-0 flex-col items-center gap-1">
             <button type="button" onClick={() => setSheet({ kind: "person", personId: `${SERVER_USER_PREFIX}${p.userId}` })} className="relative" aria-label={`${p.name}'s profile${p.room ? `, in ${p.room.name}` : ""}`}>
               <span className={`block rounded-full p-[2.5px] ${p.room ? "bg-gradient-to-tr from-speak via-[#4fd6a5] to-gold" : "bg-transparent"}`}>
-                {p.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.avatarUrl} alt="" className="h-[54px] w-[54px] rounded-full object-cover ring-2 ring-ink" />
-                ) : (
-                  <span className="block rounded-full ring-2 ring-ink">
-                    <PersonAvatar person={{ ...person(`${SERVER_USER_PREFIX}${p.userId}`), frame: "none" }} size={54} />
-                  </span>
-                )}
+                <ActiveAvatar userId={p.userId} avatarUrl={p.avatarUrl} />
               </span>
               <span className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full bg-speak ring-2 ring-ink" />
             </button>
