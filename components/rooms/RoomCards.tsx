@@ -1,6 +1,6 @@
 "use client";
 
-import { useLiveCounts } from "@/lib/app/live-counts";
+import { onMicIn, useLiveCounts } from "@/lib/app/live-counts";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { motion } from "framer-motion";
 import { Crown, Gavel, Lock, Mic, MonitorPlay, UsersRound } from "lucide-react";
@@ -19,7 +19,10 @@ export const ROOM_TYPE_ICON = { voice: Mic, watch: MonitorPlay, kharidari: Gavel
 const headcount = (room: Room, live?: Record<string, number> | null) => {
   if (!room.server) return formatCount(room.members);
   const n = live?.[room.server.id];
-  if (n !== undefined) return `${n} in room`;
+  if (n !== undefined) {
+    const mic = onMicIn(room.server.id);
+    return mic ? `🎙 ${mic} on mic · ${n} in room` : `${n} in room`;
+  }
   return room.server.maxParticipants ? `Up to ${room.server.maxParticipants}` : "";
 };
 

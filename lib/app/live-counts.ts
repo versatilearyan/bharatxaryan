@@ -9,6 +9,7 @@ import { api } from "@/lib/api/client";
 import { readToken } from "@/lib/auth/token";
 
 let counts: Record<string, number> | null = null;
+let onMic: Record<string, number> = {};
 const listeners = new Set<() => void>();
 let timer: number | undefined;
 let users = 0;
@@ -16,7 +17,12 @@ let users = 0;
 async function load() {
   if (!readToken()) return;
   try {
-    counts = (await api<Record<string, number>>("/api/v1/voice-rooms/live-counts", { auth: true })) ?? {};
+    const [c, m] = await Promise.all([
+      api<Record<string, number>>("/api/v1/voice-rooms/live-counts", { auth: true }),
+      api<Record<string, number>>("/api/v1/voice-rooms/on-mic-counts", { auth: true }).catch(() => ({})),
+    ]);
+    counts = c ?? {};
+    onMic = (m as Record<string, number>) ?? {};
     listeners.forEach((l) => l());
   } catch {
     /* keep the last numbers */
@@ -48,3 +54,6 @@ export function useLiveCounts(): Record<string, number> | null {
 
 /** Game table rooms ("…'s Ludo table") are live only while someone is in them. */
 export const isGameTable = (name: string) => / (Ludo|Jackaroo) table$/.test(name);
+
+/** People on a seat (talking) in a room, from the last load. */
+export const onMicIn = (roomId: string) => onMic[roomId] ?? 0;

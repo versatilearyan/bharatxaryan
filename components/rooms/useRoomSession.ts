@@ -1168,9 +1168,10 @@ export function useRoomSession(room: Room) {
       // Backend rooms: the server charges the real price (or takes it from your server Bag) and tells everyone
       if (room.server) {
         const serverId = room.server.id;
-        const uid = rs.userIdOf(toId);
-        if (!uid || toId === ME_ID) {
-          toast(toId === ME_ID ? "You can't send a gift to yourself" : "You can only send gifts to people in this room");
+        // You can gift yourself too
+        const uid = toId === ME_ID ? (myServerId ?? null) : rs.userIdOf(toId);
+        if (!uid) {
+          toast("You can only send gifts to people in this room");
           return false;
         }
         if (!free && coins < gift.cost * count) {

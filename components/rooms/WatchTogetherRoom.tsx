@@ -1,5 +1,6 @@
 "use client";
 
+import { useSeatScale } from "./useSeatScale";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { AudioLines, MoreHorizontal, Plus, RefreshCw, Trash2, UsersRound, Volume2, VolumeX, Mic, MicOff } from "lucide-react";
@@ -14,6 +15,7 @@ import type { RoomSession } from "./useRoomSession";
 
 /** YouTube Watch Together. This is the room's "video" mode: there are no video calls. */
 export function WatchTogetherRoom({ s }: { s: RoomSession }) {
+  const seatScale = useSeatScale();
   const { toast } = useApp();
   const [sheet, setSheetState] = useState<null | "gift" | "emoji" | "menu" | "invite" | "add">(null);
   // Anyone on the mic can pick a video; the owner and admins can always change it
@@ -89,7 +91,7 @@ export function WatchTogetherRoom({ s }: { s: RoomSession }) {
       <div className="relative z-10 mt-4">
         {s.roomOpen ? (
           <>
-            <SeatLayout s={s} gold={vip} grid />
+            <SeatLayout s={s} gold={vip} grid scale={seatScale} />
             <MicOrderBar s={s} />
           </>
         ) : (
@@ -97,10 +99,10 @@ export function WatchTogetherRoom({ s }: { s: RoomSession }) {
         )}
       </div>
 
-      <RoomChat s={s} className="relative z-10 mt-2 min-h-0 flex-1 pb-2" />
+      <RoomChat s={s} className="relative z-10 mt-1 min-h-[72px] flex-1 pb-2" />
 
       {/* Controls */}
-      <div className="pb-safe relative z-10 border-t border-line bg-ink/90 backdrop-blur">
+      <div className="pb-safe relative z-10 shrink-0 border-t border-line bg-ink/90 backdrop-blur">
         <div className="flex items-center gap-1.5 px-2.5 py-2.5">
           <IconButton label={s.speakerOn ? "Turn speaker off" : "Turn speaker on"} onClick={s.toggleSpeaker}>
             {s.speakerOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 text-muted" />}

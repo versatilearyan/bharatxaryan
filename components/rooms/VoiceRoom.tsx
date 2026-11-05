@@ -1,5 +1,6 @@
 "use client";
 
+import { useSeatScale } from "./useSeatScale";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -21,6 +22,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
   const { musicOff } = useMusic();
   const [draft, setDraft] = useState("");
   const vip = s.room.vip;
+  const seatScale = useSeatScale();
   const close = () => setSheet(null);
 
   return (
@@ -49,12 +51,12 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
       <PkPanel s={s} />
 
       {/* Seats: the owner's fixed seat + intimacy seat on top, then linked pairs */}
-      <div className={`relative z-10 ${pkOn ? "mt-2" : "mt-2.5"}`}>
+      <div className={`relative z-10 shrink-0 ${pkOn ? "mt-1.5" : "mt-2"}`}>
         {musicOff ? null : <MusicPill className="absolute right-2 top-6 z-20" onlyMe={s.musicOnlyMe} onOpen={() => setSheet("music")} />}
         {s.roomOpen ? (
           <>
             {/* Slightly smaller seats leave more room for the chat */}
-            <SeatLayout s={s} gold={vip} scale={0.9} />
+            <SeatLayout s={s} gold={vip} scale={seatScale} />
             <MicOrderBar s={s} />
           </>
         ) : (
@@ -67,10 +69,10 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         )}
       </div>
 
-      <RoomChat s={s} className="relative z-10 mt-1 min-h-[38%] flex-1 pb-2" />
+      <RoomChat s={s} className="relative z-10 mt-1 min-h-[72px] flex-1 pb-2" />
 
       {/* Controls */}
-      <div className={`pb-safe relative z-10 border-t ${vip ? "border-gold/15 bg-[#1a0b11]/90" : "border-line bg-ink/90"} backdrop-blur`}>
+      <div className={`pb-safe relative z-10 shrink-0 border-t ${vip ? "border-gold/15 bg-[#1a0b11]/90" : "border-line bg-ink/90"} backdrop-blur`}>
         <div className="flex items-center gap-1.5 px-2.5 py-2.5">
           <IconButton label={s.speakerOn ? "Turn speaker off" : "Turn speaker on"} onClick={s.toggleSpeaker}>
             {s.speakerOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 text-muted" />}

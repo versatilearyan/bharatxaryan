@@ -237,7 +237,7 @@ export function KharidariRoom({ s, a }: { s: RoomSession; a: Auction }) {
           ))}
       </div>
 
-      <RoomChat s={s} className="relative z-10 min-h-0 flex-1 pb-1.5" />
+      <RoomChat s={s} className="relative z-10 min-h-[64px] flex-1 pb-1.5" />
 
       {/* Bid bar: bids are gifts sent to the auction seat */}
       <AnimatePresence>
@@ -278,7 +278,7 @@ export function KharidariRoom({ s, a }: { s: RoomSession; a: Auction }) {
       </AnimatePresence>
 
       {/* Controls */}
-      <div className="pb-safe relative z-10 border-t border-white/10 bg-[#140b29]/95 backdrop-blur">
+      <div className="pb-safe relative z-10 shrink-0 border-t border-white/10 bg-[#140b29]/95 backdrop-blur">
         <div className="flex items-center gap-1.5 px-2.5 py-2">
           <IconButton label={s.speakerOn ? "Turn speaker off" : "Turn speaker on"} onClick={s.toggleSpeaker}>
             {s.speakerOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 text-muted" />}
