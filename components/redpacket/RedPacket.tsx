@@ -259,7 +259,7 @@ function RetryNote({ message, onRetry }: { message: string; onRetry: () => void 
 /** Send a red packet: pick the amount, use one from your Bag or buy it, pick a cover and when the rain starts. */
 export function SendRedPacketSheet({ open, onClose, s, initial }: { open: boolean; onClose: () => void; s: RoomSession; initial?: RedPacketId | null }) {
   const { owned, send } = useRedPackets();
-  const { coins } = useApp();
+  const { coins, push } = useApp();
   const [packet, setPacket] = useState<RedPacketId>(initial ?? "rp-10k");
   const [cover, setCover] = useState<CoverId>("red");
   const [delay, setDelay] = useState<number>(RAIN_TIMERS[0].ms);
@@ -278,7 +278,8 @@ export function SendRedPacketSheet({ open, onClose, s, initial }: { open: boolea
     return products.filter((x) => x.coinValue === p.amount).reduce((n, x) => n + (inv[x.id] ?? 0), 0);
   })();
   const have = server ? serverHave : (owned[packet] ?? 0);
-  const short = !have && coins < p.amount;
+  // Red packets are only sent from your Bag (bought in the Shop), never paid with coins here
+  const short = !have;
   return (
     <BottomSheet open={open} onClose={onClose} title="🧧 Send a red packet" tall>
       <div className="px-4 pb-5">
@@ -299,7 +300,7 @@ export function SendRedPacketSheet({ open, onClose, s, initial }: { open: boolea
 
         <div className="mt-3 flex items-center justify-between rounded-2xl bg-surface px-3.5 py-3 ring-1 ring-line">
           <span className="text-[14px] font-bold text-cream">Bag</span>
-          <span className={`text-right text-[12px] font-semibold ${have ? "text-[#7fe8dc]" : "text-muted"}`}>{have ? `Using 1 of your ${have} · free` : "No red packet of this amount in your Bag"}</span>
+          <span className={`text-right text-[12px] font-semibold ${have ? "text-[#7fe8dc]" : "text-coral"}`}>{have ? `Using 1 of your ${have}` : "Not in your Bag. Buy it in the Shop first."}</span>
         </div>
 
         <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Cover</p>
@@ -326,24 +327,25 @@ export function SendRedPacketSheet({ open, onClose, s, initial }: { open: boolea
             );
           })}
         </div>
-        <p className="mt-2 text-[11.5px] text-muted">Everyone in Panchayat gets a banner and can join before the rain. You can&apos;t loot your own packet.</p>
+        <p className="mt-2 text-[11.5px] text-muted">Everyone in Panchayat gets a banner and can join before the rain. Everyone in the room can loot it, on a seat or not, you too.</p>
 
         <div className="mt-4 flex items-end justify-between border-t border-line pt-3">
           <span className="text-[12px] text-muted">
             Balance <Coin className="inline h-3 w-3" /> {coins.toLocaleString("en-IN")}
           </span>
-          {have ? (
-            <span className="font-display text-[22px] font-extrabold text-[#7fe8dc]">Free</span>
-          ) : (
-            <span className="flex items-center gap-1.5 font-display text-[26px] font-extrabold text-cream">
-              <Coin className="h-6 w-6" /> {p.amount.toLocaleString("en-IN")}
-            </span>
-          )}
+          <span className="flex items-center gap-1.5 font-display text-[22px] font-extrabold text-[#7fe8dc]">
+            {have ? `×${have} in Bag` : "0 in Bag"}
+          </span>
         </div>
         <button
           type="button"
-          disabled={short || sending}
+          disabled={sending}
           onClick={() => {
+            if (short) {
+              onClose();
+              push({ kind: "shop", tab: "packets" });
+              return;
+            }
             setSending(true);
             void send(packet, s.room.id, cover, delay)
               .then((ok) => ok && onClose())
@@ -351,7 +353,7 @@ export function SendRedPacketSheet({ open, onClose, s, initial }: { open: boolea
           }}
           className="mt-3 h-12 w-full rounded-full bg-gradient-to-r from-[#ff7a1a] to-[#e2242f] text-[15px] font-extrabold text-white disabled:from-cream/10 disabled:to-cream/10 disabled:text-muted"
         >
-          {sending ? "Sending…" : short ? "Not enough coins" : "Send red packet"}
+          {sending ? "Sending…" : short ? "Buy this red packet in the Shop" : "Send red packet"}
         </button>
       </div>
     </BottomSheet>
@@ -434,7 +436,6 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
   const tap = (f: Falling, e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (mineToSend) return;
     // The envelope bursts at once (instant feedback); the coins show when the server answers
     setFalling((list) => list.filter((x) => x.key !== f.key));
     const r = box.current?.getBoundingClientRect();
@@ -492,15 +493,12 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgb(255_90_40/0.25),transparent_65%)]" />
           <div className="pt-safe pointer-events-none absolute inset-x-0 top-0 flex justify-center">
             <p className="mt-[108px] rounded-full bg-black/60 px-4 py-1.5 text-center text-[12.5px] font-bold text-cream backdrop-blur" aria-live="polite">
-              {mineToSend ? (
-                "Your red packet is raining. The room is looting it!"
-              ) : (
                 <>
+                  {mineToSend ? "Your red packet! " : ""}
                   {potEmpty ? "All grabbed! " : outOfGrabs ? "You've grabbed your share! " : "Tap the red packets! "}You: <span className="text-gold">{d.mine.toLocaleString("en-IN")}</span>
                   {d.maxGrabs ? ` · ${Math.max(0, d.maxGrabs - d.grabs)} taps left` : ""} · {Math.max(0, Math.ceil((d.endAt - now) / 1000))}s
                   <span className="block text-[10.5px] font-semibold text-cream/60">Coins land in your wallet when the rain ends</span>
                 </>
-              )}
             </p>
           </div>
           {falling.map((f) => (
@@ -561,7 +559,7 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
             <p className="relative mt-2 text-[12.5px] font-semibold text-[#ffe2b8]">
               {sender} {p.label} {p.name}
             </p>
-            {mineToSend ? (
+            {mineToSend && !d.mine ? (
               <p className="relative mt-2 font-display text-[20px] font-extrabold text-white">
                 {d.left ? `The room looted ${(p.amount - d.left).toLocaleString("en-IN")} coins 🎉` : "The room looted it all 🎉"}
               </p>

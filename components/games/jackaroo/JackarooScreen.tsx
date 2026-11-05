@@ -156,7 +156,7 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
     </button>
   );
 
-  if (!roomId) return <GameLobby title="Ludo" art="ludo" blurb="Race your pieces home with cards instead of dice. Team up, cut your friends' pieces and chat on voice." />;
+  if (!roomId) return <GameLobby game="jackaroo" title="Jackaroo" art="jackaroo" blurb="Ludo with cards instead of dice. Team up in pairs, swap marbles with a Jack, cut your friends' marbles and chat on voice." />;
 
   if (game === undefined)
     return (
@@ -177,7 +177,7 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
     <div className="relative flex h-full flex-col overflow-hidden bg-[radial-gradient(130%_80%_at_50%_0%,#4a1626_0%,#2a1430_45%,#141018_100%)]">
       <header className="pt-safe flex items-center gap-2 px-3 pb-1 pt-2">
         {back}
-        <h1 className="flex-1 font-display text-[19px] font-extrabold text-cream">Ludo</h1>
+        <h1 className="flex-1 font-display text-[19px] font-extrabold text-cream">Jackaroo</h1>
         {game && game.code && game.status !== "FINISHED" ? (
           <button type="button" onClick={() => setInviting(true)} className="flex h-10 items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7b5cff] to-[#ff7fa8] px-3 text-[12px] font-extrabold text-white" aria-label={`Invite friends. Table code ${game.code}`}>
             <span className="font-mono tracking-wider">{game.code}</span> · Invite
@@ -199,7 +199,7 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
           <motion.div animate={{ rotate: [0, 8, -8, 0] }} transition={{ duration: 3, repeat: Infinity }} className="text-[64px]" aria-hidden>
             🎲
           </motion.div>
-          <p className="mt-2 font-display text-[20px] font-extrabold text-cream">Play Ludo</p>
+          <p className="mt-2 font-display text-[20px] font-extrabold text-cream">Play Jackaroo</p>
           <p className="mt-1 text-[13px] text-cream/60">A card and marble race for 2 or 4 players. Teams sit opposite each other.</p>
           <button type="button" disabled={busy} onClick={() => act(() => jackarooApi.open(roomId))} className="mt-6 flex h-12 items-center gap-2 rounded-full bg-gradient-to-r from-[#7b5cff] to-[#ff7fa8] px-7 text-[15px] font-extrabold text-white shadow-[0_10px_30px_-10px_rgba(123,92,255,0.8)]">
             <Play className="h-5 w-5" /> Open a table
@@ -209,7 +209,7 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
         <>
           {/* Board */}
           <div className="relative mx-auto mt-1 aspect-square w-full max-w-[440px] px-2">
-            <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="h-full w-full" role="img" aria-label="Ludo board">
+            <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="h-full w-full" role="img" aria-label="Jackaroo board">
               <defs>
                 <radialGradient id="jk-felt" cx="50%" cy="45%" r="60%">
                   <stop offset="0" stopColor="#4a1e34" />
@@ -411,8 +411,8 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
         ) : null}
       </AnimatePresence>
 
-      {game && roomId ? <ChatInviteSheet open={inviting} onClose={() => setInviting(false)} kind="GAME" roomId={roomId} gameId={game.id} code={game.code} title="Invite to Ludo" /> : null}
-      <BottomSheet open={help} onClose={() => setHelp(false)} title="How to play Ludo">
+      {game && roomId ? <ChatInviteSheet open={inviting} onClose={() => setInviting(false)} kind="GAME" roomId={roomId} gameId={game.id} code={game.code} title="Invite to Jackaroo" /> : null}
+      <BottomSheet open={help} onClose={() => setHelp(false)} title="How to play Jackaroo">
         <div className="space-y-2 px-5 pb-6 text-[13px] text-cream/85">
           <p>Get all your marbles round the board and into your home lane. In 4 players, you win with your teammate (sitting opposite).</p>
           <ul className="list-disc space-y-1 pl-5">

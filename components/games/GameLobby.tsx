@@ -11,6 +11,7 @@ import { motion } from "framer-motion";
 import { ChevronLeft, Hash, Loader2, Plus, Users } from "lucide-react";
 import { createRoom, joinRoom } from "@/lib/api/voice-rooms";
 import { LUDO_STAKES, ludoApi } from "@/lib/api/ludo";
+import { jackarooApi } from "@/lib/api/jackaroo";
 import { Coin } from "@/components/ui/kit";
 import { useJoinGameByCode } from "@/components/social/Invites";
 import { serverRoomAppId, useServerRooms } from "@/lib/app/server-rooms";
@@ -18,9 +19,9 @@ import { useApp } from "@/lib/app/store";
 import { GameArt } from "@/components/art/GameArt";
 import type { GameId } from "@/lib/app/types";
 
-export function GameLobby({ title, art, blurb }: { title: string; art: GameId; blurb: string }) {
+export function GameLobby({ title, art, blurb, game = "ludo" }: { title: string; art: GameId; blurb: string; game?: "ludo" | "jackaroo" }) {
   const { pop, push, profile, enterRoom, toast } = useApp();
-  const { addCreated } = useServerRooms();
+  const { addCreated, rememberPrefs } = useServerRooms();
   const joinByCode = useJoinGameByCode();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
@@ -30,11 +31,14 @@ export function GameLobby({ title, art, blurb }: { title: string; art: GameId; b
     setBusy("create");
     try {
       const v = await createRoom({ name: `${profile.name || "My"}'s ${title} table`.slice(0, 60), roomType: "VOICE", isPrivate: false, maxParticipants: 12 });
+      // A game table is temporary: it closes when you leave it
+      rememberPrefs(v.id, { permanent: false, category: "Gaming" });
       addCreated(v);
       await joinRoom(v.id).catch(() => undefined);
-      await ludoApi.open(v.id, stake);
+      if (game === "jackaroo") await jackarooApi.open(v.id);
+      else await ludoApi.open(v.id, stake);
       enterRoom(serverRoomAppId(v.id));
-      window.setTimeout(() => push({ kind: "ludo", roomId: v.id }), 600);
+      window.setTimeout(() => push(game === "jackaroo" ? { kind: "jackaroo", roomId: v.id } : { kind: "ludo", roomId: v.id }), 600);
     } catch (e) {
       toast(e instanceof Error && e.message ? e.message : "Couldn't make a table.", "error");
     } finally {
@@ -72,7 +76,7 @@ export function GameLobby({ title, art, blurb }: { title: string; art: GameId; b
       </motion.div>
 
       <div className="mx-4 mt-5 space-y-3">
-        <div>
+        <div className={game === "ludo" ? "" : "hidden"}>
           <p className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-cream/60">Stake · winner takes the pot</p>
           <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Stake">
             {LUDO_STAKES.map((v) => (

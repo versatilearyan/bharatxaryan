@@ -27,6 +27,8 @@ export const GENDER_LABELS: Record<ApiGender, string> = { MALE: "Male", FEMALE: 
 export const GAME_TO_API: Record<GameId, string> = {
   chess: "CHESS",
   ludo: "LUDO",
+  // The backend has no separate Jackaroo favourite: it counts as Ludo
+  jackaroo: "LUDO",
   micgrab: "MIC_GRAB",
   carrom: "CARROM",
   pool: "POOL",
@@ -34,7 +36,7 @@ export const GAME_TO_API: Record<GameId, string> = {
   antakshari: "ANTAKSHARI",
   cards: "CARD_NIGHT",
 };
-const API_TO_GAME = Object.fromEntries(Object.entries(GAME_TO_API).map(([k, v]) => [v, k as GameId])) as Record<string, GameId>;
+const API_TO_GAME = Object.fromEntries(Object.entries(GAME_TO_API).filter(([k]) => k !== "jackaroo").map(([k, v]) => [v, k as GameId])) as Record<string, GameId>;
 export const API_GAMES = Object.values(GAME_TO_API);
 
 /* ---------- Types ---------- */

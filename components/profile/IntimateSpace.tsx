@@ -195,7 +195,7 @@ function TagCard({ tag, viewer }: { tag: Tag; viewer: string }) {
               {partnerName} <span className="text-[12px] font-semibold text-cream/60">· {tagTitle(tag, viewer)}</span>
             </p>
             <p className="text-[11.5px] text-cream/60">
-              {rel.label} · {token.emoji} {token.label} · since {new Date(tag.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} in {tag.roomName}
+              {rel.emoji} {rel.label} · {token.emoji} {token.label} · since {new Date(tag.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })} in {tag.roomName}
             </p>
           </div>
           <span className="shrink-0 rounded-full px-2.5 py-1 font-display text-[13px] font-extrabold text-[#1c1b22] shadow-[0_0_14px_rgba(255,220,150,0.45)]" style={{ background: `linear-gradient(135deg, #fff1d5, ${c.from})` }}>

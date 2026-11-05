@@ -62,7 +62,7 @@ export function readYou(v: unknown): JYou | undefined {
 export function readGame(v: unknown): JGame | null {
   const o = obj(v);
   const id = str(o?.id);
-  if (!o || !id) return null;
+  if (!o || !id || (o.game !== undefined && o.game !== "JACKAROO")) return null;
   const lm = obj(o.lastMove);
   return {
     id,

@@ -1,5 +1,8 @@
 "use client";
 
+import { ReferralCapture } from "@/components/rewards/ReferralCapture";
+import { WelcomeGift } from "@/components/rewards/WelcomeGift";
+import { ReferScreen } from "@/components/rewards/ReferScreen";
 import { LudoScreen } from "@/components/games/ludo/LudoScreen";
 import { SarpanchBanner } from "@/components/sarpanch/SarpanchBanner";
 import { NearbyScreen } from "@/components/discover/NearbyScreen";
@@ -99,6 +102,8 @@ function Frame() {
               <CpProposalPrompt />
               <VipLevelUpPrompt />
               <SarpanchBanner />
+              <WelcomeGift />
+              <ReferralCapture />
               <PaymentReturn />
               <GiftOverlay />
               <RedPacketBanner />
@@ -207,5 +212,7 @@ function ScreenView({ screen }: { screen: Screen }) {
       return <NearbyScreen />;
     case "ludo":
       return <LudoScreen roomId={screen.roomId} />;
+    case "refer":
+      return <ReferScreen />;
   }
 }

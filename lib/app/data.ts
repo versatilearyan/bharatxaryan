@@ -38,6 +38,7 @@ export const ROOMS: Room[] = [];
 export const GAMES: Game[] = [
   { id: "chess", name: "Chess", players: "2 players", online: 4210, blurb: "Classic chess with voice. Challenge a friend or someone in your room." },
   { id: "ludo", name: "Ludo", players: "2–4 players", online: 18930, tag: "HOT", blurb: "Roll, race and cut your friends' pieces while you chat." },
+  { id: "jackaroo", name: "Jackaroo", players: "2 or 4 players", online: 6150, tag: "NEW", blurb: "Ludo with cards instead of dice. Play in teams of two, swap marbles with a Jack and race home together." },
   { id: "micgrab", soon: true, name: "Mic Grab", players: "Whole room", online: 2780, tag: "NEW", blurb: "A song starts. First to grab the mic and sing the next line wins." },
   { id: "carrom", soon: true, name: "Carrom", players: "2–4 players", online: 6420, tag: "NEW", blurb: "Flick the striker, pocket the queen, cover it like a pro." },
   { id: "pool", soon: true, name: "Pool", players: "2 players", online: 3390, blurb: "8-ball with a clean cue and friendly trash talk." },

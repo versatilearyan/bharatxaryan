@@ -11,7 +11,7 @@ import { levelFor } from "./levels";
 export const RELATIONSHIPS = [
   { id: "brosis", label: "Bro and sis", one: "Bro/Sis", emoji: "🍀", tint: "#5fe0c6", deep: "#127a6b" },
   { id: "besties", label: "Besties", one: "Bestie", emoji: "🎀", tint: "#ff7fa8", deep: "#b0245a" },
-  { id: "bro", label: "Bro", one: "Bro", emoji: "🥊", tint: "#7fb6ff", deep: "#2251b5" },
+  { id: "bro", label: "Bro", one: "Bro", emoji: "✊🏻", tint: "#7fb6ff", deep: "#2251b5" },
   { id: "confidant", label: "Confidant", one: "Confidant", emoji: "🧩", tint: "#b48bff", deep: "#5b2bb5" },
   { id: "apprentice", label: "Apprentice", one: "Apprentice", emoji: "🛡️", tint: "#f2c063", deep: "#a3651a" },
   { id: "sibling", label: "Sibling", one: "Sibling", emoji: "☘️", tint: "#6fe3a2", deep: "#1d8a52" },
@@ -88,7 +88,8 @@ export const NICKNAME_MAX = 24;
  * grows over weeks of gifting, not from one big gift. Lv 10 needs about 1M
  * coins of gifts between the two.
  */
-export const TAG_THRESHOLDS = [0, 5_200, 13_140, 33_440, 52_000, 99_990, 131_400, 200_000, 520_000, 999_990];
+/** Intimacy needed for each tag level (made harder: about 2.5x the first version). */
+export const TAG_THRESHOLDS = [0, 13_140, 33_440, 83_600, 131_400, 250_000, 333_000, 520_000, 1_314_000, 2_500_000];
 export const tagLevel = (intimacy: number) => levelFor(intimacy, TAG_THRESHOLDS);
 
 /** Perks unlocked by tag level, shown in the intimate space. */

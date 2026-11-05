@@ -1,5 +1,6 @@
 "use client";
 
+import { useLiveCounts } from "@/lib/app/live-counts";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { motion } from "framer-motion";
 import { Crown, Gavel, Lock, Mic, MonitorPlay, UsersRound } from "lucide-react";
@@ -14,8 +15,13 @@ import { nameFace } from "@/lib/app/fonts";
 export const ROOM_TYPE_LABEL: Record<RoomType, string> = { voice: "Voice", watch: "YouTube", kharidari: "Kharidari" };
 export const ROOM_TYPE_ICON = { voice: Mic, watch: MonitorPlay, kharidari: Gavel } as const;
 
-/** Backend rooms send no participant count, so show the capacity instead of a made-up number. */
-const headcount = (room: Room) => (room.server ? (room.server.maxParticipants ? `Up to ${room.server.maxParticipants}` : "") : formatCount(room.members));
+/** Backend rooms: how many people are in the room now (live), else the capacity. */
+const headcount = (room: Room, live?: Record<string, number> | null) => {
+  if (!room.server) return formatCount(room.members);
+  const n = live?.[room.server.id];
+  if (n !== undefined) return `${n} in room`;
+  return room.server.maxParticipants ? `Up to ${room.server.maxParticipants}` : "";
+};
 
 export function RoomTypeBadge({ type }: { type: RoomType }) {
   const Icon = ROOM_TYPE_ICON[type];
@@ -29,6 +35,7 @@ export function RoomTypeBadge({ type }: { type: RoomType }) {
 
 /** Horizontal list row, like "Popular rooms" in the reference. */
 export function RoomRow({ room }: { room: Room }) {
+  const live = useLiveCounts();
   const { openRoom, roomLevelOf } = useApp();
   const person = usePeople();
   const host = person(room.hostId);
@@ -62,10 +69,10 @@ export function RoomRow({ room }: { room: Room }) {
           ) : (
             <span className="rounded-md bg-cream/10 px-1.5 py-0.5 font-bold text-cream/70">Temp</span>
           )}
-          {headcount(room) ? (
+          {headcount(room, live) ? (
             <span className="inline-flex items-center gap-1">
               <UsersRound className="h-3 w-3" aria-hidden />
-              {headcount(room)}
+              {headcount(room, live)}
             </span>
           ) : null}
           <span className="inline-flex min-w-0 items-center gap-1">
@@ -90,6 +97,7 @@ export function RoomRow({ room }: { room: Room }) {
 
 /** Vertical cover card for carousels and grids. */
 export function RoomCard({ room, wide = false }: { room: Room; wide?: boolean }) {
+  const live = useLiveCounts();
   const { openRoom } = useApp();
   const person = usePeople();
   const host = person(room.hostId);
@@ -125,10 +133,10 @@ export function RoomCard({ room, wide = false }: { room: Room; wide?: boolean })
         <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-cream/75">
           <PersonAvatar person={host} size={18} />
           <span className="truncate">{host.name}</span>
-          {headcount(room) ? (
+          {headcount(room, live) ? (
             <span className="ml-auto inline-flex items-center gap-0.5">
               <UsersRound className="h-3 w-3" aria-hidden />
-              {headcount(room)}
+              {headcount(room, live)}
             </span>
           ) : null}
         </span>

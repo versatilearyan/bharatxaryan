@@ -1,5 +1,6 @@
 "use client";
 
+import { subscribe } from "@/lib/realtime/stomp";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getParticipantCount, getParticipants, getRoomById, isOpenRoom, roomErrorText, type VoiceRoomParticipant } from "@/lib/api/voice-rooms";
 import { identityUserId, userPersonId, useServerRooms, type ServerPerson } from "@/lib/app/server-rooms";
@@ -135,6 +136,26 @@ export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoic
       setCount(n.status === "fulfilled" ? n.value : null);
     });
   }, [serverRoomId, tick, phase]);
+
+  // Someone joined, left or was removed: the server says so on the room's state channel.
+  // Reload at once (this works even when voice isn't connected), and every 20 s as a backstop.
+  useEffect(() => {
+    if (!serverRoomId) return;
+    let t: number | undefined;
+    const un = subscribe(`/topic/voice-rooms/${serverRoomId}/state`, (body) => {
+      const ev = (body as { event?: { type?: string } } | null)?.event?.type;
+      if (ev && /^(JOINED|LEFT|KICKED|BANNED|REMOVED)$/.test(ev)) {
+        window.clearTimeout(t);
+        t = window.setTimeout(() => setTick((n) => n + 1), 300);
+      }
+    });
+    const poll = window.setInterval(() => setTick((n) => n + 1), 20_000);
+    return () => {
+      un();
+      window.clearTimeout(t);
+      window.clearInterval(poll);
+    };
+  }, [serverRoomId]);
 
   // Reload when LiveKit's set of connected people changes (someone joined or left)
   // (keyed on the set of identities only, so speaking or mic changes don't trigger a reload)

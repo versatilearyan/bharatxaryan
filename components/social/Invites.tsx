@@ -77,7 +77,7 @@ export function InviteCard({ inv, mine }: { inv: ChatInvite; mine: boolean }) {
             <Lock className="h-3 w-3" /> Private
           </span>
         ) : null}
-        <span className="absolute bottom-1.5 left-2.5 right-2.5 truncate font-display text-[15px] font-extrabold text-white">{game ? `${inv.game === "JACKAROO" || inv.game === "LUDO" ? "Ludo" : (inv.game ?? "Game")} in ${inv.roomName}` : inv.roomName}</span>
+        <span className="absolute bottom-1.5 left-2.5 right-2.5 truncate font-display text-[15px] font-extrabold text-white">{game ? `${inv.game === "JACKAROO" ? "Jackaroo" : inv.game === "LUDO" ? "Ludo" : (inv.game ?? "Game")} in ${inv.roomName}` : inv.roomName}</span>
       </div>
       <div className="px-2.5 pb-2.5 pt-2 text-[11.5px] text-cream/75">
         {game ? (

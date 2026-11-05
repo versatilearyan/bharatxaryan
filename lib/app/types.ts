@@ -118,7 +118,7 @@ export type ServerRoomInfo = {
   maxParticipants?: number;
 };
 
-export type GameId = "chess" | "ludo" | "micgrab" | "carrom" | "pool" | "draw" | "antakshari" | "cards";
+export type GameId = "chess" | "ludo" | "jackaroo" | "micgrab" | "carrom" | "pool" | "draw" | "antakshari" | "cards";
 
 export type Game = {
   id: GameId;

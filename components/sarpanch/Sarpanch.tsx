@@ -7,7 +7,7 @@
  *  - SarpanchScreen: its profile (OFFICIAL, ID, followers, notice board, stay safe)
  * The server writes every Sarpanch message; the app only shows them.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { BadgeCheck, Bell, ChevronRight, Loader2, MessageCircle, Megaphone, ShieldCheck, UserPlus, UserCheck } from "lucide-react";
 import { api } from "@/lib/api/client";
@@ -53,6 +53,10 @@ export const sarpanchApi = {
       notices: Array.isArray(d.notices) ? d.notices.map(readNotice) : [],
     };
   },
+  async notices(limit = 10): Promise<Notice[]> {
+    const d = await api<unknown>(`/api/v1/sarpanch/announcements?limit=${limit}`, { auth: true });
+    return Array.isArray(d) ? d.map(readNotice) : [];
+  },
   async latest(): Promise<Notice | null> {
     const d = await api<unknown>("/api/v1/sarpanch/announcements/latest", { auth: true });
     return d && typeof d === "object" ? readNotice(d) : null;
@@ -87,6 +91,8 @@ export function useOpenAction() {
     else if (path.startsWith("/discover")) setTab("discover");
     else if (path.startsWith("/tasks")) setSheet({ kind: "tasks" });
     else if (path.startsWith("/moments")) push({ kind: "moments" });
+    else if (path.startsWith("/refer")) push({ kind: "refer" });
+    else if (path.startsWith("/welcome-gift")) window.dispatchEvent(new Event("panchayat:welcome-gift"));
   };
 }
 
@@ -134,43 +140,67 @@ export function SystemBubble({ m }: { m: ChatMessage }) {
 export function SarpanchAnnouncement() {
   const { push } = useApp();
   const open = useOpenAction();
-  const [n, setN] = useState<Notice | null>(null);
+  const [list, setList] = useState<Notice[] | null>(null);
+  const [at, setAt] = useState(0);
+  const strip = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let live = true;
     sarpanchApi
-      .latest()
-      .then((x) => live && setN(x))
+      .notices(10)
+      .then((x) => live && setList(x))
       .catch(() => undefined);
     return () => {
       live = false;
     };
   }, []);
-  if (!n) return null;
+  if (!list || list.length === 0) return null;
+  const onScroll = () => {
+    const el = strip.current;
+    if (el) setAt(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
+  };
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mx-4 mb-5 overflow-hidden rounded-3xl bg-gradient-to-br from-[#7b5cff]/35 via-surface to-surface ring-1 ring-gold/25">
-      <button type="button" onClick={() => push({ kind: "sarpanch" })} className="flex w-full items-center gap-2 px-4 pt-3 text-left">
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-gold/20 text-gold">
-          <Megaphone className="h-4 w-4" />
-        </span>
-        <span className="flex items-center gap-1 text-[13px] font-bold text-cream">
-          Sarpanch <OfficialTick className="h-3.5 w-3.5" />
-        </span>
-        <span className="ml-auto text-[10.5px] text-muted">{ago(n.at)}</span>
-      </button>
-      {n.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={n.imageUrl} alt="" className="mt-3 block max-h-[180px] w-full object-cover" loading="lazy" />
-      ) : null}
-      <div className="px-4 pb-3.5 pt-2">
-        {n.title ? <p className="font-display text-[16px] font-bold text-cream">{n.title}</p> : null}
-        {n.body ? <p className="mt-0.5 line-clamp-3 text-[13px] text-cream/80">{n.body}</p> : null}
-        {n.actionLabel && n.actionUrl ? (
-          <button type="button" onClick={() => open(n.actionUrl)} className="mt-2.5 rounded-full bg-gold px-4 py-1.5 text-[12.5px] font-bold text-ink">
-            {n.actionLabel}
-          </button>
-        ) : null}
+    <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mx-4 mb-5" aria-label="Sarpanch notices">
+      <div className="mb-2 flex items-center gap-2">
+        <button type="button" onClick={() => push({ kind: "sarpanch" })} className="flex items-center gap-2 text-left">
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-gold/20 text-gold">
+            <Megaphone className="h-4 w-4" />
+          </span>
+          <span className="flex items-center gap-1 font-display text-[16px] font-bold text-cream">
+            Sarpanch <OfficialTick className="h-4 w-4" />
+          </span>
+        </button>
+        <span className="ml-auto text-[11px] font-semibold text-muted">{list.length > 1 ? `${at + 1} / ${list.length}` : "Notice"}</span>
       </div>
-    </motion.div>
+      <div ref={strip} onScroll={onScroll} className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto">
+        {list.map((n) => (
+          <article key={n.id} className="w-full shrink-0 snap-center overflow-hidden rounded-3xl bg-gradient-to-br from-[#4a1626] via-[#2c1622] to-[#1c1824] ring-1 ring-gold/25">
+            {n.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={n.imageUrl} alt="" className="block max-h-[170px] w-full object-cover" loading="lazy" />
+            ) : null}
+            <div className="px-4 pb-3.5 pt-3">
+              <div className="flex items-start justify-between gap-2">
+                {n.title ? <p className="font-display text-[16px] font-bold text-cream">{n.title}</p> : <span />}
+                <span className="shrink-0 text-[10.5px] text-muted">{ago(n.at)}</span>
+              </div>
+              {n.body ? <p className="mt-0.5 line-clamp-3 text-[13px] text-cream/80">{n.body}</p> : null}
+              {n.actionLabel && n.actionUrl ? (
+                <button type="button" onClick={() => open(n.actionUrl)} className="mt-2.5 rounded-full bg-gold px-4 py-1.5 text-[12.5px] font-bold text-ink">
+                  {n.actionLabel}
+                </button>
+              ) : null}
+            </div>
+          </article>
+        ))}
+      </div>
+      {list.length > 1 ? (
+        <div className="mt-2 flex justify-center gap-1.5" aria-hidden>
+          {list.map((n, i) => (
+            <span key={n.id} className={`h-1.5 rounded-full transition-all ${i === at ? "w-4 bg-gold" : "w-1.5 bg-cream/25"}`} />
+          ))}
+        </div>
+      ) : null}
+    </motion.section>
   );
 }
 

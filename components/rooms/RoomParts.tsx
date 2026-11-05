@@ -15,7 +15,7 @@ import { PkSeatTag, SIDE } from "./PkParts";
 import { sideOfSeat, usePkState } from "./usePk";
 import { vipName } from "@/lib/app/levels";
 import { Coin, IconButton, Pill, formatCount } from "@/components/ui/kit";
-import { charmFromCoins, giftEarnings } from "@/lib/app/progress";
+import { giftEarnings } from "@/lib/app/progress";
 import { PEOPLE, REACTIONS, giftById } from "@/lib/app/data";
 import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
@@ -384,9 +384,6 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
         {p ? <SeatTagBadge personId={p.id} /> : null}
         {p ? p.name : owner ? owner.name : "Empty"}
       </span>
-      {id && s.giftCounts[id] ? (
-        <span className="-mt-0.5 rounded-full bg-gold/15 px-1.5 text-[9.5px] font-bold text-gold">♥ {formatCount(s.giftCounts[id])}</span>
-      ) : null}
     </div>
   );
 }
@@ -539,9 +536,12 @@ export function RoomChat({ s, className = "" }: { s: RoomSession; className?: st
       aria-label="Room chat"
     >
       <Announcement s={s} />
-      {s.messages.map((m) => (
-        <ChatLine key={m.id} m={m} fxFor={fxFor} />
-      ))}
+      {/* Gift messages aren't shown in the chat (the gift animation and banner still play) */}
+      {s.messages
+        .filter((m) => m.kind !== "gift")
+        .map((m) => (
+          <ChatLine key={m.id} m={m} fxFor={fxFor} />
+        ))}
     </div>
   );
 }
@@ -591,7 +591,6 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
       case "gift": {
         const g = giftById(m.giftId);
         const from = person(m.fromId);
-        const charm = m.charm ?? Math.floor(charmFromCoins(g.cost * m.count));
         const earned = m.earned ?? giftEarnings(g.cost * m.count);
         // Gift card: who sent what, then what the receiver got back
         return (
@@ -606,7 +605,6 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
             </div>
             <div className="flex items-center gap-3 border-t border-white/10 px-3 py-1.5 text-[11.5px]">
               <span className="text-cream/60">Receiver&apos;s</span>
-              <span className="font-bold text-pink">Charm +{charm.toLocaleString("en-IN")}</span>
               <span className="flex items-center gap-1 font-bold text-gold">
                 <Coin className="h-3.5 w-3.5" /> Coins +{earned.toLocaleString("en-IN")}
               </span>
@@ -1019,6 +1017,16 @@ export function RoomMenuSheet({ open, onClose, s, extra, onInvite }: { open: boo
               onClick={() => {
                 onClose();
                 push({ kind: "ludo", roomId: s.room.server!.id });
+              }}
+            />
+          ) : null}
+          {s.room.server ? (
+            <Item
+              icon={<span className="text-[19px] leading-none">🃏</span>}
+              label="Jackaroo"
+              onClick={() => {
+                onClose();
+                push({ kind: "jackaroo", roomId: s.room.server!.id });
               }}
             />
           ) : null}

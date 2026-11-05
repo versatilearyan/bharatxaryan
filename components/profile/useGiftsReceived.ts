@@ -11,7 +11,8 @@ import { readToken } from "@/lib/auth/token";
 import { SERVER_USER_PREFIX } from "@/lib/app/server-rooms";
 import type { GiftId } from "@/lib/app/types";
 
-export type GiftsReceived = { totalGifts: number; totalCoins: number; gifts: Partial<Record<GiftId, number>>; topSenders: { userId: string; name: string; avatarUrl?: string; coins: number }[] };
+export type RecentGift = { id: string; fromUserId: string; fromName: string; fromAvatarUrl?: string; giftId: string; count: number; coins: number; charm: number; roomName?: string; at: string };
+export type GiftsReceived = { totalGifts: number; totalCoins: number; gifts: Partial<Record<GiftId, number>>; topSenders: { userId: string; name: string; avatarUrl?: string; coins: number }[]; recent: RecentGift[] };
 
 const cache = new Map<string, { at: number; data: GiftsReceived }>();
 
@@ -41,6 +42,7 @@ export function useGiftsReceived(personId: string): GiftsReceived | null {
           totalCoins: typeof d?.totalCoins === "number" ? d.totalCoins : 0,
           gifts: g as Partial<Record<GiftId, number>>,
           topSenders: Array.isArray(d?.topSenders) ? (d.topSenders as GiftsReceived["topSenders"]) : [],
+          recent: Array.isArray(d?.recent) ? (d.recent as RecentGift[]) : [],
         };
         cache.set(who, { at: Date.now(), data: out });
         if (live) setData(out);

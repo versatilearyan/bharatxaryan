@@ -48,7 +48,7 @@ const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0
 export function readLudo(v: unknown): LudoGame | null {
   const o = obj(v);
   const id = str(o?.id);
-  if (!o || !id || (o.game !== undefined && o.game !== "LUDO")) return null;
+  if (!o || !id || o.game !== "LUDO") return null;
   const you = obj(o.you);
   const lm = obj(o.lastMove);
   return {

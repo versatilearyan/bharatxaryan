@@ -1,5 +1,6 @@
 "use client";
 
+import { isGameTable, useLiveCounts } from "@/lib/app/live-counts";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Compass, Hash, Plus, RefreshCw, Radio, SearchX } from "lucide-react";
@@ -23,7 +24,10 @@ const matches = (r: Room, f: Filter) =>
   f === "All" || (f === "VIP" ? r.vip : f === "Voice" ? r.type === "voice" : f === "Kharidari" ? r.type === "kharidari" : r.type === "watch");
 
 export function RoomsScreen() {
-  const { rooms, push, setSheet } = useApp();
+  const { rooms: allRooms, push, setSheet } = useApp();
+  // Game tables are live only while someone is in them: empty ones don't show
+  const live = useLiveCounts();
+  const rooms = useMemo(() => allRooms.filter((r) => !(r.server && isGameTable(r.name) && live && (live[r.server.id] ?? 0) === 0)), [allRooms, live]);
   const [top, setTop] = useState<Top>("All");
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<Filter>("All");

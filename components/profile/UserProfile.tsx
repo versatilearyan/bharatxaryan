@@ -648,7 +648,7 @@ export function BffChip({ tag, viewer }: { tag: Tag; viewer: string }) {
       <span className="leading-tight">
         <span className="block max-w-[90px] truncate text-[12.5px] font-bold text-cream">{partner.id === ME_ID ? "You" : partner.name}</span>
         <span className="text-[10.5px] font-semibold" style={{ color: rel.tint }}>
-          {rel.label} · Lv {lv}
+          {rel.emoji} {rel.label} · Lv {lv}
         </span>
       </span>
     </span>
@@ -755,7 +755,6 @@ export function UserProfileScreen({ personId }: { personId: string }) {
             ) : null}
           </div>
         ) : null}
-        {personId.startsWith("srv-user:") ? <FollowCounts personId={personId} following={following} /> : null}
         <UserProfileBody personId={personId} />
       </div>
       <div className="pb-safe flex gap-2.5 border-t border-gold/15 bg-gradient-to-t from-[#1b1020] to-[#24131f] px-4 py-3">
@@ -962,15 +961,59 @@ export function UserRoomsScreen({ personId }: { personId: string }) {
 }
 
 export function GiftWallScreen({ personId }: { personId: string }) {
-  const { pop, receivedOf } = useApp();
+  const { pop, receivedOf, openProfile } = useApp();
   const serverGifts = useGiftsReceived(personId);
   const received = serverGifts ? serverGifts.gifts : receivedOf(personId);
   const wall = giftWallStats(received);
+  const [tab, setTab] = useState<"wall" | "recent">("wall");
   return (
-    <div className="app-scroll h-full bg-ink pb-8">
+    <div className="app-scroll h-full bg-[radial-gradient(130%_60%_at_50%_0%,#3a1424_0%,#221220_45%,#141018_100%)] pb-8">
       <ScreenHeader title="Gifts received" onBack={pop} sub={`${wall.gifts.toLocaleString("en-IN")} gifts · ${wall.stars} stars`} />
-      <p className="mx-4 text-[11.5px] text-muted">Each gift earns a star at 1, 10 and 100 received. Legendary gifts count five times.</p>
-      <div className="mt-3 grid grid-cols-3 gap-2.5 px-4">
+      {serverGifts ? (
+        <div className="mx-4 mb-3 grid grid-cols-2 rounded-full bg-black/30 p-1 ring-1 ring-gold/20" role="tablist">
+          {(["wall", "recent"] as const).map((t) => (
+            <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`h-9 rounded-full text-[13px] font-bold ${tab === t ? "bg-gold text-ink" : "text-cream/70"}`}>
+              {t === "wall" ? "Gift wall" : "Recently received"}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {tab === "recent" && serverGifts ? (
+        <ul className="space-y-2 px-4">
+          {serverGifts.recent.length === 0 ? <li className="rounded-2xl bg-black/25 px-4 py-6 text-center text-[13px] text-muted">No gifts received yet.</li> : null}
+          {serverGifts.recent.map((r) => {
+            const gift = giftById(r.giftId);
+            const at = new Date(r.at);
+            return (
+              <li key={r.id} className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#2c1622]/95 to-[#1b1622]/95 p-2.5 ring-1 ring-gold/15">
+                <button type="button" onClick={() => openProfile(`srv-user:${r.fromUserId}`)} className="shrink-0" aria-label={`${r.fromName}'s profile`}>
+                  {r.fromAvatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={r.fromAvatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
+                  ) : (
+                    <span className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-[#7b5cff] to-coral font-bold text-white">{r.fromName.slice(0, 1)}</span>
+                  )}
+                </button>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13.5px] text-cream">
+                    <b>{r.fromName}</b> sent <b className="text-gold">{gift.name}</b>
+                    {r.count > 1 ? ` ×${r.count}` : ""}
+                  </span>
+                  <span className="block truncate text-[11px] text-muted">
+                    {at.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} · {at.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}
+                    {r.roomName ? ` · in ${r.roomName}` : " · direct"} · +{r.charm.toLocaleString("en-IN")} charm
+                  </span>
+                </span>
+                <span className="h-10 w-10 shrink-0">
+                  <GiftArt id={r.giftId as GiftId} />
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      {tab === "wall" ? <p className="mx-4 text-[11.5px] text-muted">Each gift earns a star at 1, 10 and 100 received. Legendary gifts count five times.</p> : null}
+      <div className={`mt-3 grid grid-cols-3 gap-2.5 px-4 ${tab === "wall" ? "" : "hidden"}`}>
         {GIFTS.map((g) => {
           const n = received[g.id] ?? 0;
           const stars = giftStars(n);

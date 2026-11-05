@@ -270,6 +270,35 @@ function renderArt(id: GameId, g: (n: string) => string, u: (n: string) => strin
           <text x="14" y="36" fontFamily="serif" fontWeight="700" fontSize="18" fill="#e7bc72">अ</text>
         </>
       );
+    case "jackaroo":
+      return (
+        <>
+          <defs>
+            <radialGradient id={g("jk")} cx="50%" cy="40%" r="70%">
+              <stop offset="0" stopColor="#4a2a7a" />
+              <stop offset="1" stopColor="#1a1030" />
+            </radialGradient>
+          </defs>
+          <rect width="120" height="120" fill={u("jk")} />
+          <circle cx="60" cy="62" r="44" fill="none" stroke="#e7bc72" strokeOpacity=".5" strokeWidth="2" strokeDasharray="3 5" />
+          {[
+            [60, 18, "#ff4d6d"],
+            [104, 62, "#2ee59d"],
+            [60, 106, "#ffd23f"],
+            [16, 62, "#4cc9f0"],
+          ].map(([x, y, c]) => (
+            <circle key={String(c)} cx={Number(x)} cy={Number(y)} r="7" fill={String(c)} stroke="#fff" strokeWidth="1.5" />
+          ))}
+          {[-14, 0, 14].map((r, i) => (
+            <g key={r} transform={`rotate(${r} 60 88)`}>
+              <rect x="46" y="38" width="28" height="40" rx="4" fill="#fff6e6" stroke="#e7bc72" strokeWidth="1" />
+              <text x="50" y="50" fontFamily="sans-serif" fontWeight="800" fontSize="9" fill={i === 1 ? "#1c1b22" : "#d8283a"}>
+                {["J", "A", "K"][i]}
+              </text>
+            </g>
+          ))}
+        </>
+      );
     case "cards":
       return (
         <>
