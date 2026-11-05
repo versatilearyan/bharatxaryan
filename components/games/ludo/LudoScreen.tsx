@@ -93,25 +93,29 @@ function LudoTable({ roomId }: { roomId: string }) {
     return un;
   }, [roomId, load, apply]);
 
+  // A chat line or emote (each once, by id)
+  const seenChat = useRef<Set<string>>(new Set());
+  const showChat = useCallback((m: LudoChat | null | undefined) => {
+    if (!m?.id || seenChat.current.has(m.id)) return;
+    seenChat.current.add(m.id);
+    setChat((c) => [...c.slice(-30), m]);
+    if (m.emote) {
+      setBursts((list) => [...list, m]);
+      window.setTimeout(() => setBursts((list) => list.filter((x) => x.id !== m.id)), 2200);
+    }
+  }, []);
+
   // Table + chat topics for this game
   const gid = g?.id;
   useEffect(() => {
     if (!gid) return;
     const a = subscribe(ludoTopic(gid), (body) => apply(readLudo(body)));
-    const b = subscribe(ludoChatTopic(gid), (body) => {
-      const m = body as LudoChat;
-      if (!m?.id) return;
-      setChat((c) => [...c.slice(-30), m]);
-      if (m.emote) {
-        setBursts((list) => [...list, m]);
-        window.setTimeout(() => setBursts((list) => list.filter((x) => x.id !== m.id)), 2200);
-      }
-    });
+    const b = subscribe(ludoChatTopic(gid), (body) => showChat(body as LudoChat));
     return () => {
       a();
       b();
     };
-  }, [gid, apply]);
+  }, [gid, apply, showChat]);
 
   // Turn clock
   useEffect(() => {
@@ -158,7 +162,8 @@ function LudoTable({ roomId }: { roomId: string }) {
   const send = async (text?: string, emote?: string) => {
     if (!g) return;
     try {
-      await ludoApi.chat(g.id, text, emote);
+      // Shown from the reply at once (the live copy is skipped as a duplicate)
+      showChat((await ludoApi.chat(g.id, text, emote)) as LudoChat);
       setDraft("");
       setEmotes(false);
     } catch (e) {
