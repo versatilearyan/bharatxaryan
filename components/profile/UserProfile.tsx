@@ -112,7 +112,7 @@ function ProfileEntry({ src, name, avatar }: { src: EffectSet; name: string; ava
 }
 
 /** Banner, avatar, name, level, VIP, charm, ID and bio. */
-export function ProfileHero({ personId, topLeft, topRight, vipFresh = true }: { personId: string; topLeft?: ReactNode; topRight?: ReactNode; vipFresh?: boolean }) {
+export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, charmPoints, backendProfile = false }: { personId: string; topLeft?: ReactNode; topRight?: ReactNode; vipFresh?: boolean; charmPoints?: number; backendProfile?: boolean }) {
   const { profile, toast, push, session } = useApp();
   const person = usePeople();
   const p = person(personId);
@@ -164,7 +164,9 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true }: { 
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {level !== null ? <LevelPill level={level} gender={p.gender} exact={mine} /> : null}
-          <CharmBadge personId={personId} size="md" showCount />
+          {(!backendProfile || charmPoints !== undefined) ? (
+            <CharmBadge personId={personId} size="md" showCount points={backendProfile ? charmPoints : undefined} />
+          ) : null}
           <ParivarTag personId={personId} className="!text-[11px]" />
         </div>
         <button
@@ -189,7 +191,7 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true }: { 
 /* ------------------------------------------------------------------ */
 
 /** Numbers, level, guard, BFF, gifts and rooms. Used for your own Profile tab and everyone else's. */
-export function UserProfileBody({ personId }: { personId: string }) {
+export function UserProfileBody({ personId, charmPoints, backendProfile = false }: { personId: string; charmPoints?: number; backendProfile?: boolean }) {
   const app = useApp();
   const { push, receivedOf, tagsOf, guardiansOf, charmOf, protect, protectedToday, profile } = app;
   const person = usePeople();
@@ -222,7 +224,7 @@ export function UserProfileBody({ personId }: { personId: string }) {
       {/* Numbers */}
       <button type="button" onClick={() => push({ kind: "stats", personId })} className="mx-4 mt-4 grid w-[calc(100%-2rem)] grid-cols-4 rounded-2xl py-3 bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 ring-1 ring-gold/15" aria-label="Open stats">
         {[
-          ["Charm", mine ? stat(myStats.data?.charmPoints) : formatCount(charmOf(personId).points)],
+          ["Charm", backendProfile ? (charmPoints === undefined ? "…" : formatCount(charmPoints)) : mine ? stat(myStats.data?.charmPoints) : formatCount(charmOf(personId).points)],
           ["Guard", formatCount(guardTotal)],
           ["Gifts", formatCount(wall.gifts)],
           ["BFF", String(tags.length)],
@@ -737,6 +739,8 @@ export function UserProfileScreen({ personId }: { personId: string }) {
         <ProfileHero
           personId={personId}
           vipFresh={!pub.isBackendUser || pub.loadedFor === personId}
+          charmPoints={pub.data?.charmPoints}
+          backendProfile={pub.isBackendUser}
           topLeft={
             <button type="button" onClick={pop} aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full bg-black/40 text-cream backdrop-blur">
               <ChevronLeft className="h-6 w-6" />
@@ -755,7 +759,7 @@ export function UserProfileScreen({ personId }: { personId: string }) {
             ) : null}
           </div>
         ) : null}
-        <UserProfileBody personId={personId} />
+        <UserProfileBody personId={personId} charmPoints={pub.data?.charmPoints} backendProfile={pub.isBackendUser} />
       </div>
       <div className="pb-safe flex gap-2.5 border-t border-gold/15 bg-gradient-to-t from-[#1b1020] to-[#24131f] px-4 py-3">
         <button
