@@ -109,6 +109,38 @@ function waitForPublishPermission(room: Room) {
   });
 }
 
+/** The voice server's address from the last join, remembered so the next connection can be warmed up before its token arrives. */
+const SERVER_URL_KEY = "panchayat.voiceUrl";
+function rememberedServerUrl(): string | null {
+  try {
+    return window.localStorage.getItem(SERVER_URL_KEY);
+  } catch {
+    return null;
+  }
+}
+function rememberServerUrl(url: string) {
+  try {
+    window.localStorage.setItem(SERVER_URL_KEY, url);
+  } catch {
+    /* storage unavailable: the warm-up is just skipped */
+  }
+}
+
+/**
+ * Looks up and opens the connection to the voice server ahead of time (DNS and TLS only: no call is
+ * made), so entering a room connects sooner. Safe to call any time and as often as you like.
+ */
+let warmed = false;
+export function warmVoiceConnection() {
+  if (warmed || typeof window === "undefined") return;
+  const url = rememberedServerUrl();
+  if (!url) return;
+  warmed = true;
+  void new Room().prepareConnection(url).catch(() => {
+    warmed = false;
+  });
+}
+
 /** Songs go into the call as their own audio track named "music:<title>". */
 const MUSIC_PREFIX = "music:";
 
@@ -138,8 +170,10 @@ export type LiveVoice = {
   /** The backend has you in the room. Chat, seats and the rest don't wait for the voice connection. */
   joined: boolean;
   error: string;
-  /** The server took you out of this room (kick or ban): the call ended and joining again is refused. */
+  /** The server took you out of this room (kick or ban), or refused the join (full, closed): the room screen is left. */
   removed: boolean;
+  /** Only about your microphone, and only when you can do something about it (blocked, not found, in use). */
+  micNotice: string;
   people: VoicePerson[];
   /** Your microphone is publishing and not muted (from the SDK). */
   micOn: boolean;
@@ -208,6 +242,9 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
   /** You had your mic on: a new connection after a drop turns it back on. */
   const wantMic = useRef(false);
   const [error, setError] = useState("");
+  const [micNotice, setMicNotice] = useState("");
+  const statusRef = useRef<VoiceStatus>("idle");
+  statusRef.current = status;
   const [removed, setRemoved] = useState(false);
   const [people, setPeople] = useState<VoicePerson[]>([]);
   const [micOn, setMicOn] = useState(false);
@@ -294,7 +331,7 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       })
       .on(RoomEvent.ParticipantNameChanged, sync)
       .on(RoomEvent.AudioPlaybackStatusChanged, () => !cancelled && setCanPlayAudio(room.canPlaybackAudio))
-      .on(RoomEvent.MediaDevicesError, (e: Error) => !cancelled && setError(micErrorText(e)))
+      .on(RoomEvent.MediaDevicesError, (e: Error) => !cancelled && setMicNotice(micErrorText(e)))
       .on(RoomEvent.ConnectionStateChanged, (s: ConnectionState) => {
         if (cancelled) return;
         if (s === ConnectionState.Reconnecting || s === ConnectionState.SignalReconnecting) {
@@ -339,8 +376,8 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       if (cancelled || !(e instanceof Error && e.name === "ApiError")) return;
       const status = (e as Error & { status?: number }).status ?? 0;
       if (status === 0 || status >= 500) return;
-      // 403 on join: kicked or banned from this room
-      if (status === 403) setRemoved(true);
+      // The server said no (kicked or banned, room full, room closed): the room screen shows its message and closes
+      if (status === 403 || status === 404 || status === 409 || status === 423) setRemoved(true);
       refused = true;
       setStatus("error");
       setError(roomErrorText(e, "join"));
@@ -378,6 +415,7 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       try {
         const join = await joinRoom(serverRoomId);
         if (cancelled) return;
+        rememberServerUrl(join.serverUrl);
         joinedRoom.current = serverRoomId;
         setJoined(true);
         if (!joinReported) {
@@ -464,6 +502,10 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       navigator.mediaSession.playbackState = "playing";
     }
 
+    // The address is known from the last visit: open the connection to it while the token is being made
+    const known = rememberedServerUrl();
+    if (known) void room.prepareConnection(known).catch(() => {});
+
     const opening = setTimeout(() => {
       setStatus(joinedRoom.current === serverRoomId ? "connecting" : "joining");
       setRemoved(false);
@@ -501,8 +543,10 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
   const setMic = useCallback(async (on: boolean) => {
     const room = roomRef.current;
     if (!room || room.state !== ConnectionState.Connected) {
-      setError("Voice isn't connected yet.");
-      return false;
+      // Voice isn't up yet (or dropped): the mic turns on by itself once it is. If recovery had stopped, start it again.
+      wantMic.current = on;
+      if (statusRef.current === "disconnected" || statusRef.current === "error") setAttempt((n) => n + 1);
+      return true;
     }
     setMicBusy(true);
     try {
@@ -513,10 +557,11 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       if (on) reportVoiceMetric({ name: "mic_publish", ms: Math.round(performance.now() - started) });
       wantMic.current = on;
       setError("");
+      setMicNotice("");
       return true;
     } catch (e) {
       if (on) reportVoiceMetric({ name: "connect_failed", reason: MediaDeviceFailure.getFailure(e) === MediaDeviceFailure.PermissionDenied ? "mic_denied" : "mic_other" });
-      setError(micErrorText(e));
+      setMicNotice(micErrorText(e));
       return false;
     } finally {
       setMicOn(room.localParticipant.isMicrophoneEnabled);
@@ -576,7 +621,7 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
 
   // One object for as long as nothing in it changed, so a re-render above doesn't re-run everything below
   return useMemo(
-    () => (serverRoomId ? { status, joined, error, removed, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry, setMusic, setRemoteMusicMuted } : null),
-    [serverRoomId, status, joined, error, removed, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry, setMusic, setRemoteMusicMuted],
+    () => (serverRoomId ? { status, joined, error, removed, micNotice, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry, setMusic, setRemoteMusicMuted } : null),
+    [serverRoomId, status, joined, error, removed, micNotice, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry, setMusic, setRemoteMusicMuted],
   );
 }

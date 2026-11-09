@@ -685,7 +685,7 @@ export function useRoomSession(room: Room) {
         // Just took a seat: the server's permission to talk may land a moment after your tap, so try once more
         .then((ok) => (ok || !want || !srv ? ok : new Promise<void>((r) => window.setTimeout(r, 900)).then(() => voice.setMic(true))))
         .then((ok) => {
-          if (!ok) toast("Couldn't change your microphone. See the voice bar for details.", "error");
+          if (!ok) toast("Allow microphone access for this site to talk.", "gold");
         });
       return;
     }

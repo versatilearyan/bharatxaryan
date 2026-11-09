@@ -18,6 +18,7 @@ import { publicRoomId } from "./public-ids";
 import type { VipProfileFields } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { warmVoiceConnection } from "@/components/rooms/useLiveVoice";
 import { closeRoom, getPublicRooms, getRoomById, isOpenRoom, leaveRoom, roomErrorText, type VoiceRoom, type VoiceRoomType } from "@/lib/api/voice-rooms";
 import { useMe } from "./me-store";
 import { ME_ID, useApp } from "./store";
@@ -201,7 +202,10 @@ export function ServerRoomsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (signedIn) void refresh();
+    if (!signedIn) return;
+    void refresh();
+    // Opens the connection to the voice server ahead of time, so the first room connects sooner
+    warmVoiceConnection();
   }, [signedIn, refresh]);
 
   const rememberPrefs = useCallback((id: string, p: ServerRoomPrefs) => {

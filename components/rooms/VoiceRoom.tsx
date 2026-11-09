@@ -77,7 +77,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
           <IconButton label={s.speakerOn ? "Turn speaker off" : "Turn speaker on"} onClick={s.toggleSpeaker}>
             {s.speakerOn ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5 text-muted" />}
           </IconButton>
-          <IconButton label={s.muted ? "Unmute microphone" : "Mute microphone"} onClick={s.toggleMute} active={s.seated && !s.muted} disabled={Boolean(s.voice && (s.voice.status !== "connected" || s.voice.micBusy))}>
+          <IconButton label={s.muted ? "Unmute microphone" : "Mute microphone"} onClick={s.toggleMute} active={s.seated && !s.muted} disabled={Boolean(s.voice?.micBusy)}>
             {s.seated && !s.muted ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5 text-muted" />}
           </IconButton>
           <ChatInput s={s} value={draft} setValue={setDraft} />
