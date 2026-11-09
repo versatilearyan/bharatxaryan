@@ -1,9 +1,10 @@
 "use client";
 
 import { isGameTable, useLiveCounts } from "@/lib/app/live-counts";
+import { activeRooms, byOnline } from "@/lib/app/active-rooms";
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Compass, Hash, Plus, RefreshCw, Radio, SearchX } from "lucide-react";
+import { Compass, Hash, Plus, Radio, SearchX } from "lucide-react";
 import { RoomCover } from "./RoomCover";
 import { Chips, IconButton, SearchField, SectionTitle } from "@/components/ui/kit";
 import { RoomCard, RoomRow } from "./RoomCards";
@@ -41,6 +42,7 @@ export function RoomsScreen() {
       return [r.name, r.topic, r.category, host, r.code].some((s) => s.toLowerCase().includes(needle));
     });
   }, [rooms, q, filter]);
+  const sortedResults = useMemo(() => [...results].sort(byOnline(live)), [results, live]);
 
   const browsing = !q.trim() && filter === "All";
   const recommended = [...rooms].filter((r) => r.live && !r.createdByMe).sort((a, b) => b.members - a.members).slice(0, 5);
@@ -125,7 +127,7 @@ export function RoomsScreen() {
             {results.length} {results.length === 1 ? "room" : "rooms"}
           </p>
           <AnimatePresence initial={false}>
-            {results.map((r) => (
+            {sortedResults.map((r) => (
               <motion.div key={r.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
                 <RoomRow room={r} />
               </motion.div>
@@ -234,21 +236,31 @@ function MyRoomTab({ onFind }: { onFind: () => void }) {
   );
 }
 
-/** Rooms from the backend: loading skeletons, an empty state, and errors with Retry. */
+/**
+ * Rooms from the backend. "Active now" is the rooms with people in them, the busiest first, with the
+ * number online; rooms nobody is in follow below. The list reloads by itself while the tab is open, and
+ * a failed load just keeps what is already showing (no error box).
+ */
 function LiveRooms() {
   const live = useServerRooms();
+  const counts = useLiveCounts();
   const { rooms } = useApp();
   const { refresh } = live;
-  // Reload when the Rooms tab opens so closed rooms drop off
   useEffect(() => {
     void refresh();
+    const t = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 30_000);
+    return () => window.clearInterval(t);
   }, [refresh]);
-  const list = rooms.filter((r) => r.server && !r.createdByMe);
+  const real = useMemo(() => rooms.filter((r) => r.server && !r.createdByMe), [rooms]);
+  const active = useMemo(() => activeRooms(real, counts, { gameTables: true }), [real, counts]);
+  const quiet = useMemo(() => real.filter((r) => !active.includes(r) && !(isGameTable(r.name) && counts)).sort((a, b) => b.members - a.members), [real, active, counts]);
   const firstLoad = live.status === "loading" && !live.loadedAt;
   return (
     <section className="mt-5" aria-live="polite" aria-busy={live.status === "loading"}>
       <SectionTitle action={live.status === "loading" ? undefined : "Refresh"} onAction={() => void refresh()}>
-        Live rooms
+        Active now
       </SectionTitle>
       {firstLoad ? (
         <div className="space-y-2 px-4">
@@ -256,20 +268,21 @@ function LiveRooms() {
             <div key={i} className="h-[68px] animate-pulse rounded-2xl bg-cream/[0.06]" />
           ))}
         </div>
-      ) : live.status === "error" ? (
-        <div className="mx-4 flex items-center gap-3 rounded-2xl bg-coral/10 px-4 py-3 ring-1 ring-coral/25">
-          <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-cream">{live.error || "Couldn't load live rooms."}</p>
-          <button type="button" onClick={() => void refresh()} className="flex shrink-0 items-center gap-1 rounded-full bg-cream/15 px-3 py-1.5 text-[12px] font-bold text-cream">
-            <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Retry
-          </button>
-        </div>
-      ) : list.length ? (
-        list.map((r) => <RoomRow key={r.id} room={r} />)
-      ) : live.status === "ready" ? (
+      ) : active.length ? (
+        active.map((r) => <RoomRow key={r.id} room={r} />)
+      ) : (
         <div className="mx-4 flex items-center gap-3 rounded-2xl bg-cream/[0.05] px-4 py-3">
           <Radio className="h-5 w-5 shrink-0 text-muted" aria-hidden />
-          <p className="text-[12.5px] leading-snug text-muted">No live rooms right now. Create one and invite your friends.</p>
+          <p className="text-[12.5px] leading-snug text-muted">Nobody is in a room right now. Create one and invite your friends.</p>
         </div>
+      )}
+      {quiet.length ? (
+        <>
+          <SectionTitle>Other rooms</SectionTitle>
+          {quiet.map((r) => (
+            <RoomRow key={r.id} room={r} />
+          ))}
+        </>
       ) : null}
     </section>
   );

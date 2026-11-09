@@ -38,6 +38,28 @@ export function RoomTypeBadge({ type }: { type: RoomType }) {
   );
 }
 
+/** "● 16 online · 🎙 4": the green dot pulses while people are in the room; an empty room says Quiet. */
+function OnlineNow({ n, mic }: { n: number; mic: number }) {
+  if (n === 0) {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-muted">
+        <span className="h-1.5 w-1.5 rounded-full bg-cream/25" aria-hidden />
+        Quiet
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[12px] font-bold text-speak">
+      <span className="relative flex h-2 w-2" aria-hidden>
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-speak/60" />
+        <span className="relative inline-flex h-2 w-2 rounded-full bg-speak" />
+      </span>
+      {n} online
+      {mic ? <span className="font-semibold text-cream/65">· 🎙 {mic}</span> : null}
+    </span>
+  );
+}
+
 /** Horizontal list row, like "Popular rooms" in the reference. */
 export function RoomRow({ room }: { room: Room }) {
   // The host's real name and photo (not "User 9"), loaded once
@@ -70,13 +92,16 @@ export function RoomRow({ room }: { room: Room }) {
           {room.isPrivate || room.password ? <Lock className="h-3.5 w-3.5 shrink-0 text-muted" aria-label={room.password ? "Password" : "Private"} /> : null}
         </span>
         <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-muted">
-          <span className="rounded-md bg-[#3a2f6e]/70 px-1.5 py-0.5 font-semibold text-[#c9b8ff]">{room.category}</span>
+          {/* "Live" is only the default category of a new room: it says nothing, so it isn't shown */}
+          {room.category && room.category !== "Live" ? <span className="rounded-md bg-[#3a2f6e]/70 px-1.5 py-0.5 font-semibold text-[#c9b8ff]">{room.category}</span> : null}
           {room.permanent ? (
             <span className="rounded-md bg-gold/15 px-1.5 py-0.5 font-bold text-gold">Lv.{roomLevelOf(room).level}</span>
           ) : (
             <span className="rounded-md bg-cream/10 px-1.5 py-0.5 font-bold text-cream/70">Temp</span>
           )}
-          {headcount(room, live) ? (
+          {room.server && live ? (
+            <OnlineNow n={live[room.server.id] ?? 0} mic={onMicIn(room.server.id)} />
+          ) : headcount(room, live) ? (
             <span className="inline-flex items-center gap-1">
               <UsersRound className="h-3 w-3" aria-hidden />
               {headcount(room, live)}
@@ -89,7 +114,8 @@ export function RoomRow({ room }: { room: Room }) {
         </span>
       </span>
       <span className="flex shrink-0 flex-col items-end gap-1.5">
-        {room.live ? (
+        {/* Rooms from the server show their live "N online" next to the name instead of a Live badge */}
+        {room.server ? null : room.live ? (
           <Pill tone="live">
             <LiveDot /> Live
           </Pill>

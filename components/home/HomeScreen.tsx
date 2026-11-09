@@ -1,9 +1,11 @@
 "use client";
 
 import { RoomCover } from "@/components/rooms/RoomCover";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, ChevronDown, Crown, Flame, MonitorPlay, Plus, UsersRound } from "lucide-react";
+import { Bell, ChevronDown, Crown, Flame, MonitorPlay, Plus, Radio, UsersRound } from "lucide-react";
+import { activeRooms } from "@/lib/app/active-rooms";
+import { useLiveCounts } from "@/lib/app/live-counts";
 import { ShortcutIcon } from "@/components/art/ShortcutIcon";
 import { Logo } from "@/components/brand/Logo";
 import { GameArt } from "@/components/art/GameArt";
@@ -207,19 +209,36 @@ function FeaturedVip() {
   );
 }
 
+/** Rooms with people in them right now, the one with the most people online first. */
 function PopularRooms() {
-  const { rooms, setTab } = useApp();
-  const popular = [...rooms].filter((r) => !r.vip && r.live).sort((a, b) => b.members - a.members).slice(0, 4);
+  const { rooms, setTab, push } = useApp();
+  const live = useLiveCounts();
+  const popular = useMemo(() => activeRooms(rooms, live).slice(0, 5), [rooms, live]);
+  // Until the live numbers arrive (or if they can't): the real rooms, biggest first, so the section is never empty or stuck
+  const meanwhile = useMemo(() => rooms.filter((r) => r.server && !r.createdByMe).sort((a, b) => b.members - a.members).slice(0, 4), [rooms]);
+  const shown = live ? popular : meanwhile;
   return (
     <section className="mt-8" aria-labelledby="popular-h">
       <SectionTitle action="See all" onAction={() => setTab("rooms")}>
         <span id="popular-h">Popular rooms</span>
       </SectionTitle>
-      <div>
-        {popular.map((r) => (
-          <RoomRow key={r.id} room={r} />
-        ))}
-      </div>
+      {shown.length ? (
+        <div>
+          {shown.map((r) => (
+            <RoomRow key={r.id} room={r} />
+          ))}
+        </div>
+      ) : (
+        <div className="mx-4 flex items-center gap-3 rounded-2xl bg-surface p-4 ring-1 ring-line">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gold/15 text-gold">
+            <Radio className="h-5 w-5" aria-hidden />
+          </span>
+          <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-muted">Nobody is in a room right now. Start one and call your friends.</p>
+          <button type="button" onClick={() => push({ kind: "create-room" })} className="shrink-0 rounded-full bg-coral px-3.5 py-1.5 text-[12px] font-bold text-white">
+            Start a room
+          </button>
+        </div>
+      )}
     </section>
   );
 }
