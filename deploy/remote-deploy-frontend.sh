@@ -72,6 +72,7 @@ if [ "$UP" != 1 ]; then
 fi
 
 pm2 save >/dev/null 2>&1 || true
-ls -1dt "${APP_DIR}".before-* 2>/dev/null | tail -n +$((KEEP + 1)) | xargs -r rm -rf
-ls -1dt "${APP_DIR}".failed-* 2>/dev/null | tail -n +2 | xargs -r rm -rf
+# Tidying up must never fail a deploy that worked (ls exits 2 when nothing matches)
+{ ls -1dt "${APP_DIR}".before-* 2>/dev/null || true; } | tail -n +$((KEEP + 1)) | xargs -r rm -rf || true
+{ ls -1dt "${APP_DIR}".failed-* 2>/dev/null || true; } | tail -n +2 | xargs -r rm -rf || true
 say "App deployed (previous version kept as $PREVIOUS)"
