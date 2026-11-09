@@ -5,8 +5,9 @@ import { motion } from "framer-motion";
 import { Check, Crown, Search, Shield, UsersRound } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin, ScreenHeader } from "@/components/ui/kit";
-import { parivarApi, type ParivarApplication, type ParivarCard, type ParivarConfig, type ParivarProfile, type ParivarRole, type RankRow } from "@/lib/api/parivar";
+import { parivarApi, parivarExtra, type ParivarApplication, type ParivarCard, type ParivarConfig, type ParivarProfile, type ParivarRole, type RankRow } from "@/lib/api/parivar";
 import { useApp } from "@/lib/app/store";
+import { ChatSheet, CheerSheet, ChestsSheet, ChoriSheet, FeatureTiles, GachaSheet, KavachSheet, NewsTab as NewsPanel, ShopSheet, TasksTab, type SheetName } from "./ParivarExtras";
 
 const n = (v: number) => v.toLocaleString("en-IN");
 const errText = (e: unknown, fallback = "That didn't work. Try again.") => (e instanceof Error && e.message ? e.message : fallback);
@@ -432,7 +433,7 @@ export function ParivarCreateScreen() {
 
 /* ---------------------------- Profile ---------------------------- */
 
-type Tab = "profile" | "members" | "news" | "manage";
+type Tab = "profile" | "tasks" | "members" | "news" | "manage";
 
 export function ParivarHome({ id }: { id: string }) {
   const { pop, push, toast, refreshCoins } = useApp();
@@ -440,12 +441,16 @@ export function ParivarHome({ id }: { id: string }) {
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("profile");
   const [donate, setDonate] = useState(false);
+  const [sheet, setSheet] = useState<SheetName>(null);
+  const [unread, setUnread] = useState(0);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      setP(await parivarApi.profile(id));
+      const prof = await parivarApi.profile(id);
+      setP(prof);
       setError("");
+      if (prof.myRole) parivarExtra.unread(id).then((u) => setUnread(u.unread)).catch(() => undefined);
     } catch (e) {
       setError(errText(e, "Couldn't load this Parivar."));
     }
@@ -488,8 +493,9 @@ export function ParivarHome({ id }: { id: string }) {
   const can = (perm: string) => p.myPerms.includes(perm as never);
   const tabs: { key: Tab; label: string }[] = [
     { key: "profile", label: "Profile" },
+    ...(isMember ? [{ key: "tasks" as Tab, label: "Tasks" }] : []),
     { key: "members", label: `Members ${p.memberCount}` },
-    { key: "news", label: "News" },
+    { key: "news", label: unread ? `News (${unread})` : "News" },
     ...(isMember ? [{ key: "manage" as Tab, label: p.pendingApplications ? `Manage (${p.pendingApplications})` : "Manage" }] : []),
   ];
   const nextPct = p.nextLevelExp ? Math.min(100, (p.exp / p.nextLevelExp) * 100) : 100;
@@ -580,6 +586,7 @@ export function ParivarHome({ id }: { id: string }) {
                 </button>
               ) : null}
             </div>
+            {isMember ? <FeatureTiles p={p} onOpen={setSheet} /> : null}
             {isMember ? (
               <Section title="Activity">
                 {!p.activity?.length ? (
@@ -627,10 +634,23 @@ export function ParivarHome({ id }: { id: string }) {
           </ul>
         ) : null}
 
-        {tab === "news" ? <NewsTab p={p} canEdit={can("EDIT_ANNOUNCEMENT")} onSave={(text) => run(() => parivarApi.update(p.id, { announcement: text }), "Announcement saved")} busy={busy} /> : null}
+        {tab === "news" ? isMember ? <NewsPanel p={p} onChanged={() => void load()} /> : <Section title="Announcement">{p.announcement || <span className="text-muted">No announcement.</span>}</Section> : null}
+        {tab === "tasks" && isMember ? <TasksTab p={p} onChanged={() => void load()} /> : null}
 
         {tab === "manage" && isMember ? <ManageTab p={p} can={can} run={run} busy={busy} push={() => push({ kind: "parivar-list" })} /> : null}
       </div>
+
+      {isMember ? (
+        <>
+          <CheerSheet p={p} open={sheet === "cheer"} onClose={() => setSheet(null)} onChanged={() => void load()} />
+          <GachaSheet p={p} open={sheet === "gacha"} onClose={() => setSheet(null)} onChanged={() => void load()} />
+          <ChestsSheet p={p} open={sheet === "chests"} onClose={() => setSheet(null)} onChanged={() => void load()} />
+          <ShopSheet p={p} open={sheet === "shop"} onClose={() => setSheet(null)} onChanged={() => void load()} />
+          <KavachSheet p={p} open={sheet === "kavach"} onClose={() => setSheet(null)} onChanged={() => void load()} />
+          <ChoriSheet p={p} open={sheet === "chori"} onClose={() => setSheet(null)} onChanged={() => void load()} />
+          <ChatSheet p={p} open={sheet === "chat"} onClose={() => setSheet(null)} />
+        </>
+      ) : null}
 
       <BottomSheet open={donate} onClose={() => setDonate(false)} title="Donate to the Parivar">
         <DonateForm
@@ -662,23 +682,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <div className="rounded-2xl bg-surface p-3.5 ring-1 ring-line">
       <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">{title}</p>
       <div className="mt-1.5 whitespace-pre-wrap text-[13px] leading-snug text-cream/90">{children}</div>
-    </div>
-  );
-}
-
-function NewsTab({ p, canEdit, onSave, busy }: { p: ParivarProfile; canEdit: boolean; onSave: (t: string) => void; busy: boolean }) {
-  const [text, setText] = useState(p.announcement ?? "");
-  return (
-    <div className="space-y-3">
-      <Section title="Announcement">{p.announcement || <span className="text-muted">Nothing announced yet.</span>}</Section>
-      {canEdit ? (
-        <div>
-          <textarea value={text} maxLength={500} rows={4} onChange={(e) => setText(e.target.value)} placeholder="Write an announcement for the whole Parivar" className="w-full resize-none rounded-2xl bg-surface px-4 py-3 text-[14px] text-cream ring-1 ring-line focus:outline-none focus:ring-gold/50" aria-label="Announcement" />
-          <button type="button" disabled={busy || text === (p.announcement ?? "")} onClick={() => onSave(text)} className="mt-2 h-11 w-full rounded-full bg-gold text-[14px] font-extrabold text-ink disabled:opacity-50">
-            Publish
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -744,6 +747,8 @@ function ManageTab({ p, can, run, busy, push }: { p: ParivarProfile; can: (perm:
         </Section>
       ) : null}
 
+      {can("EDIT_ANNOUNCEMENT") ? <AnnouncementEditor p={p} busy={busy} onSave={(text) => run(() => parivarApi.update(p.id, { announcement: text }), "Announcement saved")} /> : null}
+
       {can("EDIT_PROFILE") ? (
         <Section title="How people join">
           <div className="flex gap-2">
@@ -798,6 +803,18 @@ function ManageTab({ p, can, run, busy, push }: { p: ParivarProfile; can: (perm:
         Leave Parivar
       </button>
     </div>
+  );
+}
+
+function AnnouncementEditor({ p, busy, onSave }: { p: ParivarProfile; busy: boolean; onSave: (t: string) => void }) {
+  const [text, setText] = useState(p.announcement ?? "");
+  return (
+    <Section title="Announcement (shown on the profile)">
+      <textarea value={text} maxLength={500} rows={3} onChange={(e) => setText(e.target.value)} className="w-full resize-none rounded-xl bg-ink px-3 py-2 text-[14px] text-cream ring-1 ring-line focus:outline-none" aria-label="Announcement" />
+      <button type="button" disabled={busy || text === (p.announcement ?? "")} onClick={() => onSave(text)} className="mt-2 h-10 w-full rounded-full bg-gold text-[13.5px] font-extrabold text-ink disabled:opacity-50">
+        Save
+      </button>
+    </Section>
   );
 }
 

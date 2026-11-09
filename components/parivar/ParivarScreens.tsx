@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarCheck, ChevronLeft, Crown, LogOut, Megaphone, Plus, Send, Shield, Trophy, UserPlus, Users } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -9,6 +9,8 @@ import { Coin, ScreenHeader, SearchField } from "@/components/ui/kit";
 import { nameFace, nameTone } from "@/lib/app/fonts";
 import { COLORS, EMBLEMS, PARIVAR_CREATE_COST, PARIVAR_ENABLED, ROLE_LABEL, ROLE_ORDER, deputyCap, memberCap, parivarLevel, type Parivar, type ParivarRole } from "@/lib/app/parivar";
 import { useParivar } from "@/lib/app/parivar-store";
+import { parivarApi } from "@/lib/api/parivar";
+import { myUserIdFromToken } from "@/lib/auth/token";
 import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
 
@@ -23,25 +25,59 @@ export function ParivarEmblem({ p, size = 48 }: { p: Pick<Parivar, "emblem" | "c
   );
 }
 
-/** Small Parivar tag shown next to a member's name. */
+type Tag = { id?: string; sign?: string; name?: string; emblem?: string; color?: string };
+const tagCache = new Map<string, { at: number; value: Tag | null }>();
+const tagListeners = new Set<() => void>();
+let tagVersion = 0;
+
+function userIdOfPerson(personId: string) {
+  if (personId === ME_ID) return myUserIdFromToken() ?? null;
+  return personId.startsWith("srv-user:") ? personId.slice(9) : null;
+}
+
+/** Small Parivar tag (sign and emblem) shown next to a member's name, from the server. Each person is looked up at most once a minute. */
 export function ParivarTag({ personId, className = "" }: { personId: string; className?: string }) {
-  const { parivarOf } = useParivar();
-  const { push } = useApp();
-  const p = parivarOf(personId);
-  if (!p || !PARIVAR_ENABLED) return null;
+  const { push, session } = useApp();
+  useEffect(() => {
+    const uid = userIdOfPerson(personId);
+    if (!uid || !session) return;
+    const hit = tagCache.get(uid);
+    if (hit && Date.now() - hit.at < 60_000) return;
+    tagCache.set(uid, { at: Date.now(), value: hit?.value ?? null });
+    parivarApi
+      .tag(uid)
+      .then((t) => {
+        tagCache.set(uid, { at: Date.now(), value: t && t.id ? t : null });
+        tagVersion++;
+        tagListeners.forEach((l) => l());
+      })
+      .catch(() => undefined);
+  }, [personId, session]);
+  useSyncExternalStore(
+    (l) => {
+      tagListeners.add(l);
+      return () => tagListeners.delete(l);
+    },
+    () => tagVersion,
+    () => 0,
+  );
+  const uid = userIdOfPerson(personId);
+  const p = uid ? tagCache.get(uid)?.value : null;
+  if (!p || !p.id) return null;
+  const color = p.color ?? "#e7bc72";
   return (
     <button
       type="button"
       onClick={(e) => {
         e.stopPropagation();
-        push({ kind: "parivar", id: p.id });
+        push({ kind: "parivar", id: p.id! });
       }}
       className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 align-middle text-[10px] font-extrabold leading-none text-white ${className}`}
-      style={{ background: `linear-gradient(90deg, ${p.color}, ${p.color}99)` }}
+      style={{ background: `linear-gradient(90deg, ${color}, ${color}99)` }}
       aria-label={`Parivar ${p.name}`}
     >
       <span aria-hidden>{p.emblem}</span>
-      {p.tag}
+      {p.sign}
     </button>
   );
 }
