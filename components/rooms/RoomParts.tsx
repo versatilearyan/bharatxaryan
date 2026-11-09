@@ -926,7 +926,7 @@ export function RoomMenuSheet({ open, onClose, s, extra, onInvite }: { open: boo
           <p className="text-sm font-semibold text-cream">{s.room.name}</p>
           <p className="mt-0.5 text-[12px] text-muted">{s.room.topic}</p>
           <p className="mt-2 text-[11px] text-muted">
-            ID {s.room.code} · {s.room.category} · {s.room.isPrivate ? "Private" : "Public"} · {s.room.seats} seats
+            ID {s.room.code} · {s.room.category} · {s.room.isPrivate ? "Private" : "Public"} · {s.seats.length} seats
           </p>
         </div>
         <div className="mt-4">

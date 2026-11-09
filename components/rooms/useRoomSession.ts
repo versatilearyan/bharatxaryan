@@ -149,8 +149,11 @@ export function useRoomSession(room: Room) {
   const add = useCallback((m: RoomMessage) => setMessages((list) => [...list.slice(-80), m]), []);
   const addSystem = useCallback((text: string) => add({ id: mid(), kind: "system", text }), [add]);
 
-  /** Backend rooms: text chat from the server (history over REST, live over STOMP) once your join has gone through. */
-  const inRoom = Boolean(voice && (voice.status === "connected" || voice.status === "reconnecting"));
+  /**
+   * Backend rooms: text chat from the server (history over REST, live over STOMP) once your join has gone through.
+   * The backend's join is what counts: seats and chat load at once, and keep working if voice is slow or can't connect.
+   */
+  const inRoom = Boolean(voice?.joined);
   const deliverServerChat = useCallback(
     (lines: RoomMessage[], history: boolean) =>
       setMessages((list) => {

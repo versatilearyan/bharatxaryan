@@ -34,7 +34,6 @@ export function CreateRoom() {
   const [type, setType] = useState<RoomType>("voice");
   const [cover, setCover] = useState<Cover>(COVERS[0]);
   const [isPrivate, setPrivate] = useState(false);
-  const [seats, setSeats] = useState(10);
   const [category, setCategory] = useState<string>("Chai Adda");
   const canPermanent = !myPermanentRoom && coins >= PERMANENT_ROOM_COST;
   const [permanent, setPermanent] = useState(canPermanent);
@@ -43,6 +42,8 @@ export function CreateRoom() {
   const online = signedIn;
   const [description, setDescription] = useState("");
   const [maxPeople, setMaxPeople] = useState(20);
+  /** Fixed by the room type: 12 seats for YouTube, 10 for voice and Kharidari. */
+  const seats = type === "watch" ? 12 : 10;
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const busy = useRef(false);
@@ -224,19 +225,11 @@ export function CreateRoom() {
         <div className="flex items-center justify-between rounded-2xl bg-surface p-4 ring-1 ring-line">
           <div>
             <p className="text-sm font-semibold text-cream">Seats</p>
-            <p className="text-[11.5px] text-muted">How many people can be on mic</p>
+            <p className="text-[11.5px] text-muted">Fixed: 10 on mic, 12 in a YouTube room</p>
           </div>
-          <div className="flex items-center gap-3">
-            <button type="button" aria-label="Fewer seats" disabled={seats <= 2} onClick={() => setSeats((n) => n - 1)} className="grid h-9 w-9 place-items-center rounded-full bg-cream/10 text-cream disabled:opacity-30">
-              <Minus className="h-4 w-4" />
-            </button>
-            <span className="w-6 text-center font-display text-lg font-bold text-cream" aria-live="polite">
-              {seats}
-            </span>
-            <button type="button" aria-label="More seats" disabled={seats >= 12} onClick={() => setSeats((n) => n + 1)} className="grid h-9 w-9 place-items-center rounded-full bg-cream/10 text-cream disabled:opacity-30">
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
+          <span className="font-display text-lg font-bold text-cream" aria-live="polite">
+            {seats}
+          </span>
         </div>
 
         {online ? (

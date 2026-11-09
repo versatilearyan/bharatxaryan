@@ -48,7 +48,7 @@ export function LiveVoiceBar({ voice, participants, compact = false }: { voice: 
           )}
         </div>
       ) : null}
-      {voice.status === "connected" && !voice.canPlayAudio ? (
+      {(voice.status === "connected" || voice.status === "reconnecting") && !voice.canPlayAudio ? (
         <button type="button" onClick={voice.startAudio} className="flex items-center gap-1 rounded-full bg-gold px-3 py-1 text-[11px] font-extrabold text-ink">
           <Volume2 className="h-3.5 w-3.5" aria-hidden /> Tap to hear the room
         </button>

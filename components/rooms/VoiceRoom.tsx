@@ -10,7 +10,7 @@ import { MusicPill, MusicSheet } from "./RoomMusic";
 import { usePkState } from "./usePk";
 import { useMusic } from "@/lib/app/music-store";
 import { IconButton } from "@/components/ui/kit";
-import { GiftPanel } from "@/components/gifts/GiftPanel";
+import { GiftPanel } from "@/components/gifts/LazyGiftPanel";
 import { ChatInput, ClosedRoomCard, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomTopBar, SeatLayout } from "./RoomParts";
 import { LiveVoiceBar } from "./LiveVoiceBar";
 import { BACKGROUNDS } from "./RoomSettings";

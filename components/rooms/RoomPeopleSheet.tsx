@@ -99,7 +99,9 @@ function OnlineList({ s, ids }: { s: RoomSession; ids: string[] }) {
         const m = s.participants?.members.find((x) => x.personId === id);
         const sub = s.participants
           ? !m?.connected
-            ? "Not connected to voice"
+            ? m?.reconnecting
+              ? "Reconnecting…"
+              : "Not connected to voice"
             : m.speaking
               ? "Talking now"
               : m.micOn

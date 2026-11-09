@@ -1,0 +1,85 @@
+name: CI and deploy (app)
+
+# Every push and pull request is type-checked and built. A push to main (or a manual run) then deploys.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Type-check
+        run: npx tsc --noEmit
+      # Uses the committed .env.production (public values only), like the real build
+      - name: Build
+        run: npm run build
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    concurrency:
+      group: production-deploy-app
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # The server keeps a mirror of the source, so only changed files are sent each time
+      - name: Send the source
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER_NAME: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+          MIRROR: ${{ vars.APP_SOURCE_MIRROR || '/opt/panchayat-deploy/frontend-source' }}
+        run: |
+          set -euo pipefail
+          SSH="ssh -i $HOME/.ssh/deploy_key -p $PORT -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+          $SSH "$USER_NAME@$HOST" "mkdir -p '$MIRROR'"
+          rsync -az --delete --exclude=.git --exclude=.github --exclude=node_modules --exclude=.next --exclude='.env*.local' \
+            -e "$SSH" ./ "$USER_NAME@$HOST:$MIRROR/"
+          scp -i "$HOME/.ssh/deploy_key" -P "$PORT" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            deploy/remote-deploy-frontend.sh "$USER_NAME@$HOST:/tmp/panchayat-deploy-frontend-$GITHUB_RUN_ID.sh"
+
+      - name: Build on the server and switch over
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          USER_NAME: ${{ secrets.DEPLOY_USER }}
+          PORT: ${{ secrets.DEPLOY_PORT || '22' }}
+          MIRROR: ${{ vars.APP_SOURCE_MIRROR || '/opt/panchayat-deploy/frontend-source' }}
+          APP_DIR: ${{ vars.APP_DIR || '/opt/panchayat-deploy/frontend' }}
+          PM2_NAME: ${{ vars.APP_PM2_NAME || 'panchayat-website' }}
+          APP_PORT: ${{ vars.APP_PORT || '3003' }}
+        run: |
+          set -euo pipefail
+          SSH="ssh -i $HOME/.ssh/deploy_key -p $PORT -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+          SCRIPT="/tmp/panchayat-deploy-frontend-$GITHUB_RUN_ID.sh"
+          $SSH "$USER_NAME@$HOST" \
+            "SRC_DIR='$MIRROR' APP_DIR='$APP_DIR' PM2_NAME='$PM2_NAME' APP_PORT='$APP_PORT' COMMIT='$GITHUB_SHA' \
+             bash $SCRIPT; rc=\$?; rm -f $SCRIPT; exit \$rc"

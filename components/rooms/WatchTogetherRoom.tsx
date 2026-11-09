@@ -4,7 +4,7 @@ import { useSeatScale } from "./useSeatScale";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { AudioLines, MoreHorizontal, Plus, RefreshCw, Trash2, UsersRound, Volume2, VolumeX, Mic, MicOff } from "lucide-react";
-import { GiftPanel } from "@/components/gifts/GiftPanel";
+import { GiftPanel } from "@/components/gifts/LazyGiftPanel";
 import { IconButton } from "@/components/ui/kit";
 import { useApp } from "@/lib/app/store";
 import { AddVideoModal } from "./AddVideoModal";

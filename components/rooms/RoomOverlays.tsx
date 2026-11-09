@@ -12,7 +12,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Ban, Check, ChevronRight, Copy, Eye, Gift, Heart, Lock, LockOpen, MessageCircle, Mic, MicOff, Pencil, Shield, ShieldOff, User, UserMinus, UserPlus, UserX, X } from "lucide-react";
 import { SunsetScene } from "@/components/art/SunsetScene";
-import { GiftPanel } from "@/components/gifts/GiftPanel";
+import { GiftPanel } from "@/components/gifts/LazyGiftPanel";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { CharmBadge } from "@/components/ui/CharmBadge";

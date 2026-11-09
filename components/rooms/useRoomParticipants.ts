@@ -2,7 +2,7 @@
 
 import { subscribe } from "@/lib/realtime/stomp";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getParticipantCount, getParticipants, getRoomById, isOpenRoom, roomErrorText, type VoiceRoomParticipant } from "@/lib/api/voice-rooms";
+import { getParticipants, getRoomById, isOpenRoom, roomErrorText, type VoiceRoomParticipant } from "@/lib/api/voice-rooms";
 import { identityUserId, userPersonId, useServerRooms, type ServerPerson } from "@/lib/app/server-rooms";
 import { ME_ID } from "@/lib/app/store";
 import { onSync } from "@/lib/app/sync";
@@ -39,6 +39,8 @@ export type RoomMember = {
   inBackend: boolean;
   /** Connected to the LiveKit call right now. */
   connected: boolean;
+  /** Dropped from the call but still in the room for now (the server's grace period). */
+  reconnecting: boolean;
   micOn: boolean;
   speaking: boolean;
   /** The mic track SID, for a moderator mute. */
@@ -108,54 +110,70 @@ export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoic
 
   // Participants and count, first asked once our own join has gone through
   // (the backend records the join), and only the newest answer is used.
-  const phase = !voice || voice.status === "connected" || voice.status === "reconnecting" ? "in" : voice.status === "error" || voice.status === "disconnected" ? "out" : "wait";
+  const phase = !voice || voice.joined ? "in" : voice.status === "error" || voice.status === "disconnected" ? "out" : "wait";
 
   // Once per room, when your join has gone through: the public list's counts changed
   const joinedFor = useRef<string | null>(null);
+  const backendJoined = voice?.joined;
   useEffect(() => {
-    if (!serverRoomId || !voice || voice.status !== "connected" || joinedFor.current === serverRoomId) return;
+    if (!serverRoomId || !backendJoined || joinedFor.current === serverRoomId) return;
     joinedFor.current = serverRoomId;
     void refreshRoomList();
-  }, [serverRoomId, voice, refreshRoomList]);
+  }, [serverRoomId, backendJoined, refreshRoomList]);
 
   // You wore or took off a cosmetic, or changed your profile: load the list again (the backend's record for you changed)
   useEffect(() => (serverRoomId ? onSync(["my-cosmetics", "my-profile"], () => setTick((n) => n + 1)) : undefined), [serverRoomId]);
   useEffect(() => {
     if (!serverRoomId || phase === "wait") return;
     const mine = ++seq.current;
-    Promise.allSettled([getParticipants(serverRoomId), getParticipantCount(serverRoomId)]).then(([list, n]) => {
-      if (mine !== seq.current) return;
-      if (list.status === "fulfilled") {
-        setRecords(list.value);
+    getParticipants(serverRoomId).then(
+      (list) => {
+        if (mine !== seq.current) return;
+        // The same list again re-renders nothing (the backstop reload is usually unchanged)
+        setRecords((prev) => (JSON.stringify(prev) === JSON.stringify(list) ? prev : list));
+        setCount(list.length);
         setStatus("ready");
         setError("");
-      } else {
+      },
+      (e) => {
+        if (mine !== seq.current) return;
         setStatus("error");
-        setError(roomErrorText(list.reason, "participants"));
-      }
-      setCount(n.status === "fulfilled" ? n.value : null);
-    });
+        setError(roomErrorText(e, "participants"));
+      },
+    );
   }, [serverRoomId, tick, phase]);
 
+  // One reload for one change, however many signals report it (the state channel and LiveKit both do),
+  // spread out a little so everyone in a full room doesn't ask at the same instant.
+  const reloadTimer = useRef<number | undefined>(undefined);
+  const reloadSoon = useCallback(() => {
+    window.clearTimeout(reloadTimer.current);
+    reloadTimer.current = window.setTimeout(() => setTick((n) => n + 1), 500 + Math.random() * 800);
+  }, []);
+
   // Someone joined, left or was removed: the server says so on the room's state channel.
-  // Reload at once (this works even when voice isn't connected), and every 20 s as a backstop.
+  // Reload soon (this works even when voice isn't connected), and every 60 s as a backstop while the page is showing.
   useEffect(() => {
     if (!serverRoomId) return;
-    let t: number | undefined;
     const un = subscribe(`/topic/voice-rooms/${serverRoomId}/state`, (body) => {
       const ev = (body as { event?: { type?: string } } | null)?.event?.type;
-      if (ev && /^(JOINED|LEFT|KICKED|BANNED|REMOVED)$/.test(ev)) {
-        window.clearTimeout(t);
-        t = window.setTimeout(() => setTick((n) => n + 1), 300);
-      }
+      if (ev && /^(JOINED|LEFT|KICKED|BANNED|REMOVED)$/.test(ev)) reloadSoon();
     });
-    const poll = window.setInterval(() => setTick((n) => n + 1), 20_000);
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === "visible") setTick((n) => n + 1);
+    }, 60_000);
+    // Back on the page: the backstop may have been skipped
+    const onVisible = () => {
+      if (document.visibilityState === "visible") reloadSoon();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       un();
-      window.clearTimeout(t);
+      window.clearTimeout(reloadTimer.current);
       window.clearInterval(poll);
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [serverRoomId]);
+  }, [serverRoomId, reloadSoon]);
 
   // Reload when LiveKit's set of connected people changes (someone joined or left)
   // (keyed on the set of identities only, so speaking or mic changes don't trigger a reload)
@@ -166,9 +184,8 @@ export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoic
     lastKey.current = connectedKey;
     if (!prev || prev === connectedKey) return;
     // Short wait so the backend has recorded the join or leave before we ask
-    const t = window.setTimeout(() => setTick((n) => n + 1), 600);
-    return () => window.clearTimeout(t);
-  }, [connectedKey, serverRoomId]);
+    reloadSoon();
+  }, [connectedKey, serverRoomId, reloadSoon]);
 
   const members = useMemo(() => {
     const byId = new Map<string, RoomMember>();
@@ -182,6 +199,7 @@ export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoic
         role: r.role,
         inBackend: true,
         connected: false,
+        reconnecting: r.connectionState === "DISCONNECTED",
         micOn: false,
         speaking: false,
         modMuted: r.muted,
@@ -192,7 +210,7 @@ export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoic
     for (const p of voice?.people ?? []) {
       const userId = p.isLocal && myId ? myId : identityUserId(p.identity);
       const m = byId.get(userId);
-      const live = { connected: true, micOn: p.micOn, speaking: p.speaking, micSid: p.micSid };
+      const live = { connected: true, reconnecting: false, micOn: p.micOn, speaking: p.speaking, micSid: p.micSid };
       // LiveKit's name is the fallback when the backend sent none (it is "User <identity>" from the SDK hook otherwise)
       const lkName = p.name && !p.name.startsWith("User ") ? p.name : undefined;
       if (m) byId.set(userId, { ...m, ...live, name: m.name ?? lkName });

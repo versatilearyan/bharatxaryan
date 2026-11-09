@@ -187,20 +187,31 @@ function EmailInput({ id, value, onChange, invalid, autoFocus }: { id: string; v
   );
 }
 
+/** When the server's Retry-After (on a 429) ends, as a time on this device; 0 for any other error. */
+const blockedUntil = (e: unknown) => (e instanceof ApiError && e.status === 429 ? Date.now() + (e.retryAfterSeconds ?? 30) * 1000 : 0);
+const waitText = (until: number) => {
+  const s = Math.max(1, Math.ceil((until - Date.now()) / 1000));
+  return `Too many attempts. Try again in ${s >= 120 ? `${Math.ceil(s / 60)} minutes` : `${s} seconds`}.`;
+};
+
 /** Ask for a code; shared by the main screen and the email screen. */
 function useSendCode(onCodeSent: (email: string, resendIn: number, message: string) => void) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const waitUntil = useRef(0);
   const send = async (email: string) => {
     if (busy) return;
     const err = emailError(email);
     setError(err);
     if (err) return;
+    // Told to wait (429): no call until that time has passed
+    if (Date.now() < waitUntil.current) return setError(waitText(waitUntil.current));
     setBusy(true);
     try {
       const r = await requestEmailCode(email);
       onCodeSent(r.email, r.resendIn, r.message);
     } catch (e) {
+      waitUntil.current = blockedUntil(e);
       setError(messageOf(e, "Couldn't send the code. Try again."));
       setBusy(false);
     }
@@ -319,6 +330,7 @@ function OtpStep({ email, sentNote, resendAt, setResendAt, onChangeEmail, onBack
   const [error, setError] = useState("");
   const [note, setNote] = useState(sentNote);
   const [resending, setResending] = useState(false);
+  const verifyWaitUntil = useRef(0);
   const [now, setNow] = useState(() => Date.now());
   const left = Math.max(0, Math.ceil((resendAt - now) / 1000));
 
@@ -331,6 +343,8 @@ function OtpStep({ email, sentNote, resendAt, setResendAt, onChangeEmail, onBack
   const verify = async (value = code) => {
     if (state !== "idle") return;
     if (!/^\d+$/.test(value) || value.length < OTP_LENGTH) return setError(`Enter all ${OTP_LENGTH} digits`);
+    // Told to wait (429): no call until that time has passed
+    if (Date.now() < verifyWaitUntil.current) return setError(waitText(verifyWaitUntil.current));
     setError("");
     setNote("");
     setState("verifying");
@@ -340,6 +354,7 @@ function OtpStep({ email, sentNote, resendAt, setResendAt, onChangeEmail, onBack
       onVerified(user);
     } catch (e) {
       setState("idle");
+      verifyWaitUntil.current = blockedUntil(e);
       // Wrong, expired or too many tries: the backend's message says which
       setError(messageOf(e, "Couldn't verify the code. Try again."));
     }
@@ -356,6 +371,12 @@ function OtpStep({ email, sentNote, resendAt, setResendAt, onChangeEmail, onBack
       setCode("");
       setNote(r.message || "We sent a new code.");
     } catch (e) {
+      // Told to wait (429): the Resend countdown shows it, and there's no call until it ends
+      const until = blockedUntil(e);
+      if (until) {
+        setResendAt(until);
+        setNow(Date.now());
+      }
       setError(messageOf(e, "Couldn't send a new code. Try again."));
     }
     setResending(false);

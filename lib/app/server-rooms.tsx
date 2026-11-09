@@ -18,7 +18,7 @@ import { publicRoomId } from "./public-ids";
 import type { VipProfileFields } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { closeRoom, getPublicRooms, leaveRoom, roomErrorText, type VoiceRoom, type VoiceRoomType } from "@/lib/api/voice-rooms";
+import { closeRoom, getPublicRooms, getRoomById, isOpenRoom, leaveRoom, roomErrorText, type VoiceRoom, type VoiceRoomType } from "@/lib/api/voice-rooms";
 import { useMe } from "./me-store";
 import { ME_ID, useApp } from "./store";
 import type { Cover, CoverMotif, CoverTheme, Gender, NameFont, Room, RoomSettings, RoomType } from "./types";
@@ -97,7 +97,8 @@ export function toAppRoom(v: VoiceRoom, myId: string | undefined, prefs: ServerR
     password: v.hasPassword ? SERVER_PASSWORD_MARK : undefined,
     members: v.memberCount ?? 0,
     fans: v.fanCount,
-    seats: Math.max(2, Math.min(12, prefs.seats ?? Math.min(v.maxParticipants ?? 10, 10))),
+    // Fixed by the room's mode: 12 in a YouTube room, 10 otherwise (the server decides the same way)
+    seats: v.roomType === "WATCH" ? 12 : 10,
     vip: false,
     live: true,
     isPrivate: v.isPrivate,
@@ -148,8 +149,34 @@ function readPrefs(): Record<string, ServerRoomPrefs> {
   }
 }
 
+/**
+ * The room you're in, for this tab only: a refresh, or Android reloading a
+ * discarded tab, brings you back. Exit removes it, so you never come back to a
+ * room you left, and a tab you closed doesn't have it. The mic stays off after a reload.
+ */
+const ACTIVE_ROOM_KEY = "panchayat.activeRoom";
+/** Longer away than this and coming back into a live call would be a surprise. */
+const RESUME_WITHIN_MS = 5 * 60_000;
+
+function readActiveRoom(): { id: string; at: number } | null {
+  try {
+    const saved = JSON.parse(window.sessionStorage.getItem(ACTIVE_ROOM_KEY) ?? "null") as { id?: unknown; at?: unknown } | null;
+    return saved && typeof saved.id === "string" && typeof saved.at === "number" ? { id: saved.id, at: saved.at } : null;
+  } catch {
+    return null;
+  }
+}
+function writeActiveRoom(id: string | null) {
+  try {
+    if (id) window.sessionStorage.setItem(ACTIVE_ROOM_KEY, JSON.stringify({ id, at: Date.now() }));
+    else window.sessionStorage.removeItem(ACTIVE_ROOM_KEY);
+  } catch {
+    /* storage unavailable: a refresh just doesn't bring you back */
+  }
+}
+
 export function ServerRoomsProvider({ children }: { children: ReactNode }) {
-  const { session, setServerRooms, activeRoomId, roomById, toast, leaveRoom: exitRoom } = useApp();
+  const { session, setServerRooms, activeRoomId, roomById, toast, enterRoom, leaveRoom: exitRoom } = useApp();
   const me = useMe();
   const myId = me.profile.data?.id !== undefined ? String(me.profile.data.id) : undefined;
   const [list, setList] = useState<ListState>({ status: "idle", error: "", rooms: [], loadedAt: 0 });
@@ -267,6 +294,48 @@ export function ServerRoomsProvider({ children }: { children: ReactNode }) {
         void refresh();
       });
   }, [activeRoomId, roomById, refresh, toast, unpin]);
+
+  // Back after a refresh: enter the room you were in, once the room list has answered (or failed)
+  const resumeChecked = useRef(false);
+  useEffect(() => {
+    if (resumeChecked.current || !signedIn || list.status === "idle" || list.status === "loading") return;
+    resumeChecked.current = true;
+    const saved = readActiveRoom();
+    if (!saved || activeServerId) return;
+    if (Date.now() - saved.at > RESUME_WITHIN_MS) {
+      writeActiveRoom(null);
+      return;
+    }
+    const enter = () => enterRoom(`${SERVER_ROOM_PREFIX}${saved.id}`);
+    if (list.rooms.some((r) => r.id === saved.id)) {
+      enter();
+      return;
+    }
+    // Private rooms aren't in the public list
+    getRoomById(saved.id)
+      .then((v) => {
+        if (!isOpenRoom(v)) throw new Error("closed");
+        setPinned((p) => ({ ...p, [v.id]: v }));
+        enter();
+      })
+      .catch(() => writeActiveRoom(null));
+  }, [signedIn, list.status, list.rooms, activeServerId, enterRoom]);
+
+  // Kept up to date, including the moment you go to another app or lock the phone
+  useEffect(() => {
+    if (!resumeChecked.current) return;
+    writeActiveRoom(activeServerId);
+    if (!activeServerId) return;
+    const stamp = () => {
+      if (document.visibilityState === "hidden") writeActiveRoom(activeServerId);
+    };
+    document.addEventListener("visibilitychange", stamp);
+    window.addEventListener("pagehide", stamp);
+    return () => {
+      document.removeEventListener("visibilitychange", stamp);
+      window.removeEventListener("pagehide", stamp);
+    };
+  }, [activeServerId]);
 
   const [closing, setClosing] = useState(false);
   const closingRef = useRef(false);

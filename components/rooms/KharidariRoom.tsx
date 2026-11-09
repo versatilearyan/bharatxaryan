@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Crown, Gavel, Mic, MicOff, Plus, Timer, Volume2, VolumeX } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
-import { GiftPanel } from "@/components/gifts/GiftPanel";
+import { GiftPanel } from "@/components/gifts/LazyGiftPanel";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin, IconButton } from "@/components/ui/kit";

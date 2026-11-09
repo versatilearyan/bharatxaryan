@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AudioPresets, ConnectionError, ConnectionErrorReason, ConnectionState, DisconnectReason, MediaDeviceFailure, Room, RoomEvent, Track, type LocalTrackPublication, type Participant, type RemoteTrack, type RemoteTrackPublication } from "livekit-client";
 import { joinRoom, roomErrorText } from "@/lib/api/voice-rooms";
+import { reportVoiceMetric } from "@/lib/api/voice-metrics";
 
 /**
  * Real voice for a backend room over LiveKit.
@@ -16,6 +17,17 @@ import { joinRoom, roomErrorText } from "@/lib/api/voice-rooms";
  *    stops the mic track, removes the audio elements and all listeners.
  *
  * Status is "connected" only after room.connect() has finished.
+ *
+ * Staying connected: while a connection is alive the SDK does its own ICE
+ * restarts and reconnects (TURN comes from the server's ICE list and is only
+ * chosen when direct UDP fails). This file adds nothing to that. Only when the
+ * SDK has given up, or the first connect fails, does it ask the backend for a
+ * fresh token and connect the same Room again, a limited number of times, and
+ * only for failures that can get better. Then it stops and offers Retry.
+ *
+ * What a web page can't do: when Android suspends or kills the browser, nothing
+ * here runs, and a service worker can't hold a microphone or a call. The call
+ * comes back when the page does (see deploy/STABILITY_AUDIT.md).
  */
 export type VoiceStatus = "idle" | "joining" | "connecting" | "connected" | "reconnecting" | "disconnected" | "error";
 
@@ -31,6 +43,71 @@ export type VoicePerson = {
   /** "Title — Artist" when they're playing a song into the room. */
   music?: string;
 };
+
+/** The participant states the rooms work with. LEFT is when this hook is gone: you pressed Exit. */
+export type VoiceParticipantState = "CONNECTING" | "CONNECTED" | "RECONNECTING" | "DISCONNECTED" | "LEFT";
+
+export function voiceParticipantState(status: VoiceStatus): VoiceParticipantState {
+  if (status === "connected") return "CONNECTED";
+  if (status === "reconnecting") return "RECONNECTING";
+  if (status === "disconnected" || status === "error") return "DISCONNECTED";
+  return "CONNECTING";
+}
+
+/** Waits before each new connection after the SDK gave up: about a minute, then Retry. */
+const RECOVERY_DELAYS_MS = [1000, 2000, 4000, 8000, 15000, 30000];
+/** Back in the call after this long away: tell the backend, which may have counted you as gone. */
+const REANNOUNCE_AFTER_MS = 45_000;
+/** How long to wait for the server's permission to talk after taking a seat. */
+const PERMISSION_WAIT_MS = 4000;
+
+/** The SDK ended the call and trying again wouldn't help (or isn't wanted). */
+const FINAL_DISCONNECTS = new Set<DisconnectReason | undefined>([
+  DisconnectReason.CLIENT_INITIATED,
+  DisconnectReason.DUPLICATE_IDENTITY,
+  DisconnectReason.PARTICIPANT_REMOVED,
+  DisconnectReason.ROOM_DELETED,
+]);
+
+/** Which way the audio is really going, from the browser's selected ICE pair. No addresses are read out. */
+async function mediaPath(room: Room): Promise<string> {
+  try {
+    const pc = room.engine?.pcManager;
+    for (const transport of [pc?.subscriber, pc?.publisher]) {
+      const stats = await transport?.getStats();
+      if (!stats) continue;
+      let pairId: string | undefined;
+      stats.forEach((s: { type: string; selectedCandidatePairId?: string }) => {
+        if (s.type === "transport" && s.selectedCandidatePairId) pairId = s.selectedCandidatePairId;
+      });
+      const pair = pairId ? stats.get(pairId) : undefined;
+      const local = pair ? stats.get(pair.localCandidateId) : undefined;
+      if (!local) continue;
+      if (local.candidateType === "relay") return `turn_${local.relayProtocol ?? "udp"}`;
+      return `direct_${local.protocol ?? "udp"}`;
+    }
+  } catch {
+    /* only a measurement */
+  }
+  return "unknown";
+}
+
+/** Resolves when you may publish, or after the wait (the SDK then says why it can't). */
+function waitForPublishPermission(room: Room) {
+  if (room.localParticipant.permissions?.canPublish !== false) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      room.off(RoomEvent.ParticipantPermissionsChanged, onChange);
+      resolve();
+    };
+    const onChange = () => {
+      if (room.localParticipant.permissions?.canPublish) done();
+    };
+    const timer = setTimeout(done, PERMISSION_WAIT_MS);
+    room.on(RoomEvent.ParticipantPermissionsChanged, onChange);
+  });
+}
 
 /** Songs go into the call as their own audio track named "music:<title>". */
 const MUSIC_PREFIX = "music:";
@@ -58,6 +135,8 @@ function musicStream(el: HTMLAudioElement) {
 
 export type LiveVoice = {
   status: VoiceStatus;
+  /** The backend has you in the room. Chat, seats and the rest don't wait for the voice connection. */
+  joined: boolean;
   error: string;
   /** The server took you out of this room (kick or ban): the call ended and joining again is refused. */
   removed: boolean;
@@ -123,6 +202,11 @@ function snapshot(room: Room): VoicePerson[] {
 /** `serverRoomId` is the backend room id, or null for local sample rooms (then nothing connects). */
 export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
   const [status, setStatus] = useState<VoiceStatus>("idle");
+  const [joined, setJoined] = useState(false);
+  /** The room the backend has let you into, across a manual Retry. */
+  const joinedRoom = useRef<string | null>(null);
+  /** You had your mic on: a new connection after a drop turns it back on. */
+  const wantMic = useRef(false);
   const [error, setError] = useState("");
   const [removed, setRemoved] = useState(false);
   const [people, setPeople] = useState<VoicePerson[]>([]);
@@ -143,8 +227,26 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
     let cancelled = false;
     // A new connection: no song is going out on it yet
     musicPub.current = null;
-    const room = new Room({ adaptiveStream: false, dynacast: false, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    // disconnectOnPageLeave: by default the SDK ends the call on pagehide and on Chrome's
+    // "freeze" event, which Android fires when you switch apps, and it stays ended.
+    // Unmounting (Exit) still disconnects, and a page that's gone is dropped by the server.
+    const room = new Room({ adaptiveStream: false, dynacast: false, disconnectOnPageLeave: false, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
     roomRef.current = room;
+    if (joinedRoom.current !== serverRoomId) {
+      joinedRoom.current = null;
+      wantMic.current = false;
+    }
+    let recoveries = 0;
+    let recoveryTimer: ReturnType<typeof setTimeout> | undefined;
+    let connecting = false;
+    /** The call is down: since when, to measure the reconnect. */
+    let droppedAt = 0;
+    /** Gave up and offered Retry; coming back online or to the page tries again once. */
+    let gaveUp = false;
+    /** The backend or LiveKit said no (kicked, full, wrong password...): stays ended until Retry. */
+    let refused = false;
+    const openedAt = performance.now();
+    let joinReported = false;
     // Hidden <audio> elements for everyone else's voice
     const audioBox = document.createElement("div");
     audioBox.style.display = "none";
@@ -153,7 +255,9 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
 
     const sync = () => {
       if (cancelled) return;
-      setPeople(snapshot(room));
+      // Speaking changes arrive many times a second with 20 people: only a real change re-renders the room
+      const next = snapshot(room);
+      setPeople((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
       setMicOn(room.localParticipant.isMicrophoneEnabled);
     };
     const applySpeaker = () => {
@@ -193,61 +297,195 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       .on(RoomEvent.MediaDevicesError, (e: Error) => !cancelled && setError(micErrorText(e)))
       .on(RoomEvent.ConnectionStateChanged, (s: ConnectionState) => {
         if (cancelled) return;
-        if (s === ConnectionState.Reconnecting || s === ConnectionState.SignalReconnecting) setStatus("reconnecting");
-        else if (s === ConnectionState.Connected) {
+        if (s === ConnectionState.Reconnecting || s === ConnectionState.SignalReconnecting) {
+          if (!droppedAt) droppedAt = performance.now();
+          setStatus("reconnecting");
+        } else if (s === ConnectionState.Connected) {
           setStatus("connected");
           setError("");
+          const away = droppedAt ? performance.now() - droppedAt : 0;
+          droppedAt = 0;
+          if (away) reportVoiceMetric({ name: "reconnect", ms: Math.round(away) });
+          void mediaPathSoon();
+          // The SDK got back on its own after a long time: the backend may have counted you as gone.
+          // (A new connection from recover() has just told it.)
+          if (away > REANNOUNCE_AFTER_MS && !connecting) void joinRoom(serverRoomId).catch(failJoin);
         }
       })
       .on(RoomEvent.Disconnected, (reason?: DisconnectReason) => {
-        if (cancelled) return;
+        if (cancelled || refused) return;
         if (reason === DisconnectReason.PARTICIPANT_REMOVED) setRemoved(true);
-        setStatus("disconnected");
         setMicOn(false);
-        setError(disconnectText(reason));
         sync();
+        if (FINAL_DISCONNECTS.has(reason)) {
+          droppedAt = 0;
+          setStatus("disconnected");
+          setError(disconnectText(reason));
+          return;
+        }
+        // The SDK has used up its own reconnects
+        if (!droppedAt) droppedAt = performance.now();
+        scheduleRecovery(disconnectText(reason));
       });
 
-    (async () => {
-      setStatus("joining");
-      setRemoved(false);
-      setError("");
-      setPeople([]);
-      setMicOn(false);
+    const mediaPathSoon = async () => {
+      // The browser picks its ICE pair a moment after the call is up
+      await new Promise((r) => setTimeout(r, 2000));
+      if (!cancelled && room.state === ConnectionState.Connected) reportVoiceMetric({ name: "media_path", path: await mediaPath(room) });
+    };
+
+    /** The backend refused you (not a dropped network): nothing is retried. */
+    const failJoin = (e: unknown) => {
+      if (cancelled || !(e instanceof Error && e.name === "ApiError")) return;
+      const status = (e as Error & { status?: number }).status ?? 0;
+      if (status === 0 || status >= 500) return;
+      // 403 on join: kicked or banned from this room
+      if (status === 403) setRemoved(true);
+      refused = true;
+      setStatus("error");
+      setError(roomErrorText(e, "join"));
+      room.disconnect(true).catch(() => {});
+    };
+
+    const stopRecovering = (message: string) => {
+      gaveUp = true;
+      setStatus("disconnected");
+      setError(message);
+      reportVoiceMetric({ name: "reconnect_gave_up", reason: "dropped" });
+    };
+
+    const scheduleRecovery = (message: string) => {
+      if (cancelled || connecting || recoveryTimer) return;
+      gaveUp = false;
+      setStatus("reconnecting");
+      // Offline: nothing can work, so no attempts are used until the browser says it's back (below)
+      if (navigator.onLine === false) return;
+      if (recoveries >= RECOVERY_DELAYS_MS.length) {
+        stopRecovering(message);
+        return;
+      }
+      recoveryTimer = setTimeout(() => {
+        recoveryTimer = undefined;
+        void connectNow(message);
+      }, RECOVERY_DELAYS_MS[recoveries]);
+      recoveries += 1;
+    };
+
+    /** One connection: a fresh token from the backend, then the same Room connects again. */
+    const connectNow = async (message: string) => {
+      if (cancelled || connecting) return;
+      connecting = true;
       try {
-        // Wait a tick so a mount that is undone straight away (React strict mode) never asks for a token
-        await new Promise((r) => setTimeout(r, 0));
-        if (cancelled) return;
         const join = await joinRoom(serverRoomId);
         if (cancelled) return;
-        setStatus("connecting");
+        joinedRoom.current = serverRoomId;
+        setJoined(true);
+        if (!joinReported) {
+          joinReported = true;
+          reportVoiceMetric({ name: "room_join", ms: Math.round(performance.now() - openedAt) });
+        }
+        if (!droppedAt) setStatus("connecting");
+        const started = performance.now();
         // The server URL comes from the join response, never from the backend's own address
         await room.connect(join.serverUrl, join.token, { autoSubscribe: true });
         if (cancelled) {
           await room.disconnect();
           return;
         }
+        reportVoiceMetric({ name: "voice_connect", ms: Math.round(performance.now() - started) });
+        connecting = false;
+        recoveries = 0;
+        gaveUp = false;
         setStatus("connected");
+        setError("");
         setCanPlayAudio(room.canPlaybackAudio);
+        // Still inside the tap that opened the room on most browsers: start sound now if it's allowed
+        if (!room.canPlaybackAudio) room.startAudio().catch(() => {});
         sync();
+        if (wantMic.current) {
+          // Your mic was on before the drop. If you lost your seat meanwhile, the room turns it off again.
+          room.localParticipant.setMicrophoneEnabled(true).catch(() => {}).finally(sync);
+        }
       } catch (e) {
+        connecting = false;
         if (cancelled) return;
-        // 403 on join: kicked or banned from this room
-        if (e instanceof Error && e.name === "ApiError" && (e as Error & { status?: number }).status === 403) setRemoved(true);
-        setStatus("error");
-        setError(
-          e instanceof Error && e.name === "ApiError"
-            ? roomErrorText(e, "join")
-            : e instanceof ConnectionError && e.reason === ConnectionErrorReason.NotAllowed
-              ? // LiveKit refused the token the backend made (wrong API key/secret or project)
-                "The voice server didn't accept this room's access. Try again later."
-              : "Couldn't connect to voice. Check your connection and try again.",
-        );
+        const isApi = e instanceof Error && e.name === "ApiError";
+        const apiStatus = isApi ? ((e as Error & { status?: number }).status ?? 0) : 0;
+        if (isApi && apiStatus !== 0 && apiStatus < 500) {
+          reportVoiceMetric({ name: "connect_failed", reason: "not_allowed" });
+          failJoin(e);
+          return;
+        }
+        if (e instanceof ConnectionError && e.reason === ConnectionErrorReason.NotAllowed) {
+          // LiveKit refused the token the backend made (wrong API key/secret or project)
+          reportVoiceMetric({ name: "connect_failed", reason: "not_allowed" });
+          refused = true;
+          setStatus("error");
+          setError("The voice server didn't accept this room's access. Try again later.");
+          return;
+        }
+        reportVoiceMetric({ name: "connect_failed", reason: isApi ? (apiStatus >= 500 ? "server" : "network") : e instanceof ConnectionError && e.reason === ConnectionErrorReason.Timeout ? "timeout" : "network" });
+        if (!droppedAt) droppedAt = performance.now();
+        scheduleRecovery(isApi ? roomErrorText(e, "join") : message);
+      } finally {
+        connecting = false;
       }
-    })();
+    };
+
+    /** The network or the page came back: try now instead of waiting out the delay. */
+    const resume = () => {
+      if (cancelled || connecting || refused) return;
+      if (room.state === ConnectionState.Connected || room.state === ConnectionState.Reconnecting || room.state === ConnectionState.SignalReconnecting) return;
+      // A call that ended for a final reason, or was refused, stays ended
+      if (!droppedAt || (!recoveryTimer && !gaveUp && navigator.onLine === false)) return;
+      if (recoveryTimer) clearTimeout(recoveryTimer);
+      recoveryTimer = undefined;
+      if (gaveUp) recoveries = 0;
+      gaveUp = false;
+      setStatus("reconnecting");
+      void connectNow(disconnectText());
+    };
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (!room.canPlaybackAudio) room.startAudio().catch(() => {});
+      resume();
+    };
+    /** Sound blocked by the browser: the next tap anywhere is allowed to start it. */
+    const onTap = () => {
+      if (!room.canPlaybackAudio) room.startAudio().catch(() => {});
+    };
+    window.addEventListener("online", resume);
+    document.addEventListener("visibilitychange", onVisible);
+    document.addEventListener("pointerdown", onTap, { passive: true });
+
+    // Tells Android this page is playing a call. It can help the browser keep it going; it promises nothing.
+    if ("mediaSession" in navigator && typeof MediaMetadata !== "undefined") {
+      navigator.mediaSession.metadata = new MediaMetadata({ title: "Voice room", artist: "Panchayat" });
+      navigator.mediaSession.playbackState = "playing";
+    }
+
+    const opening = setTimeout(() => {
+      setStatus(joinedRoom.current === serverRoomId ? "connecting" : "joining");
+      setRemoved(false);
+      setError("");
+      setPeople([]);
+      setMicOn(false);
+      void connectNow(disconnectText());
+      // Wait a tick so a mount that is undone straight away (React strict mode) never asks for a token
+    }, 0);
+    setJoined(joinedRoom.current === serverRoomId);
 
     return () => {
       cancelled = true;
+      clearTimeout(opening);
+      if (recoveryTimer) clearTimeout(recoveryTimer);
+      window.removeEventListener("online", resume);
+      document.removeEventListener("visibilitychange", onVisible);
+      document.removeEventListener("pointerdown", onTap);
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.playbackState = "none";
+      }
       roomRef.current = null;
       room.removeAllListeners();
       // Stops the mic track too (stopTracks defaults to true)
@@ -268,10 +506,16 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
     }
     setMicBusy(true);
     try {
+      // Just took a seat: the server's permission to talk may land a moment after the tap
+      if (on) await waitForPublishPermission(room);
+      const started = performance.now();
       await room.localParticipant.setMicrophoneEnabled(on);
+      if (on) reportVoiceMetric({ name: "mic_publish", ms: Math.round(performance.now() - started) });
+      wantMic.current = on;
       setError("");
       return true;
     } catch (e) {
+      if (on) reportVoiceMetric({ name: "connect_failed", reason: MediaDeviceFailure.getFailure(e) === MediaDeviceFailure.PermissionDenied ? "mic_denied" : "mic_other" });
       setError(micErrorText(e));
       return false;
     } finally {
@@ -330,6 +574,9 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 
-  if (!serverRoomId) return null;
-  return { status, error, removed, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry, setMusic, setRemoteMusicMuted };
+  // One object for as long as nothing in it changed, so a re-render above doesn't re-run everything below
+  return useMemo(
+    () => (serverRoomId ? { status, joined, error, removed, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry, setMusic, setRemoteMusicMuted } : null),
+    [serverRoomId, status, joined, error, removed, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry, setMusic, setRemoteMusicMuted],
+  );
 }

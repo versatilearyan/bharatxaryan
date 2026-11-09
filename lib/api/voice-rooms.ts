@@ -84,6 +84,8 @@ export type VoiceRoomParticipant = {
   role?: string;
   /** Muted by a moderator, as stored by the backend. */
   muted?: boolean;
+  /** CONNECTING, CONNECTED or DISCONNECTED (dropped, still in the room for the grace period). */
+  connectionState?: string;
   /** e.g. ACTIVE or LEFT, as the backend sends it. */
   status?: string;
   joinedAt?: string;
@@ -215,6 +217,7 @@ export function readParticipant(raw: unknown): VoiceRoomParticipant | null {
     role: str(pick(PARTICIPANT_FIELDS.role))?.toUpperCase(),
     muted: muted === true || muted === "true" ? true : muted === false || muted === "false" ? false : undefined,
     status: str(pick(PARTICIPANT_FIELDS.status))?.toUpperCase(),
+    connectionState: str(r.connectionState)?.toUpperCase(),
     joinedAt: str(pick(PARTICIPANT_FIELDS.joinedAt)),
   };
 }
@@ -310,7 +313,11 @@ export async function createRoom(payload: CreateVoiceRoomRequest): Promise<Voice
 const roomPasswords = new Map<string, string>();
 export const rememberRoomPassword = (roomId: string, password: string) => roomPasswords.set(roomId, password);
 
+/** Leaves on their way: re-entering a room straight after leaving must not arrive before its own leave. */
+const leaving = new Map<string, Promise<unknown>>();
+
 export async function joinRoom(roomId: string): Promise<JoinVoiceRoomResponse> {
+  await leaving.get(roomId)?.catch(() => {});
   const password = roomPasswords.get(roomId);
   return readJoin(await api<unknown>(`${path(roomId)}/join`, { method: "POST", auth: true, forbiddenIsAccess: true, body: password ? { password } : undefined }));
 }
@@ -397,7 +404,13 @@ export function readRoomInfo(raw: unknown): RoomInfoMessage | null {
 }
 
 export async function leaveRoom(roomId: string): Promise<void> {
-  await api<unknown>(`${path(roomId)}/leave`, { method: "POST", auth: true, forbiddenIsAccess: true });
+  const call = api<unknown>(`${path(roomId)}/leave`, { method: "POST", auth: true, forbiddenIsAccess: true });
+  leaving.set(roomId, call);
+  try {
+    await call;
+  } finally {
+    if (leaving.get(roomId) === call) leaving.delete(roomId);
+  }
 }
 
 export async function closeRoom(roomId: string): Promise<void> {

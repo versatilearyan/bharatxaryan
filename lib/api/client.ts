@@ -36,12 +36,15 @@ export class ApiError extends Error {
   code: ApiErrorCode;
   /** Field → message, when the backend sent validation errors. */
   fields: Record<string, string>;
-  constructor(message: string, status: number, code: ApiErrorCode, fields: Record<string, string> = {}) {
+  /** From a 429's Retry-After header: don't try again for this long. */
+  retryAfterSeconds?: number;
+  constructor(message: string, status: number, code: ApiErrorCode, fields: Record<string, string> = {}, retryAfterSeconds?: number) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.fields = fields;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -60,6 +63,13 @@ type Options = { method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"; body?: un
 /* ---- Sessions: keep the short access token fresh with the refresh token ---- */
 
 let refreshing: Promise<Stored | null> | null = null;
+/** The server said to wait before renewing again (429): no calls until then. */
+let refreshBlockedUntil = 0;
+
+const retryAfterOf = (res: Response) => {
+  const n = Number(res.headers.get("retry-after"));
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+};
 
 async function callRefresh(stale: Stored): Promise<Stored | null> {
   // Another tab may have refreshed while we waited for the lock: use its token
@@ -70,6 +80,8 @@ async function callRefresh(stale: Stored): Promise<Stored | null> {
     clearToken();
     return null;
   }
+  const waitMs = refreshBlockedUntil - Date.now();
+  if (waitMs > 0) throw new ApiError("Too many attempts. Wait a little and try again.", 429, "http", {}, Math.ceil(waitMs / 1000));
   let res: Response;
   try {
     const headers: Record<string, string> = { Accept: "application/json", "Content-Type": "application/json" };
@@ -83,6 +95,11 @@ async function callRefresh(stale: Stored): Promise<Stored | null> {
     // The session ended (expired, signed out elsewhere, or already used)
     clearToken();
     return null;
+  }
+  if (res.status === 429) {
+    const seconds = retryAfterOf(res) ?? 30;
+    refreshBlockedUntil = Date.now() + seconds * 1000;
+    throw new ApiError("Too many attempts. Wait a little and try again.", 429, "http", {}, seconds);
   }
   const data = (await res.json().catch(() => null)) as { accessToken?: unknown; tokenType?: unknown; refreshToken?: unknown } | null;
   if (!res.ok || !data || typeof data.accessToken !== "string" || !data.accessToken) {
@@ -110,10 +127,28 @@ export async function freshToken(force = false): Promise<Stored | null> {
       refreshing = null;
     });
   }
-  return refreshing;
+  if (force) return refreshing;
+  // Couldn't renew yet (offline, or told to wait), but the token still works: carry on with it
+  return refreshing.catch((e) => {
+    if (isFresh(t, 0)) return t;
+    throw e;
+  });
 }
 
-export async function api<T>(path: string, options: Options = {}): Promise<T> {
+/** The same read already on its way: share its answer instead of asking twice. */
+const inFlightReads = new Map<string, Promise<unknown>>();
+
+export function api<T>(path: string, options: Options = {}): Promise<T> {
+  if ((options.method ?? "GET") !== "GET" || options.body !== undefined || options.headers) return send<T>(path, options);
+  const key = `${options.auth ? 1 : 0}|${options.forbiddenIsAccess ? 1 : 0}|${options.timeoutMs ?? ""}|${path}`;
+  const running = inFlightReads.get(key);
+  if (running) return running as Promise<T>;
+  const call = send<T>(path, options).finally(() => inFlightReads.delete(key));
+  inFlightReads.set(key, call);
+  return call;
+}
+
+async function send<T>(path: string, options: Options): Promise<T> {
   try {
     return await request<T>(path, options);
   } catch (e) {
@@ -184,7 +219,7 @@ async function request<T>(path: string, { method = "GET", body, auth = false, ti
     onUnauthorized?.("rejected");
     throw new ApiError("Your session has ended. Please sign in again.", res.status, res.status === 401 ? "unauthorized" : "forbidden", fields);
   }
-  throw new ApiError(friendly(res.status, message), res.status, res.status === 401 ? "unauthorized" : res.status === 403 ? "forbidden" : "http", fields);
+  throw new ApiError(friendly(res.status, message), res.status, res.status === 401 ? "unauthorized" : res.status === 403 ? "forbidden" : "http", fields, res.status === 429 ? retryAfterOf(res) : undefined);
 }
 
 /** Pull a message and field errors out of the common Spring Boot error shapes. */
