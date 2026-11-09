@@ -43,7 +43,8 @@ export function readGiftEvent(raw: unknown): RoomGiftEvent | null {
   const count = n(d.count);
   const coins = n(d.coins);
   if (!eventId || !roomId || !fromUserId || !toUserId || !giftId || !count || coins === undefined) return null;
-  return { eventId, roomId, fromUserId, toUserId, giftId, count, coins, earned: n(d.earned) ?? 0, roomPoints: n(d.roomPoints) ?? 0, requestId: s(d.requestId) ?? "", senderBalance: n(d.senderBalance) ?? 0 };
+  return { eventId, roomId, fromUserId, toUserId, giftId, count, coins, // What the receiver got: their share plus the lucky coins the server added
+    earned: (n(d.earned) ?? 0) + (n(d.bonus) ?? 0), roomPoints: n(d.roomPoints) ?? 0, requestId: s(d.requestId) ?? "", senderBalance: n(d.senderBalance) ?? 0 };
 }
 
 export const roomGiftsTopic = (roomId: string) => `/topic/voice-rooms/${encodeURIComponent(roomId)}/gifts`;
