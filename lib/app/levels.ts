@@ -61,6 +61,25 @@ export function vipLevel(growth: number, member = true): LevelInfo {
 }
 export const roomLevel = (points: number) => levelFor(points, ROOM_THRESHOLDS);
 
+/**
+ * Voice room levels of backend rooms, from room EXP. Same table as the server (RoomLevels).
+ * A room earns EXP from people spending time in it and from gifts and red packets, up to a daily cap.
+ */
+export const ROOM_LEVEL_TABLE = [
+  { level: 1, exp: 0, members: 1_000, admins: 3, coOwners: 0, cards: 2, background: "" },
+  { level: 2, exp: 8_000, members: 2_000, admins: 4, coOwners: 0, cards: 2, background: "" },
+  { level: 3, exp: 30_000, members: 3_000, admins: 5, coOwners: 0, cards: 2, background: "Club" },
+  { level: 4, exp: 100_000, members: 5_000, admins: 6, coOwners: 0, cards: 2, background: "" },
+  { level: 5, exp: 300_000, members: 7_000, admins: 7, coOwners: 1, cards: 3, background: "Diamonden Party" },
+  { level: 6, exp: 800_000, members: 10_000, admins: 8, coOwners: 1, cards: 3, background: "" },
+  { level: 7, exp: 2_000_000, members: 20_000, admins: 9, coOwners: 1, cards: 4, background: "Stars of a different world" },
+  { level: 8, exp: 4_800_000, members: 30_000, admins: 10, coOwners: 2, cards: 4, background: "" },
+  { level: 9, exp: 11_000_000, members: 40_000, admins: 12, coOwners: 2, cards: 5, background: "Future City" },
+  { level: 10, exp: 24_000_000, members: 50_000, admins: 15, coOwners: 2, cards: 5, background: "Custom background" },
+] as const;
+export const ROOM_EXP_THRESHOLDS: number[] = ROOM_LEVEL_TABLE.map((r) => r.exp);
+export const roomExpLevel = (exp: number) => levelFor(exp, ROOM_EXP_THRESHOLDS);
+
 export const formatPoints = (n: number) =>
   n >= 1_000_000 ? `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}M` : n >= 10_000 ? `${Math.round(n / 1000)}K` : n.toLocaleString("en-IN");
 

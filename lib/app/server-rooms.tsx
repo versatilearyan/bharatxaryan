@@ -106,6 +106,7 @@ export function toAppRoom(v: VoiceRoom, myId: string | undefined, prefs: ServerR
     permanent: prefs.permanent ?? true,
     // Room points from real gifts (the server adds them); the level comes from these
     basePoints: v.points ?? 0,
+    exp: v.exp ?? 0,
     seated: [host],
     createdByMe: mine,
     settings: v.settings as Partial<RoomSettings>,

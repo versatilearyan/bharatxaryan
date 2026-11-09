@@ -17,7 +17,7 @@ import { msUntilExpiry, myUserIdFromToken, readToken } from "@/lib/auth/token";
 import { tagsApi, type ServerTag } from "@/lib/api/room-games";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { CONVERSATIONS, INITIAL_COINS, INITIAL_PROFILE, NOTICES, PEOPLE, ROOMS } from "./data";
-import { GOLD_NAME_VIP, POINTS_PER_COIN, growthFor, roomLevel, vipLevel } from "./levels";
+import { GOLD_NAME_VIP, POINTS_PER_COIN, growthFor, roomExpLevel, roomLevel, vipLevel } from "./levels";
 import { EXP_SOURCES, FRIEND_EXP, TASK_EXP, charmFromCoins, charmInfo, giftEarnings, dayKey, expToNext, sampleCharm, type ExpSource } from "./progress";
 import { GUARD_PER_DAY, MY_SAMPLE_RECEIVED, sampleGuardians, sampleReceived } from "./social";
 import { friendsApi } from "@/lib/api/social";
@@ -358,7 +358,8 @@ function useAppState() {
   const vipPoints = growthFor(vipCoins);
   const vip = useMemo(() => vipLevel(vipPoints, vipActive), [vipActive, vipPoints]);
   const roomPointsOf = useCallback((room: Room) => room.basePoints + (roomPoints[room.id] ?? 0), [roomPoints]);
-  const roomLevelOf = useCallback((room: Room) => roomLevel(roomPointsOf(room)), [roomPointsOf]);
+  // Backend rooms: the level comes from the room's EXP; sample rooms keep the points rule
+  const roomLevelOf = useCallback((room: Room) => (room.server ? roomExpLevel(room.exp ?? 0) : roomLevel(roomPointsOf(room))), [roomPointsOf]);
 
   // From VIP 6 your own rooms become VIP rooms
   /** Rooms from the backend (/api/v1/voice-rooms), set by ServerRoomsProvider. */

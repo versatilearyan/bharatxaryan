@@ -13,7 +13,6 @@ import { muteParticipant, readRoomInfo, roomErrorText, roomInfoTopic, updateRoom
 import { subscribe } from "@/lib/realtime/stomp";
 import { api } from "@/lib/api/client";
 import { readGiftEvent, roomGiftsTopic, sendRoomGift, type RoomGiftEvent } from "@/lib/api/gifts";
-import { roomLevel } from "@/lib/app/levels";
 import { readRoomMedia, roomMediaApi, roomMediaTopic, type RoomMedia, type ServerMode } from "@/lib/api/room-media";
 import type { VideoSync } from "./YouTubePlayer";
 import { SERVER_USER_PREFIX } from "@/lib/app/server-rooms";
@@ -1139,10 +1138,7 @@ export function useRoomSession(room: Room) {
       if (toId === ME_ID) toast(`${nameOf(fromId)} sent you ${giftById(giftId).name}${ev.count > 1 ? ` ×${ev.count}` : ""} · +${charm} charm · +${ev.earned.toLocaleString("en-IN")} coins`, "gold");
       // Room points and level, from the server's total
       if (room.server) {
-        const before = roomLevel(room.basePoints).level;
-        const after = roomLevel(ev.roomPoints).level;
         applyRoomPoints(room.server.id, ev.roomPoints);
-        if (after > before) window.setTimeout(() => toast(`${room.name} reached room level ${after}!`, "gold"), 3000);
       }
     },
     [myServerId, add, addIntimacy, addCharm, trackReceived, playGift, nameOf, toast, room.server, room.basePoints, room.name, applyRoomPoints],

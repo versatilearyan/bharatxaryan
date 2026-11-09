@@ -56,6 +56,8 @@ export type VoiceRoom = {
   fanCount?: number;
   /** Room points from gifts (the room level comes from these). */
   points?: number;
+  /** Room EXP: sets the room level (1 to 10). */
+  exp?: number;
 };
 
 /** What POST /voice-rooms/{id}/join returns: where and how to connect to LiveKit. */
@@ -190,6 +192,7 @@ export function readVoiceRoom(raw: unknown): VoiceRoom | null {
     memberCount: num(r.memberCount),
     fanCount: num(r.fanCount),
     points: num(r.points),
+    exp: num(r.exp),
   };
 }
 
@@ -286,6 +289,36 @@ export function getPublicRooms(): Promise<VoiceRoom[]> {
       listInFlight = null;
     });
   return listInFlight;
+}
+
+/** A room's level and what it earned today (GET /voice-rooms/{id}/level). */
+export type RoomLevelInfo = {
+  exp: number;
+  level: number;
+  levelExp: number;
+  nextExp: number | null;
+  members: number;
+  admins: number;
+  coOwners: number;
+  locked: boolean;
+  today: { voice: number; voiceCap: number; gift: number; giftCap: number; total: number; totalCap: number };
+};
+
+export async function getRoomLevel(roomId: string): Promise<RoomLevelInfo> {
+  const d = (await api<unknown>(`${path(roomId)}/level`, { auth: true, forbiddenIsAccess: true })) as Record<string, unknown> | null;
+  const t = (d?.today ?? {}) as Record<string, unknown>;
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  return {
+    exp: n(d?.exp),
+    level: n(d?.level) || 1,
+    levelExp: n(d?.levelExp),
+    nextExp: d?.nextExp == null ? null : n(d.nextExp),
+    members: n(d?.members),
+    admins: n(d?.admins),
+    coOwners: n(d?.coOwners),
+    locked: d?.locked === true,
+    today: { voice: n(t.voice), voiceCap: n(t.voiceCap), gift: n(t.gift), giftCap: n(t.giftCap), total: n(t.total), totalCap: n(t.totalCap) },
+  };
 }
 
 export async function getRoomById(roomId: string): Promise<VoiceRoom> {

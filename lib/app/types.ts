@@ -84,6 +84,8 @@ export type Room = {
   permanent: boolean;
   /** Room level points earned before this session (sample data). */
   basePoints: number;
+  /** Backend rooms: room EXP (sets the room level 1 to 10). */
+  exp?: number;
   /** People seated when the room opens (host first). */
   seated: string[];
   /** Admins appointed by the owner. Defaults to the first seated person after the owner. */
