@@ -29,6 +29,7 @@ export type ParivarCard = {
   emblem: string;
   color: string;
   logoUrl?: string;
+  frame?: string;
   intro?: string;
   level: number;
   exp: number;
@@ -57,7 +58,7 @@ export type ParivarProfile = ParivarCard & {
   activity?: ParivarFeedItem[];
 };
 
-export type RankRow = { rank: number; id: string; name: string; sign: string; emblem: string; color: string; logoUrl?: string; level: number; score: number; members: number };
+export type RankRow = { rank: number; id: string; name: string; sign: string; emblem: string; color: string; logoUrl?: string; frame?: string; level: number; score: number; members: number };
 export type ParivarApplication = { id: string; userId: string; name: string; avatarUrl?: string; publicId: number; at: string };
 
 const opts = { auth: true, forbiddenIsAccess: true } as const;
@@ -70,7 +71,12 @@ export const parivarApi = {
   list: (q: string, sort: string, page = 0) => api<{ content: ParivarCard[]; totalElements: number }>(`${base}?q=${encodeURIComponent(q)}&sort=${sort}&page=${page}&size=20`, opts),
   ranking: (period: "weekly" | "total") => api<{ rows: RankRow[]; mine: RankRow | null }>(`${base}/ranking?period=${period}`, opts),
   profile: (id: string) => api<ParivarProfile>(`${base}/${id}`, opts),
-  create: (body: { name: string; sign: string; emblem: string; color: string; intro: string; joinMode: "OPEN" | "APPROVAL" }, idem: string) =>
+  uploadLogo: (file: Blob) => {
+    const form = new FormData();
+    form.append("file", file, "logo.jpg");
+    return api<{ path: string; url: string }>(`${base}/logo`, { ...opts, method: "POST", body: form, timeoutMs: 60_000 });
+  },
+  create: (body: { name: string; sign: string; emblem: string; color: string; intro: string; joinMode: "OPEN" | "APPROVAL"; logo?: string }, idem: string) =>
     api<ParivarProfile>(base, { ...opts, method: "POST", body, headers: { "Idempotency-Key": idem } }),
   newKey: key,
   join: (id: string) => api<ParivarProfile>(`${base}/${id}/join`, { ...opts, method: "POST" }),
@@ -80,9 +86,9 @@ export const parivarApi = {
   decide: (id: string, appId: string, accept: boolean) => api<unknown>(`${base}/${id}/applications/${appId}/${accept ? "accept" : "reject"}`, { ...opts, method: "POST" }),
   removeMember: (id: string, userId: string) => api<ParivarProfile>(`${base}/${id}/members/${userId}/remove`, { ...opts, method: "POST" }),
   setRole: (id: string, userId: string, role: ParivarRole) => api<ParivarProfile>(`${base}/${id}/members/${userId}/role`, { ...opts, method: "PUT", body: { role } }),
-  update: (id: string, body: { intro?: string; announcement?: string; joinMode?: "OPEN" | "APPROVAL"; emblem?: string; color?: string }) => api<ParivarProfile>(`${base}/${id}`, { ...opts, method: "PUT", body }),
+  update: (id: string, body: { intro?: string; announcement?: string; joinMode?: "OPEN" | "APPROVAL"; emblem?: string; color?: string; logo?: string }) => api<ParivarProfile>(`${base}/${id}`, { ...opts, method: "PUT", body }),
   donate: (id: string, amount: number) => api<ParivarProfile>(`${base}/${id}/donate`, { ...opts, method: "POST", body: { amount }, headers: { "Idempotency-Key": key() } }),
-  tag: (userId: string) => api<{ id?: string; sign?: string; name?: string; emblem?: string; color?: string }>(`${base}/tag/${userId}`, opts),
+  tag: (userId: string) => api<{ id?: string; sign?: string; name?: string; emblem?: string; color?: string; frame?: string }>(`${base}/tag/${userId}`, opts),
 };
 
 /* ---------- the rest: tasks, shop, Gacha, chests, Kavach, Chori, chat, news, voice ---------- */
@@ -150,7 +156,7 @@ export const parivarExtra = {
   postNews: (id: string, body: { kind: string; title: string; body: string; pinned: boolean; expiresInDays?: number }) => api<unknown>(`${base}/${id}/news`, { ...opts, method: "POST", body }),
   pinNews: (id: string, newsId: string, on: boolean) => api<unknown>(`${base}/${id}/news/${newsId}/pin`, { ...opts, method: "PUT", body: { on } }),
   deleteNews: (id: string, newsId: string) => api<unknown>(`${base}/${id}/news/${newsId}`, { ...opts, method: "DELETE" }),
-  chat: (id: string, after: number) => api<{ messages: ChatMsg[]; prefs: ChatPrefs }>(`${base}/${id}/chat?after=${after}`, opts),
+  chat: (id: string, after: number) => api<{ messages: ChatMsg[]; prefs: ChatPrefs; me?: string }>(`${base}/${id}/chat?after=${after}`, opts),
   send: (id: string, text: string) => api<unknown>(`${base}/${id}/chat`, { ...opts, method: "POST", body: { text } }),
   setPrefs: (id: string, body: Partial<ChatPrefs>) => api<ChatPrefs>(`${base}/${id}/chat/prefs`, { ...opts, method: "PUT", body }),
   voice: (id: string) => api<VoiceInfo>(`${base}/${id}/voice`, opts),

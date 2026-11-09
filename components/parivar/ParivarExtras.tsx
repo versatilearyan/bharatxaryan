@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Pin, Send, Trash2 } from "lucide-react";
+import { CalendarCheck, Check, ChevronDown, ChevronLeft, Gift, MessagesSquare, Pin, Send, Settings2, Smile, Sparkles, Trash2 } from "lucide-react";
+import { Glyph, KIND_GLYPH, Orb, TILE_GLYPH } from "./ParivarUi";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin } from "@/components/ui/kit";
 import { parivarExtra, type ChatMsg, type ChatPrefs, type ChestsInfo, type ChoriInfo, type CheerTier, type GachaInfo, type GachaResult, type KavachInfo, type NewsPost, type ParivarProfile, type ShopItem, type TasksInfo } from "@/lib/api/parivar";
@@ -13,7 +14,7 @@ import { useApp } from "@/lib/app/store";
 const n = (v: number) => v.toLocaleString("en-IN");
 const errText = (e: unknown, fallback = "That didn't work. Try again.") => (e instanceof Error && e.message ? e.message : fallback);
 const RARITY: Record<string, string> = { COMMON: "#b9c0cc", RARE: "#5fb7ff", EPIC: "#c58bff", LEGENDARY: "#ffd36e" };
-const KIND_ICON: Record<string, string> = { COINS: "🪙", FUNDS: "🏛️", CHARM: "✨", CHEST: "🎁", CARD: "🎫", BARRIER: "🛡️", EXP: "⭐" };
+const KIND_ICON: Record<string, string> = {};
 
 export type SheetName = "cheer" | "gacha" | "chests" | "shop" | "kavach" | "chori" | "chat" | null;
 
@@ -79,7 +80,7 @@ function useNow(ms = 1000) {
 
 /* ------------------------------ The tiles on the Parivar page ------------------------------ */
 
-const TILES: { key: Exclude<SheetName, null>; icon: string; label: string; sub: string }[] = [
+const TILES: { key: Exclude<SheetName, null>; icon?: string; label: string; sub: string }[] = [
   { key: "chat", icon: "💬", label: "Family chat", sub: "Talk to your Parivar" },
   { key: "gacha", icon: "🎰", label: "Gacha", sub: "Win coins, charm, chests" },
   { key: "cheer", icon: "📣", label: "Cheer", sub: "Cheer for your Parivar" },
@@ -94,10 +95,8 @@ export function FeatureTiles({ p, onOpen }: { p: ParivarProfile; onOpen: (s: Exc
   return (
     <div className="grid grid-cols-2 gap-2">
       {TILES.map((t) => (
-        <button key={t.key} type="button" onClick={() => onOpen(t.key)} className="flex items-center gap-2.5 rounded-2xl bg-surface p-3 text-left ring-1 ring-line active:scale-[0.98]">
-          <span className="text-[24px]" aria-hidden>
-            {t.icon}
-          </span>
+        <button key={t.key} type="button" onClick={() => onOpen(t.key)} className="flex items-center gap-3 rounded-2xl bg-white/[0.045] p-3 text-left ring-1 ring-white/10 backdrop-blur-sm transition active:scale-[0.98]">
+          <Glyph icon={TILE_GLYPH[t.key]} size={42} />
           <span className="min-w-0">
             <span className="block truncate text-[13px] font-bold text-cream">{t.label}</span>
             <span className="block truncate text-[10.5px] text-muted">{t.sub}</span>
@@ -105,10 +104,8 @@ export function FeatureTiles({ p, onOpen }: { p: ParivarProfile; onOpen: (s: Exc
         </button>
       ))}
       {voice?.enabled ? (
-        <button type="button" onClick={onVoice} className="flex items-center gap-2.5 rounded-2xl bg-surface p-3 text-left ring-1 ring-line active:scale-[0.98]">
-          <span className="text-[24px]" aria-hidden>
-            🎙️
-          </span>
+        <button type="button" onClick={onVoice} className="flex items-center gap-3 rounded-2xl bg-white/[0.045] p-3 text-left ring-1 ring-white/10 backdrop-blur-sm transition active:scale-[0.98]">
+          <Glyph icon={TILE_GLYPH.voice} size={42} />
           <span className="min-w-0">
             <span className="block truncate text-[13px] font-bold text-cream">Voice room</span>
             <span className="block truncate text-[10.5px] text-muted">{voice.roomId ? "Open now" : voice.unlocked ? "Start one" : `Unlocks at level ${voice.minLevel}`}</span>
@@ -224,7 +221,7 @@ export function ShopSheet({ p, open, onClose, onChanged }: Props) {
     setBusy(i.id + pay);
     try {
       await parivarExtra.buy(p.id, i.id, pay);
-      toast(`${i.name} added to the Parivar 🎁`, "gold");
+      toast(`${i.name} added to the Parivar`, "gold");
       void refreshCoins();
       void d.reload();
       void inv.reload();
@@ -260,12 +257,11 @@ export function ShopSheet({ p, open, onClose, onChanged }: Props) {
                   {i.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={i.imageUrl} alt="" className="h-full w-full rounded-xl object-cover" />
-                  ) : i.kind === "GACHA_CARD" ? (
-                    "🎫"
-                  ) : i.kind === "CHEST" ? (
-                    "🎁"
                   ) : (
-                    "🛡️"
+                    (() => {
+                      const G = KIND_GLYPH[i.kind] ?? Gift;
+                      return <G className="h-6 w-6 text-gold" strokeWidth={1.7} />;
+                    })()
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -326,8 +322,8 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
   };
 
   return (
-    <BottomSheet open={open} onClose={() => (won ? setWon(null) : onClose())} title="🎰 Gacha" tall>
-      <div className="px-4 pb-6">
+    <BottomSheet open={open} onClose={() => (won ? setWon(null) : onClose())} title={`${p.name} · Gacha`} tall>
+      <div className="px-4 pb-6" style={{ backgroundImage: "repeating-conic-gradient(from 0deg at 50% 18%, rgba(231,188,114,0.07) 0deg 8deg, transparent 8deg 16deg)" }}>
         {!d.data ? (
           <Loading error={d.error} retry={d.reload} />
         ) : (
@@ -341,55 +337,63 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
             </div>
             {m ? (
               <>
-                <div className="relative mt-3 overflow-hidden rounded-3xl bg-gradient-to-b from-[#4a1d82] via-[#2a1048] to-[#12041f] p-4 text-center ring-1 ring-gold/30">
-                  <div className="pointer-events-none absolute -top-10 left-1/2 h-40 w-40 -translate-x-1/2 rounded-full bg-gold/25 blur-3xl" aria-hidden />
-                  <motion.div className="relative mx-auto grid h-36 w-36 place-items-center rounded-full bg-black/30 text-[64px] ring-2 ring-gold/40" animate={spin ? { rotate: [0, -8, 8, -8, 8, 0], scale: [1, 1.08, 1, 1.08, 1] } : { y: [0, -4, 0] }} transition={spin ? { duration: 1.2 } : { duration: 3, repeat: Infinity }}>
-                    {m.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={m.imageUrl} alt="" className="h-28 w-28 object-contain" />
-                    ) : (
-                      "🎰"
-                    )}
-                    {spin
-                      ? ["🔴", "🟡", "🟢", "🔵", "🟣"].map((c, i) => (
-                          <motion.span key={i} className="absolute text-[18px]" initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0], x: [0, (i - 2) * 26], y: [0, -50 - i * 6] }} transition={{ duration: 1.1, delay: i * 0.1, repeat: Infinity }}>
-                            {c}
-                          </motion.span>
-                        ))
-                      : null}
-                  </motion.div>
-                  <p className="relative mt-3 font-display text-[19px] font-extrabold text-cream">{m.name}</p>
-                  <p className="relative text-[12px] text-cream/70">
-                    {m.freeLeft > 0 ? `${m.freeLeft} free spin${m.freeLeft > 1 ? "s" : ""} today · ` : ""}
-                    {m.cards} card{m.cards === 1 ? "" : "s"} · {n(m.priceFunds)} funds a roll{m.serviceFeeCoins ? ` + ${n(m.serviceFeeCoins)} coins fee` : ""}
-                  </p>
-                  <p className="relative mt-1 text-[11.5px] text-gold">Treasury: {n(d.data.funds)} funds</p>
-                  {m.locked ? (
-                    <p className="relative mt-3 rounded-full bg-black/40 py-2 text-[12.5px] font-bold text-cream/80">🔒 Your Parivar needs level {m.minLevel}</p>
-                  ) : (
-                    <div className="relative mt-3 grid grid-cols-2 gap-2">
-                      <Btn disabled={busy || (!d.data.canRoll && m.freeLeft < 1)} onClick={() => void roll(1)}>
-                        Roll ×1
-                      </Btn>
-                      <Btn disabled={busy || !d.data.canRoll} onClick={() => void roll(10)}>
-                        Roll ×10
-                      </Btn>
-                    </div>
-                  )}
-                  {!m.locked && !d.data.canRoll ? <p className="relative mt-2 text-[11px] text-cream/60">Only free spins for you: spending the Parivar&apos;s funds or cards needs permission from the Mukhiya.</p> : null}
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  <GachaChip icon="funds" label="Funds" value={n(d.data.funds)} />
+                  <GachaChip icon="card" label="Gacha cards" value={n(m.cards)} />
+                  <GachaChip icon="free" label="Free today" value={n(m.freeLeft)} />
                 </div>
 
-                <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">What you can win</p>
-                <ul className="mt-2 space-y-1.5">
+                <div className="relative mt-4">
+                  <div className="pointer-events-none absolute -top-4 left-1/2 z-10 grid h-9 w-9 -translate-x-1/2 place-items-center rounded-full bg-gradient-to-b from-[#f6d899] to-[#b9803a] text-[#2a1a0c] shadow-[0_0_24px_rgba(240,205,130,0.7)] ring-4 ring-ink" aria-hidden>
+                    <Sparkles className="h-4.5 w-4.5" strokeWidth={2} />
+                  </div>
+                  <div className="overflow-hidden rounded-t-[26px] border-x-[4px] border-t-[4px] border-[#c9a45c]/70 bg-gradient-to-b from-white/12 to-white/[0.02] backdrop-blur-sm">
+                    <div className="flex items-center justify-around bg-gradient-to-b from-[#3a1a28] to-[#1d0f19] py-2" aria-hidden>
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <span key={i} className="h-2 w-2 rounded-full bg-[#f6d899] shadow-[0_0_10px_#e7bc72]" style={{ opacity: spin ? (i % 2 ? 1 : 0.4) : 1 }} />
+                      ))}
+                    </div>
+                    <GachaBalls spin={spin} />
+                  </div>
+                  <div className="h-2.5 bg-gradient-to-b from-[#e8c987] via-[#b8893f] to-[#7a5624]" aria-hidden />
+                  <div className="rounded-b-[26px] border-x-[4px] border-b-[4px] border-[#c9a45c]/70 bg-gradient-to-b from-[#2a1320] to-[#150b13] p-3">
+                    <p className="mb-2 text-center font-display text-[13px] font-extrabold tracking-wide text-gold">{m.name}</p>
+                    {m.locked ? (
+                      <p className="rounded-full bg-black/40 py-2.5 text-center text-[12.5px] font-bold text-cream/80">🔒 Your Parivar needs level {m.minLevel}</p>
+                    ) : (
+                      <div className="grid grid-cols-3 gap-2">
+                        <div className="flex flex-col items-center justify-center rounded-2xl bg-black/25 px-1 py-3 text-center ring-1 ring-white/5">
+                          <Glyph icon={CalendarCheck} size={44} tone="mute" />
+                          <span className="mt-1 text-[10.5px] leading-tight font-semibold text-cream/60">{m.freePerDay ? "Free once a day" : "Every roll uses funds"}</span>
+                        </div>
+                        <RollButton label="Roll ×1" sub={m.freeLeft > 0 ? "Free" : `${n(m.priceFunds)} funds`} dot={m.freeLeft > 0} disabled={busy || (!d.data.canRoll && m.freeLeft < 1)} onClick={() => void roll(1)} />
+                        <RollButton label="Roll ×10" sub={`${n(m.priceFunds * 10)} funds`} disabled={busy || !d.data.canRoll} onClick={() => void roll(10)} />
+                      </div>
+                    )}
+                    {m.serviceFeeCoins ? <p className="mt-2 text-center text-[10.5px] text-cream/50">+ {n(m.serviceFeeCoins)} coins service fee per roll</p> : null}
+                    {!m.locked && !d.data.canRoll ? <p className="mt-2 text-center text-[11px] text-cream/55">Only free spins for you: spending funds or cards needs the Mukhiya&apos;s permission.</p> : null}
+                  </div>
+                </div>
+
+                <p className="mt-5 flex items-center gap-2 font-display text-[15px] font-extrabold text-cream"><span className="h-4 w-1 rounded-full bg-gold" aria-hidden />Reward Preview</p>
+                <ul className="mt-3 grid grid-cols-4 gap-2">
                   {m.rewards.map((r, i) => (
-                    <li key={i} className="flex items-center gap-2.5 rounded-xl bg-surface px-3 py-2 ring-1 ring-line">
-                      <span className="text-[18px]" aria-hidden>
-                        {KIND_ICON[r.kind] ?? "🎁"}
+                    <li key={i} className="flex flex-col items-center text-center">
+                      <span className="grid h-[62px] w-[62px] place-items-center rounded-2xl bg-white/[0.06]" style={{ boxShadow: `0 0 0 1.5px ${RARITY[r.rarity] ?? "#e7bc72"}88, inset 0 1px 0 rgba(255,255,255,0.12)` }} aria-hidden>
+                        {r.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={r.imageUrl} alt="" className="h-11 w-11 object-contain" />
+                        ) : (
+                          (() => {
+                            const G = KIND_GLYPH[r.kind] ?? Gift;
+                            return <G className="h-7 w-7" style={{ color: RARITY[r.rarity] ?? "#f0cd82" }} strokeWidth={1.6} />;
+                          })()
+                        )}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold" style={{ color: RARITY[r.rarity] ?? "#fff" }}>
+                      <span className="mt-1 line-clamp-2 text-[10.5px] leading-tight font-semibold" style={{ color: RARITY[r.rarity] ?? "#fff1d5" }}>
                         {r.label}
                       </span>
-                      <span className="text-[11.5px] font-bold text-cream/70">{r.chance}%</span>
+                      <span className="text-[10px] font-bold text-cream/50">{r.chance}%</span>
                     </li>
                   ))}
                 </ul>
@@ -400,31 +404,88 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
 
         <AnimatePresence>
           {won ? (
-            <motion.div className="absolute inset-0 z-20 grid place-items-center bg-black/85 px-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-label="Gacha result">
-              <div className="w-full max-w-[340px] text-center">
-                <p className="font-display text-[22px] font-extrabold text-gold">{won.length > 1 ? "Your rewards" : "You won!"}</p>
-                <div className={`mt-3 grid gap-2 ${won.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
+            <motion.div className="absolute inset-0 z-20 grid place-items-center bg-black/75 px-5" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-label="Gacha result">
+              <motion.div initial={{ scale: 0.8, y: 20 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 240, damping: 20 }} className="relative w-full max-w-[330px] overflow-hidden rounded-[28px] bg-gradient-to-b from-[#2b1a26] to-[#140b12] px-5 pt-6 pb-5 text-center shadow-[0_30px_80px_-10px_rgba(0,0,0,0.9)] ring-1 ring-gold/30">
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#f6d899] to-transparent" aria-hidden />
+                <p className="font-display text-[22px] font-extrabold tracking-tight text-cream">{won.length > 1 ? "Shabaash!" : "You won"}</p>
+                <div className={`mt-3 grid gap-2 ${won.length > 1 ? "grid-cols-3" : "grid-cols-1 justify-items-center"}`}>
                   {won.map((r, i) => (
-                    <motion.div key={i} initial={{ scale: 0.3, opacity: 0, rotate: -10 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} transition={{ delay: i * 0.12, type: "spring", stiffness: 220, damping: 16 }} className="rounded-2xl bg-surface px-3 py-3 ring-2" style={{ boxShadow: `0 0 18px ${RARITY[r.rarity] ?? "#fff"}55`, borderColor: RARITY[r.rarity] }}>
-                      <p className="text-[28px]" aria-hidden>
-                        {KIND_ICON[r.kind] ?? "🎁"}
-                      </p>
-                      <p className="mt-0.5 text-[13px] font-bold" style={{ color: RARITY[r.rarity] ?? "#fff" }}>
-                        {r.label}
-                      </p>
-                      <p className="text-[10.5px] uppercase tracking-wide text-muted">{r.rarity}</p>
+                    <motion.div key={i} initial={{ scale: 0.2, opacity: 0, rotate: -14 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} transition={{ delay: 0.1 + i * 0.1, type: "spring", stiffness: 230, damping: 15 }} className="flex flex-col items-center">
+                      <span className="grid h-[72px] w-[72px] place-items-center rounded-2xl bg-white/[0.06]" style={{ boxShadow: `0 0 0 1.5px ${RARITY[r.rarity] ?? "#e7bc72"}, 0 8px 22px -8px ${RARITY[r.rarity] ?? "#e7bc72"}` }} aria-hidden>
+                        {(() => {
+                          const G = KIND_GLYPH[r.kind] ?? Gift;
+                          return <G className="h-8 w-8" style={{ color: RARITY[r.rarity] ?? "#f0cd82" }} strokeWidth={1.6} />;
+                        })()}
+                      </span>
+                      <span className="mt-1 text-[11.5px] leading-tight font-bold text-cream">{r.label}</span>
                     </motion.div>
                   ))}
                 </div>
-                <Btn className="mt-5 w-full" onClick={() => setWon(null)}>
-                  Great!
-                </Btn>
-              </div>
+                <p className="mt-3 text-[11px] leading-snug text-cream/50">Coins and charm go to your wallet; funds and chests wait in the treasury; Kavach shields the whole Parivar.</p>
+                <button type="button" onClick={() => setWon(null)} className="mt-4 h-12 w-full rounded-full bg-gradient-to-b from-[#f2d189] to-[#c9954a] font-display text-[16px] font-extrabold text-[#2a1a0c] shadow-[0_8px_20px_-8px_rgba(240,205,130,0.7)]">
+                  OK
+                </button>
+              </motion.div>
             </motion.div>
           ) : null}
         </AnimatePresence>
       </div>
     </BottomSheet>
+  );
+}
+
+const BALLS: [string, number, number][] = [
+  ["#c2263f", 18, 86],
+  ["#1f9d6b", 72, 78],
+  ["#d9a032", 128, 86],
+  ["#a24bd6", 184, 80],
+  ["#2f7bd6", 4, 140],
+  ["#1f9d6b", 52, 134],
+  ["#c2263f", 104, 128],
+  ["#d9a032", 156, 134],
+  ["#2f7bd6", 208, 138],
+];
+
+function GachaBalls({ spin }: { spin: boolean }) {
+  return (
+    <div className="relative mx-auto h-[210px] w-[268px]">
+      {BALLS.map(([c, x, y], i) => (
+        <motion.span
+          key={i}
+          className="absolute block"
+          style={{ left: x, top: y }}
+          animate={spin ? { x: [0, i % 2 ? 14 : -14, 0, i % 2 ? -10 : 10, 0], y: [0, -34 - (i % 3) * 8, 6, -20, 0], rotate: [0, 40, -30, 20, 0] } : { y: [0, -2, 0] }}
+          transition={spin ? { duration: 0.7, repeat: Infinity, delay: i * 0.04 } : { duration: 3 + (i % 3) * 0.4, repeat: Infinity, delay: i * 0.1 }}
+        >
+          <Orb color={c} size={58} className="!relative" />
+        </motion.span>
+      ))}
+    </div>
+  );
+}
+
+function GachaChip({ icon, label, value }: { icon: "funds" | "card" | "free"; label: string; value: string }) {
+  const I = icon === "funds" ? KIND_GLYPH.FUNDS : icon === "card" ? KIND_GLYPH.CARD : Gift;
+  return (
+    <div className="rounded-2xl bg-white/[0.05] px-2.5 py-2 ring-1 ring-white/10 backdrop-blur-sm">
+      <p className="flex items-center gap-1 truncate text-[10.5px] font-semibold text-cream/55">
+        <I className="h-3 w-3 text-gold" strokeWidth={1.8} aria-hidden /> {label}
+      </p>
+      <p className="font-display text-[16px] font-extrabold text-gold">{value}</p>
+    </div>
+  );
+}
+
+function RollButton({ label, sub, dot, disabled, onClick }: { label: string; sub: string; dot?: boolean; disabled: boolean; onClick: () => void }) {
+  return (
+    <button type="button" disabled={disabled} onClick={onClick} className="flex flex-col items-center rounded-2xl bg-black/25 px-1 py-2.5 ring-1 ring-white/5 transition active:scale-95 disabled:opacity-45">
+      <span className="relative grid h-[54px] w-[54px] place-items-center rounded-full bg-gradient-to-b from-[#f6d899] to-[#b9803a] text-[#2a1a0c] shadow-[0_8px_18px_-6px_rgba(240,205,130,0.7)] ring-2 ring-[#f6d899]/40">
+        <Sparkles className="h-6 w-6" strokeWidth={2} />
+        {dot ? <span className="absolute top-0 right-0 h-3 w-3 rounded-full bg-coral ring-2 ring-[#241018]" /> : null}
+      </span>
+      <span className="mt-1.5 font-display text-[13px] font-extrabold text-cream">{label}</span>
+      <span className="text-[10px] text-cream/60">{sub}</span>
+    </button>
   );
 }
 
@@ -451,7 +512,7 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
     }
   };
   return (
-    <BottomSheet open={open} onClose={onClose} title="🎁 Chests" tall>
+    <BottomSheet open={open} onClose={onClose} title="Chests" tall>
       <div className="px-4 pb-6">
         {!d.data ? (
           <Loading error={d.error} retry={d.reload} />
@@ -464,9 +525,7 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
                 .filter((c) => c.status === "OPEN")
                 .map((c) => (
                   <li key={c.id} className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-gold/15 to-surface p-3 ring-1 ring-gold/30">
-                    <span className="text-[28px]" aria-hidden>
-                      🎁
-                    </span>
+                    <Glyph icon={Gift} size={46} />
                     <span className="min-w-0 flex-1">
                       <span className="block text-[13.5px] font-bold text-cream">{c.name}</span>
                       <span className="text-[11.5px] text-muted">
@@ -499,9 +558,7 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
                 <ul className="mt-2 space-y-2">
                   {d.data.types.map((t) => (
                     <li key={t.id} className="flex items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line">
-                      <span className="text-[24px]" aria-hidden>
-                        🎁
-                      </span>
+                      <Glyph icon={Gift} size={40} />
                       <span className="min-w-0 flex-1">
                         <span className="block text-[13.5px] font-bold text-cream">{t.name}</span>
                         <span className="text-[11.5px] text-muted">
@@ -524,9 +581,9 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
           {got ? (
             <motion.div className="absolute inset-0 z-20 grid place-items-center bg-black/85 px-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <div className="text-center">
-                <motion.p className="text-[64px]" initial={{ scale: 0.2, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 200, damping: 12 }}>
-                  🎁
-                </motion.p>
+                <motion.div className="mx-auto w-fit" initial={{ scale: 0.2, rotate: -20 }} animate={{ scale: 1, rotate: 0 }} transition={{ type: "spring", stiffness: 200, damping: 12 }}>
+                  <Glyph icon={Gift} size={96} />
+                </motion.div>
                 <p className="mt-2 font-display text-[22px] font-extrabold text-gold">{got.label}</p>
                 <Btn className="mt-5" onClick={() => setGot(null)}>
                   Nice!
@@ -769,53 +826,107 @@ export function ChoriSheet({ p, open, onClose, onChanged }: Props) {
 
 /* ------------------------------ Family chat ------------------------------ */
 
-const BACKGROUNDS: Record<string, string> = { default: "from-[#1c1019] to-[#0f0a10]", chai: "from-[#3a2412] to-[#1a0f08]", raat: "from-[#101a3a] to-[#080b1a]", gulaab: "from-[#3a1230] to-[#1a0818]" };
+const BACKGROUNDS: Record<string, { label: string; cls: string; dot: string }> = {
+  default: { label: "Default", cls: "from-[#1c1019] to-[#0f0a10]", dot: "#2a1a24" },
+  chai: { label: "Chai", cls: "from-[#3a2412] to-[#1a0f08]", dot: "#6b4423" },
+  raat: { label: "Raat", cls: "from-[#101a3a] to-[#080b1a]", dot: "#1d2b66" },
+  gulaab: { label: "Gulaab", cls: "from-[#3a1230] to-[#1a0818]", dot: "#7a2a66" },
+};
+const NAME_COLORS = ["#ffb35c", "#7fe8dc", "#ff8fb1", "#b7a1ff", "#9be37a", "#6fc6ff", "#ffd36e", "#ff8a6e"];
+const colorFor = (id: string | null) => NAME_COLORS[Math.abs([...(id ?? "0")].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7)) % NAME_COLORS.length];
+const EMOJIS = ["🙏", "😂", "👍", "🔥", "❤️", "😍", "🎉", "👏", "😎", "🤝", "🪔", "🏏", "☕", "🎶", "😅", "🥳"];
+const clock = (iso: string) => new Date(iso).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+const dayLabel = (iso: string) => {
+  const d = new Date(iso);
+  const t = new Date();
+  const y = new Date();
+  y.setDate(t.getDate() - 1);
+  if (d.toDateString() === t.toDateString()) return "Today";
+  if (d.toDateString() === y.toDateString()) return "Yesterday";
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: d.getFullYear() === t.getFullYear() ? undefined : "numeric" });
+};
+type Pending = { tmp: string; text: string; at: string };
 
 export function ChatSheet({ p, open, onClose }: Omit<Props, "onChanged">) {
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [prefs, setPrefs] = useState<ChatPrefs>({ muted: false, foldGifts: false, giftSound: true, background: "default" });
+  const [me, setMe] = useState<string | null>(null);
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
   const [settings, setSettings] = useState(false);
+  const [tray, setTray] = useState(false);
+  const [pending, setPending] = useState<Pending[]>([]);
+  const [fresh, setFresh] = useState(0);
+  const [loaded, setLoaded] = useState(false);
   const last = useRef(0);
   const box = useRef<HTMLDivElement>(null);
+  const atBottom = useRef(true);
   const { toast } = useApp();
+
+  const toBottom = useCallback((smooth = true) => {
+    const el = box.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+    setFresh(0);
+  }, []);
 
   const poll = useCallback(async () => {
     try {
       const r = await parivarExtra.chat(p.id, last.current);
       setPrefs(r.prefs);
+      if (r.me) setMe(r.me);
       if (r.messages.length) {
         last.current = r.messages[r.messages.length - 1].id;
-        setMsgs((m) => [...m, ...r.messages.filter((x) => !m.some((y) => y.id === x.id))].slice(-200));
+        setMsgs((m) => {
+          const add = r.messages.filter((x) => !m.some((y) => y.id === x.id));
+          if (add.length && !atBottom.current) setFresh((f) => f + add.filter((x) => x.userId !== r.me).length);
+          return [...m, ...add].slice(-300);
+        });
       }
       setErr("");
     } catch (e) {
       setErr(errText(e, "Couldn't load the chat."));
+    } finally {
+      setLoaded(true);
     }
   }, [p.id]);
+
   useEffect(() => {
     if (!open) return;
     last.current = 0;
     setMsgs([]);
+    setPending([]);
+    setLoaded(false);
+    atBottom.current = true;
     void poll();
-    const t = window.setInterval(() => document.visibilityState === "visible" && void poll(), 4000);
-    return () => window.clearInterval(t);
-  }, [open, poll]);
-  useEffect(() => {
-    box.current?.scrollTo({ top: box.current.scrollHeight });
-  }, [msgs.length]);
+    const t = window.setInterval(() => document.visibilityState === "visible" && void poll(), 3000);
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.clearInterval(t);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open, poll, onClose]);
 
-  const send = async () => {
-    const t = text.trim();
+  useEffect(() => {
+    if (atBottom.current) toBottom(msgs.length > 1);
+  }, [msgs.length, pending.length, toBottom]);
+
+  const send = async (raw?: string) => {
+    const t = (raw ?? text).trim();
     if (!t) return;
-    setText("");
+    if (raw === undefined) setText("");
+    setTray(false);
+    const tmp = `p${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+    atBottom.current = true;
+    setPending((l) => [...l, { tmp, text: t, at: new Date().toISOString() }]);
     try {
       await parivarExtra.send(p.id, t);
       await poll();
     } catch (e) {
       toast(errText(e), "error");
-      setText(t);
+      if (raw === undefined) setText(t);
+    } finally {
+      setPending((l) => l.filter((x) => x.tmp !== tmp));
     }
   };
   const setPref = async (b: Partial<ChatPrefs>) => {
@@ -826,67 +937,197 @@ export function ChatSheet({ p, open, onClose }: Omit<Props, "onChanged">) {
       toast(errText(e), "error");
     }
   };
+
   const bg = BACKGROUNDS[prefs.background] ?? BACKGROUNDS.default;
   const shown = useMemo(() => (prefs.foldGifts ? msgs.filter((m) => !/sent .* to |🎁|🎰/.test(m.text) || m.kind === "TEXT") : msgs), [msgs, prefs.foldGifts]);
 
   return (
-    <BottomSheet open={open} onClose={onClose} title={`💬 ${p.name}`} tall headerRight={<button type="button" onClick={() => setSettings((s) => !s)} className="rounded-full bg-cream/10 px-3 py-1 text-[11.5px] font-bold text-cream">Settings</button>}>
-      <div className={`flex h-[62vh] flex-col bg-gradient-to-b ${bg}`}>
-        {settings ? (
-          <div className="space-y-2 border-b border-line px-4 py-3 text-[13px]">
-            {(
-              [
-                ["muted", "Mute chat notifications"],
-                ["foldGifts", "Fold gift and game messages"],
-                ["giftSound", "Gift sound"],
-              ] as const
-            ).map(([k, label]) => (
-              <label key={k} className="flex items-center justify-between">
-                <span>{label}</span>
-                <input type="checkbox" checked={Boolean(prefs[k])} onChange={(e) => void setPref({ [k]: e.target.checked })} />
-              </label>
+    <AnimatePresence>
+      {open ? (
+        <motion.div className={`absolute inset-0 z-50 flex flex-col bg-gradient-to-b ${bg.cls}`} initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 340, damping: 36 }} role="dialog" aria-modal="true" aria-label={`${p.name} chat`}>
+          <header className="relative z-10 flex items-center gap-2.5 border-b border-white/10 bg-black/35 px-3 pt-3 pb-2.5 backdrop-blur-md">
+            <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full text-cream active:bg-white/10" aria-label="Back">
+              <ChevronLeft className="h-6 w-6" aria-hidden />
+            </button>
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[20px] ring-1 ring-gold/40" style={{ background: `radial-gradient(circle at 30% 25%, ${p.color}cc, ${p.color}33 75%), #1c1b22` }} aria-hidden>
+              {p.emblem}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-display text-[16px] leading-tight font-extrabold text-cream">{p.name}</p>
+              <p className="truncate text-[11.5px] text-cream/55">
+                {n(p.memberCount)} members{prefs.muted ? " · muted" : ""}
+              </p>
+            </div>
+            <button type="button" onClick={() => setSettings((v) => !v)} className={`grid h-10 w-10 place-items-center rounded-full ${settings ? "bg-gold/20 text-gold" : "text-cream active:bg-white/10"}`} aria-label="Chat settings" aria-expanded={settings}>
+              <Settings2 className="h-5 w-5" aria-hidden />
+            </button>
+          </header>
+
+          <AnimatePresence>
+            {settings ? (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute top-[64px] right-3 left-3 z-20 rounded-3xl bg-[#241018]/98 p-4 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.8)] ring-1 ring-gold/25">
+                {(
+                  [
+                    ["muted", "Mute notifications", "No pings from this chat"],
+                    ["foldGifts", "Hide gift and game lines", "Only real messages stay"],
+                    ["giftSound", "Gift sound", "Play a chime on gifts"],
+                  ] as const
+                ).map(([k, label, hint]) => (
+                  <button key={k} type="button" role="switch" aria-checked={Boolean(prefs[k])} onClick={() => void setPref({ [k]: !prefs[k] })} className="flex w-full items-center gap-3 py-2 text-left">
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13.5px] font-semibold text-cream">{label}</span>
+                      <span className="block text-[11px] text-cream/45">{hint}</span>
+                    </span>
+                    <span className={`relative h-6 w-10 shrink-0 rounded-full transition ${prefs[k] ? "bg-gold" : "bg-white/15"}`}>
+                      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${prefs[k] ? "left-[18px]" : "left-0.5"}`} />
+                    </span>
+                  </button>
+                ))}
+                <p className="mt-2 border-t border-white/10 pt-3 text-[11px] font-bold tracking-wide text-cream/50 uppercase">Chat background</p>
+                <div className="mt-2 flex gap-3">
+                  {Object.entries(BACKGROUNDS).map(([k, v]) => (
+                    <button key={k} type="button" onClick={() => void setPref({ background: k })} className="flex flex-col items-center gap-1" aria-label={v.label} aria-pressed={prefs.background === k}>
+                      <span className={`grid h-11 w-11 place-items-center rounded-full ring-2 ${prefs.background === k ? "ring-gold" : "ring-white/10"}`} style={{ background: v.dot }}>
+                        {prefs.background === k ? <Check className="h-4 w-4 text-gold" aria-hidden /> : null}
+                      </span>
+                      <span className="text-[10.5px] text-cream/60">{v.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          <div
+            ref={box}
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+              if (atBottom.current) setFresh(0);
+            }}
+            onClick={() => {
+              setSettings(false);
+              setTray(false);
+            }}
+            className="relative min-h-0 flex-1 overflow-y-auto px-3 py-3"
+            style={{ backgroundImage: "radial-gradient(rgba(231,188,114,0.05) 1px, transparent 1px)", backgroundSize: "22px 22px" }}
+          >
+            {err ? <p className="mb-2 rounded-full bg-coral/15 py-1.5 text-center text-[12px] text-coral">{err}</p> : null}
+            {loaded && !shown.length && !pending.length && !err ? (
+              <div className="mx-auto mt-16 max-w-[260px] text-center">
+                <MessagesSquare className="mx-auto h-10 w-10 text-gold/70" strokeWidth={1.5} aria-hidden />
+                <p className="mt-2 font-display text-[16px] font-extrabold text-cream">No messages yet</p>
+                <p className="mt-1 text-[12.5px] text-cream/55">Say namaste. Everyone in your Parivar talks here.</p>
+              </div>
+            ) : null}
+            {!loaded && !err ? (
+              <div className="space-y-3 pt-2" aria-label="Loading chat">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className={`h-12 animate-pulse rounded-2xl bg-white/[0.06] ${i % 2 ? "ml-auto w-2/3" : "w-3/4"}`} />
+                ))}
+              </div>
+            ) : null}
+
+            {shown.map((m, i) => {
+              const prev = shown[i - 1];
+              const next = shown[i + 1];
+              const newDay = !prev || new Date(prev.at).toDateString() !== new Date(m.at).toDateString();
+              const mine = m.kind === "TEXT" && m.userId === me;
+              const first = !prev || newDay || prev.kind === "SYSTEM" || prev.userId !== m.userId;
+              const lastOfRun = !next || next.kind === "SYSTEM" || next.userId !== m.userId || new Date(next.at).toDateString() !== new Date(m.at).toDateString();
+              return (
+                <div key={m.id}>
+                  {newDay ? (
+                    <div className="my-3 flex justify-center">
+                      <span className="rounded-full bg-black/40 px-3 py-1 text-[11px] font-semibold text-cream/70">{dayLabel(m.at)}</span>
+                    </div>
+                  ) : null}
+                  {m.kind === "SYSTEM" ? (
+                    <p className={`mx-auto my-1.5 w-fit max-w-[88%] rounded-2xl px-3 py-1.5 text-center text-[11.5px] leading-snug ${/won|gift|sent|🎁|🎰/.test(m.text) ? "bg-gold/10 text-gold/90 ring-1 ring-gold/20" : "bg-black/35 text-cream/65"}`}>{m.text}</p>
+                  ) : mine ? (
+                    <div className={`flex justify-end ${first ? "mt-2.5" : "mt-0.5"}`}>
+                      <div className={`max-w-[80%] rounded-2xl bg-gradient-to-br from-[#f2cf8c] to-[#d9a84f] px-3 py-1.5 text-[#2a1a0c] shadow-sm ${lastOfRun ? "rounded-br-md" : ""}`}>
+                        <p className="text-[14px] leading-snug break-words whitespace-pre-wrap">{m.text}</p>
+                        <p className="mt-0.5 text-right text-[10px] text-[#2a1a0c]/55">{clock(m.at)}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className={`flex items-end gap-2 ${first ? "mt-2.5" : "mt-0.5"}`}>
+                      <div className="w-8 shrink-0">
+                        {lastOfRun ? (
+                          m.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={m.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                          ) : (
+                            <span className="grid h-8 w-8 place-items-center rounded-full text-[12px] font-bold text-[#1a0f08]" style={{ background: colorFor(m.userId) }}>
+                              {(m.name ?? "?").slice(0, 1).toUpperCase()}
+                            </span>
+                          )
+                        ) : null}
+                      </div>
+                      <div className={`max-w-[78%] rounded-2xl bg-[#2c2530] px-3 py-1.5 ring-1 ring-white/5 ${lastOfRun ? "rounded-bl-md" : ""}`}>
+                        {first ? (
+                          <p className="text-[12px] font-bold" style={{ color: colorFor(m.userId) }}>
+                            {m.name ?? "Someone"}
+                          </p>
+                        ) : null}
+                        <p className="text-[14px] leading-snug break-words whitespace-pre-wrap text-cream">{m.text}</p>
+                        <p className="mt-0.5 text-right text-[10px] text-cream/40">{clock(m.at)}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {pending.map((x) => (
+              <div key={x.tmp} className="mt-1 flex justify-end">
+                <div className="max-w-[80%] rounded-2xl rounded-br-md bg-gradient-to-br from-[#f2cf8c] to-[#d9a84f] px-3 py-1.5 text-[#2a1a0c] opacity-70">
+                  <p className="text-[14px] leading-snug break-words whitespace-pre-wrap">{x.text}</p>
+                  <p className="mt-0.5 text-right text-[10px] text-[#2a1a0c]/55">Sending…</p>
+                </div>
+              </div>
             ))}
-            <div className="flex gap-2 pt-1">
-              {Object.keys(BACKGROUNDS).map((b) => (
-                <button key={b} type="button" onClick={() => void setPref({ background: b })} className={`rounded-full px-3 py-1 text-[11.5px] font-bold ring-1 ${prefs.background === b ? "bg-gold/20 text-gold ring-gold/50" : "text-cream/70 ring-line"}`}>
-                  {b}
+          </div>
+
+          <AnimatePresence>
+            {fresh > 0 ? (
+              <motion.button initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} type="button" onClick={() => toBottom()} className="absolute right-4 bottom-[84px] z-10 flex items-center gap-1.5 rounded-full bg-gold px-3.5 py-2 text-[12px] font-extrabold text-[#2a1a0c] shadow-lg">
+                <ChevronDown className="h-4 w-4" aria-hidden /> {fresh} new
+              </motion.button>
+            ) : null}
+          </AnimatePresence>
+
+          {tray ? (
+            <div className="grid grid-cols-8 gap-1 border-t border-white/10 bg-black/50 px-3 py-2 backdrop-blur-md">
+              {EMOJIS.map((e) => (
+                <button key={e} type="button" onClick={() => setText((t) => t + e)} className="grid h-9 place-items-center rounded-xl text-[22px] active:bg-white/10">
+                  {e}
                 </button>
               ))}
             </div>
+          ) : null}
+          <div className="flex items-end gap-2 border-t border-white/10 bg-black/45 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+            <button type="button" onClick={() => setTray((v) => !v)} className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${tray ? "bg-gold/20 text-gold" : "bg-white/8 text-cream/80"}`} aria-label="Emoji" aria-expanded={tray}>
+              <Smile className="h-5 w-5" aria-hidden />
+            </button>
+            <input
+              value={text}
+              maxLength={500}
+              onChange={(e) => setText(e.target.value)}
+              onFocus={() => setTray(false)}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && void send()}
+              placeholder="Message your Parivar"
+              className="h-11 min-w-0 flex-1 rounded-full bg-white/10 px-4 text-[14.5px] text-cream placeholder:text-cream/40 focus:ring-1 focus:ring-gold/50 focus:outline-none"
+              aria-label="Message"
+            />
+            <button type="button" onClick={() => void send()} disabled={!text.trim()} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c] transition active:scale-95 disabled:opacity-40" aria-label="Send">
+              <Send className="h-5 w-5" aria-hidden />
+            </button>
           </div>
-        ) : null}
-        <div ref={box} className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 py-3">
-          {err ? <p className="text-center text-[12px] text-coral">{err}</p> : null}
-          {!shown.length && !err ? <p className="py-10 text-center text-[12.5px] text-muted">No messages yet. Say namaste 🙏</p> : null}
-          {shown.map((m) =>
-            m.kind === "SYSTEM" ? (
-              <p key={m.id} className="mx-auto max-w-[90%] rounded-full bg-black/30 px-3 py-1 text-center text-[11.5px] text-cream/70">
-                {m.text}
-              </p>
-            ) : (
-              <div key={m.id} className="flex items-start gap-2">
-                {m.avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={m.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
-                ) : (
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-[#2a1520] text-[12px] font-bold text-white">{(m.name ?? "?").slice(0, 1).toUpperCase()}</span>
-                )}
-                <div className="min-w-0 rounded-2xl rounded-tl-sm bg-surface px-3 py-2 ring-1 ring-line">
-                  <p className="text-[11px] font-bold text-gold">{m.name ?? "Someone"}</p>
-                  <p className="whitespace-pre-wrap break-words text-[13.5px] text-cream">{m.text}</p>
-                </div>
-              </div>
-            ),
-          )}
-        </div>
-        <div className="flex gap-2 border-t border-line p-3">
-          <input value={text} maxLength={500} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && void send()} placeholder="Message your Parivar" className="h-11 min-w-0 flex-1 rounded-full bg-surface px-4 text-[14px] text-cream ring-1 ring-line focus:outline-none focus:ring-gold/50" aria-label="Message" />
-          <button type="button" onClick={() => void send()} disabled={!text.trim()} className="grid h-11 w-11 place-items-center rounded-full bg-gold text-ink disabled:opacity-40" aria-label="Send">
-            <Send className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-    </BottomSheet>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }
 

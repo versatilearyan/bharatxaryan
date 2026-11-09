@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { SignBadge } from "./ParivarFrames";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarCheck, ChevronLeft, Crown, LogOut, Megaphone, Plus, Send, Shield, Trophy, UserPlus, Users } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -25,7 +26,7 @@ export function ParivarEmblem({ p, size = 48 }: { p: Pick<Parivar, "emblem" | "c
   );
 }
 
-type Tag = { id?: string; sign?: string; name?: string; emblem?: string; color?: string };
+type Tag = { id?: string; sign?: string; name?: string; emblem?: string; color?: string; frame?: string };
 const tagCache = new Map<string, { at: number; value: Tag | null }>();
 const tagListeners = new Set<() => void>();
 let tagVersion = 0;
@@ -64,7 +65,6 @@ export function ParivarTag({ personId, className = "" }: { personId: string; cla
   const uid = userIdOfPerson(personId);
   const p = uid ? tagCache.get(uid)?.value : null;
   if (!p || !p.id) return null;
-  const color = p.color ?? "#e7bc72";
   return (
     <button
       type="button"
@@ -72,12 +72,10 @@ export function ParivarTag({ personId, className = "" }: { personId: string; cla
         e.stopPropagation();
         push({ kind: "parivar", id: p.id! });
       }}
-      className={`inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 align-middle text-[10px] font-extrabold leading-none text-white ${className}`}
-      style={{ background: `linear-gradient(90deg, ${color}, ${color}99)` }}
+      className={`inline-flex items-center align-middle ${className}`}
       aria-label={`Parivar ${p.name}`}
     >
-      <span aria-hidden>{p.emblem}</span>
-      {p.sign}
+      <SignBadge sign={p.sign ?? ""} frame={p.frame} size="sm" />
     </button>
   );
 }
