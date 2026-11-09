@@ -5,13 +5,13 @@
  * conversation view, in the same look as the demo chat screens. Data and
  * actions come from lib/app/chat-store.tsx.
  */
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { getRoomById } from "@/lib/api/voice-rooms";
 import { invitePreview, parseInvite } from "@/lib/api/invites";
 import { InviteCard } from "@/components/social/Invites";
 import { OfficialTick, SystemBubble } from "@/components/sarpanch/Sarpanch";
-import { AlertCircle, BellOff, ChevronLeft, ImagePlus, Loader2, MoreVertical, RotateCcw, Send, Users, X } from "lucide-react";
+import { AlertCircle, BellOff, ChevronLeft, ImagePlus, Loader2, MoreVertical, RotateCcw, Send, Smile, Users, X } from "lucide-react";
 import { ChatMenuSheet, GroupInfoSheet, useGroupInfo } from "./ChatGroups";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { IconButton } from "@/components/ui/kit";
@@ -28,6 +28,16 @@ export const SERVER_CONV_PREFIX = "srv-conv:";
 export const isServerChatTarget = (personId: string) => personId.startsWith(SERVER_USER_PREFIX) || personId.startsWith(SERVER_CONV_PREFIX);
 
 const fmt = (at: number) => (Number.isFinite(at) ? new Date(at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "");
+function dayName(iso: number | string) {
+  const d = new Date(iso);
+  const t = new Date();
+  const y = new Date();
+  y.setDate(t.getDate() - 1);
+  if (d.toDateString() === t.toDateString()) return "Today";
+  if (d.toDateString() === y.toDateString()) return "Yesterday";
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: d.getFullYear() === t.getFullYear() ? undefined : "numeric" });
+}
+
 function ago(iso?: string) {
   const at = iso ? Date.parse(iso) : NaN;
   if (!Number.isFinite(at)) return "";
@@ -371,7 +381,7 @@ function Bubble({ m, mine, from }: { m: ChatMessage; mine: boolean; from?: strin
   const invite = image ? null : parseInvite(m.text);
   return (
     <div className={`flex ${mine ? "justify-end" : "justify-start"}`} data-message-id={m.id}>
-      <div className={`max-w-[78%] rounded-3xl ${image || invite ? "p-1.5" : "px-3.5 py-2"} text-[14px] leading-snug ${mine ? "rounded-br-lg bg-coral text-white" : "rounded-bl-lg bg-surface text-cream"}`}>
+      <div className={`max-w-[78%] rounded-3xl ${image || invite ? "p-1.5" : "px-3.5 py-2"} text-[14px] leading-snug shadow-sm ${mine ? "rounded-br-md bg-gradient-to-br from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c]" : "rounded-bl-md bg-[#2c2530] text-cream ring-1 ring-white/5"}`}>
         {from ? <span className={`block text-[11.5px] font-bold text-gold ${image ? "px-2 pt-1" : ""}`}>{from}</span> : null}
         {image ? (
           <ChatImage conversationId={m.conversationId} messageId={m.id} />
@@ -380,7 +390,7 @@ function Bubble({ m, mine, from }: { m: ChatMessage; mine: boolean; from?: strin
         ) : (
           <span className="whitespace-pre-wrap break-words">{m.text ?? ""}</span>
         )}
-        <span className={`ml-2 inline-block translate-y-0.5 text-[10px] ${mine ? "text-white/70" : "text-muted"} ${image ? "px-2" : ""}`}>{fmt(m.at)}</span>
+        <span className={`ml-2 inline-block translate-y-0.5 text-[10px] ${mine ? "text-[#2a1a0c]/55" : "text-cream/40"} ${image ? "px-2" : ""}`}>{fmt(m.at)}</span>
       </div>
     </div>
   );
@@ -476,6 +486,7 @@ export function ServerConversationView({ personId }: { personId: string }) {
   const failedText = pending.find((o) => o.kind === "text" && o.status === "failed");
 
   const [draft, setDraft] = useState("");
+  const [tray, setTray] = useState(false);
   const [busy, setBusy] = useState(false);
   const [pickError, setPickError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
@@ -600,8 +611,15 @@ export function ServerConversationView({ personId }: { personId: string }) {
           const mine = Boolean(chat.myId && m.senderId === chat.myId);
           // Groups: the sender's name over the first of their messages in a row
           const from = group && !mine && messages[i - 1]?.senderId !== m.senderId ? memberName(m.senderId) : undefined;
-          if (m.type === "SYSTEM") return <SystemBubble key={m.id} m={m} />;
-          return <Bubble key={m.id} m={m} mine={mine} from={from} />;
+          const prevAt = messages[i - 1]?.at;
+          const newDay = !prevAt || new Date(prevAt).toDateString() !== new Date(m.at).toDateString();
+          const sep = newDay ? (
+            <div key={`d${m.id}`} className="my-3 flex justify-center">
+              <span className="rounded-full bg-black/40 px-3 py-1 text-[11px] font-semibold text-cream/70">{dayName(m.at)}</span>
+            </div>
+          ) : null;
+          if (m.type === "SYSTEM") return <Fragment key={m.id}>{sep}<SystemBubble m={m} /></Fragment>;
+          return <Fragment key={m.id}>{sep}<Bubble m={m} mine={mine} from={from} /></Fragment>;
         })}
         {typers.length ? (
           <div className="flex justify-start" aria-live="polite">
@@ -669,15 +687,27 @@ export function ServerConversationView({ personId }: { personId: string }) {
         </div>
       ) : (
       <form
-        className="pb-safe border-t border-line bg-ink/95"
+        className="pb-safe border-t border-white/10 bg-black/45 backdrop-blur-md"
         onSubmit={(e) => {
           e.preventDefault();
           void send();
         }}
       >
+        {tray ? (
+          <div className="grid grid-cols-8 gap-1 border-b border-white/10 px-3 py-2">
+            {["🙏", "😂", "👍", "🔥", "❤️", "😍", "🎉", "👏", "😎", "🤝", "🪔", "🏏", "☕", "🎶", "😅", "🥳"].map((e) => (
+              <button key={e} type="button" onClick={() => setDraft((d) => d + e)} className="grid h-9 place-items-center rounded-xl text-[22px] active:bg-white/10">
+                {e}
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="flex items-center gap-2 px-3 py-2.5">
           <IconButton label="Send a photo" onClick={() => fileInput.current?.click()}>
             <ImagePlus className="h-5 w-5" />
+          </IconButton>
+          <IconButton label="Emoji" onClick={() => setTray((v) => !v)}>
+            <Smile className="h-5 w-5" />
           </IconButton>
           <input
             ref={fileInput}
@@ -701,9 +731,9 @@ export function ServerConversationView({ personId }: { personId: string }) {
             aria-label={`Message ${group ? (groupInfo?.name ?? "the group") : name}`}
             maxLength={CHAT_TEXT_MAX}
             disabled={busy || !convId || Boolean(blocked)}
-            className="h-11 min-w-0 flex-1 rounded-full bg-surface px-4 text-[14px] text-cream ring-1 ring-line placeholder:text-muted/70 focus:outline-none focus:ring-gold/40 disabled:opacity-60"
+            className="h-11 min-w-0 flex-1 rounded-full bg-white/10 px-4 text-[14.5px] text-cream placeholder:text-cream/40 focus:ring-1 focus:ring-gold/50 focus:outline-none disabled:opacity-60"
           />
-          <motion.button whileTap={{ scale: 0.9 }} type="submit" disabled={!draft.trim() || busy || !convId || Boolean(blocked)} aria-label="Send" className="grid h-11 w-11 place-items-center rounded-full bg-coral text-white disabled:opacity-40">
+          <motion.button whileTap={{ scale: 0.9 }} type="submit" disabled={!draft.trim() || busy || !convId || Boolean(blocked)} aria-label="Send" className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c] disabled:opacity-40">
             {busy ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Send className="h-[18px] w-[18px]" />}
           </motion.button>
         </div>

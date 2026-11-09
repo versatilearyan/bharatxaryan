@@ -111,14 +111,15 @@ function Shortcuts() {
     },
   ];
   return (
-    <div className="mt-3 flex justify-between px-7">
-      {items.map((it) => (
-        <motion.button key={it.label} type="button" whileTap={{ scale: 0.92 }} onClick={it.onClick} className="flex flex-col items-center gap-2">
-          <span className="relative h-[66px] w-[66px]">
-            {it.art}
-            {it.dot ? <span className="absolute right-0 top-0 h-3 w-3 rounded-full bg-coral ring-2 ring-ink" /> : null}
+    <div className="mt-3 grid grid-cols-3 gap-2.5 px-4">
+      {items.map((it, i) => (
+        <motion.button key={it.label} type="button" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i, type: "spring", stiffness: 260, damping: 24 }} whileTap={{ scale: 0.95 }} onClick={it.onClick} className="relative flex flex-col items-center gap-1.5 overflow-hidden rounded-[22px] bg-gradient-to-b from-white/[0.07] to-white/[0.02] py-3 ring-1 ring-white/10 backdrop-blur-sm">
+          <span aria-hidden className="pointer-events-none absolute -top-8 left-1/2 h-16 w-16 -translate-x-1/2 rounded-full bg-gold/15 blur-2xl" />
+          <span className="relative h-[54px] w-[54px]">
+            <span className="block origin-top-left scale-[0.82]">{it.art}</span>
+            {it.dot ? <span className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-[#0c0b10]" /> : null}
           </span>
-          <span className="text-[13px] font-semibold text-cream">{it.label}</span>
+          <span className="relative text-[12.5px] font-bold tracking-wide text-cream/90">{it.label}</span>
         </motion.button>
       ))}
     </div>

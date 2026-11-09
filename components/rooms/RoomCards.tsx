@@ -73,9 +73,9 @@ export function RoomRow({ room }: { room: Room }) {
       type="button"
       whileTap={{ scale: 0.98 }}
       onClick={() => openRoom(room.id)}
-      className="flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-left transition-colors hover:bg-cream/[0.03]"
+      className="mx-4 my-1.5 flex w-[calc(100%-2rem)] items-center gap-3 rounded-[22px] bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-2.5 pr-3.5 text-left ring-1 ring-white/10 backdrop-blur-sm transition-colors hover:bg-white/[0.05]"
     >
-      <span className="relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-2xl ring-1 ring-line">
+      <span className="relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/15 shadow-[0_8px_20px_-8px_rgba(0,0,0,0.8)]">
         <RoomCover room={room} />
         <span className="absolute bottom-1 left-1">
           <PersonAvatar person={host} size={26} />

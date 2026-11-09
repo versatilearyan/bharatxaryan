@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Check, Crown, Dices, Flame, Gift, MessageCircle, Pencil, Plus, Search, Shield, UsersRound } from "lucide-react";
+import { Camera, Check, Coins, Crown, Dices, Flame, Gift, MessageCircle, Pencil, Plus, Quote, Search, Shield, Sparkles, UsersRound } from "lucide-react";
 import { Glyph } from "./ParivarUi";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin, ScreenHeader } from "@/components/ui/kit";
@@ -12,6 +12,14 @@ import { FRAME_ORDER, FramedPicture, SignBadge, frameName } from "./ParivarFrame
 import { ChatSheet, CheerSheet, ChestsSheet, ChoriSheet, FeatureTiles, GachaSheet, KavachSheet, NewsTab as NewsPanel, ShopSheet, TasksTab, type SheetName } from "./ParivarExtras";
 
 const n = (v: number) => v.toLocaleString("en-IN");
+const ago = (iso: string) => {
+  const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  if (s < 86400 * 7) return `${Math.floor(s / 86400)}d ago`;
+  return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+};
 const errText = (e: unknown, fallback = "That didn't work. Try again.") => (e instanceof Error && e.message ? e.message : fallback);
 const EMBLEMS = ["🪔", "🦚", "👑", "🐘", "🌺", "🏏", "🎵", "🌙", "🔥", "🪷"];
 const COLORS = ["#e7bc72", "#f4515b", "#19c3b2", "#8f6bff", "#ff8a3d", "#3fa7ff", "#ff5c8a", "#6fe0a6"];
@@ -40,9 +48,9 @@ function LevelBadge({ level }: { level: number }) {
 function Avatar({ name, url, size = 36 }: { name: string; url?: string; size?: number }) {
   return url ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={url} alt="" className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />
+    <img src={url} alt="" className="shrink-0 rounded-full object-cover ring-1 ring-gold/35" style={{ width: size, height: size }} />
   ) : (
-    <span className="grid shrink-0 place-items-center rounded-full bg-[#2a1520] font-bold text-white" style={{ width: size, height: size, fontSize: size * 0.4 }}>
+    <span className="grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#5a2a3a] to-[#2a1520] font-bold text-gold ring-1 ring-gold/35" style={{ width: size, height: size, fontSize: size * 0.4 }}>
       {name.slice(0, 1).toUpperCase()}
     </span>
   );
@@ -668,7 +676,7 @@ export function ParivarHome({ id }: { id: string }) {
         ))}
       </div>
 
-      <div className="mx-4 mt-3">
+      <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="mx-4 mt-3">
         {tab === "profile" ? (
           <div className="space-y-4">
             {isMember ? <WeeklyActiveness p={p} info={wk} onChanged={() => { loadExtras(); void load(); }} /> : null}
@@ -716,27 +724,61 @@ export function ParivarHome({ id }: { id: string }) {
 
             <div>
               <SectionTitle>Introduction</SectionTitle>
-              <p className="mt-2 text-[13px] leading-snug whitespace-pre-wrap text-cream/75">{p.intro || "No introduction yet."}</p>
+              <div className="relative mt-2.5 overflow-hidden rounded-3xl bg-white/[0.045] p-4 ring-1 ring-white/10 backdrop-blur-sm">
+                <Quote className="absolute top-3 right-3 h-8 w-8 text-gold/15" aria-hidden />
+                <p className="relative text-[13.5px] leading-relaxed whitespace-pre-wrap text-cream/85">{p.intro || "This Parivar hasn't written an introduction yet."}</p>
+                <div className="relative mt-3 flex items-center gap-2 border-t border-white/10 pt-3 text-[11.5px] text-cream/50">
+                  {(() => {
+                    const lead = p.members.find((m) => m.role === "LEADER");
+                    return lead ? (
+                      <>
+                        <Avatar name={lead.name} url={lead.avatarUrl} size={22} />
+                        <span>
+                          Led by <b className="text-cream/80">{lead.name}</b>
+                        </span>
+                      </>
+                    ) : null;
+                  })()}
+                  <span className="ml-auto">Since {new Date(p.createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</span>
+                </div>
+              </div>
             </div>
 
             {isMember ? (
               <div>
                 <SectionTitle>Activity</SectionTitle>
-                <div className="mt-2">
+                <div className="mt-2.5 overflow-hidden rounded-3xl bg-white/[0.045] ring-1 ring-white/10 backdrop-blur-sm">
                   {!p.activity?.length ? (
-                    <span className="text-[12.5px] text-muted">Nothing yet. Gifts between members and donations show here.</span>
+                    <p className="px-4 py-6 text-center text-[12.5px] text-cream/50">Nothing yet. Gifts between members and donations show here.</p>
                   ) : (
-                    <ul className="space-y-2">
-                      {p.activity.map((a) => (
-                        <li key={a.id} className="flex items-center gap-2.5 text-[12.5px]">
-                          <Avatar name={a.who ?? "?"} url={a.whoAvatar} size={28} />
-                          <span className="min-w-0 flex-1 text-cream/90">
-                            <b>{a.who ?? "Someone"}</b> {a.text}
-                            {a.other ? <> to <b>{a.other}</b></> : null}
-                          </span>
-                          {a.exp > 0 ? <span className="shrink-0 text-[11px] font-bold text-gold">+{n(a.exp)}</span> : null}
-                        </li>
-                      ))}
+                    <ul className="divide-y divide-white/[0.06]">
+                      {p.activity.map((a, i) => {
+                        const kind = `${a.kind} ${a.text}`.toLowerCase();
+                        const Icon = kind.includes("gacha") ? Dices : kind.includes("donat") ? Coins : kind.includes("creat") ? Crown : kind.includes("kavach") || kind.includes("shield") ? Shield : kind.includes("gift") ? Gift : Sparkles;
+                        return (
+                          <motion.li key={a.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }} className="flex items-center gap-3 px-3.5 py-3">
+                            <span className="relative shrink-0">
+                              <Avatar name={a.who ?? "?"} url={a.whoAvatar} size={40} />
+                              <span className="absolute -right-1 -bottom-1 grid h-[18px] w-[18px] place-items-center rounded-full bg-gradient-to-b from-[#f2d595] to-[#b9803a] text-[#2a1a0c] ring-2 ring-[#1a1018]">
+                                <Icon className="h-2.5 w-2.5" strokeWidth={2.4} aria-hidden />
+                              </span>
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[13px] leading-snug text-cream/90">
+                                <b className="font-bold text-cream">{a.who ?? "Someone"}</b> {a.text}
+                                {a.other ? (
+                                  <>
+                                    {" "}
+                                    to <b className="font-bold text-cream">{a.other}</b>
+                                  </>
+                                ) : null}
+                              </span>
+                              <span className="text-[11px] text-cream/40">{ago(a.at)}</span>
+                            </span>
+                            {a.exp > 0 ? <span className="shrink-0 rounded-full bg-gold/12 px-2.5 py-1 text-[11px] font-extrabold text-gold ring-1 ring-gold/25">+{n(a.exp)}</span> : null}
+                          </motion.li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>
@@ -773,7 +815,7 @@ export function ParivarHome({ id }: { id: string }) {
         {tab === "tasks" && isMember ? <TasksTab p={p} onChanged={() => void load()} /> : null}
 
         {tab === "manage" && isMember ? <ManageTab p={p} can={can} run={run} busy={busy} push={() => push({ kind: "parivar-list" })} /> : null}
-      </div>
+      </motion.div>
 
       {isMember ? (
         <div className="sticky bottom-0 z-10 mt-6 flex items-end justify-between bg-gradient-to-t from-ink via-ink/95 to-transparent px-6 pt-6 pb-3">

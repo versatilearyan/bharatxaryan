@@ -4,13 +4,13 @@
    Panchayat design tokens
    ------------------------------------------------------------------ */
 @theme {
-  --color-ink: #111114;          /* primary background */
-  --color-ink-2: #1c1b22;        /* secondary background */
-  --color-surface: #25232b;      /* cards */
-  --color-surface-2: #2f2d36;    /* raised elements inside cards */
+  --color-ink: #050507;          /* primary background: near-black */
+  --color-ink-2: #0c0b10;        /* secondary background */
+  --color-surface: #15131a;      /* cards */
+  --color-surface-2: #201d27;    /* raised elements inside cards */
   --color-wine: #3a1622;         /* VIP burgundy */
   --color-wine-2: #241018;       /* VIP deep surface */
-  --color-desk: #18181b;         /* desktop backdrop around the app */
+  --color-desk: #000000;         /* desktop backdrop around the app */
   --color-line: rgb(255 241 213 / 0.09);
   --color-line-strong: rgb(255 241 213 / 0.16);
   --color-coral: #f4515b;
