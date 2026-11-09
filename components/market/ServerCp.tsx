@@ -6,6 +6,7 @@ import { Check, ChevronLeft, HeartCrack, ImagePlus, Trash2, X } from "lucide-rea
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { CpRing } from "./CpRing";
 import { badgeOf } from "@/lib/app/cp-badges";
+import { forgetRoomCp } from "@/components/rooms/RoomSocial";
 import { BadgeImg, CpBadgeCollection, CpCharmCard, CpCharmHistory, CpLevelUp } from "./CpCharm";
 import { Coin } from "@/components/ui/kit";
 import { CP_QUEUE, cpApi, daysOf, nextMilestone, type CpBlessing, type CpCouple, type CpPerson, type CpProposal, type CpRingInfo } from "@/lib/api/cp";
@@ -317,8 +318,21 @@ export function ServerLoveHome({ personId }: { personId: string }) {
                   const info = catalogue.find((r) => r.id === id);
                   const first = id === c.ring;
                   return (
-                    <div key={id} className={`relative flex flex-col items-center rounded-2xl px-1 pb-2 pt-3 ring-1 ${first ? "bg-gradient-to-b from-pink/25 to-gold/10 ring-gold" : "bg-white/[0.05] ring-white/10"}`}>
-                      {first ? <span className="absolute left-1.5 top-1.5 rounded-full bg-gold px-1.5 text-[9px] font-extrabold text-ink">FIRST</span> : null}
+                    <button
+                      key={id}
+                      type="button"
+                      disabled={!iAmIn || busy || first}
+                      onClick={() =>
+                        run(async () => {
+                          await cpApi.setMainRing(id);
+                          forgetRoomCp();
+                        }, `${info?.name ?? "Ring"} is now your main ring 💍`)
+                      }
+                      aria-label={first ? `${info?.name ?? "Ring"}, your main ring` : `Make ${info?.name ?? "this ring"} your main ring`}
+                      aria-pressed={first}
+                      className={`relative flex flex-col items-center rounded-2xl px-1 pb-2 pt-3 ring-1 transition active:scale-[0.97] ${first ? "bg-gradient-to-b from-pink/25 to-gold/10 ring-gold" : "bg-white/[0.05] ring-white/10"}`}
+                    >
+                      {first ? <span className="absolute left-1.5 top-1.5 rounded-full bg-gold px-1.5 text-[9px] font-extrabold text-ink">MAIN</span> : null}
                       <span className="absolute right-1.5 top-1.5 text-[11px] font-bold text-cream/70">×{n}</span>
                       <Ring id={id} catalogue={catalogue} size={54} />
                       <span className="mt-1 line-clamp-1 px-1 text-center text-[11.5px] font-semibold text-cream">{info?.name ?? id}</span>
@@ -327,10 +341,11 @@ export function ServerLoveHome({ personId }: { personId: string }) {
                           <Coin className="h-3 w-3" /> {info.price.toLocaleString("en-IN")}
                         </span>
                       ) : null}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
+              {iAmIn ? <p className="mt-2 text-center text-[11.5px] text-cream/55">Tap a ring to make it your main ring. It shows on the CP page and your profiles.</p> : null}
               {iAmIn ? (
                 <button type="button" onClick={() => setAdding(true)} className="mt-3 flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-pink to-[#ff9ab8] text-[14px] font-bold text-white">
                   💍 Add a ring

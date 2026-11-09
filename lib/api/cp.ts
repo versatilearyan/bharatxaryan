@@ -143,6 +143,8 @@ export const cpApi = {
     });
     return { items, count: num(d.count), nextCursor: str(d.nextCursor) };
   },
+  /** Make a ring from your ring box the couple's main ring (shown in the CP page, profiles and rooms). */
+  setMainRing: async (ringId: string) => readCouple(await api<unknown>("/api/v1/cp/me/main-ring", { ...opts, method: "POST", body: { ringId } })),
   charmHistory: async (filter: "all" | "sent" | "received"): Promise<CpCharmEntry[]> => {
     const d = await api<unknown>(`/api/v1/cp/me/charm-history?filter=${filter}&limit=50`, opts);
     return (Array.isArray(d) ? d : []).flatMap((x) => {
