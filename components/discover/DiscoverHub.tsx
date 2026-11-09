@@ -88,7 +88,7 @@ export function DiscoverHub() {
       <motion.button
         whileTap={{ scale: 0.98 }}
         type="button"
-        onClick={() => toast("Parivar is coming soon. Get your people ready! 🪔")}
+        onClick={() => push({ kind: "parivar-list" })}
         className="relative mt-3 flex w-full items-center gap-3.5 overflow-hidden rounded-3xl bg-gradient-to-r from-[#5a2a14] via-[#3a1420] to-[#1c1824] p-3 pr-4 text-left ring-1 ring-gold/30 shadow-[0_12px_30px_-16px_rgba(231,188,114,0.5)]"
       >
         <motion.span
@@ -102,9 +102,9 @@ export function DiscoverHub() {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block bg-gradient-to-r from-[#fff1c9] via-gold to-[#ffb37a] bg-clip-text font-display text-[19px] font-extrabold text-transparent">Parivar</span>
-          <span className="block text-[12.5px] leading-snug text-cream/70">Families with a Mukhiya, levels, a tag on your name and your own chat.</span>
+          <span className="block text-[12.5px] leading-snug text-cream/70">Start or join a family: Mukhiya, levels, shared treasury and weekly ranking.</span>
         </span>
-        <span className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-gold ring-1 ring-gold/40">Coming soon</span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-gold" aria-hidden />
       </motion.button>
     </section>
   );

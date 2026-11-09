@@ -40,9 +40,9 @@ const LudoScreen = dynamic(() => import("@/components/games/ludo/LudoScreen").th
 const NearbyScreen = dynamic(() => import("@/components/discover/NearbyScreen").then((m) => m.NearbyScreen), { ssr: false });
 const ChessHub = dynamic(() => import("@/components/games/ChessHub").then((m) => m.ChessHub), { ssr: false });
 const SarpanchScreen = dynamic(() => import("@/components/sarpanch/Sarpanch").then((m) => m.SarpanchScreen), { ssr: false });
-const ParivarCreateScreen = dynamic(() => import("@/components/parivar/ParivarScreens").then((m) => m.ParivarCreateScreen), { ssr: false });
-const ParivarHome = dynamic(() => import("@/components/parivar/ParivarScreens").then((m) => m.ParivarHome), { ssr: false });
-const ParivarListScreen = dynamic(() => import("@/components/parivar/ParivarScreens").then((m) => m.ParivarListScreen), { ssr: false });
+const ParivarCreateScreen = dynamic(() => import("@/components/parivar/ParivarServer").then((m) => m.ParivarCreateScreen), { ssr: false });
+const ParivarHome = dynamic(() => import("@/components/parivar/ParivarServer").then((m) => m.ParivarHome), { ssr: false });
+const ParivarListScreen = dynamic(() => import("@/components/parivar/ParivarServer").then((m) => m.ParivarListScreen), { ssr: false });
 const RankingScreen = dynamic(() => import("@/components/market/RankingScreen").then((m) => m.RankingScreen), { ssr: false });
 const ShopScreen = dynamic(() => import("@/components/market/ShopScreen").then((m) => m.ShopScreen), { ssr: false });
 const BagScreen = dynamic(() => import("@/components/market/BagScreen").then((m) => m.BagScreen), { ssr: false });
