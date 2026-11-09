@@ -33,7 +33,7 @@ export function readPending(): PendingPayment | null {
     const raw = window.sessionStorage.getItem(KEY);
     if (!raw) return null;
     const p = JSON.parse(raw) as PendingPayment;
-    if (!p || (p.purpose !== "COIN_PACK" && p.purpose !== "RED_PACKET") || typeof p.productId !== "string" || typeof p.startedAt !== "number") return null;
+    if (!p || (p.purpose !== "COIN_PACK" && p.purpose !== "RED_PACKET" && p.purpose !== "VIP") || typeof p.productId !== "string" || typeof p.startedAt !== "number") return null;
     if (Date.now() - p.startedAt > MAX_AGE_MS) {
       clearPending();
       return null;

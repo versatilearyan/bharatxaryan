@@ -48,6 +48,14 @@ export class ApiError extends Error {
   }
 }
 
+/** Set when the server says this account is banned or suspended, so the sign-out can tell the person why. */
+let suspensionNotice: string | null = null;
+export function takeSuspensionNotice() {
+  const n = suspensionNotice;
+  suspensionNotice = null;
+  return n;
+}
+
 let onUnauthorized: ((reason: "expired" | "rejected") => void) | null = null;
 /** The app store registers sign-out here. */
 export function setUnauthorizedHandler(fn: typeof onUnauthorized) {
@@ -94,6 +102,14 @@ async function callRefresh(stale: Stored): Promise<Stored | null> {
   if (res.status === 401 || res.status === 400) {
     // The session ended (expired, signed out elsewhere, or already used)
     clearToken();
+    return null;
+  }
+  if (res.status === 403) {
+    // Banned or suspended: the session is over, and the person is told why
+    const body = (await res.json().catch(() => null)) as { message?: unknown } | null;
+    suspensionNotice = typeof body?.message === "string" && body.message ? body.message : "Your account is suspended.";
+    clearToken();
+    onUnauthorized?.("rejected");
     return null;
   }
   if (res.status === 429) {
@@ -214,6 +230,12 @@ async function request<T>(path: string, { method = "GET", body, auth = false, ti
   if (res.ok) return data as T;
 
   const { message, fields } = readError(data);
+  if (res.status === 403 && (data as { error?: unknown } | null)?.error === "ACCOUNT_SUSPENDED") {
+    suspensionNotice = message || "Your account is suspended.";
+    clearToken();
+    onUnauthorized?.("rejected");
+    throw new ApiError(suspensionNotice, 403, "forbidden", fields);
+  }
   if (auth && (res.status === 401 || (res.status === 403 && !forbiddenIsAccess))) {
     if (!retried && readToken()?.refreshToken) throw new RetryWithNewToken();
     onUnauthorized?.("rejected");

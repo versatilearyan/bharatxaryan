@@ -9,8 +9,8 @@
  *   each win (/user/queue/rewards) or wear / take off.
  */
 import { useCallback, useEffect, useSyncExternalStore } from "react";
-import { getGiftCatalog, getMyRewards, wearReward, type BagReward, type RewardGoal } from "@/lib/api/rewards";
-import { setServerGifts, subscribeGifts } from "./data";
+import { getGiftCatalog, getGiftCategories, getMyRewards, wearReward, type BagReward, type RewardGoal } from "@/lib/api/rewards";
+import { setGiftCategories, setServerGifts, subscribeGifts } from "./data";
 
 /* ---------------- gift catalog ---------------- */
 
@@ -21,8 +21,9 @@ subscribeGifts(() => {
 let catalogLoading: Promise<void> | null = null;
 
 export function loadGiftCatalog() {
-  catalogLoading ??= getGiftCatalog()
-    .then((list) => {
+  catalogLoading ??= Promise.all([getGiftCategories().catch(() => []), getGiftCatalog()])
+    .then(([cats, list]) => {
+      if (cats.length) setGiftCategories(cats);
       if (list.length) setServerGifts(list);
     })
     .catch(() => {

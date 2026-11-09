@@ -59,6 +59,8 @@ export type Drop = {
   /** Set for red packets run by the server (backend rooms): its id there, and how many grabs each person gets. */
   serverId?: string;
   maxGrabs?: number;
+  /** The five who looted the most, once the rain has ended. */
+  top?: { userId: string; name: string; coins: number }[];
 };
 
 /** The packet tier for a pot size (server packets carry the amount). */

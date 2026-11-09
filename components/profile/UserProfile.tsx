@@ -42,6 +42,7 @@ import { useParivar } from "@/lib/app/parivar-store";
 import { LevelPill } from "@/components/profile/IdTags";
 import { usePublicProfile } from "@/components/profile/usePublicProfile";
 import { useProfileFx } from "@/components/profile/useProfileFx";
+import { BadgeImg } from "@/components/market/CpCharm";
 
 const THEMES = ["dusk", "rose", "night", "ember", "gold", "monsoon"] as const;
 
@@ -394,9 +395,10 @@ function ServerCpPanel({ personId }: { personId: string }) {
           <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-cream">
             {A?.name ?? "…"} & {B?.name ?? "…"}
             <span className="block text-[11.5px] text-muted">
-              {daysOf(c.since)} days · {c.love.toLocaleString("en-IN")} love · 💍 {c.rings.length} · 🙏 {c.blessings}
+              {daysOf(c.since)} days · {c.charm.toLocaleString("en-IN")} Charm · 💍 {c.rings.length} · 🙏 {c.blessings}
             </span>
           </p>
+          <BadgeImg level={c.level} size={46} />
         </div>
       ) : (
         <div className="flex items-center gap-3">

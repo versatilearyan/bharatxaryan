@@ -27,6 +27,8 @@ export type ServerRedPacket = {
   got?: number;
   mine?: number;
   myGrabs?: number;
+  /** Sent when the rain ends: the five who looted the most. */
+  top?: { userId: string; name: string; coins: number }[];
 };
 
 export type GrabResult = { got: number; mine: number; myGrabs: number; maxGrabs: number; left: number };
@@ -54,13 +56,20 @@ export function readRedPacket(raw: unknown): ServerRedPacket | null {
     rainAt: num(d.rainAt),
     endAt: num(d.endAt),
     settled: d.settled === true,
-    maxGrabs: num(d.maxGrabs) || 10,
+    maxGrabs: num(d.maxGrabs) || 40,
     serverTime: num(d.serverTime) || Date.now(),
     event: ev,
     grabberId: str(d.grabberId),
     got: d.got === undefined ? undefined : num(d.got),
     mine: d.mine === undefined ? undefined : num(d.mine),
     myGrabs: d.myGrabs === undefined ? undefined : num(d.myGrabs),
+    top: Array.isArray(d.top)
+      ? d.top.flatMap((t) => {
+          const o = obj(t);
+          const coins = num(o?.coins);
+          return o && coins > 0 ? [{ userId: str(o.userId) ?? "", name: str(o.name) ?? "Someone", coins }] : [];
+        })
+      : undefined,
   };
 }
 
@@ -79,7 +88,7 @@ export async function getCurrentRedPacket(roomId: string) {
 
 export async function grabRedPacket(packetId: string): Promise<GrabResult> {
   const d = obj(await api<unknown>(`/api/v1/red-packets/${encodeURIComponent(packetId)}/grab`, { ...opts, method: "POST" }));
-  return { got: num(d?.got), mine: num(d?.mine), myGrabs: num(d?.myGrabs), maxGrabs: num(d?.maxGrabs) || 10, left: num(d?.left) };
+  return { got: num(d?.got), mine: num(d?.mine), myGrabs: num(d?.myGrabs), maxGrabs: num(d?.maxGrabs) || 40, left: num(d?.left) };
 }
 
 export const roomRedPacketTopic = (roomId: string) => `/topic/voice-rooms/${encodeURIComponent(roomId)}/redpacket`;

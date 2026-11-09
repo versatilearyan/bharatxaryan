@@ -6,6 +6,7 @@ import { BadgeCheck, Crown, Gem, MessageSquareQuote, Palette, Sparkles, Armchair
 import { SunsetScene } from "@/components/art/SunsetScene";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, DemoNote, ScreenHeader } from "@/components/ui/kit";
+import { getVipPlans, type VipPlan } from "@/lib/api/vip-plans";
 import { COINS_PER_GROWTH, VIP_PRICE_INR, VIP_THRESHOLDS, formatPoints, vipLevel } from "@/lib/app/levels";
 import { useMe } from "@/lib/app/me-store";
 import { CheckoutSheet } from "@/components/market/CheckoutSheet";
@@ -34,13 +35,28 @@ export function VipBenefits() {
   const vip = srvPoints !== undefined && srvActive !== undefined ? vipLevel(srvPoints, srvActive) : localVip;
   const [tier, setTier] = useState(Math.max(1, vip.level));
   const [paying, setPaying] = useState(false);
+  // The plans on sale (set in the admin panel): name, days and price
+  const [plans, setPlans] = useState<VipPlan[] | null>(null);
+  const [planId, setPlanId] = useState<number | null>(null);
+  useEffect(() => {
+    let live = true;
+    getVipPlans()
+      .then((p) => live && (setPlans(p), setPlanId((cur) => cur ?? p[0]?.id ?? null)))
+      .catch(() => live && setPlans([]));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const plan = plans?.find((p) => p.id === planId) ?? null;
+  const signedIn = Boolean(srvActive !== undefined);
   // Follow your level when it changes (bought or ended)
   useEffect(() => setTier(Math.max(1, vip.level)), [vip.level]);
   const current = VIP_TIERS.find((t) => t.tier === tier)!;
   const unlocked = VIP_TIERS.filter((t) => t.tier <= tier).flatMap((t) => t.perks);
   /** Coins still to spend for the next level. */
   const coinsToNext = vip.next === null ? 0 : (vip.next - vip.points) * COINS_PER_GROWTH;
-  const until = vipUntil ? new Date(vipUntil).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
+  const endMs = me.profile.data?.vipExpiresAt ? Date.parse(me.profile.data.vipExpiresAt) : vipUntil;
+  const until = endMs ? new Date(endMs).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "";
 
   return (
     <div className="app-scroll h-full bg-gradient-to-b from-[#241018] to-ink pb-safe">
@@ -86,12 +102,22 @@ export function VipBenefits() {
             onClick={() => setPaying(true)}
             className="relative mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14.5px] font-extrabold text-[#2a1a0c]"
           >
-            {vip.level ? "Renew VIP" : "Become VIP"} · {formatInr(VIP_PRICE_INR)}/month
+            {vip.level ? "Renew VIP" : "Become VIP"} · {formatInr(plan ? plan.priceInRupees : VIP_PRICE_INR)}
+            {plan ? ` / ${plan.days} days` : "/month"}
           </motion.button>
+          {plans && plans.length > 1 ? (
+            <div className="relative mt-2 flex flex-wrap justify-center gap-1.5" role="radiogroup" aria-label="VIP plan">
+              {plans.map((p) => (
+                <button key={p.id} type="button" role="radio" aria-checked={p.id === planId} onClick={() => setPlanId(p.id)} className={`rounded-full px-3 py-1 text-[11.5px] font-bold ring-1 ${p.id === planId ? "bg-gold text-ink ring-gold" : "text-cream/75 ring-white/20"}`}>
+                  {p.name} · {formatInr(p.priceInRupees)}
+                </button>
+              ))}
+            </div>
+          ) : null}
           <p className="relative mt-1.5 text-center text-[11px] text-cream/55">
-            {vip.level ? `VIP ends ${until}. Renewing adds ${VIP_DAYS} days.` : `${VIP_DAYS} days of VIP 1. Higher levels come from growth.`}
+            {vip.level ? `VIP ends ${until}. Renewing adds ${plan?.days ?? VIP_DAYS} days.` : `${plan?.days ?? VIP_DAYS} days of VIP 1. Higher levels come from growth.`}
           </p>
-          {vip.level ? (
+          {vip.level && !signedIn ? (
             <button type="button" onClick={endVip} className="relative mx-auto mt-1 block text-[11.5px] font-bold text-cream/60 underline underline-offset-2 hover:text-cream">
               End VIP now (demo)
             </button>
@@ -168,11 +194,12 @@ export function VipBenefits() {
           paying
             ? {
                 id: "vip-month",
-                name: vip.level ? "Renew VIP · 1 month" : "VIP · 1 month",
-                note: `${VIP_DAYS} days of VIP. Spend coins to grow your level.`,
+                name: plan ? (vip.level ? `Renew ${plan.name}` : plan.name) : vip.level ? "Renew VIP · 1 month" : "VIP · 1 month",
+                note: `${plan?.days ?? VIP_DAYS} days of VIP. Spend coins to grow your level.`,
                 art: <Crown className="h-11 w-11 text-gold" aria-hidden />,
-                inr: VIP_PRICE_INR,
+                inr: plan ? plan.priceInRupees : VIP_PRICE_INR,
                 tone: "gold",
+                purchase: plan ? { purpose: "VIP", productId: String(plan.id) } : undefined,
               }
             : null
         }

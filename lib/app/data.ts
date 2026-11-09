@@ -201,18 +201,29 @@ const RETIRED_GIFTS: Gift[] = [
 let serverGifts: Map<string, Gift> | null = null;
 const giftListeners = new Set<() => void>();
 
+/** Category tabs from the server, in order, and who can send each kind (NORMAL: anyone, VIP: VIP members, CP: your partner). */
+export type GiftCategoryInfo = { name: string; kind: "NORMAL" | "VIP" | "CP" };
+let serverCategories: GiftCategoryInfo[] | null = null;
+export function setGiftCategories(list: GiftCategoryInfo[]) {
+  serverCategories = list;
+  giftListeners.forEach((f) => f());
+}
+export const giftCategoryKind = (name: string): GiftCategoryInfo["kind"] => serverCategories?.find((c) => c.name === name)?.kind ?? "NORMAL";
+
 export function setServerGifts(list: ServerGift[]) {
   const map = new Map<string, Gift>();
   for (const sg of [...list].sort((a, b) => a.sortOrder - b.sortOrder || a.price - b.price)) {
     const local = GIFTS.find((g) => g.id === sg.id) ?? RETIRED_GIFTS.find((g) => g.id === sg.id);
-    const category = (ALL_GIFT_CATEGORIES as string[]).includes(sg.category) ? (sg.category as GiftCategory) : "Popular";
+    const category: GiftCategory = sg.category || "Popular";
+    // VIP and CP gifts live only in their own tab; the others keep their bundled tabs too
+    const special = serverCategories?.find((c) => c.name === category)?.kind !== undefined && serverCategories?.find((c) => c.name === category)?.kind !== "NORMAL";
     const icon = sg.imageUrl ?? local?.svga?.icon ?? local?.video?.icon ?? "";
     const g: Gift = {
       ...(local ?? { tier: sg.price >= 10_000 ? "legendary" : "ordinary" }),
       id: sg.id as GiftId,
       name: sg.name,
       cost: sg.price,
-      categories: local?.categories.length ? Array.from(new Set([category, ...local.categories])) : [category],
+      categories: !special && local?.categories.length ? Array.from(new Set([category, ...local.categories])) : [category],
       image: sg.imageUrl ?? undefined,
     } as Gift;
     if (sg.animationUrl && sg.animationFormat === "SVGA") {
@@ -237,7 +248,8 @@ export function subscribeGifts(f: () => void) {
 
 /** Gifts on sale now: the server's when loaded, otherwise the bundled ones. */
 export const giftsOnSale = (): Gift[] => (serverGifts ? [...serverGifts.values()] : GIFTS);
-export const giftCategories = (): GiftCategory[] => ALL_GIFT_CATEGORIES.filter((c) => giftsOnSale().some((g) => !g.packageOnly && g.categories.includes(c)));
+export const giftCategories = (): GiftCategory[] =>
+  (serverCategories ? serverCategories.map((c) => c.name) : ALL_GIFT_CATEGORIES).filter((c) => giftsOnSale().some((g) => !g.packageOnly && g.categories.includes(c)));
 
 export const isGiftOnSale = (id: string) => (serverGifts ? serverGifts.has(id) : GIFTS.some((g) => g.id === id));
 export const giftById = (id: string): Gift =>

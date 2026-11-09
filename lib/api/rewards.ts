@@ -126,6 +126,17 @@ export async function wearReward(id: string, on: boolean): Promise<BagReward | n
   return readBagReward(await api<unknown>(`/api/v1/rewards/${encodeURIComponent(id)}/wear`, { ...opts, method: on ? "POST" : "DELETE" }));
 }
 
+export async function getGiftCategories(): Promise<{ name: string; kind: "NORMAL" | "VIP" | "CP" }[]> {
+  const d = await api<unknown>("/api/v1/gifts/categories", { auth: false });
+  if (!Array.isArray(d)) return [];
+  return d.flatMap((x) => {
+    const o = obj(x);
+    const name = str(o?.name);
+    const kind = str(o?.kind);
+    return o && name ? [{ name, kind: kind === "VIP" || kind === "CP" ? kind : ("NORMAL" as const) }] : [];
+  });
+}
+
 export async function getGiftCatalog(): Promise<ServerGift[]> {
   const d = await api<unknown>("/api/v1/gifts", { auth: false });
   if (!Array.isArray(d)) return [];

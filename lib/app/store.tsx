@@ -9,7 +9,7 @@
  * kept here too; the backend JWT itself lives in lib/auth/token.ts.
  */
 import { signOutLocally, type AuthUser } from "@/lib/auth/auth";
-import { api, freshToken, setUnauthorizedHandler } from "@/lib/api/client";
+import { api, freshToken, setUnauthorizedHandler, takeSuspensionNotice } from "@/lib/api/client";
 import { getMyCoinBalance } from "@/lib/api/wallet";
 import { subscribe } from "@/lib/realtime/stomp";
 import { getMyRoomRelations, setRoomFollow, setRoomMembership } from "@/lib/api/voice-rooms";
@@ -397,7 +397,7 @@ function useAppState() {
     setUnauthorizedHandler(() => {
       if (!sessionRef.current) return;
       signOut();
-      toast("Your session ended. Please sign in again.");
+      toast(takeSuspensionNotice() ?? "Your session ended. Please sign in again.");
     });
     return () => setUnauthorizedHandler(null);
   }, [signOut, toast]);

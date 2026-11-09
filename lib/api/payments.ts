@@ -23,8 +23,8 @@
 import { api, ApiError } from "./client";
 import type { BillingDetails } from "@/lib/payments/billing";
 
-/** The purposes the backend supports today. VIP is not one of them. */
-export type PaymentPurpose = "COIN_PACK" | "RED_PACKET";
+/** What can be bought online: coin packs, red packets and VIP. */
+export type PaymentPurpose = "COIN_PACK" | "RED_PACKET" | "VIP";
 
 export type InitiatePaymentRequest = BillingDetails & { purpose: PaymentPurpose; productId: number };
 
@@ -127,7 +127,7 @@ export async function getPaymentStatus(txnId: string): Promise<PaymentStatus> {
     return {
       txnId,
       status: known,
-      purpose: purpose === "COIN_PACK" || purpose === "RED_PACKET" ? purpose : undefined,
+      purpose: purpose === "COIN_PACK" || purpose === "RED_PACKET" || purpose === "VIP" ? purpose : undefined,
       productId: str(d?.productId),
       coins: Number.isFinite(coins) && coins > 0 ? coins : undefined,
     };

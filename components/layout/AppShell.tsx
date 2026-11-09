@@ -28,6 +28,7 @@ import { ProfileScreen } from "@/components/profile/ProfileScreen";
 import { MomentsScreen } from "@/components/social/MomentsScreen";
 import { CpProposalPrompt } from "@/components/market/ServerCp";
 import { VipLevelUpPrompt } from "@/components/vip/VipLevelUp";
+import { VipRenewPrompt } from "@/components/vip/VipRenewPrompt";
 import { ActiveRoomHost } from "@/components/rooms/ActiveRoomHost";
 import { GlobalSheets } from "@/components/sheets/GlobalSheets";
 import { GiftOverlay } from "@/components/gifts/GiftOverlay";
@@ -108,6 +109,7 @@ function Frame() {
               <GlobalSheets />
               <CpProposalPrompt />
               <VipLevelUpPrompt />
+              <VipRenewPrompt />
               <SarpanchBanner />
               <WelcomeGift />
               <ReferralCapture />

@@ -5,9 +5,11 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronLeft, HeartCrack, ImagePlus, Trash2, X } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { CpRing } from "./CpRing";
+import { badgeOf } from "@/lib/app/cp-badges";
+import { BadgeImg, CpBadgeCollection, CpCharmCard, CpCharmHistory, CpLevelUp } from "./CpCharm";
 import { Coin } from "@/components/ui/kit";
 import { CP_QUEUE, cpApi, daysOf, nextMilestone, type CpBlessing, type CpCouple, type CpPerson, type CpProposal, type CpRingInfo } from "@/lib/api/cp";
-import { PROPOSAL_LINES, loveLevel } from "@/lib/app/market";
+import { PROPOSAL_LINES } from "@/lib/app/market";
 import { notify } from "@/lib/app/notify";
 import { useApp } from "@/lib/app/store";
 import { myUserIdFromToken } from "@/lib/auth/token";
@@ -73,6 +75,10 @@ export function ServerLoveHome({ personId }: { personId: string }) {
   const [error, setError] = useState("");
   const [tab, setTab] = useState<"rings" | "gifts">("rings");
   const [adding, setAdding] = useState(false);
+  const [badgesOpen, setBadgesOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [levelUp, setLevelUp] = useState<number | null>(null);
+  const lastLevel = useRef<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [upload, setUpload] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -102,6 +108,14 @@ export function ServerLoveHome({ personId }: { personId: string }) {
       [load, toast],
     ),
   );
+
+  // A new level (not the first time the couple loads): the full-screen celebration, once per level
+  useEffect(() => {
+    if (!c) return;
+    const prev = lastLevel.current;
+    lastLevel.current = c.level;
+    if (prev !== null && c.level > prev && myId && (c.a === myId || c.b === myId)) setLevelUp(c.level);
+  }, [c, myId]);
 
   const run = async (f: () => Promise<unknown>, ok?: string) => {
     if (busy) return;
@@ -159,7 +173,6 @@ export function ServerLoveHome({ personId }: { personId: string }) {
       </div>
     );
 
-  const lv = loveLevel(c.love);
   const iAmIn = Boolean(myId && (c.a === myId || c.b === myId));
   const A = c.people[c.a];
   const B = c.people[c.b];
@@ -236,6 +249,9 @@ export function ServerLoveHome({ personId }: { personId: string }) {
       <p className="relative mt-3 text-center font-display text-[19px] font-extrabold text-cream">
         {A?.name ?? "…"} <span className="text-pink">♥</span> {B?.name ?? "…"}
       </p>
+      <p className="relative mt-1 flex items-center justify-center gap-1.5 text-[12px] font-bold text-[#f6d899]">
+        <BadgeImg level={c.level} size={26} /> {badgeOf(c.level).name}
+      </p>
       {c.message ? <p className="relative mx-8 mt-1 text-center text-[13px] italic text-cream/75">“{c.message}”</p> : null}
 
       <div className="relative mx-4 mt-4 grid grid-cols-3 gap-2">
@@ -244,19 +260,11 @@ export function ServerLoveHome({ personId }: { personId: string }) {
         <Stat big={c.rings.length.toLocaleString("en-IN")} label="rings" />
       </div>
 
-      {/* Love level */}
-      <div className="relative mx-4 mt-3 rounded-2xl bg-black/30 p-3.5 ring-1 ring-pink/30">
-        <div className="flex items-center justify-between text-[12px]">
-          <span className="font-bold text-cream">
-            Love Lv {c.level} <span className="text-cream/60">· {c.love.toLocaleString("en-IN")} love</span>
-          </span>
-          <span className="text-cream/60">{c.nextLevelLove ? `${c.nextLevelLove.toLocaleString("en-IN")} for Lv ${c.level + 1}` : "Max level"}</span>
-        </div>
-        <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/10">
-          <motion.div className="h-full rounded-full bg-gradient-to-r from-pink via-[#ff9ab8] to-gold" initial={{ width: 0 }} animate={{ width: `${lv.progress * 100}%` }} transition={{ duration: 0.8, ease: "easeOut" }} />
-        </div>
-        <p className="mt-1.5 text-[11px] text-cream/55">Gifts between you, rings and blessings all add love.</p>
-      </div>
+      {/* CP level, badge and Charm */}
+      <CpCharmCard c={c} onBadges={() => setBadgesOpen(true)} onHistory={() => setHistoryOpen(true)} />
+      <CpBadgeCollection open={badgesOpen} onClose={() => setBadgesOpen(false)} c={c} />
+      <CpCharmHistory open={historyOpen} onClose={() => setHistoryOpen(false)} c={c} myId={myId ?? undefined} />
+      <CpLevelUp level={levelUp} charm={c.charm} onClose={() => setLevelUp(null)} />
 
       {/* Blessings */}
       <div className="relative mx-4 mt-3 flex items-center gap-3 rounded-2xl bg-white/[0.05] p-3 ring-1 ring-white/10">
@@ -265,7 +273,7 @@ export function ServerLoveHome({ personId }: { personId: string }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-bold text-cream">{c.blessings.toLocaleString("en-IN")} blessings</span>
-          <span className="text-[11.5px] text-cream/55">Each blessing adds 99 love</span>
+          <span className="text-[11.5px] text-cream/55">A kind wish for the couple</span>
         </span>
         {!iAmIn ? (
           <motion.button
@@ -276,7 +284,7 @@ export function ServerLoveHome({ personId }: { personId: string }) {
               run(async () => {
                 await cpApi.bless(c.id);
                 navigator.vibrate?.(30);
-              }, "🙏 Blessed! +99 love for them")
+              }, "🙏 Blessed!")
             }
             className="flex h-10 shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-pink to-gold px-3.5 text-[13px] font-bold text-white disabled:opacity-60"
           >
@@ -340,7 +348,6 @@ export function ServerLoveHome({ personId }: { personId: string }) {
                     <b>{b.by.name}</b> sent a blessing 🙏
                     <span className="block text-[11px] text-muted">{ago(b.createdAt)}</span>
                   </span>
-                  <span className="text-[11.5px] font-bold text-pink">+{b.love} love</span>
                 </li>
               ))}
             </ul>
@@ -463,7 +470,7 @@ function AddRingSheet({ open, onClose, catalogue, partnerName, onDone }: { open:
     cpApi
       .addRing(ring, owned > 0 ? "BAG" : "BUY")
       .then(() => {
-        toast(`${info?.name ?? "Ring"} added to your ring box 💍 +${(info?.price ?? 0).toLocaleString("en-IN")} love`, "gold");
+        toast(`${info?.name ?? "Ring"} added to your ring box 💍`, "gold");
         onDone();
       })
       .catch((e) => toast(errText(e, "Couldn't add the ring."), "error"))
@@ -472,7 +479,7 @@ function AddRingSheet({ open, onClose, catalogue, partnerName, onDone }: { open:
   return (
     <BottomSheet open={open} onClose={onClose} title="Add a ring">
       <div className="px-4 pb-6">
-        <p className="mb-2 text-[12.5px] text-muted">For you and {partnerName}. The ring&apos;s price is added as love.</p>
+        <p className="mb-2 text-[12.5px] text-muted">For you and {partnerName}.</p>
         <RingPicker catalogue={catalogue} bag={bag} chosen={ring} onChoose={setRing} />
         <button type="button" disabled={!ring || busy} onClick={go} className="mt-4 flex h-12 w-full items-center justify-center gap-1.5 rounded-full bg-gradient-to-r from-pink to-gold text-[15px] font-bold text-white disabled:opacity-50">
           {busy ? "Adding…" : owned > 0 ? "💍 Add from my bag" : (

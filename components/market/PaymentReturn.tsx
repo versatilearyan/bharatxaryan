@@ -19,6 +19,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { getPaymentStatus } from "@/lib/api/payments";
 import { ApiError } from "@/lib/api/client";
 import { useApp } from "@/lib/app/store";
+import { useMe } from "@/lib/app/me-store";
 import { forgetCached } from "@/lib/app/use-wallet";
 import { clearPending, readPending } from "@/lib/payments/pending";
 import { readToken } from "@/lib/auth/token";
@@ -51,6 +52,7 @@ function takeReturnParams(): { txnId?: string; hint?: string } {
 
 export function PaymentReturn() {
   const { refreshCoins, toast } = useApp();
+  const me = useMe();
   const [followed, setFollowed] = useState<Followed | null>(null);
   const [status, setStatus] = useState<Status>("verifying");
   const [coinsAdded, setCoinsAdded] = useState<number | undefined>();
@@ -73,6 +75,7 @@ export function PaymentReturn() {
           setCoinsAdded(s.coins);
           // Show the new balance and make the Wallet / Bag load fresh lists
           await refreshCoins();
+          if (s.purpose === "VIP") me.refresh(true);
           forgetCached("inventory:");
           setStatus("confirmed");
           clearPending();
@@ -90,6 +93,7 @@ export function PaymentReturn() {
         setStatus("error");
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [refreshCoins],
   );
 
@@ -120,7 +124,7 @@ export function PaymentReturn() {
   };
 
   const f = followed;
-  const item = f?.name ?? (purpose === "RED_PACKET" ? "Your red packet" : "Your coins");
+  const item = f?.name ?? (purpose === "RED_PACKET" ? "Your red packet" : purpose === "VIP" ? "Your VIP" : "Your coins");
   return (
     <BottomSheet open={Boolean(f)} onClose={done} title="Your payment">
       {f ? (
@@ -134,7 +138,9 @@ export function PaymentReturn() {
               text={
                 purpose === "RED_PACKET"
                   ? `${item} is in your Bag. Send it from the red packet button in any room.`
-                  : coinsAdded
+                  : purpose === "VIP"
+                    ? "Your VIP is active 👑 Enjoy your frame, badge, entry and VIP rooms."
+                    : coinsAdded
                     ? `${coinsAdded.toLocaleString("en-IN")} coins were added to your wallet.`
                     : "Your coins were added to your wallet."
               }

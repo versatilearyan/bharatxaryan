@@ -95,6 +95,7 @@ function useRedPacketState() {
           mine: m.mine ?? old?.mine ?? 0,
           grabs: m.myGrabs ?? old?.grabs ?? 0,
           maxGrabs: m.maxGrabs,
+          top: m.top ?? old?.top,
         };
         return [...list.filter((x) => x.id !== id && x.endAt + 8_000 > Date.now()), d];
       });

@@ -8,7 +8,7 @@ import { preloadSvga } from "@/components/effects/SvgaAnim";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, formatCoins } from "@/components/ui/kit";
-import { GIFTS_LIVE, GIFTS_SOON_TEXT, giftById, giftCategories, giftsOnSale } from "@/lib/app/data";
+import { GIFTS_LIVE, GIFTS_SOON_TEXT, giftById, giftCategories, giftCategoryKind, giftsOnSale } from "@/lib/app/data";
 import { bagGiftCounts, useGiftsVersion, useRewards } from "@/lib/app/rewards-store";
 import { ComingSoonBadge, SoonTag } from "@/components/ui/ComingSoonBadge";
 import { GIFT_MESSAGE_MAX, useGiftNews } from "@/lib/app/gift-news-store";
@@ -121,6 +121,9 @@ export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onCl
           </button>
         ))}
       </div>
+
+      {giftCategoryKind(cat) === "VIP" ? <p className="px-5 pt-2 text-[11.5px] text-gold">👑 VIP gifts: only VIP members can send these.</p> : null}
+      {giftCategoryKind(cat) === "CP" ? <p className="px-5 pt-2 text-[11.5px] text-pink">💞 CP gifts: send these to your CP partner.</p> : null}
 
       {/* Grid */}
       <ul className="grid grid-cols-4 gap-2 px-4 py-3">

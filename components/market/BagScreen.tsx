@@ -307,7 +307,7 @@ export function BagScreen() {
     count: b.quantity > 1 ? b.quantity : undefined,
     source: "Bought in the Shop",
     tint: ITEM_TINT,
-    note: isRing(b) ? (serverCp ? "Add it to your CP's ring box. Its price is added as love and charm." : "Propose to someone with this ring.") : b.description,
+    note: isRing(b) ? (serverCp ? "Add it to your CP's ring box. It only adds Charm when partners send each other gifts." : "Propose to someone with this ring.") : b.description,
   }));
   const items: Entry[] = [
     ...boughtItems,
@@ -333,7 +333,7 @@ export function BagScreen() {
       badge: "Permanent",
       count,
       tint: ITEM_TINT,
-      note: `Adds ${ring.price.toLocaleString("en-IN")} love when given.`,
+      note: `Add it to your CP ring box.`,
       action: ringAction(ring),
     })),
     ...(Object.keys(pkg) as GiftId[])

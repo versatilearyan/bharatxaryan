@@ -131,7 +131,8 @@ export type Game = {
   soon?: boolean;
 };
 
-export type GiftCategory = "Popular" | "Cute" | "Romantic" | "Celebration" | "Royal" | "Legendary";
+/** A gift category tab. The names come from the admin panel (Popular, Cute… plus any added, like VIP or CP). */
+export type GiftCategory = string;
 
 export type GiftId =
   | "love-fireworks"

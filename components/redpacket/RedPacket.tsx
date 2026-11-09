@@ -10,6 +10,7 @@ import { usePeople } from "@/lib/app/people";
 import { COVERS, RAIN_TIMERS, RED_PACKETS, formatInr, packetById, type CoverId, type Drop, type RedPacketId } from "@/lib/app/redpacket";
 import { useRedPackets } from "@/lib/app/redpacket-store";
 import { ME_ID, useApp } from "@/lib/app/store";
+import { useServerRooms } from "@/lib/app/server-rooms";
 import type { Room } from "@/lib/app/types";
 import type { RoomSession } from "@/components/rooms/useRoomSession";
 import { walletImageSrc, type RedPacketInventory, type WalletRedPacket } from "@/lib/api/wallet";
@@ -375,6 +376,7 @@ export function RoomRedPacket({ s }: { s: RoomSession }) {
   const d = dropIn(s.room.id);
   const announced = useRef(new Set<string>());
   const person = usePeople();
+  const { myId } = useServerRooms();
 
   // Post the drop in the room chat once
   useEffect(() => {
@@ -384,6 +386,15 @@ export function RoomRedPacket({ s }: { s: RoomSession }) {
     const wait = Math.round((d.rainAt - Date.now()) / 1000);
     s.addSystem(`🧧 ${d.fromId === ME_ID ? "You" : person(d.fromId).name} dropped a ${p.label} ${p.name}! It rains in ${wait >= 60 ? `${Math.round(wait / 60)} min` : `${wait} sec`}, tap fast to loot.`);
   }, [d, s, person]);
+
+  // When the rain ends, name the five who looted the most, in the chat
+  const ranked = useRef(new Set<string>());
+  useEffect(() => {
+    if (!d?.top?.length || ranked.current.has(d.id)) return;
+    ranked.current.add(d.id);
+    const medal = ["🥇", "🥈", "🥉", "4.", "5."];
+    s.addSystem(`🧧 Top lootors: ${d.top.map((t, i) => `${medal[i]} ${t.userId && t.userId === myId ? "You" : t.name} ${t.coins.toLocaleString("en-IN")}`).join(" · ")}`);
+  }, [d, s, myId]);
 
   return (
     <>
@@ -426,8 +437,8 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
     if (!raining) return;
     const t = window.setInterval(() => {
       const key = ++seq.current;
-      setFalling((f) => [...f.slice(-18), { key, x: 3 + Math.random() * 78, dur: 3.4 + Math.random() * 1.4, size: 44 + Math.random() * 12, rot: -16 + Math.random() * 32, tier: d.packet }]);
-    }, 280);
+      setFalling((f) => [...f.slice(-18), { key, x: 3 + Math.random() * 78, dur: 2.4 + Math.random() * 1.0, size: 44 + Math.random() * 12, rot: -16 + Math.random() * 32, tier: d.packet }]);
+    }, 260);
     return () => window.clearInterval(t);
   }, [raining, d.packet]);
 
@@ -442,7 +453,7 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
     const at = { x: e.clientX - (r?.left ?? 0), y: e.clientY - (r?.top ?? 0) };
     if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(12);
     // Out of taps or nothing left: say so instead of doing nothing
-    if (outOfGrabs || potEmpty || d.grabs + inFlight.current >= (d.maxGrabs || 10)) {
+    if (outOfGrabs || potEmpty || d.grabs + inFlight.current >= (d.maxGrabs || 40)) {
       setPops((list) => [...list.slice(-8), { key: f.key, x: at.x, y: at.y, n: 0 }]);
       return;
     }

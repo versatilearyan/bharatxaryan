@@ -38,8 +38,14 @@ export type CpCouple = {
   rings: string[];
   since: number;
   love: number;
+  /** The couple's shared Charm (same number as love): only gifts between the two partners add to it. */
+  charm: number;
   level: number;
   nextLevelLove: number | null;
+  /** When each badge level was reached (level number to ISO time). */
+  unlocks: Record<string, string>;
+  giftCount: number;
+  giftCoins: number;
   message?: string;
   blessings: number;
   wallpaperUrl?: string;
@@ -47,6 +53,7 @@ export type CpCouple = {
   people: Record<string, CpPerson>;
 };
 export type CpProposal = { id: string; fromUserId: string; toUserId: string; ringId: string; message?: string; createdAt: number; status: string; from: CpPerson; to: CpPerson };
+export type CpCharmEntry = { id: string; senderId: string; receiverId: string; giftId: string; giftName: string; count: number; coins: number; charm: number; at: string };
 export type CpBlessing = { id: string; by: CpPerson; createdAt: number; love: number };
 
 const person = (v: unknown): CpPerson => {
@@ -69,8 +76,12 @@ export function readCouple(v: unknown): CpCouple | null {
     rings: Array.isArray(o.rings) ? o.rings.map(String) : [],
     since: time(o.since),
     love: num(o.love),
+    charm: num(o.charm ?? o.love),
     level: num(o.level) || 1,
     nextLevelLove: o.nextLevelLove == null ? null : num(o.nextLevelLove),
+    unlocks: Object.fromEntries(Object.entries(obj(o.unlocks) ?? {}).map(([k, t]) => [k, String(t)])),
+    giftCount: num(o.giftCount),
+    giftCoins: num(o.giftCoins),
     message: str(o.message),
     blessings: num(o.blessings),
     wallpaperUrl: str(o.wallpaperUrl),
@@ -131,6 +142,14 @@ export const cpApi = {
       return o && id ? [{ id, by: person(o.by), createdAt: time(o.createdAt), love: num(o.love) }] : [];
     });
     return { items, count: num(d.count), nextCursor: str(d.nextCursor) };
+  },
+  charmHistory: async (filter: "all" | "sent" | "received"): Promise<CpCharmEntry[]> => {
+    const d = await api<unknown>(`/api/v1/cp/me/charm-history?filter=${filter}&limit=50`, opts);
+    return (Array.isArray(d) ? d : []).flatMap((x) => {
+      const o = obj(x);
+      const id = str(o?.id);
+      return o && id ? [{ id, senderId: str(o.senderId) ?? "", receiverId: str(o.receiverId) ?? "", giftId: str(o.giftId) ?? "", giftName: str(o.giftName) ?? "Gift", count: num(o.count) || 1, coins: num(o.coins), charm: num(o.charm), at: str(o.at) ?? "" }] : [];
+    });
   },
   endRequest: async () => readCouple(await api<unknown>("/api/v1/cp/me/end-request", { ...opts, method: "POST" })),
   cancelEnd: async () => readCouple(await api<unknown>("/api/v1/cp/me/end-request/cancel", { ...opts, method: "POST" })),

@@ -111,7 +111,7 @@ export const BLESSING_COST = 99;
 
 /** Love needed for each couple level (Lv 1 at 0). */
 /** Love needed for each CP level; same as the server (CpService.LOVE_LEVELS). */
-export const LOVE_LEVELS = [0, 1_314, 5_200, 13_140, 52_000, 131_400, 520_000, 1_314_000];
+export const LOVE_LEVELS = [0, 5_000, 15_000, 35_000, 75_000, 150_000, 250_000, 400_000, 600_000, 1_000_000];
 export function loveLevel(love: number) {
   const idx = LOVE_LEVELS.reduce((acc, min, i) => (love >= min ? i : acc), 0);
   const next = LOVE_LEVELS[idx + 1] ?? null;
