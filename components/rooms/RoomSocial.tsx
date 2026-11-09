@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
+import { motion } from "framer-motion";
 import { cpApi, type CpCouple, type CpPerson } from "@/lib/api/cp";
 import { ME_ID, useApp } from "@/lib/app/store";
 import { myUserIdFromToken } from "@/lib/auth/token";
@@ -77,6 +78,49 @@ export function useRoomSocial(personId: string | null | undefined): CpInfo | und
     () => 0,
   );
   return id ? cps.get(id)?.value : undefined;
+}
+
+/** True when the two seated people are CP partners of each other (so a heart links their seats). */
+export function useAreCp(a: string | null | undefined, b: string | null | undefined): boolean {
+  const cp = useRoomSocial(a);
+  if (!a || !b || !cp) return false;
+  const other = userIdOf(b);
+  return Boolean(other && cp.partner.userId === other);
+}
+
+/** The winged heart between two CP partners sitting side by side, on a soft pink swoosh. */
+export function CpLink({ gap, size }: { gap: number; size: number }) {
+  const icon = Math.round(Math.max(30, Math.min(48, gap * 1.5, size * 0.7)));
+  const w = gap + size * 0.34;
+  return (
+    <span className="relative z-20 flex shrink-0 items-center justify-center" style={{ width: gap, height: size }} role="img" aria-label="CP partners">
+      <svg className="pointer-events-none absolute top-1/2 -translate-y-1/2" style={{ width: w, height: icon * 1.1, left: -size * 0.17 }} viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden>
+        <defs>
+          <linearGradient id="cp-sw" x1="0" x2="1">
+            <stop offset="0" stopColor="#ffb3d1" stopOpacity="0" />
+            <stop offset="0.3" stopColor="#ff8fbd" />
+            <stop offset="0.7" stopColor="#ff8fbd" />
+            <stop offset="1" stopColor="#ffb3d1" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d="M2 22 C16 6 32 6 48 18 C64 30 80 30 98 14" fill="none" stroke="url(#cp-sw)" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+      <motion.svg className="relative" style={{ width: icon, height: icon, filter: "drop-shadow(0 0 5px rgb(255 120 175 / 0.85))" }} viewBox="0 0 48 40" animate={{ y: [0, -2.5, 0], scale: [1, 1.07, 1] }} transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }} aria-hidden>
+        <defs>
+          <linearGradient id="cp-heart" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#ff9ec6" />
+            <stop offset="1" stopColor="#f0457f" />
+          </linearGradient>
+        </defs>
+        {/* Wings */}
+        <path d="M17 17 C9 8 3 8 1 11 C3 12 4 14 3 17 C6 16 8 17 9 20 C12 19 15 20 17 22 Z" fill="#fff" fillOpacity="0.95" />
+        <path d="M31 17 C39 8 45 8 47 11 C45 12 44 14 45 17 C42 16 40 17 39 20 C36 19 33 20 31 22 Z" fill="#fff" fillOpacity="0.95" />
+        {/* Heart */}
+        <path d="M24 35 C10 25 11 12 18 12 C21 12 23 14 24 16 C25 14 27 12 30 12 C37 12 38 25 24 35 Z" fill="url(#cp-heart)" stroke="#fff" strokeOpacity="0.9" strokeWidth="1.3" />
+        <path d="M19 16 C17 16 15.5 18 16 20" fill="none" stroke="#fff" strokeOpacity="0.8" strokeWidth="1.2" strokeLinecap="round" />
+      </motion.svg>
+    </span>
+  );
 }
 
 /** The person's strongest BFF tag as a small badge beside their seat name (Besties, Bro, …). */

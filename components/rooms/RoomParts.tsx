@@ -31,7 +31,7 @@ import { ParivarTag } from "@/components/parivar/ParivarScreens";
 import { LevelPill } from "@/components/profile/IdTags";
 import { ANIMATED_EMOTES, EmoteBurst, GAME_EMOTES } from "./Emotes";
 import { MentionPicker, MentionText, mentions, useMentionAlerts } from "./Mentions";
-import { SeatCpRing, SeatTagBadge } from "./RoomSocial";
+import { CpLink, SeatCpRing, SeatTagBadge, useAreCp } from "./RoomSocial";
 import { ChatInviteSheet } from "@/components/social/Invites";
 
 /* ------------------------------------------------------------------ */
@@ -435,6 +435,8 @@ export function Pair({ s, a, b, size, gap, gold, linked, numbered = false }: { s
   const y = b !== undefined ? s.seats[b] : null;
   // Tagged people sitting beside each other show their tag instead of the heartbeat
   const tag = x && y ? tagBetween(x, y) : null;
+  // CP partners sitting side by side get the winged heart between them
+  const cpPair = useAreCp(x, y);
   return (
     <div className="flex items-start justify-center">
       <div className="relative z-10">
@@ -442,7 +444,7 @@ export function Pair({ s, a, b, size, gap, gold, linked, numbered = false }: { s
       </div>
       {b !== undefined ? (
         <>
-          {tag ? <TagLink tag={tag} gap={gap} size={size} /> : <Heartbeat gap={gap} size={size} live={Boolean(x && y)} linked={linked} />}
+          {cpPair ? <CpLink gap={gap} size={size} /> : tag ? <TagLink tag={tag} gap={gap} size={size} /> : <Heartbeat gap={gap} size={size} live={Boolean(x && y)} linked={linked} />}
           <div className="relative z-10">
             <Seat s={s} index={b} size={size} gold={gold} numbered={numbered} />
           </div>
