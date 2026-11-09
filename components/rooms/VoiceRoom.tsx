@@ -48,6 +48,15 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         </p>
       </div>
 
+      {/* The same banner the room has in the room list */}
+      <div className="relative z-10 mx-3 mt-1.5 h-[62px] shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/15 shadow-[0_10px_24px_-12px_rgb(0_0_0/0.8)]">
+        <RoomCover room={s.room} shade />
+        <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 px-3 pb-1.5">
+          <span className="min-w-0 truncate font-display text-[14px] font-extrabold text-white [text-shadow:0_1px_6px_rgb(0_0_0/0.7)]">{s.room.name}</span>
+          {s.room.category && s.room.category !== "Live" ? <span className="shrink-0 rounded-md bg-black/45 px-1.5 py-0.5 text-[10px] font-bold text-cream/90 backdrop-blur">{s.room.category}</span> : null}
+        </div>
+      </div>
+
       <PkPanel s={s} />
 
       {/* Seats: the owner's fixed seat + intimacy seat on top, then linked pairs */}

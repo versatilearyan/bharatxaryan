@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useLiveCounts } from "@/lib/app/live-counts";
 import { AnimatePresence, motion } from "framer-motion";
 import { Armchair, AudioLines, Bell, Check, ChevronDown, Copy, Gavel, Gift, Hand, Heart, ImagePlus, ListOrdered, Lock, LogOut, Megaphone, MicOff, MonitorPlay, MoreHorizontal, Music2, Plus, Power, Send, Share2, Smile, UserPlus, UsersRound, Volume2, X } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
@@ -177,9 +178,12 @@ function TopGifters({ s }: { s: RoomSession }) {
 /** Shown in place of the seats while no owner or admin is in the room. */
 export function ClosedRoomCard({ s }: { s: RoomSession }) {
   const { rooms, openRoom } = useApp();
+  const counts = useLiveCounts();
+  // Only rooms people are in right now, busiest first
+  const busy = (r: (typeof rooms)[number]) => (r.server ? (counts?.[r.server.id] ?? 0) : r.members);
   const picks = rooms
-    .filter((r) => r.id !== s.room.id && r.live && !r.password && !r.isPrivate && !r.vip && (r.type === "voice" || r.type === "watch"))
-    .sort((a, b) => (b.server ? 0 : b.members) - (a.server ? 0 : a.members))
+    .filter((r) => r.id !== s.room.id && r.live && !r.password && !r.isPrivate && !r.vip && (r.type === "voice" || r.type === "watch") && busy(r) > 0)
+    .sort((a, b) => busy(b) - busy(a))
     .slice(0, 3);
   return (
     <motion.div
@@ -213,7 +217,7 @@ export function ClosedRoomCard({ s }: { s: RoomSession }) {
                 </span>
                 <span className="w-full truncate text-[13px] font-bold text-cream" style={nameFace(r.settings?.nameFont)}>{r.name}</span>
                 <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-cream/75">
-                  {r.server ? "Live" : `${formatCount(r.members)} online`}
+                  {`${formatCount(busy(r))} online`}
                   <AudioLines className="h-3 w-3 text-[#5fe39a]" aria-hidden />
                 </span>
               </motion.button>
