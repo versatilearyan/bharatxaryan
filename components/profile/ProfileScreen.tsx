@@ -3,7 +3,7 @@
 import { BagIcon, RankingIcon, ShopIcon, VisitorsIcon } from "@/components/art/ProfileIcons";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, ChevronRight, Crown, Eye, FileText, Info, MessageCircle, Pencil, RotateCcw, RotateCw, LogOut, Shield, Smartphone, Volume2 } from "lucide-react";
+import { Bell, ChevronRight, Crown, Eye, FileText, Info, MessageCircle, Pencil, RotateCw, LogOut, Shield, Smartphone, Volume2 } from "lucide-react";
 import { setNotifyPrefs, useNotifyPrefs, notify as ping } from "@/lib/app/notify";
 import { getPrivacy, setShowOnline } from "@/lib/api/chat";
 import { GameArt } from "@/components/art/GameArt";
@@ -19,11 +19,10 @@ import { useVisitorStats } from "./ServerVisitors";
 import { useMe } from "@/lib/app/me-store";
 
 export function ProfileScreen() {
-  const { profile, coins, setSheet, push, toast, resetDemo, signOut, session, vip: appVip } = useApp();
+  const { profile, coins, setSheet, push, toast, signOut, session, vip: appVip } = useApp();
   const myServerId = session ? myUserIdFromToken() : null;
   const [notify, setNotify] = useState(true);
   const [sounds, setSounds] = useState(true);
-  const [confirmReset, setConfirmReset] = useState(false);
   const alerts = useNotifyPrefs();
   const [showOnline, setShowOnlineState] = useState<boolean | null>(null);
   useEffect(() => {
@@ -186,31 +185,11 @@ export function ProfileScreen() {
           }
         />
         <LinkRow href="/about" icon={<Info className="h-4.5 w-4.5" />} label="About Panchayat" />
-        <LinkRow href="/privacy" icon={<Shield className="h-4.5 w-4.5" />} label="Privacy" />
-        <LinkRow href="/terms" icon={<FileText className="h-4.5 w-4.5" />} label="Terms" />
-        <Row icon={<RotateCcw className="h-4.5 w-4.5" />} label="Reset demo data" danger onClick={() => setConfirmReset(true)} />
+        <LinkRow href="/privacy" icon={<Shield className="h-4.5 w-4.5" />} label="Privacy Policy" />
+        <LinkRow href="/terms" icon={<FileText className="h-4.5 w-4.5" />} label="Terms of Service" />
         <Row icon={<LogOut className="h-4.5 w-4.5" />} label="Log out" danger onClick={signOut} />
       </section>
       <p className="px-6 pt-4 text-center text-[11px] text-muted/70">{session ? `Signed in with ${{ google: "Google", apple: "Apple", email: "email" }[session.method]} as ${session.email}.` : ""}</p>
-
-      <Modal open={confirmReset} onClose={() => setConfirmReset(false)} title="Reset demo data?">
-        <p className="text-sm text-muted">This restores the sample profile, coins and chats, and removes rooms you created on this device.</p>
-        <div className="mt-5 flex gap-2">
-          <Button variant="soft" className="flex-1" onClick={() => setConfirmReset(false)}>
-            Cancel
-          </Button>
-          <Button
-            variant="danger"
-            className="flex-1"
-            onClick={() => {
-              resetDemo();
-              setConfirmReset(false);
-            }}
-          >
-            Reset
-          </Button>
-        </div>
-      </Modal>
     </div>
   );
 }
