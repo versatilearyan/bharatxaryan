@@ -42,6 +42,7 @@ export const BACKGROUNDS: { id: RoomBackground; label: string; css: string; vip?
   { id: "gaon-raat", label: "Gaon ki raat", css: "linear-gradient(rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)), url(/backgrounds/gaon-raat.svg) top center / cover no-repeat, #080a16" },
   { id: "mela", label: "Mela", css: "linear-gradient(rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)), url(/backgrounds/mela.svg) top center / cover no-repeat, #16050a" },
   { id: "khet", label: "Sarson ke khet", css: "linear-gradient(rgb(0 0 0 / 0.2), rgb(0 0 0 / 0.2)), url(/backgrounds/khet.svg) top center / cover no-repeat, #0f0d08" },
+  { id: "newbie", label: "Newbie Welcome", css: "linear-gradient(rgb(10 6 3 / 0.15), rgb(10 6 3 / 0.55)), url(/backgrounds/newbie-room.jpg) top center / cover no-repeat, #1a0f08" },
 ];
 
 /** VIP levels an owner can require before someone takes a seat in a VIP room. */
@@ -425,7 +426,7 @@ export function RoomSettingsScreen({ s }: { s: RoomSession }) {
           <OptionPicker
             open={picker === "background"}
             title="Background"
-            options={BACKGROUNDS.map((b) => ({ id: b.id, label: b.vip ? `${b.label} 👑` : b.label, hint: b.vip ? `VIP ${GOLD_NAME_VIP}+ exclusive` : undefined, swatch: b.id === "cover" ? undefined : b.css }))}
+            options={BACKGROUNDS.filter((b) => b.id !== "newbie" || s.room.newbie).map((b) => ({ id: b.id, label: b.vip ? `${b.label} 👑` : b.label, hint: b.vip ? `VIP ${GOLD_NAME_VIP}+ exclusive` : undefined, swatch: b.id === "cover" ? undefined : b.css }))}
             value={st.background}
             onPick={(b) => (BACKGROUNDS.find((x) => x.id === b)?.vip && vip.level < GOLD_NAME_VIP ? toast(`VIP backgrounds unlock at VIP ${GOLD_NAME_VIP}`, "error") : s.updateSettings({ background: b }))}
             onClose={() => setPicker(null)}

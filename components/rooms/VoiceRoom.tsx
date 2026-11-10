@@ -29,8 +29,8 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
   return (
     <div className={`relative flex h-full flex-col overflow-hidden ${vip ? "bg-wine-2" : "bg-ink"}`}>
       {/* Backdrop: room cover fading into the room surface */}
-      {s.room.newbie ? (
-        <div className="absolute inset-0" aria-hidden style={{ backgroundImage: "linear-gradient(to bottom, rgba(10,6,3,0.28), rgba(10,6,3,0.55) 55%, rgba(10,6,3,0.9)), url(/backgrounds/newbie-room.jpg), radial-gradient(120% 70% at 50% 0%, #6b4a1f 0%, #2a1a0c 50%, #0c0703 100%)", backgroundSize: "cover", backgroundPosition: "center top" }} />
+      {s.room.newbie && (s.settings.background === "cover" || s.settings.background === "newbie") ? (
+        <div className="absolute inset-0" aria-hidden style={{ backgroundImage: "linear-gradient(to bottom, rgba(10,6,3,0.12), rgba(10,6,3,0.5) 62%, rgba(10,6,3,0.88)), url(/backgrounds/newbie-room.jpg), radial-gradient(120% 70% at 50% 0%, #6b4a1f 0%, #2a1a0c 50%, #0c0703 100%)", backgroundSize: "cover", backgroundPosition: "center top" }} />
       ) : s.settings.background === "cover" ? (
         <div className="absolute inset-x-0 top-0 h-[58%]" aria-hidden>
           <RoomCover room={s.room} />

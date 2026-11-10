@@ -47,7 +47,7 @@ export type CoverTheme = "dusk" | "rose" | "gold" | "night" | "monsoon" | "ember
 export type CoverMotif = "banyan" | "temple" | "huts" | "river" | "kites" | "lanterns";
 export type Cover = { theme: CoverTheme; motif: CoverMotif };
 
-export type RoomBackground = "chaupal" | "gaon-raat" | "mela" | "khet" | "mehfil" | "sunset" | "ocean" | "emerald" | "cover" | "brief" | "velvet" | "starry" | "darbar" | "sheesh-mahal" | "aurora";
+export type RoomBackground = "chaupal" | "gaon-raat" | "mela" | "khet" | "mehfil" | "sunset" | "ocean" | "emerald" | "cover" | "brief" | "velvet" | "starry" | "darbar" | "sheesh-mahal" | "aurora" | "newbie";
 
 /** Settings the owner controls from the room Settings screen. */
 export type RoomSettings = {

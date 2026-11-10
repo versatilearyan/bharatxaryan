@@ -14,6 +14,7 @@
 import { api } from "./client";
 
 export type RoomEventType =
+  | "NEWBIE_WELCOME"
   | "JOINED"
   | "LEFT"
   | "SEAT_TAKEN"

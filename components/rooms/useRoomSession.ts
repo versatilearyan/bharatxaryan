@@ -184,6 +184,10 @@ export function useRoomSession(room: Room) {
         case "JOINED":
           if (!toMe && e.targetId) add({ id: mid(), kind: "join", authorId: e.targetId });
           break;
+        case "NEWBIE_WELCOME":
+          // A welcome room greets each new member by name, in the chat for everyone
+          addSystem(`🎉 Welcome to Panchayat, ${toMe ? profile.name : t}! Say hi and make some friends. ❤️`);
+          break;
         case "MIC_APPROVED":
           addSystem(`${a} approved ${t}'s mic request · seat No.${seatNo}`);
           if (toMe) toast(`Approved! You're on seat ${seatNo}. Tap the mic to unmute.`, "gold");
