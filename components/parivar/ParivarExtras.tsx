@@ -12,6 +12,7 @@ import { serverRoomAppId, useServerRooms } from "@/lib/app/server-rooms";
 import { useApp } from "@/lib/app/store";
 
 const n = (v: number) => v.toLocaleString("en-IN");
+const CHAT_ROLE: Record<string, string> = { LEADER: "from-[#ff6b8a] to-[#ff8fa8]", DEPUTY: "from-[#3a8dff] to-[#5fb7ff]", ADMIN: "from-[#2fbf86] to-[#58d6a2]" };
 const errText = (e: unknown, fallback = "That didn't work. Try again.") => (e instanceof Error && e.message ? e.message : fallback);
 const RARITY: Record<string, string> = { COMMON: "#b9c0cc", RARE: "#5fb7ff", EPIC: "#c58bff", LEGENDARY: "#ffd36e" };
 const KIND_ICON: Record<string, string> = {};
@@ -1034,10 +1035,10 @@ export function ChatSheet({ p, open, onClose, onHome }: Omit<Props, "onChanged">
               </span>
             )}
             <div className="min-w-0 flex-1">
-              <p className="truncate font-display text-[16px] leading-tight font-extrabold text-cream">{p.name}</p>
-              <p className="truncate text-[11.5px] text-cream/55">
-                {n(p.memberCount)} members{prefs.muted ? " · muted" : ""}
+              <p className="truncate font-display text-[17px] leading-tight font-extrabold text-cream">
+                {p.name} <span className="font-semibold text-cream/50">({n(p.memberCount)})</span>
               </p>
+              {prefs.muted ? <p className="truncate text-[11.5px] text-cream/55">Notifications muted</p> : null}
             </div>
             {onHome ? (
               <button type="button" onClick={onHome} className="grid h-10 w-10 place-items-center rounded-full text-cream active:bg-white/10" aria-label="Parivar home">
@@ -1153,8 +1154,14 @@ export function ChatSheet({ p, open, onClose, onHome }: Omit<Props, "onChanged">
                       </div>
                       <div className={`max-w-[78%] rounded-2xl bg-[#2c2530] px-3 py-1.5 ring-1 ring-white/5 ${lastOfRun ? "rounded-bl-md" : ""}`}>
                         {first ? (
-                          <p className="text-[12px] font-bold" style={{ color: colorFor(m.userId) }}>
-                            {m.name ?? "Someone"}
+                          <p className="flex items-center gap-1.5 text-[12px] font-bold">
+                            <span className="truncate" style={{ color: colorFor(m.userId) }}>
+                              {m.name ?? "Someone"}
+                            </span>
+                            {(() => {
+                              const role = p.members.find((x) => x.userId === m.userId)?.role;
+                              return role && role !== "MEMBER" ? <span className={`shrink-0 rounded-md bg-gradient-to-r px-1.5 py-px text-[9.5px] font-bold text-white ${CHAT_ROLE[role]}`}>{role === "LEADER" ? "Leader" : role === "DEPUTY" ? "Deputy" : "Admin"}</span> : null;
+                            })()}
                           </p>
                         ) : null}
                         <p className="text-[14px] leading-snug break-words whitespace-pre-wrap text-cream">{m.text}</p>

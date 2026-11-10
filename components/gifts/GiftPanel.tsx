@@ -10,6 +10,7 @@ import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, formatCoins } from "@/components/ui/kit";
 import { GIFTS_LIVE, GIFTS_SOON_TEXT, giftById, giftCategories, giftCategoryKind, giftsOnSale } from "@/lib/app/data";
 import { bagGiftCounts, useGiftsVersion, useRewards } from "@/lib/app/rewards-store";
+import { WELCOME_GIFT_ID, useNewbieMe } from "@/lib/app/newbie";
 import { ComingSoonBadge, SoonTag } from "@/components/ui/ComingSoonBadge";
 import { GIFT_MESSAGE_MAX, useGiftNews } from "@/lib/app/gift-news-store";
 import { useMarket } from "@/lib/app/market-store";
@@ -27,7 +28,10 @@ export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onCl
   // Backend rooms: the server's gifts (admin panel) and the gifts in your server Bag (won as rewards)
   const backend = Boolean(s.room.server);
   const giftsV = useGiftsVersion();
-  const GIFTS = useMemo(() => giftsOnSale(), [giftsV]); // eslint-disable-line react-hooks/exhaustive-deps
+  const newbieMe = useNewbieMe();
+  // The Welcome Newbie gift shows only to the host of a welcome room (the server checks it again when it is sent)
+  const canWelcome = Boolean(s.room.newbie && (s.isOwner || newbieMe?.isHost));
+  const GIFTS = useMemo(() => giftsOnSale().filter((g) => (g.id as string) !== WELCOME_GIFT_ID || canWelcome), [giftsV, canWelcome]); // eslint-disable-line react-hooks/exhaustive-deps
   const GIFT_CATEGORIES = useMemo(() => giftCategories(), [giftsV]); // eslint-disable-line react-hooks/exhaustive-deps
   const { rewards, refresh: refreshBag } = useRewards();
   const serverPkg = useMemo(() => bagGiftCounts(rewards), [rewards]);

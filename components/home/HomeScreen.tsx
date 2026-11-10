@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Bell, ChevronDown, Crown, Flame, MonitorPlay, Plus, Radio, UsersRound } from "lucide-react";
 import { activeRooms } from "@/lib/app/active-rooms";
 import { useLiveCounts } from "@/lib/app/live-counts";
+import { NewbieRooms } from "@/components/newbie/NewbieUi";
 import { ShortcutIcon } from "@/components/art/ShortcutIcon";
 import { Logo } from "@/components/brand/Logo";
 import { GameArt } from "@/components/art/GameArt";
@@ -21,6 +22,7 @@ export function HomeScreen() {
   return (
     <div className="app-scroll h-full pb-[calc(84px+var(--mini,0px)+env(safe-area-inset-bottom))]">
       <TopBar />
+      <NewbieRooms />
       <Shortcuts />
       <GameModes />
       <FeaturedVip />
@@ -281,7 +283,11 @@ function WatchTogether() {
 
 function Trending() {
   const { rooms } = useApp();
-  const trending = rooms.filter((r) => r.type === "voice" && r.live).sort((a, b) => b.members - a.members);
+  const counts = useLiveCounts();
+  // Only rooms that are live right now, with people in them (busiest first). Before the live numbers arrive nothing shows, so an empty room is never called live.
+  const busy = (r: (typeof rooms)[number]) => (r.server ? (counts?.[r.server.id] ?? 0) : counts ? 0 : r.members);
+  const trending = rooms.filter((r) => r.type === "voice" && r.live && !r.password && !r.isPrivate && busy(r) > 0).sort((a, b) => busy(b) - busy(a));
+  if (!trending.length) return null;
   return (
     <section className="mt-8" aria-labelledby="trending-h">
       <SectionTitle>

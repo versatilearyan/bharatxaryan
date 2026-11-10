@@ -100,6 +100,10 @@ export type Room = {
   password?: string;
   settings?: Partial<RoomSettings>;
   createdByMe?: boolean;
+  /** A Newbie Welcome Room (hosted by staff, shown first, has a special host seat). */
+  newbie?: boolean;
+  /** Its 6 extra welcome seats are open. */
+  extraSeats?: boolean;
   /** Pre-loaded video for Watch Together rooms. */
   videoId?: string;
   /**

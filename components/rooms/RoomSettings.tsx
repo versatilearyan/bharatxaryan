@@ -10,6 +10,10 @@ import { CATEGORIES } from "@/lib/app/data";
 import { formatPoints } from "@/lib/app/levels";
 import { usePeople } from "@/lib/app/people";
 import { GOLD_NAME_VIP } from "@/lib/app/levels";
+import { getRoomById } from "@/lib/api/voice-rooms";
+import { newbieApi } from "@/lib/api/newbie";
+import { useNewbieMe } from "@/lib/app/newbie";
+import { useServerRooms } from "@/lib/app/server-rooms";
 import { NAME_FONTS, nameFace } from "@/lib/app/fonts";
 import { ME_ID, useApp } from "@/lib/app/store";
 import type { Cover, RoomBackground, RoomSettings } from "@/lib/app/types";
@@ -367,6 +371,7 @@ export function RoomSettingsScreen({ s }: { s: RoomSession }) {
                 locked={locked}
               />
             </Group>
+            {s.room.newbie ? <ExtraSeatsGroup s={s} locked={locked} /> : null}
             <Group>
               <SwitchRow label="Manage event" hint="Shows an event banner in the room" on={st.event} onChange={(v) => s.updateSettings({ event: v })} locked={locked} />
             </Group>
@@ -467,6 +472,34 @@ function Row({ label, value, onClick, locked }: { label: string; value?: ReactNo
       <span className="text-[15px] font-extrabold text-[#a5a3bd]">{value}</span>
       <ChevronRight className="h-4 w-4 text-[#c4c2cf]" aria-hidden />
     </button>
+  );
+}
+
+/** Newbie Welcome Rooms: the host opens or closes the 6 extra welcome seats. The server decides who may and resizes the seats. */
+function ExtraSeatsGroup({ s, locked }: { s: RoomSession; locked: boolean }) {
+  const { applyRoom } = useServerRooms();
+  const { toast } = useApp();
+  const me = useNewbieMe();
+  const [busy, setBusy] = useState(false);
+  const id = s.room.server?.id;
+  if (!id) return null;
+  const change = async (on: boolean) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await newbieApi.setExtraSeats(id, on);
+      applyRoom(await getRoomById(id));
+      toast(on ? "6 extra welcome seats are open" : "Extra welcome seats closed", "gold");
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : "Couldn't change the extra seats.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Group>
+      <SwitchRow label="Enable Extra Welcome Seats" hint={me && !me.extraSeatsAllowed ? "Turned off by the admin" : "Opens 6 more seats below the regular seats"} on={Boolean(s.room.extraSeats)} onChange={(v) => void change(v)} locked={locked || busy || Boolean(me && !me.extraSeatsAllowed)} />
+    </Group>
   );
 }
 

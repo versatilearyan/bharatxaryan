@@ -14,6 +14,7 @@ import { GiftPanel } from "@/components/gifts/LazyGiftPanel";
 import { ChatInput, ClosedRoomCard, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomTopBar, SeatLayout } from "./RoomParts";
 import { LiveVoiceBar } from "./LiveVoiceBar";
 import { BACKGROUNDS } from "./RoomSettings";
+import { NewbieSeatLayout, NewbieWelcome } from "@/components/newbie/NewbieUi";
 import type { RoomSession } from "./useRoomSession";
 
 export function VoiceRoom({ s }: { s: RoomSession }) {
@@ -28,7 +29,9 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
   return (
     <div className={`relative flex h-full flex-col overflow-hidden ${vip ? "bg-wine-2" : "bg-ink"}`}>
       {/* Backdrop: room cover fading into the room surface */}
-      {s.settings.background === "cover" ? (
+      {s.room.newbie ? (
+        <div className="absolute inset-0" aria-hidden style={{ backgroundImage: "linear-gradient(to bottom, rgba(10,6,3,0.28), rgba(10,6,3,0.55) 55%, rgba(10,6,3,0.9)), url(/backgrounds/newbie-room.jpg), radial-gradient(120% 70% at 50% 0%, #6b4a1f 0%, #2a1a0c 50%, #0c0703 100%)", backgroundSize: "cover", backgroundPosition: "center top" }} />
+      ) : s.settings.background === "cover" ? (
         <div className="absolute inset-x-0 top-0 h-[58%]" aria-hidden>
           <RoomCover room={s.room} />
           <div className={`absolute inset-0 bg-gradient-to-b ${vip ? "from-[#241018]/40 via-[#241018]/80 to-[#241018]" : "from-ink/30 via-ink/75 to-ink"}`} />
@@ -56,7 +59,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         {s.roomOpen ? (
           <>
             {/* Slightly smaller seats leave more room for the chat */}
-            <SeatLayout s={s} gold={vip} scale={seatScale} />
+            {s.room.newbie ? <NewbieSeatLayout s={s} scale={seatScale} /> : <SeatLayout s={s} gold={vip} scale={seatScale} />}
             <MicOrderBar s={s} />
           </>
         ) : (
@@ -89,6 +92,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         </div>
       </div>
 
+      <NewbieWelcome s={s} />
       <GiftPanel open={sheet === "gift"} onClose={close} s={s} />
       <CreatePkSheet open={sheet === "pk"} onClose={close} />
       <MusicSheet open={sheet === "music"} onClose={close} />

@@ -1,5 +1,6 @@
 "use client";
 
+import { NewbieRooms } from "@/components/newbie/NewbieUi";
 import { isGameTable, useLiveCounts } from "@/lib/app/live-counts";
 import { activeRooms, byOnline } from "@/lib/app/active-rooms";
 import { useEffect, useMemo, useState } from "react";
@@ -86,6 +87,7 @@ export function RoomsScreen() {
         <MyRoomTab onFind={() => setTop("All")} />
       ) : browsing ? (
         <>
+          <NewbieRooms className="mt-1" />
           <LiveRooms />
           <section className="mt-3">
             <SectionTitle>Recommended</SectionTitle>

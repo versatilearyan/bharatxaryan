@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLiveCounts } from "@/lib/app/live-counts";
+import { NewbieBadge } from "@/components/newbie/NewbieBadge";
+import { useIsNewbie } from "@/lib/app/newbie";
 import { AnimatePresence, motion } from "framer-motion";
 import { Armchair, AudioLines, Bell, Check, ChevronDown, Copy, Gavel, Gift, Hand, Heart, ImagePlus, ListOrdered, Lock, LogOut, Megaphone, MicOff, MonitorPlay, MoreHorizontal, Music2, Plus, Power, Send, Share2, Smile, UserPlus, UsersRound, Volume2, X } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
@@ -254,6 +256,9 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
   const seatMuted = s.mutedSeats.includes(index);
   const muted = id ? (id === ME_ID ? s.muted : s.forceMuted.includes(id) || seatMuted) : false;
   const { fxFor } = useRoomFx(s);
+  // The NEWBIE tag, shown under the names in welcome rooms
+  const newbieFlag = useIsNewbie(s.room.newbie ? id : null);
+  const isNewbieSeat = Boolean(s.room.newbie && newbieFlag && id !== s.room.hostId);
   // Backend rooms: this person's own frame from their participants record, seen the same by everyone
   const fx = id ? fxFor(id) : {};
   const [failedFrame, setFailedFrame] = useState("");
@@ -386,6 +391,7 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
       <span className={`relative z-[2] mt-1 truncate font-bold ${owner ? "text-cream/60" : (p && vipName(p.vip, "room")) || "text-cream"} ${p || owner ? "" : numbered ? "hidden" : "invisible"}`} style={{ ...nameFace(p?.nameFont), maxWidth: Math.max(72, size * 1.3), fontSize: size >= 70 ? 15 : size < 50 ? 11 : 12.5, marginTop: frame ? size * 0.14 : undefined }}>
         {p ? p.name : owner ? owner.name : "Empty"}
       </span>
+      {p && isNewbieSeat ? <NewbieBadge className="relative z-[2]" /> : null}
     </div>
   );
 }

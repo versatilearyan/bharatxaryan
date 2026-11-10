@@ -39,6 +39,8 @@ import { nameFace, nameTone } from "@/lib/app/fonts";
 import { ParivarEmblem, ParivarTag } from "@/components/parivar/ParivarScreens";
 import { PARIVAR_ENABLED, ROLE_LABEL, parivarLevel } from "@/lib/app/parivar";
 import { useParivar } from "@/lib/app/parivar-store";
+import { NewbieBadge } from "@/components/newbie/NewbieBadge";
+import { useIsNewbie, useNewbieMe } from "@/lib/app/newbie";
 import { LevelPill } from "@/components/profile/IdTags";
 import { usePublicProfile } from "@/components/profile/usePublicProfile";
 import { useProfileFx } from "@/components/profile/useProfileFx";
@@ -120,6 +122,9 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, char
   // VIP cosmetics from this person's own profile response (yours: GET /users/me; theirs: GET /users/{id}/profile)
   const fx = useProfileFx(personId, p.vip, vipFresh);
   const mine = personId === ME_ID;
+  const meNewbie = useNewbieMe();
+  const otherNewbie = useIsNewbie(mine ? null : personId);
+  const isNewbie = mine ? Boolean(meNewbie?.newbie) : otherNewbie;
   // A banner that fails to load falls back to the illustration
   const [brokenBanner, setBrokenBanner] = useState<string | null>(null);
   const bannerUrl = mine ? profile.banner : p.banner;
@@ -168,6 +173,7 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, char
           {(!backendProfile || charmPoints !== undefined) ? (
             <CharmBadge personId={personId} size="md" showCount points={backendProfile ? charmPoints : undefined} />
           ) : null}
+          {isNewbie ? <NewbieBadge className="!px-2 !py-0.5 !text-[10px]" /> : null}
           <ParivarTag personId={personId} className="!text-[11px]" />
         </div>
         <button

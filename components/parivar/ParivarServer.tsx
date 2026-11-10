@@ -112,13 +112,14 @@ export function ParivarListScreen() {
   return (
     <div className="app-scroll h-full bg-ink pb-8">
       <ScreenHeader title="Parivar" onBack={pop} />
-      <div className="mx-4 grid grid-cols-4 gap-2 pb-3">
+      <div className="mx-4 grid grid-cols-4 gap-2.5 pb-4">
         {actions.map((a) => (
-          <button key={a.key} type="button" onClick={a.run} className="flex flex-col items-center gap-1.5">
-            <span className={`grid h-14 w-14 place-items-center rounded-full ring-1 ${a.on ? "bg-gold/20 text-gold ring-gold/50" : "bg-white/[0.07] text-cream ring-white/10"}`}>
+          <button key={a.key} type="button" onClick={a.run} className="flex flex-col items-center gap-2 transition active:scale-95">
+            <span className={`relative grid h-[58px] w-[58px] place-items-center overflow-hidden rounded-[20px] ring-1 ${a.on ? "bg-gradient-to-br from-[#f6d899] to-[#d9a84f] text-[#2a1a0c] shadow-[0_10px_24px_-8px_rgb(231_188_114/0.75)] ring-gold/60" : "bg-gradient-to-b from-white/[0.11] to-white/[0.03] text-gold ring-white/12"}`}>
+              <span aria-hidden className="absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-white/45 to-transparent" />
               <a.icon className="h-6 w-6" aria-hidden />
             </span>
-            <span className="text-[11.5px] font-semibold text-cream/80">{a.label}</span>
+            <span className="text-[11.5px] font-bold tracking-wide text-cream/85">{a.label}</span>
           </button>
         ))}
       </div>
@@ -142,31 +143,71 @@ export function ParivarListScreen() {
         </>
       ) : (
         <>
-          <ul className="border-t border-white/[0.07]">
-            {cards === null ? [0, 1, 2, 3].map((i) => <li key={i} className="h-[92px] animate-pulse border-b border-white/[0.05] bg-white/[0.03]" />) : null}
+          <div className="mx-4 mb-2 flex items-end justify-between">
+            <p className="font-display text-[17px] font-extrabold text-cream">{q ? "Results" : "Popular Parivars"}</p>
+            {cards ? <p className="text-[11.5px] font-semibold text-cream/45">{n(cards.length)} found</p> : null}
+          </div>
+          <ul className="space-y-2.5 px-4">
+            {cards === null ? [0, 1, 2].map((i) => <li key={i} className="h-[104px] animate-pulse rounded-[24px] bg-white/[0.05]" />) : null}
             {cards && !cards.length ? <li className="py-12 text-center text-[13px] text-muted">{q ? "No Parivar matches." : "No Parivars yet. Be the first to start one."}</li> : null}
-            {(cards ?? []).map((c) => (
-              <li key={c.id} className="border-b border-white/[0.07]">
-                <button type="button" onClick={() => push(c.id === mine ? { kind: "parivar-chat", id: c.id } : { kind: "parivar", id: c.id })} className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.04]">
-                  <Emblem p={c} size={58} />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="truncate font-display text-[17px] font-extrabold text-cream">{c.name}</span>
-                      <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-gradient-to-r from-[#2d6f9e] to-[#3fa7ff] px-1.5 py-0.5 text-[10.5px] font-extrabold text-white">
-                        <Shield className="h-3 w-3" aria-hidden /> {c.level}
-                      </span>
-                      <SignBadge sign={c.sign} frame={c.frame} size="sm" />
+            {(cards ?? []).map((c, i) => {
+              const mineCard = c.id === mine;
+              const pct = Math.min(100, Math.round((c.members / Math.max(1, c.capacity)) * 100));
+              return (
+                <motion.li key={c.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04, type: "spring", stiffness: 260, damping: 26 }}>
+                  <button type="button" onClick={() => push(mineCard ? { kind: "parivar-chat", id: c.id } : { kind: "parivar", id: c.id })} className={`relative flex w-full items-center gap-3 overflow-hidden rounded-[24px] bg-gradient-to-br from-white/[0.09] to-white/[0.02] p-3 pr-3.5 text-left ring-1 transition active:scale-[0.985] ${mineCard ? "ring-gold/55" : "ring-white/10"}`}>
+                    <span aria-hidden className="pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full opacity-25 blur-2xl" style={{ background: c.color || "#e7bc72" }} />
+                    <span className="relative shrink-0">
+                      <Emblem p={c} size={60} />
                     </span>
-                    {c.leader ? <span className="mt-0.5 block truncate text-[12.5px] text-cream/55">Leader: {c.leader}</span> : null}
-                    <span className="mt-0.5 block truncate text-[12.5px] text-cream/40">{c.intro || "No introduction yet."}</span>
-                  </span>
-                  <span className="shrink-0 self-start pt-1 text-[13px] font-semibold text-cream/50">
-                    {n(c.members)}/{n(c.capacity)}
-                  </span>
-                </button>
-              </li>
-            ))}
+                    <span className="relative min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate font-display text-[17px] font-extrabold text-cream">{c.name}</span>
+                        <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-gradient-to-r from-[#2d6f9e] to-[#3fa7ff] px-1.5 py-0.5 text-[10.5px] font-extrabold text-white">
+                          <Shield className="h-3 w-3" aria-hidden /> {c.level}
+                        </span>
+                      </span>
+                      <span className="mt-1 flex items-center gap-2">
+                        <SignBadge sign={c.sign} frame={c.frame} size="sm" />
+                        {c.leader ? (
+                          <span className="flex min-w-0 items-center gap-1 text-[12px] text-cream/60">
+                            <Crown className="h-3 w-3 shrink-0 text-gold" aria-hidden />
+                            <span className="truncate">{c.leader}</span>
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className="mt-1 block truncate text-[12px] text-cream/40">{c.intro || "No introduction yet."}</span>
+                    </span>
+                    <span className="relative flex shrink-0 flex-col items-end gap-1.5 self-stretch justify-between py-0.5">
+                      {mineCard ? <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-extrabold tracking-wide text-gold">MINE</span> : <span />}
+                      <span className="flex flex-col items-end">
+                        <span className="flex items-center gap-1 text-[12.5px] font-bold text-cream/80">
+                          <UsersRound className="h-3.5 w-3.5 text-gold" aria-hidden /> {n(c.members)}/{n(c.capacity)}
+                        </span>
+                        <span className="mt-1 h-1.5 w-14 overflow-hidden rounded-full bg-white/10">
+                          <span className="block h-full rounded-full bg-gradient-to-r from-gold to-coral" style={{ width: `${pct}%` }} />
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+                </motion.li>
+              );
+            })}
           </ul>
+          {!mine && cards ? (
+            <div className="mx-4 mt-4 flex items-center gap-3 rounded-[24px] bg-gradient-to-r from-[#3a1622] to-[#1c1019] p-4 ring-1 ring-gold/25">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gold/15 text-gold ring-1 ring-gold/30">
+                <Plus className="h-6 w-6" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-display text-[15px] font-extrabold text-cream">Start your own Parivar</span>
+                <span className="text-[12px] text-cream/55">Pick a name, logo and sign. Your people join you.</span>
+              </span>
+              <button type="button" onClick={() => push({ kind: "parivar-create" })} className="shrink-0 rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] px-4 py-2 text-[12.5px] font-extrabold text-[#2a1a0c]">
+                Create
+              </button>
+            </div>
+          ) : null}
           <button type="button" onClick={() => { setCards(null); setTick((t) => t + 1); }} className="mx-auto mt-5 flex items-center gap-2 rounded-full px-5 py-2 text-[14px] font-bold text-gold active:bg-white/10">
             <RefreshCw className="h-4 w-4" aria-hidden /> Refresh
           </button>
@@ -584,27 +625,25 @@ export function ParivarHome({ id }: { id: string }) {
           </div>
         ) : null}
       </header>
-      <section className="relative mx-4 overflow-hidden rounded-[28px] p-4 ring-1 ring-gold/25" style={{ backgroundImage: "radial-gradient(circle at 100% 0%, rgb(231 188 114 / 0.22), transparent 55%), linear-gradient(135deg, #3a1622, #1c1019 70%)" }}>
-        <span aria-hidden className="pointer-events-none absolute -top-12 -right-12 h-44 w-44 rounded-full opacity-40" style={{ background: "repeating-radial-gradient(circle, transparent 0 9px, rgba(240,205,130,0.2) 9px 10px)" }} />
-        <div className="flex items-center gap-4">
-          <Emblem p={p} size={80} />
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-display text-[22px] leading-tight font-extrabold text-cream">{p.name}</p>
-            <p className="mt-1 flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#2d6f9e] to-[#3fa7ff] px-2 py-0.5 text-[11px] font-extrabold text-white">
-                <Shield className="h-3 w-3" aria-hidden /> {p.level}
-              </span>
-              <SignBadge sign={p.sign} frame={p.frame} />
-            </p>
-            <p className="mt-1 text-[10.5px] font-semibold text-gold/80">{frameName(p.frame)} frame</p>
-            <p className="mt-1.5 text-[11.5px] text-cream/60">ID: {p.code}</p>
-            <p className="mt-1 flex items-center gap-2 text-[11.5px] text-cream/70">
-              <span className="inline-flex items-center gap-1">
-                <UsersRound className="h-3.5 w-3.5" aria-hidden /> {n(p.memberCount)}/{n(p.capacity)}
-              </span>
-              <span className="rounded-full bg-gradient-to-r from-[#f6d899] to-[#e7bc72] px-2.5 py-0.5 text-[11px] font-extrabold text-[#2a1a0c]">Weekly Rank {p.weekRank ? p.weekRank : "—"}</span>
-            </p>
-          </div>
+      <section className="mx-4 flex items-center gap-4 pt-1 pb-1">
+        <Emblem p={p} size={78} />
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-2">
+            <span className="truncate font-display text-[22px] leading-tight font-extrabold text-cream">{p.name}</span>
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-gradient-to-r from-[#2d6f9e] to-[#3fa7ff] px-1.5 py-0.5 text-[11px] font-extrabold text-white">
+              <Shield className="h-3 w-3" aria-hidden /> {p.level}
+            </span>
+          </p>
+          <p className="mt-1">
+            <SignBadge sign={p.sign} frame={p.frame} />
+          </p>
+          <p className="mt-1.5 flex items-center gap-3 text-[12px] text-cream/60">
+            <span>ID: {p.code}</span>
+            <span className="inline-flex items-center gap-1">
+              <UsersRound className="h-3.5 w-3.5" aria-hidden /> {n(p.memberCount)}/{n(p.capacity)}
+            </span>
+            {p.weekRank ? <span className="rounded-full bg-gradient-to-r from-[#f6d899] to-[#e7bc72] px-2 py-0.5 text-[10.5px] font-extrabold text-[#2a1a0c]">Weekly Rank {p.weekRank}</span> : null}
+          </p>
         </div>
       </section>
 
@@ -668,27 +707,34 @@ export function ParivarHome({ id }: { id: string }) {
             {isMember ? <WeeklyActiveness p={p} info={wk} onChanged={() => { loadExtras(); void load(); }} /> : null}
 
             <div>
-              <SectionTitle>Treasury</SectionTitle>
-              <div className="mt-2 flex items-center gap-2 rounded-3xl bg-gradient-to-br from-surface to-ink-2 p-3 ring-1 ring-line-strong">
-                <button type="button" onClick={() => isMember && setSheet("chests")} className="relative grid h-[76px] w-[76px] shrink-0 place-items-center rounded-2xl bg-gold/10 ring-1 ring-gold/30" aria-label="Chests">
-                  <Gift className="h-9 w-9 text-gold" strokeWidth={1.5} aria-hidden />
-                  {ch && ch.sent.filter((c) => c.status === "OPEN").length ? <span className="absolute -top-1.5 -right-1.5 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{ch.sent.filter((c) => c.status === "OPEN").length}</span> : null}
-                </button>
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-1.5 text-[12px] font-bold text-cream/80">
-                    <Shield className={`h-3.5 w-3.5 ${kv?.active ? "text-speak" : "text-muted"}`} aria-hidden />
+              <div className="flex items-center justify-between gap-2">
+                <p className="flex min-w-0 items-center gap-2 font-display text-[16px] font-extrabold text-cream">
+                  <span className="h-4 w-1 shrink-0 rounded-full bg-gold" aria-hidden /> Treasury
+                  <span className="flex min-w-0 items-center gap-1 truncate text-[12px] font-semibold text-cream/55">
+                    <Shield className={`h-4 w-4 shrink-0 ${kv?.active ? "text-speak" : "text-cream/40"}`} aria-hidden />
                     Kavach: {kv?.active ? `${kv.active.name} · ${kv.active.strength}` : "0"}
-                  </p>
-                  <p className="mt-1.5 flex items-center gap-2 font-display text-[22px] font-extrabold text-gold">
-                    <Coin className="h-5 w-5" /> {n(p.funds)}
-                  </p>
-                  <p className="text-[11px] text-cream/50">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open chests are waiting, tap the box" : "Chests handed out for now"}</p>
-                </div>
-                {isMember ? (
-                  <button type="button" onClick={() => setDonate(true)} className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c]" aria-label="Donate">
-                    <Plus className="h-5 w-5" aria-hidden />
-                  </button>
-                ) : null}
+                  </span>
+                </p>
+                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.08] py-1 pr-1 pl-3 ring-1 ring-white/10">
+                  <Coin className="h-4 w-4" />
+                  <span className="text-[13.5px] font-extrabold text-gold">{n(p.funds)}</span>
+                  {isMember ? (
+                    <button type="button" onClick={() => setDonate(true)} className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c]" aria-label="Donate">
+                      <Plus className="h-4 w-4" aria-hidden />
+                    </button>
+                  ) : null}
+                </span>
+              </div>
+              <div className="mt-3 flex items-stretch gap-3 rounded-3xl bg-white/[0.05] p-3 ring-1 ring-white/10">
+                <button type="button" onClick={() => isMember && setSheet("chests")} className="relative flex w-[84px] shrink-0 flex-col items-center gap-1" aria-label="Chests">
+                  <span className="grid h-[58px] w-[58px] place-items-center rounded-2xl bg-gold/10 ring-1 ring-gold/30">
+                    <Gift className="h-8 w-8 text-gold" strokeWidth={1.5} aria-hidden />
+                  </span>
+                  <span className="text-[12px] text-cream/55">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open" : "To Unlock"}</span>
+                  {ch && ch.sent.filter((c) => c.status === "OPEN").length ? <span className="absolute top-0 right-1 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{ch.sent.filter((c) => c.status === "OPEN").length}</span> : null}
+                </button>
+                <span aria-hidden className="w-px bg-white/10" />
+                <p className="grid flex-1 place-items-center text-center text-[14px] text-cream/50">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open chests are waiting. Tap the box." : "No chest"}</p>
               </div>
             </div>
 

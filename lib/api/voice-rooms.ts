@@ -58,6 +58,9 @@ export type VoiceRoom = {
   points?: number;
   /** Room EXP: sets the room level (1 to 10). */
   exp?: number;
+  /** A Newbie Welcome Room, and whether its 6 extra seats are open. */
+  newbie?: boolean;
+  extraSeats?: boolean;
 };
 
 /** What POST /voice-rooms/{id}/join returns: where and how to connect to LiveKit. */
