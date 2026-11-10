@@ -347,7 +347,7 @@ export function RoomSettingsScreen({ s }: { s: RoomSession }) {
               <Row label="Announcement" value={announcement ? <span className="block max-w-[160px] truncate">{announcement}</span> : ""} onClick={() => pick("announcement")} locked={locked} />
               <Row label="Mode" value={MODE_LABEL[s.mode]} onClick={() => pick("mode")} locked={locked} />
               <Row label="Tag" value={s.room.category} onClick={() => pick("tag")} locked={locked} />
-              <Row label="Background" value={BACKGROUNDS.find((b) => b.id === st.background)?.label} onClick={() => pick("background")} locked={locked} />
+              <Row label="Background" value={BACKGROUNDS.find((b) => b.id === (s.room.newbie && !s.room.settings?.background ? "newbie" : st.background))?.label} onClick={() => pick("background")} locked={locked} />
             </Group>
             {s.room.vip ? (
               <Group>
@@ -426,8 +426,8 @@ export function RoomSettingsScreen({ s }: { s: RoomSession }) {
           <OptionPicker
             open={picker === "background"}
             title="Background"
-            options={BACKGROUNDS.filter((b) => b.id !== "newbie" || s.room.newbie).map((b) => ({ id: b.id, label: b.vip ? `${b.label} 👑` : b.label, hint: b.vip ? `VIP ${GOLD_NAME_VIP}+ exclusive` : undefined, swatch: b.id === "cover" ? undefined : b.css }))}
-            value={st.background}
+            options={[...BACKGROUNDS].sort((a, b) => (b.id === "newbie" ? 1 : 0) - (a.id === "newbie" ? 1 : 0)).filter((b) => b.id !== "newbie" || s.room.newbie).map((b) => ({ id: b.id, label: b.vip ? `${b.label} 👑` : b.label, hint: b.vip ? `VIP ${GOLD_NAME_VIP}+ exclusive` : undefined, swatch: b.id === "cover" ? undefined : b.css }))}
+            value={s.room.newbie && !s.room.settings?.background ? "newbie" : st.background}
             onPick={(b) => (BACKGROUNDS.find((x) => x.id === b)?.vip && vip.level < GOLD_NAME_VIP ? toast(`VIP backgrounds unlock at VIP ${GOLD_NAME_VIP}`, "error") : s.updateSettings({ background: b }))}
             onClose={() => setPicker(null)}
           />

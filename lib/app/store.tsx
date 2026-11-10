@@ -505,8 +505,9 @@ function useAppState() {
   const charmRef = useRef(charm);
   charmRef.current = charm;
   const addCharm = useCallback(
-    (toId: string, coins: number) => {
-      const pts = charmFromCoins(coins);
+    (toId: string, coins: number, exactCharm?: number) => {
+      // The server's real Charm for this gift when we have it (it follows the admin's gift settings), else an estimate
+      const pts = exactCharm !== undefined ? exactCharm : charmFromCoins(coins);
       if (toId === "me") {
         const before = charmInfo(MY_BASE_CHARM + (charmRef.current.me ?? 0)).tier?.name;
         const after = charmInfo(MY_BASE_CHARM + (charmRef.current.me ?? 0) + pts).tier;

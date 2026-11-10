@@ -27,6 +27,8 @@ export type RoomGiftEvent = {
   requestId: string;
   /** The sender's balance right after (only meaningful to the sender). */
   senderBalance: number;
+  /** The Charm the receiver really got for this gift. */
+  charm?: number;
 };
 
 const s = (v: unknown) => (typeof v === "string" && v ? v : typeof v === "number" && Number.isFinite(v) ? String(v) : undefined);
@@ -44,7 +46,7 @@ export function readGiftEvent(raw: unknown): RoomGiftEvent | null {
   const coins = n(d.coins);
   if (!eventId || !roomId || !fromUserId || !toUserId || !giftId || !count || coins === undefined) return null;
   return { eventId, roomId, fromUserId, toUserId, giftId, count, coins, // What the receiver got: their share plus the lucky coins (the server already adds them in)
-    earned: n(d.earned) ?? 0, roomPoints: n(d.roomPoints) ?? 0, requestId: s(d.requestId) ?? "", senderBalance: n(d.senderBalance) ?? 0 };
+    earned: n(d.earned) ?? 0, roomPoints: n(d.roomPoints) ?? 0, requestId: s(d.requestId) ?? "", senderBalance: n(d.senderBalance) ?? 0, charm: n(d.charm) };
 }
 
 export const roomGiftsTopic = (roomId: string) => `/topic/voice-rooms/${encodeURIComponent(roomId)}/gifts`;

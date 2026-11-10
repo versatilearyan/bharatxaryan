@@ -615,6 +615,11 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
               <span className="flex items-center gap-1 font-bold text-gold">
                 <Coin className="h-3.5 w-3.5" /> Coins +{earned.toLocaleString("en-IN")}
               </span>
+              {m.charm ? (
+                <span className="flex items-center gap-1 font-bold text-pink">
+                  <Heart className="h-3.5 w-3.5 fill-current" aria-hidden /> Charm +{m.charm.toLocaleString("en-IN")}
+                </span>
+              ) : null}
             </div>
           </div>
         );

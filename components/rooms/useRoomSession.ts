@@ -1130,10 +1130,10 @@ export function useRoomSession(room: Room) {
       const toId = toPerson(ev.toUserId);
       const giftId = ev.giftId as GiftId;
       const value = ev.coins;
-      const charm = Math.floor(charmFromCoins(value));
+      const charm = ev.charm !== undefined && ev.charm > 0 ? ev.charm : Math.floor(charmFromCoins(value));
       add({ id: mid(), kind: "gift", fromId, toId, giftId, count: ev.count, charm, earned: ev.earned });
       addIntimacy(fromId, toId, value);
-      addCharm(toId, value);
+      addCharm(toId, value, charm);
       trackReceived(toId, giftId, ev.count);
       setGiftCounts((g) => ({ ...g, [toId]: (g[toId] ?? 0) + value }));
       playGift({ giftId, fromName: nameOf(fromId), toName: nameOf(toId), count: ev.count, combo, charm, earned: ev.earned });
