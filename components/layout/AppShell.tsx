@@ -42,6 +42,7 @@ const ChessHub = dynamic(() => import("@/components/games/ChessHub").then((m) =>
 const SarpanchScreen = dynamic(() => import("@/components/sarpanch/Sarpanch").then((m) => m.SarpanchScreen), { ssr: false });
 const ParivarCreateScreen = dynamic(() => import("@/components/parivar/ParivarServer").then((m) => m.ParivarCreateScreen), { ssr: false });
 const ParivarHome = dynamic(() => import("@/components/parivar/ParivarServer").then((m) => m.ParivarHome), { ssr: false });
+const ParivarChatScreen = dynamic(() => import("@/components/parivar/ParivarServer").then((m) => m.ParivarChatScreen), { ssr: false });
 const ParivarListScreen = dynamic(() => import("@/components/parivar/ParivarServer").then((m) => m.ParivarListScreen), { ssr: false });
 const RankingScreen = dynamic(() => import("@/components/market/RankingScreen").then((m) => m.RankingScreen), { ssr: false });
 const ShopScreen = dynamic(() => import("@/components/market/ShopScreen").then((m) => m.ShopScreen), { ssr: false });
@@ -209,6 +210,8 @@ function ScreenView({ screen }: { screen: Screen }) {
       return <ParivarCreateScreen />;
     case "parivar":
       return <ParivarHome id={screen.id} />;
+    case "parivar-chat":
+      return <ParivarChatScreen id={screen.id} />;
     case "chess":
       return <ChessHub />;
     case "moments":

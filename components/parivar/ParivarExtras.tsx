@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, ChevronLeft, Gift, Landmark, Lock, MessagesSquare, Pin, Send, Settings2, Smile, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronLeft, Coins as CoinsI, Gift, Heart as HeartI, House, Landmark, Lock, MessagesSquare, Pin, Send, Settings2, Smile, Star as StarI, Trash2 } from "lucide-react";
 import { Glyph, KIND_GLYPH, TILE_GLYPH } from "./ParivarUi";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin } from "@/components/ui/kit";
@@ -923,7 +923,7 @@ const dayLabel = (iso: string) => {
 };
 type Pending = { tmp: string; text: string; at: string };
 
-export function ChatSheet({ p, open, onClose }: Omit<Props, "onChanged">) {
+export function ChatSheet({ p, open, onClose, onHome }: Omit<Props, "onChanged"> & { onHome?: () => void }) {
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [prefs, setPrefs] = useState<ChatPrefs>({ muted: false, foldGifts: false, giftSound: true, background: "default" });
   const [me, setMe] = useState<string | null>(null);
@@ -1039,6 +1039,11 @@ export function ChatSheet({ p, open, onClose }: Omit<Props, "onChanged">) {
                 {n(p.memberCount)} members{prefs.muted ? " · muted" : ""}
               </p>
             </div>
+            {onHome ? (
+              <button type="button" onClick={onHome} className="grid h-10 w-10 place-items-center rounded-full text-cream active:bg-white/10" aria-label="Parivar home">
+                <House className="h-5 w-5" aria-hidden />
+              </button>
+            ) : null}
             <button type="button" onClick={() => setSettings((v) => !v)} className={`grid h-10 w-10 place-items-center rounded-full ${settings ? "bg-gold/20 text-gold" : "text-cream active:bg-white/10"}`} aria-label="Chat settings" aria-expanded={settings}>
               <Settings2 className="h-5 w-5" aria-hidden />
             </button>
@@ -1214,7 +1219,31 @@ export function ChatSheet({ p, open, onClose }: Omit<Props, "onChanged">) {
 
 /* ------------------------------ Tasks tab ------------------------------ */
 
-export function TasksTab({ p, onChanged }: { p: ParivarProfile; onChanged: () => void }) {
+/** A round reward icon: EXP star, Parivar funds, coins or Charm heart. */
+export function RewardIcon({ kind, size = 28 }: { kind: string; size?: number }) {
+  const m: Record<string, [typeof StarI, string, string]> = {
+    EXP: [StarI, "#ffb347", "#ff7a2f"],
+    FUNDS: [Landmark, "#f6d899", "#c9954a"],
+    COINS: [CoinsI, "#ffe27a", "#e0a31c"],
+    CHARM: [HeartI, "#ff9db8", "#e5456f"],
+  };
+  const [Ic, from, to] = m[kind] ?? m.EXP;
+  return (
+    <span className="grid shrink-0 place-items-center rounded-full ring-1 ring-white/25" style={{ width: size, height: size, background: `linear-gradient(145deg, ${from}, ${to})` }} title={kind} aria-label={kind}>
+      <Ic className="text-white drop-shadow" style={{ width: size * 0.55, height: size * 0.55 }} strokeWidth={2.2} aria-hidden />
+    </span>
+  );
+}
+
+const TASK_NOTE: Record<string, string> = {
+  CHECKINS: "Check in once a day.",
+  GIFT_EXP: "Send gifts to people in your Parivar.",
+  CHEERS: "Cheer for your Parivar.",
+  DONATED_COINS: "Donate coins to the Parivar fund.",
+  ACTIVITY_EXP: "Earn activity for your Parivar.",
+};
+
+export function TasksTab({ p, onChanged, onGo }: { p: ParivarProfile; onChanged: () => void; onGo?: (metric: string) => void }) {
   const { toast, refreshCoins } = useApp();
   const d = useLoad<TasksInfo>(() => parivarExtra.tasks(p.id), [p.id], 30_000);
   const now = useNow(1000);
@@ -1236,59 +1265,80 @@ export function TasksTab({ p, onChanged }: { p: ParivarProfile; onChanged: () =>
     }
   };
   const group = (period: "DAILY" | "WEEKLY") => t.tasks.filter((x) => x.period === period);
-  const reward = (k: string, a: number) => `${k === "EXP" ? "⭐" : k === "FUNDS" ? "🏛️" : k === "COINS" ? "🪙" : "✨"} ${n(a)} ${k === "EXP" ? "EXP" : k === "FUNDS" ? "funds" : k === "COINS" ? "coins" : "Charm"}`;
+  const pill = "shrink-0 rounded-full px-5 py-2 text-[13px] font-extrabold disabled:opacity-50";
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-2 text-center">
-        <div className="rounded-2xl bg-black/30 py-2.5 ring-1 ring-white/10">
-          <p className="font-display text-[18px] font-extrabold text-cream">{n(t.todayExp)}</p>
-          <p className="text-[10.5px] text-muted">my activity today · resets in {countdown(t.dayResetsAt, now)}</p>
+    <div>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="flex items-center justify-between gap-2 rounded-2xl bg-white/[0.06] px-3 py-2.5 ring-1 ring-white/10">
+          <span className="flex items-center gap-2 text-[12.5px] font-semibold text-cream/80">
+            <RewardIcon kind="FUNDS" size={26} /> Parivar Fund
+          </span>
+          <span className="font-display text-[15px] font-extrabold text-cream">{n(p.funds)}</span>
         </div>
-        <div className="rounded-2xl bg-black/30 py-2.5 ring-1 ring-white/10">
-          <p className="font-display text-[18px] font-extrabold text-cream">{n(t.weekExp)}</p>
-          <p className="text-[10.5px] text-muted">this week · resets in {countdown(t.weekResetsAt, now)}</p>
+        <div className="flex items-center justify-between gap-2 rounded-2xl bg-white/[0.06] px-3 py-2.5 ring-1 ring-white/10">
+          <span className="flex items-center gap-2 text-[12.5px] font-semibold text-cream/80">
+            <RewardIcon kind="EXP" size={26} /> This week
+          </span>
+          <span className="font-display text-[15px] font-extrabold text-cream">{n(t.weekExp)}</span>
         </div>
       </div>
-      <Card className="flex items-center gap-3">
-        <span className="text-[24px]" aria-hidden>
-          📅
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[13.5px] font-bold text-cream">Daily check-in</span>
-          <span className="text-[11.5px] text-muted">+{n(t.checkinExp)} EXP for your Parivar</span>
-        </span>
-        <Btn disabled={t.checkedIn || busy !== null} onClick={() => void act("ci", () => parivarExtra.checkin(p.id), "Checked in ✅")}>
-          {t.checkedIn ? "Done" : "Check in"}
-        </Btn>
-      </Card>
+      <div className="mt-3 rounded-3xl bg-white/[0.06] p-3.5 ring-1 ring-white/10">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-display text-[18px] font-extrabold text-cream">
+            Activity Today: <span className="text-gold">{n(t.todayExp)}</span>
+          </p>
+          <p className="pt-1 text-right text-[11px] text-cream/50">Refreshes in {countdown(t.dayResetsAt, now)}</p>
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gold/15 text-[20px] ring-1 ring-gold/30" aria-hidden>
+            📅
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13.5px] font-bold text-cream">Daily check-in</span>
+            <span className="text-[11.5px] text-cream/55">+{n(t.checkinExp)} activity for your Parivar</span>
+          </span>
+          <button type="button" disabled={t.checkedIn || busy !== null} onClick={() => void act("ci", () => parivarExtra.checkin(p.id), "Checked in ✅")} className={`${pill} bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c]`}>
+            {t.checkedIn ? "Done" : "Check in"}
+          </button>
+        </div>
+      </div>
       {(["DAILY", "WEEKLY"] as const).map((per) =>
         group(per).length ? (
-          <div key={per}>
-            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">{per === "DAILY" ? "Daily tasks" : "Weekly tasks"}</p>
-            <ul className="space-y-2">
+          <div key={per} className="mt-4">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-cream/45">{per === "DAILY" ? "Daily tasks" : "Weekly tasks"}</p>
+            <ul>
               {group(per).map((x) => (
-                <li key={x.id} className="rounded-2xl bg-surface p-3 ring-1 ring-line">
-                  <div className="flex items-center gap-3">
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-[13.5px] font-bold text-cream">{x.title}</span>
-                      <span className="text-[11.5px] text-gold">{reward(x.rewardKind, x.rewardAmount)}</span>
+                <li key={x.id} className="flex items-center gap-3 border-b border-white/[0.07] py-3.5">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[14.5px] font-bold text-cream">
+                      {x.title}
+                      {x.target > 1 ? (
+                        <span className="font-semibold text-cream/50">
+                          {" "}
+                          ({n(Math.min(x.progress, x.target))}/{n(x.target)})
+                        </span>
+                      ) : null}
                     </span>
-                    {x.claimed ? (
-                      <span className="flex items-center gap-1 text-[12px] font-bold text-speak">
-                        <Check className="h-4 w-4" /> Claimed
+                    <span className="mt-0.5 block text-[12px] text-cream/50">{TASK_NOTE[x.metric] ?? ""}</span>
+                    <span className="mt-1.5 flex items-center gap-1.5">
+                      <RewardIcon kind={x.rewardKind} size={26} />
+                      <span className="text-[12px] font-bold text-cream/85">×{n(x.rewardAmount)}</span>
+                      <span className="ml-1 h-1.5 w-16 overflow-hidden rounded-full bg-white/10">
+                        <span className="block h-full rounded-full bg-gradient-to-r from-coral to-gold" style={{ width: `${Math.min(100, (x.progress / Math.max(1, x.target)) * 100)}%` }} />
                       </span>
-                    ) : (
-                      <Btn disabled={!x.claimable || busy !== null} onClick={() => void act(x.id, () => parivarExtra.claimTask(p.id, x.id), "Reward claimed 🎉")}>
-                        Claim
-                      </Btn>
-                    )}
-                  </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-cream/10">
-                    <div className="h-full rounded-full bg-gradient-to-r from-coral to-gold" style={{ width: `${Math.min(100, (x.progress / x.target) * 100)}%` }} />
-                  </div>
-                  <p className="mt-1 text-right text-[10.5px] text-muted">
-                    {n(x.progress)} / {n(x.target)}
-                  </p>
+                    </span>
+                  </span>
+                  {x.claimed ? (
+                    <span className={`${pill} bg-white/10 text-cream/50`}>Done</span>
+                  ) : x.claimable ? (
+                    <button type="button" disabled={busy !== null} onClick={() => void act(x.id, () => parivarExtra.claimTask(p.id, x.id), "Reward claimed 🎉")} className={`${pill} bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c]`}>
+                      Claim
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => onGo?.(x.metric)} className={`${pill} bg-white/10 text-gold ring-1 ring-gold/40`}>
+                      Go
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

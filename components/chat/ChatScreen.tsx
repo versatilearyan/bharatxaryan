@@ -12,6 +12,7 @@ import { usePeople } from "@/lib/app/people";
 import { useApp } from "@/lib/app/store";
 import { useChat } from "@/lib/app/chat-store";
 import { ServerInbox } from "./ServerChat";
+import { ParivarChatRow } from "@/components/parivar/ParivarChatRow";
 
 export function timeAgo(at: number) {
   const m = Math.max(0, Math.round((Date.now() - at) / 60_000));
@@ -52,6 +53,7 @@ export function ChatScreen() {
         </div>
       </header>
 
+      {server && !q.trim() ? <ParivarChatRow /> : null}
       {server ? <ServerInbox query={q} /> : null}
 
       {/* Online now */}

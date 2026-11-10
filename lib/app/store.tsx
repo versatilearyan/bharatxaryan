@@ -52,6 +52,7 @@ export type Screen =
   | { kind: "parivar-list" }
   | { kind: "parivar-create" }
   | { kind: "parivar"; id: string }
+  | { kind: "parivar-chat"; id: string }
   | { kind: "chess" }
   /** personId: only that person's Moments ("me" for yours). */
   | { kind: "moments"; personId?: string }

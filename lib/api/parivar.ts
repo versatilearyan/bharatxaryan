@@ -31,6 +31,7 @@ export type ParivarCard = {
   logoUrl?: string;
   frame?: string;
   intro?: string;
+  leader?: string;
   level: number;
   exp: number;
   weekExp: number;

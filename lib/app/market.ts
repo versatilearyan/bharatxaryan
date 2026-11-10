@@ -133,13 +133,14 @@ export const partnerIn = (c: Couple, id: string) => (c.a === id ? c.b : c.a);
 
 /* ---------------- Ranking ---------------- */
 
-export type RankTab = "popularity" | "vip" | "couple" | "room";
+export type RankTab = "popularity" | "vip" | "couple" | "room" | "family";
 export type RankPeriod = "today" | "yesterday" | "week";
 export const RANK_TABS: { id: RankTab; label: string; unit: string }[] = [
   { id: "popularity", label: "Popularity", unit: "Charm" },
   { id: "vip", label: "VIP", unit: "Coins spent" },
   { id: "couple", label: "Couple", unit: "Love" },
   { id: "room", label: "Room", unit: "Room points" },
+  { id: "family", label: "Family", unit: "Activeness" },
 ];
 export const RANK_PERIODS: { id: RankPeriod; label: string }[] = [
   { id: "today", label: "Today" },

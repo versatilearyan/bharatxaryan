@@ -230,7 +230,8 @@ export function setServerGifts(list: ServerGift[]) {
       g.svga = { src: sg.animationUrl, sound: sg.soundUrl ?? undefined, icon, still: sg.imageUrl ?? undefined };
       delete g.video;
     } else if (sg.animationUrl && sg.animationFormat === "MP4") {
-      g.video = { src: sg.animationUrl, poster: sg.imageUrl ?? icon, icon };
+      const ratio = sg.animationRatio && /^\d+ ?\/ ?\d+$/.test(sg.animationRatio) ? sg.animationRatio : undefined;
+      g.video = { src: sg.animationUrl, poster: sg.imageUrl ?? icon, icon, ...(ratio ? { floating: true, ratio } : {}) };
       delete g.svga;
     }
     map.set(sg.id, g);

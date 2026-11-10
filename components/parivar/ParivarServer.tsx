@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Check, Coins, Crown, Dices, Flame, Gift, MessageCircle, Pencil, Plus, Quote, Search, Shield, Sparkles, UsersRound } from "lucide-react";
+import { Camera, Check, ChevronLeft, Coins, Crown, Dices, Ellipsis, Flame, Gift, MessageCircle, Pencil, Plus, Quote, RefreshCw, Search, Shield, Sparkles, Trophy, UsersRound } from "lucide-react";
 import { Glyph } from "./ParivarUi";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin, ScreenHeader } from "@/components/ui/kit";
@@ -60,25 +60,25 @@ function Avatar({ name, url, size = 36 }: { name: string; url?: string; size?: n
 
 export function ParivarListScreen() {
   const { pop, push, toast } = useApp();
-  const [tab, setTab] = useState<"discover" | "weekly" | "total">("discover");
+  const [view, setView] = useState<"list" | "weekly" | "total">("list");
+  const [searching, setSearching] = useState(false);
   const [q, setQ] = useState("");
-  const [sort, setSort] = useState<"popular" | "top" | "new">("popular");
   const [cards, setCards] = useState<ParivarCard[] | null>(null);
   const [me, setMe] = useState<{ parivarId: string | null; role: ParivarRole | null; appliedTo: string | null; enabled: boolean } | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     parivarApi
       .mine()
       .then(setMe)
       .catch(() => undefined);
-  }, []);
+  }, [tick]);
   useEffect(() => {
-    if (tab !== "discover") return;
+    if (view !== "list") return;
     let live = true;
     const t = window.setTimeout(() => {
       parivarApi
-        .list(q.trim(), sort)
+        .list(q.trim(), "popular")
         .then((r) => live && setCards(r.content))
         .catch(() => live && setCards([]));
     }, q ? 250 : 0);
@@ -86,27 +86,7 @@ export function ParivarListScreen() {
       live = false;
       window.clearTimeout(t);
     };
-  }, [tab, q, sort]);
-
-  const join = async (c: ParivarCard) => {
-    if (busy) return;
-    setBusy(c.id);
-    try {
-      const r = await parivarApi.join(c.id);
-      if (r.myRole) {
-        toast(`You joined ${c.name}`, "gold");
-        push({ kind: "parivar", id: c.id });
-      } else {
-        toast("Request sent. The Mukhiya will answer it.", "gold");
-        setCards((l) => (l ?? []).map((x) => (x.id === c.id ? { ...x, myApplication: "PENDING" } : x)));
-        setMe((m) => (m ? { ...m, appliedTo: c.id } : m));
-      }
-    } catch (e) {
-      toast(errText(e), "error");
-    } finally {
-      setBusy(null);
-    }
-  };
+  }, [view, q, tick]);
 
   if (me && !me.enabled) {
     return (
@@ -121,104 +101,76 @@ export function ParivarListScreen() {
     );
   }
 
+  const mine = me?.parivarId ?? null;
+  const actions: { key: string; label: string; icon: typeof Trophy; on: boolean; run: () => void }[] = [
+    { key: "rank", label: "Rankings", icon: Trophy, on: view !== "list", run: () => setView((v) => (v === "list" ? "weekly" : "list")) },
+    { key: "search", label: "Search", icon: Search, on: searching, run: () => { setView("list"); setSearching((v) => !v); } },
+    { key: "create", label: "Create", icon: Plus, on: false, run: () => (mine ? toast("You are already in a Parivar.", "error") : push({ kind: "parivar-create" })) },
+    { key: "mine", label: "My Parivar", icon: UsersRound, on: false, run: () => (mine ? push({ kind: "parivar-chat", id: mine }) : toast("Join a Parivar first.", "error")) },
+  ];
+
   return (
     <div className="app-scroll h-full bg-ink pb-8">
       <ScreenHeader title="Parivar" onBack={pop} />
-      <section className="relative mx-4 overflow-hidden rounded-[28px] bg-gradient-to-br from-wine via-wine-2 to-ink p-4 ring-1 ring-gold/25" style={{ backgroundImage: "radial-gradient(circle at 100% 0%, rgb(231 188 114 / 0.22), transparent 55%), radial-gradient(circle at 0% 120%, rgb(244 81 91 / 0.18), transparent 50%)" }}>
-        <span aria-hidden className="pointer-events-none absolute -top-10 -right-10 h-40 w-40 rounded-full opacity-40" style={{ background: "repeating-radial-gradient(circle, transparent 0 9px, rgba(240,205,130,0.22) 9px 10px)" }} />
-        <p className="text-[11px] font-bold tracking-[0.18em] text-gold uppercase">परिवार · Parivar</p>
-        <p className="mt-1 font-display text-[22px] leading-tight font-extrabold text-cream">Apna gaon, apne log</p>
-        <p className="mt-0.5 text-[12.5px] text-cream/65">Chaupal sajao, mil kar jeeto, Gaon ka naam roshan karo.</p>
-        {me?.parivarId ? (
-          <button type="button" onClick={() => push({ kind: "parivar", id: me.parivarId! })} className="mt-3 flex h-11 w-full items-center justify-between rounded-full bg-cream/10 px-4 text-left ring-1 ring-gold/40">
-            <span className="flex items-center gap-2 text-[13.5px] font-bold text-cream">
-              <UsersRound className="h-4 w-4 text-gold" aria-hidden /> Mera Parivar
-              <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[10.5px] font-bold text-gold">{me.role ? ROLE_LABEL[me.role] : ""}</span>
+      <div className="mx-4 grid grid-cols-4 gap-2 pb-3">
+        {actions.map((a) => (
+          <button key={a.key} type="button" onClick={a.run} className="flex flex-col items-center gap-1.5">
+            <span className={`grid h-14 w-14 place-items-center rounded-full ring-1 ${a.on ? "bg-gold/20 text-gold ring-gold/50" : "bg-white/[0.07] text-cream ring-white/10"}`}>
+              <a.icon className="h-6 w-6" aria-hidden />
             </span>
-            <span className="text-[12px] font-bold text-gold">Open ›</span>
-          </button>
-        ) : (
-          <button type="button" onClick={() => push({ kind: "parivar-create" })} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c] shadow-[0_6px_18px_-6px_rgb(231_188_114/0.6)]">
-            <Plus className="h-4 w-4" aria-hidden /> Create your Parivar
-          </button>
-        )}
-      </section>
-
-      <div className="mx-4 mt-4 flex rounded-full bg-surface p-1 ring-1 ring-line" role="tablist">
-        {(
-          [
-            ["discover", "Discover", "khojo"],
-            ["weekly", "Weekly", "is hafte"],
-            ["total", "Total", "sabse bade"],
-          ] as const
-        ).map(([k, label, sub]) => (
-          <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`flex-1 rounded-full py-1.5 leading-tight font-bold transition ${tab === k ? "bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c]" : "text-cream/70"}`}>
-            <span className="block text-[13px]">{label}</span>
-            <span className={`block text-[9.5px] font-semibold ${tab === k ? "text-[#2a1a0c]/60" : "text-cream/35"}`}>{sub}</span>
+            <span className="text-[11.5px] font-semibold text-cream/80">{a.label}</span>
           </button>
         ))}
       </div>
+      {searching && view === "list" ? (
+        <div className="mx-4 mb-2 flex h-11 items-center gap-2 rounded-full bg-white/[0.08] px-4">
+          <Search className="h-4 w-4 text-muted" aria-hidden />
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, sign or Parivar ID" className="min-w-0 flex-1 bg-transparent text-[14px] text-cream placeholder:text-cream/35 focus:outline-none" aria-label="Search Parivars" />
+        </div>
+      ) : null}
 
-      {tab === "discover" ? (
+      {view !== "list" ? (
         <>
-          <div className="mx-4 mt-3 flex h-11 items-center gap-2 rounded-full bg-surface px-4 ring-1 ring-line">
-            <Search className="h-4 w-4 text-muted" aria-hidden />
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, sign or Parivar ID" className="min-w-0 flex-1 bg-transparent text-[14px] text-cream placeholder:text-cream/35 focus:outline-none" aria-label="Search Parivars" />
-          </div>
-          <div className="no-scrollbar mx-4 mt-2 flex gap-2 overflow-x-auto">
-            {(
-              [
-                ["popular", "Popular"],
-                ["top", "Top"],
-                ["new", "New"],
-              ] as const
-            ).map(([k, label]) => (
-              <button key={k} type="button" onClick={() => setSort(k)} className={`shrink-0 rounded-full px-3 py-1 text-[12px] font-bold ring-1 ${sort === k ? "bg-gold/20 text-gold ring-gold/40" : "text-cream/70 ring-line"}`}>
-                {label}
+          <div className="mx-4 mb-1 flex rounded-full bg-white/[0.07] p-1" role="tablist">
+            {(["weekly", "total"] as const).map((k) => (
+              <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setView(k)} className={`flex-1 rounded-full py-1.5 text-[13px] font-bold ${view === k ? "bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c]" : "text-cream/70"}`}>
+                {k === "weekly" ? "This week" : "All time"}
               </button>
             ))}
           </div>
-          <ul className="mt-3 space-y-2 px-4">
-            {cards === null ? [0, 1, 2].map((i) => <li key={i} className="h-[78px] animate-pulse rounded-2xl bg-cream/[0.06]" />) : null}
-            {cards && !cards.length ? <li className="py-10 text-center text-[13px] text-muted">{q ? "No Parivar matches." : "No Parivars yet. Be the first to start one."}</li> : null}
+          <RankingView period={view} />
+        </>
+      ) : (
+        <>
+          <ul className="border-t border-white/[0.07]">
+            {cards === null ? [0, 1, 2, 3].map((i) => <li key={i} className="h-[92px] animate-pulse border-b border-white/[0.05] bg-white/[0.03]" />) : null}
+            {cards && !cards.length ? <li className="py-12 text-center text-[13px] text-muted">{q ? "No Parivar matches." : "No Parivars yet. Be the first to start one."}</li> : null}
             {(cards ?? []).map((c) => (
-              <li key={c.id} className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-surface to-ink-2 p-3 ring-1 ring-line-strong" style={{ boxShadow: `inset 3px 0 0 ${c.color || "#e7bc72"}` }}>
-                <div className="flex items-center gap-3">
-                  <button type="button" onClick={() => push({ kind: "parivar", id: c.id })} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                    <Emblem p={c} size={56} />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-1.5">
-                        <span className="truncate font-display text-[15.5px] font-extrabold text-cream">{c.name}</span>
-                        <LevelBadge level={c.level} />
+              <li key={c.id} className="border-b border-white/[0.07]">
+                <button type="button" onClick={() => push(c.id === mine ? { kind: "parivar-chat", id: c.id } : { kind: "parivar", id: c.id })} className="flex w-full items-center gap-3 px-4 py-3.5 text-left active:bg-white/[0.04]">
+                  <Emblem p={c} size={58} />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="truncate font-display text-[17px] font-extrabold text-cream">{c.name}</span>
+                      <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-gradient-to-r from-[#2d6f9e] to-[#3fa7ff] px-1.5 py-0.5 text-[10.5px] font-extrabold text-white">
+                        <Shield className="h-3 w-3" aria-hidden /> {c.level}
                       </span>
-                      <span className="mt-0.5 block truncate text-[11px] text-gold/80">
-                        [{c.sign}] · ID {c.code}
-                      </span>
-                      <span className="mt-1 flex items-center gap-2">
-                        <span className="h-1.5 w-16 overflow-hidden rounded-full bg-cream/10">
-                          <span className="block h-full rounded-full bg-gradient-to-r from-gold to-coral" style={{ width: `${Math.min(100, Math.round((c.members / Math.max(1, c.capacity)) * 100))}%` }} />
-                        </span>
-                        <span className="text-[11px] text-cream/60">
-                          {n(c.members)}/{n(c.capacity)} sadasya
-                        </span>
-                      </span>
+                      <SignBadge sign={c.sign} frame={c.frame} size="sm" />
                     </span>
-                  </button>
-                  {me?.parivarId ? null : c.myApplication === "PENDING" ? (
-                    <span className="shrink-0 rounded-full bg-cream/10 px-3 py-1.5 text-[11.5px] font-bold text-cream/70">Requested</span>
-                  ) : (
-                    <button type="button" disabled={busy === c.id || c.members >= c.capacity} onClick={() => void join(c)} className="shrink-0 rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] px-4 py-2 text-[12px] font-extrabold text-[#2a1a0c] disabled:opacity-50">
-                      {c.members >= c.capacity ? "Full" : c.joinMode === "OPEN" ? "Join" : "Apply"}
-                    </button>
-                  )}
-                </div>
-                {c.intro ? <p className="mt-2 line-clamp-2 border-t border-line pt-2 text-[12px] text-cream/60">“{c.intro}”</p> : null}
+                    {c.leader ? <span className="mt-0.5 block truncate text-[12.5px] text-cream/55">Leader: {c.leader}</span> : null}
+                    <span className="mt-0.5 block truncate text-[12.5px] text-cream/40">{c.intro || "No introduction yet."}</span>
+                  </span>
+                  <span className="shrink-0 self-start pt-1 text-[13px] font-semibold text-cream/50">
+                    {n(c.members)}/{n(c.capacity)}
+                  </span>
+                </button>
               </li>
             ))}
           </ul>
+          <button type="button" onClick={() => { setCards(null); setTick((t) => t + 1); }} className="mx-auto mt-5 flex items-center gap-2 rounded-full px-5 py-2 text-[14px] font-bold text-gold active:bg-white/10">
+            <RefreshCw className="h-4 w-4" aria-hidden /> Refresh
+          </button>
         </>
-      ) : (
-        <RankingView period={tab} />
       )}
     </div>
   );
@@ -551,6 +503,7 @@ export function ParivarHome({ id }: { id: string }) {
   const [ch, setCh] = useState<ChestsInfo | null>(null);
   const [more, setMore] = useState(false);
   const [editAnn, setEditAnn] = useState(false);
+  const [menu, setMenu] = useState(false);
   const member = Boolean(p?.myRole);
   const loadExtras = useCallback(() => {
     if (!member) return;
@@ -592,6 +545,7 @@ export function ParivarHome({ id }: { id: string }) {
 
   const isMember = Boolean(p.myRole);
   const can = (perm: string) => p.myPerms.includes(perm as never);
+  if (!isMember) return <ParivarPreview p={p} busy={busy} run={run} toast={toast} onBack={pop} />;
   const tabs: { key: Tab; label: string }[] = [
     { key: "profile", label: "Profile" },
     ...(isMember ? [{ key: "tasks" as Tab, label: "Tasks" }] : []),
@@ -603,7 +557,33 @@ export function ParivarHome({ id }: { id: string }) {
 
   return (
     <div className="app-scroll h-full bg-gradient-to-b from-[#3a1420] via-[#1c1019] to-ink pb-10">
-      <ScreenHeader title="Parivar" onBack={pop} />
+      <header className="pt-safe relative z-20 flex h-14 items-center px-2">
+        <button type="button" onClick={pop} className="grid h-10 w-10 place-items-center rounded-full text-cream active:bg-white/10" aria-label="Back">
+          <ChevronLeft className="h-6 w-6" aria-hidden />
+        </button>
+        <h1 className="flex-1 text-center font-display text-[18px] font-extrabold text-cream">Parivar</h1>
+        <button type="button" onClick={() => push({ kind: "parivar-list" })} className="grid h-10 w-10 place-items-center rounded-full text-cream active:bg-white/10" aria-label="Rankings">
+          <Trophy className="h-5 w-5" aria-hidden />
+        </button>
+        <button type="button" onClick={() => setMenu((v) => !v)} className="grid h-10 w-10 place-items-center rounded-full text-cream active:bg-white/10" aria-label="More" aria-expanded={menu}>
+          <Ellipsis className="h-5 w-5" aria-hidden />
+        </button>
+        {menu ? (
+          <div className="absolute top-[calc(env(safe-area-inset-top)+52px)] right-3 z-30 w-52 overflow-hidden rounded-2xl bg-[#241018] py-1 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.8)] ring-1 ring-gold/25">
+            <button type="button" onClick={() => { setMenu(false); push({ kind: "parivar-chat", id: p.id }); }} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13.5px] font-semibold text-cream active:bg-white/10">
+              <MessageCircle className="h-4 w-4 text-gold" aria-hidden /> Parivar chat
+            </button>
+            <button type="button" onClick={() => { setMenu(false); push({ kind: "parivar-list" }); }} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13.5px] font-semibold text-cream active:bg-white/10">
+              <Trophy className="h-4 w-4 text-gold" aria-hidden /> Rankings
+            </button>
+            {p.myRole !== "LEADER" ? (
+              <button type="button" onClick={() => { setMenu(false); if (window.confirm(`Leave ${p.name}?`)) void run(async () => { await parivarApi.leave(); pop(); }, "You left the Parivar"); }} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13.5px] font-semibold text-coral active:bg-white/10">
+                Leave Parivar
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </header>
       <section className="relative mx-4 overflow-hidden rounded-[28px] p-4 ring-1 ring-gold/25" style={{ backgroundImage: "radial-gradient(circle at 100% 0%, rgb(231 188 114 / 0.22), transparent 55%), linear-gradient(135deg, #3a1622, #1c1019 70%)" }}>
         <span aria-hidden className="pointer-events-none absolute -top-12 -right-12 h-44 w-44 rounded-full opacity-40" style={{ background: "repeating-radial-gradient(circle, transparent 0 9px, rgba(240,205,130,0.2) 9px 10px)" }} />
         <div className="flex items-center gap-4">
@@ -633,9 +613,14 @@ export function ParivarHome({ id }: { id: string }) {
           <p className="flex items-center gap-2 font-display text-[16px] font-extrabold text-cream">
             <span className="h-4 w-1 rounded-full bg-gold" aria-hidden /> Activeness
           </p>
-          <span className="text-[12.5px] font-bold text-gold">
-            <Flame className="mr-0.5 -mt-0.5 inline h-3.5 w-3.5" aria-hidden /> {n(p.exp)}
-            {p.nextLevelExp ? `/${n(p.nextLevelExp)}` : ""}
+          <span className="flex items-center gap-2">
+            <span className="text-[12.5px] font-bold text-gold">
+              <Flame className="mr-0.5 -mt-0.5 inline h-3.5 w-3.5" aria-hidden /> {n(p.exp)}
+              {p.nextLevelExp ? `/${n(p.nextLevelExp)}` : ""}
+            </span>
+            <button type="button" onClick={() => setSheet("cheer")} className="rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] px-3.5 py-1 text-[12px] font-extrabold text-[#2a1a0c]">
+              Cheer
+            </button>
           </span>
         </div>
         <div className="h-2.5 overflow-hidden rounded-full bg-black/40 ring-1 ring-white/5">
@@ -668,10 +653,11 @@ export function ParivarHome({ id }: { id: string }) {
         </div>
       ) : null}
 
-      <div className="no-scrollbar mx-4 mt-4 flex gap-1 overflow-x-auto rounded-full bg-black/30 p-1 ring-1 ring-white/10" role="tablist">
+      <div className="no-scrollbar mx-2 mt-4 flex overflow-x-auto border-b border-white/10 px-2" role="tablist">
         {tabs.map((t) => (
-          <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={`shrink-0 flex-1 whitespace-nowrap rounded-full px-3 py-2 text-[12.5px] font-bold ${tab === t.key ? "bg-gold text-ink" : "text-cream/70"}`}>
+          <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={`relative shrink-0 flex-1 whitespace-nowrap px-3 pt-2 pb-3 text-[14px] font-bold ${tab === t.key ? "text-cream" : "text-cream/50"}`}>
             {t.label}
+            {tab === t.key ? <motion.span layoutId="pv-tab" className="absolute inset-x-3 bottom-0 h-[3px] rounded-full bg-gold" /> : null}
           </button>
         ))}
       </div>
@@ -787,32 +773,10 @@ export function ParivarHome({ id }: { id: string }) {
           </div>
         ) : null}
 
-        {tab === "members" ? (
-          <ul className="space-y-1.5">
-            {p.members.map((m) => (
-              <li key={m.userId} className="flex items-center gap-3 rounded-2xl bg-surface px-3 py-2.5 ring-1 ring-line">
-                <Avatar name={m.name} url={m.avatarUrl} size={40} />
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5 text-[13.5px] font-bold text-cream">
-                    <span className="truncate">{m.name}</span>
-                    {m.role === "LEADER" ? <Crown className="h-3.5 w-3.5 text-gold" aria-hidden /> : m.role !== "MEMBER" ? <Shield className="h-3.5 w-3.5 text-[#7fe8dc]" aria-hidden /> : null}
-                  </span>
-                  <span className="text-[11px] text-muted">
-                    {ROLE_LABEL[m.role]} · {n(m.contribution)} contribution
-                  </span>
-                </span>
-                {isMember && can("REMOVE_MEMBERS") && m.role !== "LEADER" && p.myRole !== m.role ? (
-                  <button type="button" disabled={busy} onClick={() => window.confirm(`Remove ${m.name}?`) && void run(() => parivarApi.removeMember(p.id, m.userId), `${m.name} was removed`)} className="rounded-full bg-coral/15 px-3 py-1 text-[11.5px] font-bold text-coral">
-                    Remove
-                  </button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        ) : null}
+        {tab === "members" ? <MembersPanel p={p} can={can} busy={busy} run={run} /> : null}
 
         {tab === "news" ? isMember ? <NewsPanel p={p} onChanged={() => void load()} /> : <Section title="Announcement">{p.announcement || <span className="text-muted">No announcement.</span>}</Section> : null}
-        {tab === "tasks" && isMember ? <TasksTab p={p} onChanged={() => void load()} /> : null}
+        {tab === "tasks" && isMember ? <TasksTab p={p} onChanged={() => void load()} onGo={(m) => (m === "CHEERS" ? setSheet("cheer") : m === "GIFT_EXP" ? setSheet("chat") : m === "DONATED_COINS" ? setDonate(true) : undefined)} /> : null}
 
         {tab === "manage" && isMember ? <ManageTab p={p} can={can} run={run} busy={busy} push={() => push({ kind: "parivar-list" })} /> : null}
       </motion.div>
@@ -1105,6 +1069,197 @@ function DonateForm({ funds, onDonate }: { funds: number; onDonate: (amount: num
       >
         {busy ? "Donating…" : `Donate ${v >= 1 ? n(v) : ""} coins`}
       </button>
+    </div>
+  );
+}
+
+
+/* ---------------------- Members, preview and chat screens ---------------------- */
+
+const ROLE_PILL: Record<ParivarRole, string> = {
+  LEADER: "from-[#ff6b8a] to-[#ff8fa8]",
+  DEPUTY: "from-[#3a8dff] to-[#5fb7ff]",
+  ADMIN: "from-[#2fbf86] to-[#58d6a2]",
+  MEMBER: "",
+};
+const ROW_TINT = ["bg-[#f6d899]/[0.13]", "bg-[#5fb7ff]/[0.10]", "bg-[#ff8fa8]/[0.10]"];
+
+function RolePill({ role }: { role: ParivarRole }) {
+  if (role === "MEMBER") return null;
+  return <span className={`mt-1 inline-block rounded-md bg-gradient-to-r px-2.5 py-0.5 text-[11px] font-bold text-white ${ROLE_PILL[role]}`}>{ROLE_LABEL[role]}</span>;
+}
+
+function MembersPanel({ p, can, busy, run }: { p: ParivarProfile; can: (perm: string) => boolean; busy: boolean; run: (f: () => Promise<unknown>, ok?: string) => Promise<void> }) {
+  const [q, setQ] = useState("");
+  const rows = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return [...p.members].filter((m) => !needle || m.name.toLowerCase().includes(needle)).sort((a, b) => b.contribution - a.contribution);
+  }, [p.members, q]);
+  return (
+    <div className="-mx-4">
+      <div className="mx-4 flex items-center gap-3">
+        <div className="flex h-11 min-w-0 flex-1 items-center gap-2 rounded-full bg-white/[0.08] px-4">
+          <Search className="h-4 w-4 text-muted" aria-hidden />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="min-w-0 flex-1 bg-transparent text-[14px] text-cream placeholder:text-cream/35 focus:outline-none" aria-label="Search members" />
+        </div>
+        <span className="flex items-center gap-1.5 text-[13px] font-semibold text-gold">
+          <UsersRound className="h-5 w-5" aria-hidden /> {n(p.memberCount)}/{n(p.capacity)}
+        </span>
+      </div>
+      <p className="mx-4 mt-3 flex justify-between text-[12px] font-semibold text-cream/45">
+        <span>Gold donation</span>
+        <span>Total</span>
+      </p>
+      <ul className="mt-1">
+        {rows.map((m, i) => (
+          <li key={m.userId} className={`flex items-center gap-3 border-b border-white/[0.06] px-4 py-3 ${q ? "" : (ROW_TINT[i] ?? "")}`}>
+            <Avatar name={m.name} url={m.avatarUrl} size={46} />
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-1.5 text-[15px] font-bold text-cream">
+                <span className="truncate">{m.name}</span>
+                {m.role === "LEADER" ? <Crown className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden /> : null}
+              </span>
+              <RolePill role={m.role} />
+            </span>
+            <span className="text-[14px] font-semibold text-cream/70">{n(m.contribution)}</span>
+            {can("REMOVE_MEMBERS") && m.role !== "LEADER" && p.myRole !== m.role ? (
+              <button type="button" disabled={busy} onClick={() => window.confirm(`Remove ${m.name}?`) && void run(() => parivarApi.removeMember(p.id, m.userId), `${m.name} was removed`)} className="rounded-full bg-coral/15 px-3 py-1 text-[11.5px] font-bold text-coral">
+                Remove
+              </button>
+            ) : null}
+          </li>
+        ))}
+        {!rows.length ? <li className="py-10 text-center text-[13px] text-muted">No member matches.</li> : null}
+      </ul>
+    </div>
+  );
+}
+
+/** What anyone sees before joining: banner, major members, introduction, requirements and Apply. */
+function ParivarPreview({ p, busy, run, toast, onBack }: { p: ParivarProfile; busy: boolean; run: (f: () => Promise<unknown>, ok?: string) => Promise<void>; toast: ReturnType<typeof useApp>["toast"]; onBack: () => void }) {
+  const order: ParivarRole[] = ["LEADER", "DEPUTY", "ADMIN"];
+  const majors = p.members.filter((m) => m.role !== "MEMBER").sort((a, b) => order.indexOf(a.role) - order.indexOf(b.role)).slice(0, 4);
+  const full = p.memberCount >= p.capacity;
+  return (
+    <div className="relative h-full bg-ink">
+      <div className="app-scroll h-full pb-32">
+        <div className="relative h-[190px] overflow-hidden" style={{ background: `linear-gradient(160deg, ${p.color || "#5a2a3a"}, #14090f)` }}>
+          {p.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.logoUrl} alt="" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-55 blur-xl" />
+          ) : (
+            <span aria-hidden className="absolute inset-0 grid place-items-center text-[120px] opacity-20">
+              {p.emblem}
+            </span>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-ink" />
+          <button type="button" onClick={onBack} className="pt-safe absolute top-2 left-2 grid h-10 w-10 place-items-center rounded-full bg-black/35 text-cream backdrop-blur" aria-label="Back">
+            <ChevronLeft className="h-6 w-6" aria-hidden />
+          </button>
+        </div>
+        <div className="-mt-12 flex items-end gap-3 px-4">
+          <Emblem p={p} size={84} />
+          <div className="min-w-0 flex-1 pb-1">
+            <p className="flex items-center gap-2">
+              <span className="truncate font-display text-[20px] leading-tight font-extrabold text-cream">{p.name}</span>
+              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-gradient-to-r from-[#2d6f9e] to-[#3fa7ff] px-1.5 py-0.5 text-[11px] font-extrabold text-white">
+                <Shield className="h-3 w-3" aria-hidden /> {p.level}
+              </span>
+              <SignBadge sign={p.sign} frame={p.frame} size="sm" />
+            </p>
+          </div>
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-2 px-4">
+          <div>
+            <p className="text-[13px] text-cream/55">ID: {p.code}</p>
+            <p className="mt-0.5 flex items-center gap-1 text-[13px] text-cream/70">
+              <Flame className="h-4 w-4 text-gold" aria-hidden /> Activeness: {n(p.exp)}
+            </p>
+          </div>
+          {p.weekRank ? <span className="rounded-full bg-gradient-to-r from-[#f6d899] to-[#e7bc72] px-3.5 py-1.5 text-[12.5px] font-extrabold text-[#2a1a0c]">Weekly Rank: {p.weekRank}</span> : null}
+        </div>
+
+        <div className="mt-5 px-4">
+          <div className="flex items-center justify-between">
+            <SectionTitle>Major Members</SectionTitle>
+            <span className="text-[13px] text-cream/50">
+              {n(p.memberCount)}/{n(p.capacity)}
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-4 gap-2">
+            {majors.map((m) => (
+              <div key={m.userId} className="flex flex-col items-center text-center">
+                <Avatar name={m.name} url={m.avatarUrl} size={62} />
+                <span className="mt-1.5 w-full truncate text-[12px] font-semibold text-cream">{m.name}</span>
+                <RolePill role={m.role} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-white/[0.07] px-4 pt-5">
+          <SectionTitle>Introduction</SectionTitle>
+          <p className="mt-3 text-[14px] leading-relaxed whitespace-pre-line text-cream/75">{p.intro || "This Parivar has not written an introduction yet."}</p>
+        </div>
+
+        <div className="mt-6 border-t border-white/[0.07] px-4 pt-5">
+          <div className="flex items-center justify-between">
+            <SectionTitle>Prerequisites</SectionTitle>
+            <span className="text-[13px] text-cream/50">{p.joinMode === "OPEN" ? "Free to join" : "Leader approval"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink via-ink/95 to-transparent px-4 pt-8 pb-[calc(16px+env(safe-area-inset-bottom))]">
+        {p.myApplication === "PENDING" ? (
+          <button type="button" disabled={busy} onClick={() => void run(() => parivarApi.withdraw(p.id), "Request withdrawn")} className="h-13 w-full rounded-full bg-white/10 text-[15px] font-bold text-cream">
+            Request sent · tap to withdraw
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={busy || full}
+            onClick={() =>
+              void run(async () => {
+                const r = await parivarApi.join(p.id);
+                if (!r.myRole) toast("Request sent. The Mukhiya will answer it.", "gold");
+              }, p.joinMode === "OPEN" ? `You joined ${p.name}` : undefined)
+            }
+            className="h-13 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[16px] font-extrabold text-[#2a1a0c] shadow-[0_8px_24px_-8px_rgb(231_188_114/0.6)] disabled:opacity-50"
+          >
+            {full ? "Full" : p.joinMode === "OPEN" ? "Join" : "Apply"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Opening your Parivar lands in its chat; Home (top right) opens the Parivar itself. */
+export function ParivarChatScreen({ id }: { id: string }) {
+  const { pop, push } = useApp();
+  const [p, setP] = useState<ParivarProfile | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    parivarApi
+      .profile(id)
+      .then(setP)
+      .catch((e) => setError(errText(e, "Couldn't open the Parivar chat.")));
+  }, [id]);
+  if (!p)
+    return (
+      <div className="h-full bg-ink">
+        <ScreenHeader title="Parivar" onBack={pop} />
+        {error ? <p className="mx-6 mt-10 rounded-2xl bg-coral/10 p-4 text-center text-[13px] text-coral">{error}</p> : <div className="mx-auto mt-24 h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-gold" aria-label="Loading" />}
+      </div>
+    );
+  if (!p.myRole) {
+    // Not a member any more: show the Parivar itself
+    return <ParivarHome id={id} />;
+  }
+  return (
+    <div className="relative h-full overflow-hidden bg-ink">
+      <ChatSheet p={p} open onClose={pop} onHome={() => push({ kind: "parivar", id })} />
     </div>
   );
 }

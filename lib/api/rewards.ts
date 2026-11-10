@@ -48,6 +48,7 @@ export type ServerGift = {
   imageUrl: string | null;
   animationUrl: string | null;
   animationFormat: "SVGA" | "MP4" | null;
+  animationRatio?: string | null;
   soundUrl: string | null;
 };
 
@@ -156,6 +157,7 @@ export async function getGiftCatalog(): Promise<ServerGift[]> {
         imageUrl: mediaSrc(o.imageUrl),
         animationUrl: mediaSrc(o.animationUrl),
         animationFormat: fmt === "SVGA" || fmt === "MP4" ? fmt : null,
+        animationRatio: str(o.animationRatio) ?? null,
         soundUrl: mediaSrc(o.soundUrl),
       },
     ];

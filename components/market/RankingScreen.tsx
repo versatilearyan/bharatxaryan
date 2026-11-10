@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import { ChevronLeft, Heart } from "lucide-react";
 import { RingArt } from "@/components/art/RingArt";
 import { RoomCover } from "@/components/rooms/RoomCover";
+import { FamilyBar, FamilyBody, FamilyPeriodSwitch, useFamilyRanking, type FamilyPeriod } from "@/components/parivar/ParivarRanking";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { PEOPLE } from "@/lib/app/data";
 import { RANK_PERIODS, RANK_TABS, periodShare, sampleScore, type RankPeriod, type RankTab, type RingId } from "@/lib/app/market";
@@ -39,6 +40,8 @@ export function RankingScreen() {
   const person = usePeople();
   const [tab, setTabId] = useState<RankTab>("popularity");
   const [period, setPeriod] = useState<RankPeriod>("today");
+  const [famPeriod, setFamPeriod] = useState<FamilyPeriod>("weekly");
+  const fam = useFamilyRanking(tab === "family", famPeriod);
   const unit = RANK_TABS.find((t) => t.id === tab)?.unit ?? "";
 
   // Signed in: Popularity (charm), VIP (coins spent) and Room come from the server's real gifts
@@ -153,14 +156,20 @@ export function RankingScreen() {
               </button>
             ))}
           </div>
-          <div className="mx-4 my-2.5 flex rounded-full bg-black/30 p-1 ring-1 ring-white/10" role="tablist" aria-label="Period">
-            {RANK_PERIODS.map((p) => (
-              <button key={p.id} type="button" role="tab" aria-selected={period === p.id} onClick={() => setPeriod(p.id)} className={`h-8 flex-1 rounded-full text-[12.5px] font-bold ${period === p.id ? "bg-cream text-ink" : "text-cream/65"}`}>
-                {p.label}
-              </button>
-            ))}
-          </div>
+          {tab === "family" ? (
+            <FamilyPeriodSwitch period={famPeriod} onChange={setFamPeriod} />
+          ) : (
+            <div className="mx-4 my-2.5 flex rounded-full bg-black/30 p-1 ring-1 ring-white/10" role="tablist" aria-label="Period">
+              {RANK_PERIODS.map((p) => (
+                <button key={p.id} type="button" role="tab" aria-selected={period === p.id} onClick={() => setPeriod(p.id)} className={`h-8 flex-1 rounded-full text-[12.5px] font-bold ${period === p.id ? "bg-cream text-ink" : "text-cream/65"}`}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          )}
         </header>
+
+        {tab === "family" ? <FamilyBody data={fam} /> : <>
 
         {/* Podium: the top 3 in their leaderboard frames */}
         <div className="mt-2 grid grid-cols-[1fr_1.15fr_1fr] items-start gap-1 px-2">
@@ -195,10 +204,11 @@ export function RankingScreen() {
           ))}
           {serverType && srv.error ? <li className="px-4 py-6 text-center text-[13px] text-coral">{srv.error}</li> : serverType && !(srv.key === srvKey && srv.data) ? <li className="px-4 py-6 text-center text-[13px] text-muted">Loading…</li> : rows.length <= 3 ? <li className="px-4 py-6 text-center text-[13px] text-muted">{rows.length ? "Nobody else here yet." : "Nobody here yet. Gifts sent in rooms count."}</li> : null}
         </ol>
+        </>}
       </div>
 
       {/* Your own row, always visible */}
-      <div className="pb-safe flex items-center gap-3 border-t border-white/10 bg-ink-2 px-3 py-2.5">
+      {tab === "family" ? <FamilyBar data={fam} /> : <div className="pb-safe flex items-center gap-3 border-t border-white/10 bg-ink-2 px-3 py-2.5">
         <span className="w-6 text-center font-display text-[15px] font-extrabold text-cream/70">{me && me.value > 0 ? myIndex + 1 : "–"}</span>
         {me ? <Avatars r={me} size={40} /> : <PersonAvatar person={person(ME_ID)} size={40} />}
         <span className="min-w-0 flex-1">
@@ -210,7 +220,7 @@ export function RankingScreen() {
         <button type="button" onClick={cta.go} className="h-9 shrink-0 rounded-full bg-gold px-4 text-[12.5px] font-bold text-ink">
           {cta.label}
         </button>
-      </div>
+      </div>}
     </div>
   );
 }
