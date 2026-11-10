@@ -72,6 +72,8 @@ export const parivarApi = {
   list: (q: string, sort: string, page = 0) => api<{ content: ParivarCard[]; totalElements: number }>(`${base}?q=${encodeURIComponent(q)}&sort=${sort}&page=${page}&size=20`, opts),
   ranking: (period: "weekly" | "total") => api<{ rows: RankRow[]; mine: RankRow | null }>(`${base}/ranking?period=${period}`, opts),
   profile: (id: string) => api<ParivarProfile>(`${base}/${id}`, opts),
+  /** The same gift to every other member of your Parivar (the server checks the whole cost first). */
+  giftAll: (giftId: string, count: number) => api<{ sent: number; coins: number; charm: number; senderBalance: number }>(`${base}/gift-all`, { ...opts, method: "POST", body: { giftId, count, requestId: key() } }),
   uploadLogo: (file: Blob) => {
     const form = new FormData();
     form.append("file", file, "logo.jpg");
@@ -98,9 +100,9 @@ export type TaskRow = { id: string; title: string; period: "DAILY" | "WEEKLY"; m
 export type TasksInfo = { tasks: TaskRow[]; todayExp: number; weekExp: number; checkedIn: boolean; checkinExp: number; dayResetsAt: string; weekResetsAt: string };
 export type ShopItem = { id: string; name: string; imageUrl?: string; kind: string; qty: number; priceFunds: number; priceCoins: number; dailyLimit: number; boughtToday: number };
 export type CheerTier = { id: string; name: string; times: number; coinsCost: number; expGain: number; dailyLimit: number };
-export type GachaReward = { kind: string; amount: number; rarity: string; label: string; imageUrl?: string; chance: number };
-export type GachaMachine = { id: string; name: string; tier: string; imageUrl?: string; animationUrl?: string; priceFunds: number; serviceFeeCoins: number; freePerDay: number; freeLeft: number; minLevel: number; locked: boolean; cards: number; rewards: GachaReward[] };
-export type GachaInfo = { machines: GachaMachine[]; funds: number; canRoll: boolean };
+export type GachaReward = { giftId?: string; kind: string; amount: number; rarity: string; label: string; imageUrl?: string; chance: number };
+export type GachaMachine = { freeFundCost: number; rollPriceCoins: number; id: string; name: string; tier: string; imageUrl?: string; animationUrl?: string; priceFunds: number; serviceFeeCoins: number; freePerDay: number; freeLeft: number; minLevel: number; locked: boolean; cards: number; rewards: GachaReward[] };
+export type GachaInfo = { machines: GachaMachine[]; funds: number; canRoll: boolean; tickets: number; ticketPrice: number };
 export type GachaResult = { kind: string; amount: number; label: string; rarity: string; paidWith: string };
 export type ChestType = { id: string; name: string; imageUrl?: string; priceFunds: number; pieces: number; owned: number };
 export type ChestSent = { id: string; name: string; pieces: number; claimed: number; status: string; expiresAt: string; sentBy?: string; claimedByMe: boolean };
@@ -142,6 +144,7 @@ export const parivarExtra = {
   cheerTiers: (id: string) => api<CheerTier[]>(`${base}/${id}/cheer`, opts),
   cheer: (id: string, tierId: string) => api<{ times: number; exp: number }>(`${base}/${id}/cheer/${tierId}`, keyed()),
   gacha: (id: string) => api<GachaInfo>(`${base}/${id}/gacha`, opts),
+  buyTickets: (id: string, qty: number) => api<{ tickets: number; spent: number }>(`${base}/${id}/gacha/tickets`, { ...opts, method: "POST", body: { qty } }),
   roll: (id: string, machineId: string, times: 1 | 10) => api<{ results: GachaResult[]; funds: number }>(`${base}/${id}/gacha/${machineId}/roll`, { ...opts, method: "POST", body: { times }, headers: { "Idempotency-Key": key() } }),
   chests: (id: string) => api<ChestsInfo>(`${base}/${id}/chests`, opts),
   sendChest: (id: string, typeId: string) => api<unknown>(`${base}/${id}/chests/send/${typeId}`, keyed()),

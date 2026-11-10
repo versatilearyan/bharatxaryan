@@ -8,6 +8,7 @@ import "@fontsource/yatra-one/400.css";
 import "@fontsource/righteous/400.css";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { VersionGuard } from "@/components/system/VersionGuard";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -48,6 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Skip to content
         </a>
         <Providers>{children}</Providers>
+        <VersionGuard />
       </body>
     </html>
   );

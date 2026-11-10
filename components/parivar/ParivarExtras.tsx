@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronDown, ChevronLeft, Coins as CoinsI, Gift, Heart as HeartI, House, Landmark, Lock, MessagesSquare, Pin, Send, Settings2, Smile, Star as StarI, Trash2 } from "lucide-react";
 import { Glyph, KIND_GLYPH, TILE_GLYPH } from "./ParivarUi";
+import { GiftArt } from "@/components/art/GiftArt";
+import type { GiftId } from "@/lib/app/types";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin } from "@/components/ui/kit";
 import { parivarExtra, type ChatMsg, type ChatPrefs, type ChestsInfo, type ChoriInfo, type CheerTier, type GachaInfo, type GachaResult, type KavachInfo, type NewsPost, type ParivarProfile, type ShopItem, type TasksInfo } from "@/lib/api/parivar";
@@ -17,7 +19,7 @@ const errText = (e: unknown, fallback = "That didn't work. Try again.") => (e in
 const RARITY: Record<string, string> = { COMMON: "#b9c0cc", RARE: "#5fb7ff", EPIC: "#c58bff", LEGENDARY: "#ffd36e" };
 const KIND_ICON: Record<string, string> = {};
 
-export type SheetName = "cheer" | "gacha" | "chests" | "shop" | "kavach" | "chori" | "chat" | null;
+export type SheetName = "gift" | "cheer" | "gacha" | "chests" | "shop" | "kavach" | "chori" | "chat" | null;
 
 function useLoad<T>(fn: () => Promise<T>, deps: unknown[], every = 0) {
   const [data, setData] = useState<T | null>(null);
@@ -83,6 +85,7 @@ function useNow(ms = 1000) {
 
 const TILES: { key: Exclude<SheetName, null>; icon?: string; label: string; sub: string }[] = [
   { key: "chat", icon: "💬", label: "Family chat", sub: "Talk together" },
+  { key: "gift", icon: "🎁", label: "Send gift", sub: "To a member" },
   { key: "gacha", icon: "🎰", label: "Gacha", sub: "Win rewards" },
   { key: "cheer", icon: "📣", label: "Cheer", sub: "Boost activity" },
   { key: "chests", icon: "🎁", label: "Chests", sub: "Send and claim" },
@@ -404,8 +407,26 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [won, setWon] = useState<GachaResult[] | null>(null);
   const [dropColor, setDropColor] = useState("#c2263f");
+  const [buying, setBuying] = useState(false);
   const m = d.data?.machines[sel];
   const busy = phase !== "idle";
+  // The daily free roll comes out of the Parivar fund; when the fund is short it is not offered
+  const fundOk = Boolean(m && d.data && d.data.funds >= m.freeFundCost);
+  const canFree = Boolean(m && m.freeLeft > 0 && fundOk);
+  const buyTickets = async (qty: number) => {
+    if (buying || !d.data) return;
+    setBuying(true);
+    try {
+      const r = await parivarExtra.buyTickets(p.id, qty);
+      toast(`You bought ${qty} Gacha ${qty > 1 ? "tickets" : "ticket"} · ${n(r.spent)} gold`, "gold");
+      void refreshCoins();
+      void d.reload();
+    } catch (e) {
+      toast(errText(e), "error");
+    } finally {
+      setBuying(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -436,7 +457,6 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
     }
   };
 
-  const canFree = Boolean(m && m.freeLeft > 0);
   return (
     <AnimatePresence>
       {open ? (
@@ -451,8 +471,16 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
               <p className="text-[11px] font-semibold tracking-[0.16em] text-gold/80 uppercase">Parivar Gacha</p>
             </div>
             {d.data ? (
-              <span className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-3 py-1.5 text-[12.5px] font-bold text-gold ring-1 ring-white/10">
-                <Landmark className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden /> {n(d.data.funds)}
+              <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-3 py-1.5 text-[12.5px] font-bold text-gold ring-1 ring-white/10" title="Parivar fund">
+                  <Landmark className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden /> {n(d.data.funds)}
+                </span>
+                <span className="flex items-center gap-1 rounded-full bg-white/[0.07] py-1 pr-1 pl-3 text-[12.5px] font-bold text-cream ring-1 ring-white/10" title="Your Gacha tickets">
+                  🎟️ {n(d.data.tickets)}
+                  <button type="button" disabled={buying} onClick={() => void buyTickets(1)} className="ml-0.5 grid h-6 w-6 place-items-center rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[15px] leading-none font-extrabold text-[#2a1a0c] disabled:opacity-50" aria-label={`Buy a Gacha ticket for ${n(d.data.ticketPrice)} gold`}>
+                    +
+                  </button>
+                </span>
               </span>
             ) : null}
           </header>
@@ -475,10 +503,25 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
                     <div className="mt-8">
                       <Machine phase={phase} name={m.name} dropColor={dropColor} />
                     </div>
-                    <p className="mt-5 px-6 text-center text-[12px] text-cream/55">
-                      {m.locked ? `Your Parivar needs level ${m.minLevel} to use this machine.` : canFree ? `${m.freeLeft} free ${m.freeLeft > 1 ? "spins" : "spin"} left today` : `${n(m.priceFunds)} funds a roll${m.serviceFeeCoins ? ` + ${n(m.serviceFeeCoins)} coins fee` : ""}`}
+                    <p className="mt-5 px-6 text-center text-[12px] text-cream/60">
+                      {m.locked
+                        ? `Your Parivar needs level ${m.minLevel} to open this machine.`
+                        : canFree
+                          ? `1 free roll today · the Parivar fund pays ${n(m.freeFundCost)}`
+                          : `Each roll: 1 Gacha ticket or ${n(m.rollPriceCoins)} gold`}
                     </p>
-                    {!m.locked && !d.data.canRoll ? <p className="mt-1 px-6 text-center text-[11px] text-cream/45">Only free spins for you: spending funds or cards needs the Mukhiya&apos;s permission.</p> : null}
+                    {!m.locked && m.freeLeft > 0 && !fundOk ? (
+                      <p className="mx-6 mt-2 rounded-2xl bg-coral/10 px-3 py-2 text-center text-[11.5px] text-coral">Family Fund not enough for the free roll ({n(m.freeFundCost)} needed). Donate to the fund, or use a ticket or gold.</p>
+                    ) : null}
+                    {!m.locked ? (
+                      <div className="mt-3 flex justify-center gap-2">
+                        {[1, 5, 10].map((q) => (
+                          <button key={q} type="button" disabled={buying || busy} onClick={() => void buyTickets(q)} className="rounded-full bg-white/[0.07] px-3.5 py-1.5 text-[11.5px] font-bold text-cream ring-1 ring-white/10 disabled:opacity-50">
+                            🎟️ Buy {q} · {n((d.data?.ticketPrice ?? 0) * q)} gold
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
 
                     <div className="mx-4 mt-7">
                       <p className="flex items-center gap-2 font-display text-[15px] font-extrabold text-cream">
@@ -494,9 +537,14 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
                                 {r.imageUrl ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img src={r.imageUrl} alt="" className="h-11 w-11 object-contain" />
+                                ) : r.kind === "GIFT_CARD" && r.giftId ? (
+                                  <span className="h-10 w-10">
+                                    <GiftArt id={r.giftId as GiftId} />
+                                  </span>
                                 ) : (
                                   <G className="h-7 w-7" style={{ color: col }} strokeWidth={1.6} />
                                 )}
+                                {r.kind === "GIFT_CARD" ? <span className="absolute inset-x-0 bottom-0 rounded-b-2xl bg-black/55 text-center text-[8.5px] font-bold text-cream/90">Gift Card</span> : null}
                               </span>
                               <span className="mt-1.5 line-clamp-2 text-[10.5px] leading-tight font-semibold text-cream/85">{r.label}</span>
                               <span className="text-[10px] font-bold" style={{ color: col }}>
@@ -515,14 +563,21 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
 
           {m && !m.locked ? (
             <div className="absolute inset-x-0 bottom-0 z-10 flex gap-3 bg-gradient-to-t from-[#0d0709] via-[#0d0709]/95 to-transparent px-4 pt-8 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              <button type="button" disabled={busy || (!d.data?.canRoll && !canFree)} onClick={() => void roll(1)} className="relative flex h-14 flex-1 flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-[#f6dc9c] to-[#c08f43] text-[#2a1a0c] shadow-[0_10px_24px_-8px_rgba(240,205,130,0.6)] transition active:scale-[0.97] disabled:opacity-45">
+              <button type="button" disabled={busy} onClick={() => void roll(1)} className="relative flex h-14 flex-1 flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-[#f6dc9c] to-[#c08f43] text-[#2a1a0c] shadow-[0_10px_24px_-8px_rgba(240,205,130,0.6)] transition active:scale-[0.97] disabled:opacity-45">
                 {canFree ? <span className="absolute -top-1.5 -right-1.5 rounded-full bg-coral px-2 py-0.5 text-[9.5px] font-extrabold text-white">FREE</span> : null}
                 <span className="font-display text-[15px] leading-tight font-extrabold">Roll ×1</span>
-                <span className="text-[10.5px] font-semibold opacity-70">{canFree ? "Free spin" : `${n(m.priceFunds)} funds`}</span>
+                <span className="text-[10.5px] font-semibold opacity-70">{canFree ? "Free roll" : d.data && d.data.tickets > 0 ? "1 ticket" : `${n(m.rollPriceCoins)} gold`}</span>
               </button>
-              <button type="button" disabled={busy || !d.data?.canRoll} onClick={() => void roll(10)} className="flex h-14 flex-1 flex-col items-center justify-center rounded-2xl bg-white/[0.08] text-cream ring-1 ring-gold/40 backdrop-blur-md transition active:scale-[0.97] disabled:opacity-45">
+              <button type="button" disabled={busy} onClick={() => void roll(10)} className="flex h-14 flex-1 flex-col items-center justify-center rounded-2xl bg-white/[0.08] text-cream ring-1 ring-gold/40 backdrop-blur-md transition active:scale-[0.97] disabled:opacity-45">
                 <span className="font-display text-[15px] leading-tight font-extrabold">Roll ×10</span>
-                <span className="text-[10.5px] font-semibold text-gold/90">{n(m.priceFunds * 10)} funds</span>
+                <span className="text-[10.5px] font-semibold text-gold/90">
+                  {(() => {
+                    const free = canFree ? 1 : 0;
+                    const tk = Math.min(Math.max(0, 10 - free), d.data?.tickets ?? 0);
+                    const gold = Math.max(0, 10 - free - tk) * m.rollPriceCoins;
+                    return [free ? "1 free" : "", tk ? `${tk} ticket${tk > 1 ? "s" : ""}` : "", gold ? `${n(gold)} gold` : ""].filter(Boolean).join(" + ");
+                  })()}
+                </span>
               </button>
             </div>
           ) : null}
@@ -924,10 +979,11 @@ const dayLabel = (iso: string) => {
 };
 type Pending = { tmp: string; text: string; at: string };
 
-export function ChatSheet({ p, open, onClose, onHome }: Omit<Props, "onChanged"> & { onHome?: () => void }) {
+export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onChanged"> & { onHome?: () => void; onGift?: (to?: string) => void }) {
   const [msgs, setMsgs] = useState<ChatMsg[]>([]);
   const [prefs, setPrefs] = useState<ChatPrefs>({ muted: false, foldGifts: false, giftSound: true, background: "default" });
   const [me, setMe] = useState<string | null>(null);
+  const [pick, setPick] = useState<ChatMsg | null>(null);
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
   const [settings, setSettings] = useState(false);
@@ -1139,7 +1195,7 @@ export function ChatSheet({ p, open, onClose, onHome }: Omit<Props, "onChanged">
                       </div>
                     </div>
                   ) : (
-                    <div className={`flex items-end gap-2 ${first ? "mt-2.5" : "mt-0.5"}`}>
+                    <div className={`flex items-end gap-2 ${first ? "mt-2.5" : "mt-0.5"} ${onGift && m.userId ? "cursor-pointer" : ""}`} onClick={() => onGift && m.userId && setPick(m)} role={onGift && m.userId ? "button" : undefined} aria-label={onGift && m.userId ? `Options for ${m.name ?? "this member"}` : undefined}>
                       <div className="w-8 shrink-0">
                         {lastOfRun ? (
                           m.avatarUrl ? (
@@ -1204,6 +1260,11 @@ export function ChatSheet({ p, open, onClose, onHome }: Omit<Props, "onChanged">
             <button type="button" onClick={() => setTray((v) => !v)} className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${tray ? "bg-gold/20 text-gold" : "bg-white/8 text-cream/80"}`} aria-label="Emoji" aria-expanded={tray}>
               <Smile className="h-5 w-5" aria-hidden />
             </button>
+            {onGift ? (
+              <button type="button" onClick={() => onGift()} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c]" aria-label="Send a gift to a member">
+                <Gift className="h-5 w-5" aria-hidden />
+              </button>
+            ) : null}
             <input
               value={text}
               maxLength={500}
@@ -1218,6 +1279,25 @@ export function ChatSheet({ p, open, onClose, onHome }: Omit<Props, "onChanged">
               <Send className="h-5 w-5" aria-hidden />
             </button>
           </div>
+
+          <BottomSheet open={Boolean(pick)} onClose={() => setPick(null)} title={pick?.name ?? "Member"}>
+            <div className="px-4 pb-4">
+              <button
+                type="button"
+                onClick={() => {
+                  const to = pick?.userId ?? undefined;
+                  setPick(null);
+                  if (to) onGift?.(to);
+                }}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[15px] font-extrabold text-[#2a1a0c]"
+              >
+                <Gift className="h-5 w-5" aria-hidden /> Send a gift to {pick?.name ?? "them"}
+              </button>
+              <button type="button" onClick={() => setPick(null)} className="mt-2 h-11 w-full rounded-full bg-white/10 text-[14px] font-semibold text-cream">
+                Cancel
+              </button>
+            </div>
+          </BottomSheet>
         </motion.div>
       ) : null}
     </AnimatePresence>

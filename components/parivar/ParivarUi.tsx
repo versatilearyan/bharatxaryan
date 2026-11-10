@@ -1,10 +1,10 @@
 "use client";
 
 /** Small shared pieces for the Parivar screens: icon tiles that replace emoji, and glossy "orbs". */
-import { Coins, Gift, Landmark, MessageCircle, Megaphone, Mic, ShieldCheck, ShoppingBag, Sparkles, Star, Ticket, VenetianMask, Dices, type LucideIcon } from "lucide-react";
+import { Coins, Gift, HeartHandshake, Landmark, Swords, MessageCircle, Megaphone, Mic, ShieldCheck, ShoppingBag, Sparkles, Star, Ticket, VenetianMask, Dices, type LucideIcon } from "lucide-react";
 
-export const KIND_GLYPH: Record<string, LucideIcon> = { COINS: Coins, FUNDS: Landmark, CHARM: Sparkles, CHEST: Gift, CARD: Ticket, GACHA_CARD: Ticket, BARRIER: ShieldCheck, EXP: Star };
-export const TILE_GLYPH: Record<string, LucideIcon> = { chat: MessageCircle, gacha: Dices, cheer: Megaphone, chests: Gift, shop: ShoppingBag, kavach: ShieldCheck, chori: VenetianMask, voice: Mic };
+export const KIND_GLYPH: Record<string, LucideIcon> = { COINS: Coins, FUNDS: Landmark, CHARM: Sparkles, CHEST: Gift, CARD: Ticket, GACHA_CARD: Ticket, BARRIER: ShieldCheck, EXP: Star, GIFT_CARD: Gift, WEAPON: Swords, ITEM: Sparkles };
+export const TILE_GLYPH: Record<string, LucideIcon> = { gift: HeartHandshake, chat: MessageCircle, gacha: Dices, cheer: Megaphone, chests: Gift, shop: ShoppingBag, kavach: ShieldCheck, chori: VenetianMask, voice: Mic };
 
 /** A thin-line icon on a frosted gold tile. */
 export function Glyph({ icon: Icon, size = 44, tone = "gold", className = "" }: { icon: LucideIcon; size?: number; tone?: "gold" | "light" | "mute"; className?: string }) {

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Camera, Check, ChevronLeft, Coins, Crown, Dices, Ellipsis, Flame, Gift, MessageCircle, Pencil, Plus, Quote, RefreshCw, Search, Shield, Sparkles, Trophy, UsersRound } from "lucide-react";
 import { Glyph } from "./ParivarUi";
+import { ParivarGiftSheet } from "./ParivarGift";
+import { useServerRooms } from "@/lib/app/server-rooms";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin, ScreenHeader } from "@/components/ui/kit";
 import { parivarApi, parivarExtra, type ParivarApplication, type ParivarCard, type ParivarConfig, type ParivarProfile, type ParivarRole, type RankRow, type TasksInfo, type KavachInfo, type ChestsInfo } from "@/lib/api/parivar";
@@ -545,6 +547,8 @@ export function ParivarHome({ id }: { id: string }) {
   const [more, setMore] = useState(false);
   const [editAnn, setEditAnn] = useState(false);
   const [menu, setMenu] = useState(false);
+  const [giftTo, setGiftTo] = useState<string | undefined>();
+  const [giftOver, setGiftOver] = useState(false);
   const member = Boolean(p?.myRole);
   const loadExtras = useCallback(() => {
     if (!member) return;
@@ -819,10 +823,10 @@ export function ParivarHome({ id }: { id: string }) {
           </div>
         ) : null}
 
-        {tab === "members" ? <MembersPanel p={p} can={can} busy={busy} run={run} /> : null}
+        {tab === "members" ? <MembersPanel p={p} can={can} busy={busy} run={run} onGift={(uid) => { setGiftTo(uid); setSheet("gift"); }} /> : null}
 
         {tab === "news" ? isMember ? <NewsPanel p={p} onChanged={() => void load()} /> : <Section title="Announcement">{p.announcement || <span className="text-muted">No announcement.</span>}</Section> : null}
-        {tab === "tasks" && isMember ? <TasksTab p={p} onChanged={() => void load()} onGo={(m) => (m === "CHEERS" ? setSheet("cheer") : m === "GIFT_EXP" ? setSheet("chat") : m === "DONATED_COINS" ? setDonate(true) : undefined)} /> : null}
+        {tab === "tasks" && isMember ? <TasksTab p={p} onChanged={() => void load()} onGo={(m) => (m === "CHEERS" ? setSheet("cheer") : m === "GIFT_EXP" ? (setGiftTo(undefined), setSheet("gift")) : m === "DONATED_COINS" ? setDonate(true) : undefined)} /> : null}
 
         {tab === "manage" && isMember ? <ManageTab p={p} can={can} run={run} busy={busy} push={() => push({ kind: "parivar-list" })} /> : null}
       </motion.div>
@@ -845,13 +849,14 @@ export function ParivarHome({ id }: { id: string }) {
 
       {isMember ? (
         <>
+          <ParivarGiftSheet p={p} open={sheet === "gift" || giftOver} onClose={() => { setSheet((s) => (s === "gift" ? null : s)); setGiftOver(false); }} toId={giftTo} onSent={() => void load()} />
           <CheerSheet p={p} open={sheet === "cheer"} onClose={() => setSheet(null)} onChanged={() => void load()} />
           <GachaSheet p={p} open={sheet === "gacha"} onClose={() => setSheet(null)} onChanged={() => void load()} />
           <ChestsSheet p={p} open={sheet === "chests"} onClose={() => setSheet(null)} onChanged={() => void load()} />
           <ShopSheet p={p} open={sheet === "shop"} onClose={() => setSheet(null)} onChanged={() => void load()} />
           <KavachSheet p={p} open={sheet === "kavach"} onClose={() => setSheet(null)} onChanged={() => void load()} />
           <ChoriSheet p={p} open={sheet === "chori"} onClose={() => setSheet(null)} onChanged={() => void load()} />
-          <ChatSheet p={p} open={sheet === "chat"} onClose={() => setSheet(null)} />
+          <ChatSheet p={p} open={sheet === "chat"} onClose={() => setSheet(null)} onGift={(to) => { setGiftTo(to); setGiftOver(true); }} />
         </>
       ) : null}
 
@@ -1135,8 +1140,9 @@ function RolePill({ role }: { role: ParivarRole }) {
   return <span className={`mt-1 inline-block rounded-md bg-gradient-to-r px-2.5 py-0.5 text-[11px] font-bold text-white ${ROLE_PILL[role]}`}>{ROLE_LABEL[role]}</span>;
 }
 
-function MembersPanel({ p, can, busy, run }: { p: ParivarProfile; can: (perm: string) => boolean; busy: boolean; run: (f: () => Promise<unknown>, ok?: string) => Promise<void> }) {
+function MembersPanel({ p, can, busy, run, onGift }: { p: ParivarProfile; can: (perm: string) => boolean; busy: boolean; run: (f: () => Promise<unknown>, ok?: string) => Promise<void>; onGift: (userId: string) => void }) {
   const [q, setQ] = useState("");
+  const { myId } = useServerRooms();
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return [...p.members].filter((m) => !needle || m.name.toLowerCase().includes(needle)).sort((a, b) => b.contribution - a.contribution);
@@ -1168,6 +1174,11 @@ function MembersPanel({ p, can, busy, run }: { p: ParivarProfile; can: (perm: st
               <RolePill role={m.role} />
             </span>
             <span className="text-[14px] font-semibold text-cream/70">{n(m.contribution)}</span>
+            {m.userId !== myId ? (
+              <button type="button" onClick={() => onGift(m.userId)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gold/15 text-gold ring-1 ring-gold/30" aria-label={`Send ${m.name} a gift`}>
+                <Gift className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
             {can("REMOVE_MEMBERS") && m.role !== "LEADER" && p.myRole !== m.role ? (
               <button type="button" disabled={busy} onClick={() => window.confirm(`Remove ${m.name}?`) && void run(() => parivarApi.removeMember(p.id, m.userId), `${m.name} was removed`)} className="rounded-full bg-coral/15 px-3 py-1 text-[11.5px] font-bold text-coral">
                 Remove
@@ -1286,6 +1297,8 @@ export function ParivarChatScreen({ id }: { id: string }) {
   const { pop, push } = useApp();
   const [p, setP] = useState<ParivarProfile | null>(null);
   const [error, setError] = useState("");
+  const [giftOpen, setGiftOpen] = useState(false);
+  const [giftTo, setGiftTo] = useState<string | undefined>();
   useEffect(() => {
     parivarApi
       .profile(id)
@@ -1305,7 +1318,8 @@ export function ParivarChatScreen({ id }: { id: string }) {
   }
   return (
     <div className="relative h-full overflow-hidden bg-ink">
-      <ChatSheet p={p} open onClose={pop} onHome={() => push({ kind: "parivar", id })} />
+      <ChatSheet p={p} open onClose={pop} onHome={() => push({ kind: "parivar", id })} onGift={(to) => { setGiftTo(to); setGiftOpen(true); }} />
+      <ParivarGiftSheet p={p} open={giftOpen} onClose={() => setGiftOpen(false)} toId={giftTo} />
     </div>
   );
 }
