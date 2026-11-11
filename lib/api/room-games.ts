@@ -183,6 +183,11 @@ export const tagsApi = {
   customize: async (tagId: string, patch: { relation?: string; nickname?: string; theme?: string }) => readTags([await api<unknown>(`/api/v1/tags/${encodeURIComponent(tagId)}`, { ...opts, method: "PUT", body: patch })])[0],
   slots: async (userId?: string) => {
     const d = obj(await api<unknown>(userId ? `/api/v1/tags/user/${encodeURIComponent(userId)}/slots` : "/api/v1/tags/me/slots", opts));
-    return { used: num(d?.used) ?? 0, slots: num(d?.slots) ?? 5, max: num(d?.max) ?? 12 };
+    return { used: num(d?.used) ?? 0, slots: num(d?.slots) ?? 5, max: num(d?.max) ?? 12, price: num(d?.price) ?? 0, canBuy: d?.canBuy === true };
+  },
+  /** Opens one more BFF slot for coins (the price is set in the admin panel). */
+  buySlot: async () => {
+    const d = obj(await api<unknown>("/api/v1/tags/me/slots/buy", { ...opts, method: "POST" }));
+    return { used: num(d?.used) ?? 0, slots: num(d?.slots) ?? 5, max: num(d?.max) ?? 12, price: num(d?.price) ?? 0, canBuy: d?.canBuy === true };
   },
 };

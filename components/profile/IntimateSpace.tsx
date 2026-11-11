@@ -24,7 +24,7 @@ const QUICK_GIFTS: GiftId[] = GIFTS.filter((g) => !g.packageOnly).slice(0, 4).ma
  * level, intimacy, token and perks. Everyone has 5 slots; each VIP level adds one, up to 12.
  */
 export function IntimateSpace({ personId }: { personId: string }) {
-  const { pop, tagsOf, profile, openRoom, push, vip } = useApp();
+  const { pop, tagsOf, profile, openRoom, push, vip, toast, refreshCoins } = useApp();
   const person = usePeople();
   const mine = personId === ME_ID;
   const owner = person(personId);
@@ -37,19 +37,41 @@ export function IntimateSpace({ personId }: { personId: string }) {
   const tags = [...tagsOf(personId)].sort((x, y) => y.intimacy - x.intimacy);
   // 5 slots for everyone, one more per VIP level, up to 12 (the server's count wins for backend users)
   const [serverSlots, setServerSlots] = useState<number | null>(null);
+  const [slotInfo, setSlotInfo] = useState<{ max: number; price: number; canBuy: boolean } | null>(null);
+  const [buying, setBuying] = useState(false);
   useEffect(() => {
     const uid = personId === "me" ? undefined : personId.startsWith("srv-user:") ? personId.slice(9) : null;
     if (uid === null) return;
     let off = false;
     tagsApi
       .slots(uid)
-      .then((x) => !off && setServerSlots(x.slots))
+      .then((x) => {
+        if (off) return;
+        setServerSlots(x.slots);
+        setSlotInfo({ max: x.max, price: x.price, canBuy: x.canBuy });
+      })
       .catch(() => undefined);
     return () => {
       off = true;
     };
   }, [personId, tags.length]);
-  const slots = Math.min(TAG_SLOTS, Math.max(serverSlots ?? tagSlotsFor(mine ? vip.level : 0), tags.length));
+  const maxSlots = slotInfo?.max ?? TAG_SLOTS;
+  const slots = Math.min(maxSlots, Math.max(serverSlots ?? tagSlotsFor(mine ? vip.level : 0), tags.length));
+  const buySlot = async () => {
+    if (buying) return;
+    setBuying(true);
+    try {
+      const x = await tagsApi.buySlot();
+      setServerSlots(x.slots);
+      setSlotInfo({ max: x.max, price: x.price, canBuy: x.canBuy });
+      void refreshCoins();
+      toast("A new BFF slot is open", "gold");
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : "Couldn't open the slot.", "error");
+    } finally {
+      setBuying(false);
+    }
+  };
   const empty = mine ? slots - tags.length : 0;
   const invite = () => {
     pop();
@@ -87,14 +109,23 @@ export function IntimateSpace({ personId }: { personId: string }) {
             </span>
           </button>
         ))}
-        {mine && slots < TAG_SLOTS ? (
-          <button type="button" onClick={() => push({ kind: "vip-benefits" })} className="flex w-full items-center gap-3 rounded-3xl bg-black/25 px-4 py-3.5 text-left">
+        {mine && slotInfo?.canBuy ? (
+          <button type="button" disabled={buying} onClick={() => void buySlot()} className="flex w-full items-center gap-3 rounded-3xl bg-black/25 px-4 py-3.5 text-left disabled:opacity-60">
             <span className="grid h-10 w-10 place-items-center rounded-full bg-gold/15 text-gold">
               <Lock className="h-4.5 w-4.5" aria-hidden />
             </span>
-            <span>
-              <span className="block text-[14px] font-semibold text-cream">More slots</span>
-              <span className="text-[11.5px] text-cream/55">Each VIP level adds a BFF slot, up to {TAG_SLOTS}</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[14px] font-semibold text-cream">Open a new slot</span>
+              <span className="text-[11.5px] text-cream/55">Hold one more BFF tag, up to {maxSlots} slots</span>
+            </span>
+            <span className="flex items-center gap-1 rounded-full bg-gold px-3 py-1.5 text-[12.5px] font-extrabold text-ink">
+              {buying ? "…" : slotInfo.price > 0 ? (
+                <>
+                  <Coin className="h-3.5 w-3.5" /> {slotInfo.price.toLocaleString("en-IN")}
+                </>
+              ) : (
+                "Free"
+              )}
             </span>
           </button>
         ) : null}
@@ -123,7 +154,7 @@ export function IntimateSpace({ personId }: { personId: string }) {
           <li>Every coin of gifts between you adds 1 intimacy. Intimacy raises the BFF level up to Lv 10.</li>
           <li>Sit beside your BFF in a room and your token shows between your seats.</li>
           <li>Give your BFF a pet name and a colour theme with Customize. Either of you can change it.</li>
-          <li>Everyone has 5 BFF slots. Each VIP level adds one more, up to {TAG_SLOTS}.</li>
+          <li>You can have many BFFs of the same type (for example several Confidants), each with a different person. Every BFF uses one slot; open more slots with coins, up to {maxSlots}.</li>
         </ol>
       </section>
       <div className="h-8" />
