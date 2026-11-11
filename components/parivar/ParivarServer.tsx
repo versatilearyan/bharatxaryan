@@ -11,7 +11,7 @@ import { Coin, ScreenHeader } from "@/components/ui/kit";
 import { parivarApi, parivarExtra, type ParivarApplication, type ParivarCard, type ParivarConfig, type ParivarProfile, type ParivarRole, type RankRow, type TasksInfo, type KavachInfo, type ChestsInfo } from "@/lib/api/parivar";
 import { useApp } from "@/lib/app/store";
 import { FRAME_ORDER, FramedPicture, SignBadge, frameName } from "./ParivarFrames";
-import { ChatSheet, CheerSheet, ChestsSheet, ChoriSheet, FeatureTiles, GachaSheet, KavachSheet, NewsTab as NewsPanel, ShopSheet, TasksTab, type SheetName } from "./ParivarExtras";
+import { ChatSheet, CheerSheet, ChestsSheet, ChoriSheet, FeatureTiles, GachaSheet, KavachSheet, NewsTab as NewsPanel, WorldNews, ShopSheet, TasksTab, type SheetName } from "./ParivarExtras";
 
 const n = (v: number) => v.toLocaleString("en-IN");
 const ago = (iso: string) => {
@@ -825,7 +825,7 @@ export function ParivarHome({ id }: { id: string }) {
 
         {tab === "members" ? <MembersPanel p={p} can={can} busy={busy} run={run} onGift={(uid) => { setGiftTo(uid); setSheet("gift"); }} /> : null}
 
-        {tab === "news" ? isMember ? <NewsPanel p={p} onChanged={() => void load()} /> : <Section title="Announcement">{p.announcement || <span className="text-muted">No announcement.</span>}</Section> : null}
+        {tab === "news" ? isMember ? <NewsPanel p={p} onChanged={() => void load()} /> : <div className="space-y-3"><Section title="Announcement">{p.announcement || <span className="text-muted">No announcement.</span>}</Section><WorldNews /></div> : null}
         {tab === "tasks" && isMember ? <TasksTab p={p} onChanged={() => void load()} onGo={(m) => (m === "CHEERS" ? setSheet("cheer") : m === "GIFT_EXP" ? (setGiftTo(undefined), setSheet("gift")) : m === "DONATED_COINS" ? setDonate(true) : undefined)} /> : null}
 
         {tab === "manage" && isMember ? <ManageTab p={p} can={can} run={run} busy={busy} push={() => push({ kind: "parivar-list" })} /> : null}
@@ -1034,6 +1034,8 @@ function ManageTab({ p, can, run, busy, push }: { p: ParivarProfile; can: (perm:
           </div>
         </Section>
       ) : null}
+
+      {iAmLeader ? <IdentityEditor p={p} run={run} busy={busy} /> : null}
 
       {(can("APPOINT_DEPUTY") || can("APPOINT_ADMIN") || iAmLeader) && p.members.length > 1 ? (
         <Section title="Roles">
@@ -1321,5 +1323,96 @@ export function ParivarChatScreen({ id }: { id: string }) {
       <ChatSheet p={p} open onClose={pop} onHome={() => push({ kind: "parivar", id })} onGift={(to) => { setGiftTo(to); setGiftOpen(true); }} />
       <ParivarGiftSheet p={p} open={giftOpen} onClose={() => setGiftOpen(false)} toId={giftTo} />
     </div>
+  );
+}
+
+/** The Mukhiya changes the Parivar's name, title or logo. Each change costs the coins the admin set; the server charges the Mukhiya's wallet. */
+function IdentityEditor({ p, run, busy }: { p: ParivarProfile; run: (f: () => Promise<unknown>, ok?: string) => Promise<void>; busy: boolean }) {
+  const { toast, coins } = useApp();
+  const prices = p.identityPrices ?? { name: 0, sign: 0, logo: 0 };
+  const [name, setName] = useState(p.name);
+  const [sign, setSign] = useState(p.sign);
+  const [logoPath, setLogoPath] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoBusy, setLogoBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const idem = useRef(parivarApi.newKey());
+  useEffect(() => {
+    setName(p.name);
+    setSign(p.sign);
+  }, [p.name, p.sign]);
+  const newName = name.trim() !== p.name && name.trim().length > 0;
+  const newSign = sign.trim().toUpperCase() !== p.sign && sign.trim().length > 0;
+  const newLogo = Boolean(logoPath);
+  const cost = (newName ? prices.name : 0) + (newSign ? prices.sign : 0) + (newLogo ? prices.logo : 0);
+  const valid = (!newName || name.trim().length >= 3) && (!newSign || /^[A-Za-z0-9]{2,8}$/.test(sign.trim()));
+  const pickLogo = async (file?: File) => {
+    if (!file) return;
+    if (!/^image\/(png|jpe?g)$/.test(file.type)) return toast("Use a PNG or JPG picture.", "error");
+    setLogoBusy(true);
+    try {
+      const blob = await squareCrop(file, 512);
+      const up = await parivarApi.uploadLogo(blob);
+      setLogoPath(up.path);
+      setLogoUrl(URL.createObjectURL(blob));
+    } catch (e) {
+      toast(errText(e, "The picture didn't upload. Try again."), "error");
+    } finally {
+      setLogoBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+  const save = () =>
+    void run(async () => {
+      await parivarApi.changeIdentity(p.id, { name: newName ? name.trim() : undefined, sign: newSign ? sign.trim().toUpperCase() : undefined, logo: newLogo ? logoPath : undefined, key: idem.current });
+      idem.current = parivarApi.newKey();
+      setLogoPath("");
+      setLogoUrl("");
+    }, "Saved");
+  const priceTag = (n: number) => (n > 0 ? `${n.toLocaleString("en-IN")} coins` : "Free");
+  const nothing = !(newName || newSign || newLogo);
+  return (
+    <Section title="Change name, title or logo">
+      <div className="space-y-3">
+        <label className="block">
+          <span className="flex items-center justify-between text-[12px] font-semibold text-cream/70">
+            <span>Name</span>
+            <span className="text-gold">{priceTag(prices.name)}</span>
+          </span>
+          <input value={name} maxLength={30} onChange={(e) => setName(e.target.value)} className="mt-1 h-11 w-full rounded-xl bg-ink px-3 text-[14px] text-cream ring-1 ring-line focus:outline-none" aria-label="Parivar name" />
+        </label>
+        <label className="block">
+          <span className="flex items-center justify-between text-[12px] font-semibold text-cream/70">
+            <span>Title (2 to 8 letters or numbers)</span>
+            <span className="text-gold">{priceTag(prices.sign)}</span>
+          </span>
+          <input value={sign} maxLength={8} onChange={(e) => setSign(e.target.value.toUpperCase())} className="mt-1 h-11 w-full rounded-xl bg-ink px-3 text-[14px] uppercase text-cream ring-1 ring-line focus:outline-none" aria-label="Parivar title" />
+        </label>
+        <div>
+          <span className="flex items-center justify-between text-[12px] font-semibold text-cream/70">
+            <span>Logo</span>
+            <span className="text-gold">{priceTag(prices.logo)}</span>
+          </span>
+          <div className="mt-1 flex items-center gap-3">
+            <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full bg-[#2a1520] text-[24px]">
+              {logoUrl || p.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl || p.logoUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                p.emblem
+              )}
+            </span>
+            <button type="button" disabled={logoBusy || busy} onClick={() => fileRef.current?.click()} className="rounded-full px-4 py-2 text-[12.5px] font-bold text-cream ring-1 ring-white/20 disabled:opacity-50">
+              {logoBusy ? "Uploading…" : "Choose a picture"}
+            </button>
+            <input ref={fileRef} type="file" accept="image/png,image/jpeg" className="sr-only" onChange={(e) => void pickLogo(e.target.files?.[0])} />
+          </div>
+        </div>
+        <button type="button" disabled={busy || logoBusy || !valid || nothing || coins < cost} onClick={save} className="h-11 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c] disabled:opacity-50">
+          {nothing ? "Change something first" : coins < cost ? "Not enough coins" : cost > 0 ? `Save · ${cost.toLocaleString("en-IN")} coins` : "Save"}
+        </button>
+        <p className="text-[11px] text-cream/50">The coins come from your wallet (Mukhiya). Everyone in the Parivar sees the change.</p>
+      </div>
+    </Section>
   );
 }

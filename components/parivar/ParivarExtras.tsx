@@ -10,7 +10,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin } from "@/components/ui/kit";
 import { giftById } from "@/lib/app/data";
 import { parseGiftCard } from "@/lib/api/parivar";
-import { parivarExtra, type ChatMsg, type ChatPrefs, type ChestsInfo, type ChoriInfo, type CheerTier, type GachaInfo, type GachaResult, type KavachInfo, type NewsPost, type ParivarProfile, type ShopItem, type TasksInfo } from "@/lib/api/parivar";
+import { parivarExtra, type WorldNewsItem, type ChatMsg, type ChatPrefs, type ChestsInfo, type ChoriInfo, type CheerTier, type GachaInfo, type GachaResult, type KavachInfo, type NewsPost, type ParivarProfile, type ShopItem, type TasksInfo } from "@/lib/api/parivar";
 import { getRoomById } from "@/lib/api/voice-rooms";
 import { serverRoomAppId, useServerRooms } from "@/lib/app/server-rooms";
 import { useApp } from "@/lib/app/store";
@@ -1442,7 +1442,7 @@ export function TasksTab({ p, onChanged, onGo }: { p: ParivarProfile; onChanged:
 
 /* ------------------------------ News tab ------------------------------ */
 
-export function NewsTab({ p, onChanged }: { p: ParivarProfile; onChanged: () => void }) {
+function FamilyNotices({ p, onChanged }: { p: ParivarProfile; onChanged: () => void }) {
   const { toast } = useApp();
   const d = useLoad<NewsPost[]>(() => parivarExtra.news(p.id), [p.id]);
   const canPost = p.myPerms.includes("EDIT_ANNOUNCEMENT");
@@ -1584,6 +1584,65 @@ function GiftCardLine({ c }: { c: NonNullable<ReturnType<typeof parseGiftCard>> 
           <HeartI className="h-3.5 w-3.5 fill-current" aria-hidden /> Charm +{c.charm.toLocaleString("en-IN")}
         </span>
       </div>
+    </div>
+  );
+}
+
+const ago = (iso: string) => {
+  const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (m < 1) return "just now";
+  if (m < 60) return `${m} min ago`;
+  if (m < 60 * 24) return `${Math.floor(m / 60)} h ago`;
+  return `${Math.floor(m / 60 / 24)} d ago`;
+};
+
+const WORLD_ICON: Record<WorldNewsItem["kind"], string> = { LEVEL_UP: "\u{1F389}", CHEST: "\u{1F381}", ATTACK: "\u{1F977}" };
+
+/** World news: what happens across all Parivars. The system writes it (level ups, chests opened, funds taken); nobody posts it by hand. */
+export function WorldNews() {
+  const d = useLoad<WorldNewsItem[]>(() => parivarExtra.worldNews(), [], 30_000);
+  if (!d.data) return <p className="py-8 text-center text-[13px] text-muted">{d.error || "Loading…"}</p>;
+  if (!d.data.length) return <p className="py-8 text-center text-[13px] text-muted">Nothing yet. Level ups, chests and attacks will show up here.</p>;
+  return (
+    <ul className="space-y-2">
+      {d.data.map((x) => (
+        <li key={x.id} className="flex items-start gap-3 rounded-2xl bg-white/[0.05] p-3 ring-1 ring-white/10">
+          <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-[#2a1520] text-[20px]">
+            {x.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={x.logoUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              WORLD_ICON[x.kind]
+            )}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] leading-snug text-cream/90">{x.text}</span>
+            <span className="mt-0.5 block text-[11px] text-cream/45">{ago(x.at)}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The News tab: World news (automatic) and the family's own notices. */
+export function NewsTab({ p, onChanged }: { p: ParivarProfile; onChanged: () => void }) {
+  const [view, setView] = useState<"world" | "family">("world");
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2" role="tablist" aria-label="News">
+        {(
+          [
+            ["world", "World news"],
+            ["family", "Family notices"],
+          ] as const
+        ).map(([k, label]) => (
+          <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setView(k)} className={`flex-1 rounded-full py-2 text-[12.5px] font-bold ring-1 ${view === k ? "bg-gold/15 text-gold ring-gold/50" : "text-cream/70 ring-line"}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {view === "world" ? <WorldNews /> : <FamilyNotices p={p} onChanged={onChanged} />}
     </div>
   );
 }

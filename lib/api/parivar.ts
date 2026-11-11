@@ -53,6 +53,8 @@ export type ParivarProfile = ParivarCard & {
   members: ParivarMemberInfo[];
   myRole: ParivarRole | null;
   myPerms: ParivarPerm[];
+  /** What the Mukhiya pays (coins) to change the name, title or logo (set in the admin panel). */
+  identityPrices?: { name: number; sign: number; logo: number };
   pendingApplications: number;
   weekRank: number | null;
   totalRank: number | null;
@@ -89,6 +91,7 @@ export const parivarApi = {
   decide: (id: string, appId: string, accept: boolean) => api<unknown>(`${base}/${id}/applications/${appId}/${accept ? "accept" : "reject"}`, { ...opts, method: "POST" }),
   removeMember: (id: string, userId: string) => api<ParivarProfile>(`${base}/${id}/members/${userId}/remove`, { ...opts, method: "POST" }),
   setRole: (id: string, userId: string, role: ParivarRole) => api<ParivarProfile>(`${base}/${id}/members/${userId}/role`, { ...opts, method: "PUT", body: { role } }),
+  changeIdentity: (id: string, body: { name?: string; sign?: string; logo?: string; key: string }) => api<ParivarProfile>(`${base}/${id}/identity`, { ...opts, method: "PUT", body }),
   update: (id: string, body: { intro?: string; announcement?: string; joinMode?: "OPEN" | "APPROVAL"; emblem?: string; color?: string; logo?: string }) => api<ParivarProfile>(`${base}/${id}`, { ...opts, method: "PUT", body }),
   donate: (id: string, amount: number) => api<ParivarProfile>(`${base}/${id}/donate`, { ...opts, method: "POST", body: { amount }, headers: { "Idempotency-Key": key() } }),
   tag: (userId: string) => api<{ id?: string; sign?: string; name?: string; emblem?: string; color?: string; frame?: string }>(`${base}/tag/${userId}`, opts),
@@ -130,6 +133,7 @@ export type NewsPost = { id: string; kind: "NOTICE" | "RULE" | "EVENT"; title: s
 export type ChatMsg = { id: number; userId: string | null; kind: "TEXT" | "SYSTEM"; text: string; name?: string; avatarUrl?: string; at: string };
 export type ChatPrefs = { muted: boolean; foldGifts: boolean; giftSound: boolean; background: string };
 export type VoiceInfo = { enabled: boolean; minLevel: number; unlocked: boolean; roomId: string | null; canStart: boolean };
+export type WorldNewsItem = { id: string; kind: "LEVEL_UP" | "CHEST" | "ATTACK"; text: string; amount: number; at: string; parivar: { id: string; name: string; sign: string; emblem: string }; logoUrl?: string; other?: { id: string; name: string; sign: string } };
 export type InventoryRow = { kind: string; ref: number; qty: number; name?: string };
 
 const keyed = (extra?: Record<string, string>) => ({ ...opts, method: "POST" as const, headers: { "Idempotency-Key": key(), ...(extra ?? {}) } });
@@ -154,6 +158,7 @@ export const parivarExtra = {
   chori: (id: string) => api<ChoriInfo>(`${base}/${id}/chori`, opts),
   setChoriMembers: (id: string, on: boolean) => api<ChoriInfo>(`${base}/${id}/chori/members`, { ...opts, method: "PUT", body: { on } }),
   attempt: (id: string, targetId: string) => api<{ result: "SUCCESS" | "FAILED" | "BLOCKED"; amount: number }>(`${base}/${id}/chori/${targetId}`, keyed()),
+  worldNews: () => api<WorldNewsItem[]>(`${base}/world-news?limit=50`, opts),
   news: (id: string) => api<NewsPost[]>(`${base}/${id}/news`, opts),
   unread: (id: string) => api<{ unread: number }>(`${base}/${id}/news/unread`, opts),
   markRead: (id: string) => api<unknown>(`${base}/${id}/news/read`, { ...opts, method: "POST" }),

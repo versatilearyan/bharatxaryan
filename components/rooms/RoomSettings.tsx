@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronLeft, ChevronRight, Copy, ImagePlus, Lock, Settings, Share2, X } from "lucide-react";
 import { COVER_LABELS, SunsetScene } from "@/components/art/SunsetScene";
@@ -12,6 +12,8 @@ import { usePeople } from "@/lib/app/people";
 import { GOLD_NAME_VIP } from "@/lib/app/levels";
 import { getRoomById } from "@/lib/api/voice-rooms";
 import { newbieApi } from "@/lib/api/newbie";
+import { roomStateApi, type RoomBanRow } from "@/lib/api/room-state";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { useNewbieMe } from "@/lib/app/newbie";
 import { useServerRooms } from "@/lib/app/server-rooms";
 import { NAME_FONTS, nameFace } from "@/lib/app/fonts";
@@ -373,6 +375,7 @@ export function RoomSettingsScreen({ s }: { s: RoomSession }) {
               />
             </Group>
             {s.room.newbie ? <ExtraSeatsGroup s={s} locked={locked} /> : null}
+            <BlockedGroup s={s} locked={locked} />
             <Group>
               <SwitchRow label="Manage event" hint="Shows an event banner in the room" on={st.event} onChange={(v) => s.updateSettings({ event: v })} locked={locked} />
             </Group>
@@ -778,5 +781,81 @@ function PasswordPicker({ open, onClose, onSave }: { open: boolean; onClose: () 
         </button>
       </div>
     </LightSheet>
+  );
+}
+
+/** The people blocked from this room (banned, or kicked for a while), with an Unban button for each. Owner and admins only; the server checks. */
+function BlockedGroup({ s, locked }: { s: RoomSession; locked: boolean }) {
+  const { toast } = useApp();
+  const id = s.room.server?.id;
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<RoomBanRow[] | null>(null);
+  const [busy, setBusy] = useState("");
+  const load = useCallback(async () => {
+    if (!id) return;
+    try {
+      setRows(await roomStateApi.bans(id));
+    } catch (e) {
+      setRows([]);
+      toast(e instanceof Error && e.message ? e.message : "Couldn't load the blocked list.", "error");
+    }
+  }, [id, toast]);
+  useEffect(() => {
+    if (open) void load();
+  }, [open, load]);
+  if (!id) return null;
+  const unban = async (r: RoomBanRow) => {
+    if (busy) return;
+    setBusy(r.userId);
+    try {
+      await roomStateApi.unban(id, r.userId);
+      setRows((cur) => (cur ?? []).filter((x) => x.userId !== r.userId));
+      toast(`${r.name} can join the room again`, "gold");
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : "Couldn't unban.", "error");
+    } finally {
+      setBusy("");
+    }
+  };
+  return (
+    <>
+      <Group>
+        <Row label="Blocked members" value={rows ? String(rows.length) : ""} onClick={() => setOpen(true)} locked={locked} />
+      </Group>
+      <BottomSheet open={open} onClose={() => setOpen(false)} title="Blocked members">
+        <div className="px-4 pb-5">
+          {rows === null ? (
+            <p className="py-8 text-center text-[13px] text-muted">Loading…</p>
+          ) : rows.length === 0 ? (
+            <p className="py-8 text-center text-[13px] text-muted">No one is blocked from this room.</p>
+          ) : (
+            <ul className="divide-y divide-white/10">
+              {rows.map((r) => {
+                const until = r.expiresAt ? new Date(r.expiresAt) : null;
+                return (
+                  <li key={r.userId} className="flex items-center gap-3 py-2.5">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-[#2a1520] text-[15px] font-bold text-gold">
+                      {r.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={r.avatarUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        r.name.slice(0, 1).toUpperCase()
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[14px] font-semibold text-cream">{r.name}</span>
+                      <span className="block text-[11.5px] text-cream/55">{until ? `Kicked until ${until.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Banned"}</span>
+                    </span>
+                    <button type="button" disabled={busy === r.userId} onClick={() => void unban(r)} className="rounded-full bg-gold px-3.5 py-1.5 text-[12.5px] font-bold text-ink disabled:opacity-50">
+                      {busy === r.userId ? "…" : "Unban"}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </BottomSheet>
+    </>
   );
 }

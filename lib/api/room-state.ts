@@ -127,7 +127,20 @@ async function call(roomId: string, path: string, method: "GET" | "POST" | "PUT"
 
 const n = (userId: string) => (/^\d+$/.test(userId) ? Number(userId) : userId);
 
+export type RoomBanRow = { userId: string; name: string; avatarUrl?: string; expiresAt?: string | null; createdAt?: string };
+
 export const roomStateApi = {
+  /** Everyone who is blocked from the room right now (banned, or kicked for a while). Owner and admins only. */
+  bans: async (roomId: string): Promise<RoomBanRow[]> => {
+    const raw = await api<unknown>(`${base(roomId)}/bans`, { ...opts, method: "GET" });
+    return Array.isArray(raw)
+      ? raw.flatMap((x) => {
+          const o = x && typeof x === "object" ? (x as Record<string, unknown>) : null;
+          if (!o || o.userId == null) return [];
+          return [{ userId: String(o.userId), name: typeof o.name === "string" ? o.name : "Someone", avatarUrl: typeof o.avatarUrl === "string" ? o.avatarUrl : undefined, expiresAt: typeof o.expiresAt === "string" ? o.expiresAt : null, createdAt: typeof o.createdAt === "string" ? o.createdAt : undefined }];
+        })
+      : [];
+  },
   get: (roomId: string) => call(roomId, "/state", "GET"),
   takeSeat: (roomId: string, seat: number) => call(roomId, `/seats/${seat}/take`),
   leaveSeat: (roomId: string) => call(roomId, "/seats/leave"),
