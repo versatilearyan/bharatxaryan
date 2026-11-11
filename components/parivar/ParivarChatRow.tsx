@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FramedPicture, SignBadge } from "./ParivarFrames";
-import { parivarApi, parivarExtra } from "@/lib/api/parivar";
+import { parivarApi, parivarExtra, parseGiftCard } from "@/lib/api/parivar";
 import { useApp } from "@/lib/app/store";
 
 type Row = { id: string; name: string; sign: string; frame?: string; logoUrl?: string; emblem: string; color: string; last?: string; at?: string };
@@ -31,7 +31,8 @@ export function ParivarChatRow() {
           const c = await parivarExtra.chat(me.parivarId, 0);
           const m = c.messages[c.messages.length - 1];
           if (m) {
-            last = m.kind === "SYSTEM" ? m.text : `${m.name ? `${m.name}: ` : ""}${m.text}`;
+            const gc = m.kind === "SYSTEM" ? parseGiftCard(m.text) : null;
+            last = gc ? `🎁 ${gc.from} sent ${gc.everyone ? "everyone" : gc.self ? "themselves" : gc.to} a gift` : m.kind === "SYSTEM" ? m.text : `${m.name ? `${m.name}: ` : ""}${m.text}`;
             at = m.at;
           }
         } catch {

@@ -61,6 +61,8 @@ export type VoiceRoom = {
   /** A Newbie Welcome Room, and whether its 6 extra seats are open. */
   newbie?: boolean;
   extraSeats?: boolean;
+  /** The welcome room's background picture (the admin's, or the host's own). */
+  newbieBackground?: string | null;
 };
 
 /** What POST /voice-rooms/{id}/join returns: where and how to connect to LiveKit. */

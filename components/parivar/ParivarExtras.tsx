@@ -8,6 +8,8 @@ import { GiftArt } from "@/components/art/GiftArt";
 import type { GiftId } from "@/lib/app/types";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin } from "@/components/ui/kit";
+import { giftById } from "@/lib/app/data";
+import { parseGiftCard } from "@/lib/api/parivar";
 import { parivarExtra, type ChatMsg, type ChatPrefs, type ChestsInfo, type ChoriInfo, type CheerTier, type GachaInfo, type GachaResult, type KavachInfo, type NewsPost, type ParivarProfile, type ShopItem, type TasksInfo } from "@/lib/api/parivar";
 import { getRoomById } from "@/lib/api/voice-rooms";
 import { serverRoomAppId, useServerRooms } from "@/lib/app/server-rooms";
@@ -1185,7 +1187,9 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
                       <span className="rounded-full bg-black/40 px-3 py-1 text-[11px] font-semibold text-cream/70">{dayLabel(m.at)}</span>
                     </div>
                   ) : null}
-                  {m.kind === "SYSTEM" ? (
+                  {m.kind === "SYSTEM" && parseGiftCard(m.text) ? (
+                    <GiftCardLine c={parseGiftCard(m.text)!} />
+                  ) : m.kind === "SYSTEM" ? (
                     <p className={`mx-auto my-1.5 w-fit max-w-[88%] rounded-2xl px-3 py-1.5 text-center text-[11.5px] leading-snug ${/won|gift|sent|🎁|🎰/.test(m.text) ? "bg-gold/10 text-gold/90 ring-1 ring-gold/20" : "bg-black/35 text-cream/65"}`}>{m.text}</p>
                   ) : mine ? (
                     <div className={`flex justify-end ${first ? "mt-2.5" : "mt-0.5"} ${onGift ? "cursor-pointer" : ""}`} onClick={() => onGift && m.userId && setPick(m)}>
@@ -1554,6 +1558,32 @@ export function NewsTab({ p, onChanged }: { p: ParivarProfile; onChanged: () => 
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+/** The gift card in the family chat, drawn like the room's: who sent what, then what the receiver got. */
+function GiftCardLine({ c }: { c: NonNullable<ReturnType<typeof parseGiftCard>> }) {
+  const g = giftById(c.giftId as GiftId);
+  const to = c.everyone ? `everyone (${c.people})` : c.self ? "themselves" : c.to;
+  return (
+    <div className="mx-auto my-2 w-[min(92%,300px)] overflow-hidden rounded-2xl bg-gradient-to-br from-gold/20 via-black/40 to-black/40 text-cream ring-1 ring-gold/25">
+      <div className="flex items-center gap-2.5 px-3 pb-2 pt-2.5">
+        <span className="min-w-0 flex-1 text-[12.5px] leading-snug">
+          <span className="font-bold text-gold">{c.from}</span> sent <span className="font-bold text-gold">{to}</span> {g.name} <span className="font-display font-extrabold italic text-gold">×{c.count}</span>
+          {g.blurb ? <span className="mt-0.5 block text-[11.5px] text-cream/65">{g.blurb}</span> : null}
+        </span>
+        <GiftArt id={c.giftId as GiftId} className="h-11 w-11 shrink-0" />
+      </div>
+      <div className="flex items-center gap-3 border-t border-white/10 px-3 py-1.5 text-[11.5px]">
+        <span className="text-cream/60">{c.everyone ? "Total" : "Receiver’s"}</span>
+        <span className="flex items-center gap-1 font-bold text-gold">
+          <Coin className="h-3.5 w-3.5" /> Coins +{c.earned.toLocaleString("en-IN")}
+        </span>
+        <span className="flex items-center gap-1 font-bold text-pink">
+          <HeartI className="h-3.5 w-3.5 fill-current" aria-hidden /> Charm +{c.charm.toLocaleString("en-IN")}
+        </span>
+      </div>
     </div>
   );
 }

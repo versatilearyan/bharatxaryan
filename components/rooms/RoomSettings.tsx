@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronLeft, ChevronRight, Copy, ImagePlus, Lock, Settings, Share2, X } from "lucide-react";
 import { COVER_LABELS, SunsetScene } from "@/components/art/SunsetScene";
-import { cropImage } from "@/components/profile/EditProfileSheet";
+import { cropImage, cropImageBlob } from "@/components/profile/EditProfileSheet";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { CATEGORIES } from "@/lib/app/data";
 import { formatPoints } from "@/lib/app/levels";
@@ -347,7 +347,7 @@ export function RoomSettingsScreen({ s }: { s: RoomSession }) {
               <Row label="Announcement" value={announcement ? <span className="block max-w-[160px] truncate">{announcement}</span> : ""} onClick={() => pick("announcement")} locked={locked} />
               <Row label="Mode" value={MODE_LABEL[s.mode]} onClick={() => pick("mode")} locked={locked} />
               <Row label="Tag" value={s.room.category} onClick={() => pick("tag")} locked={locked} />
-              <Row label="Background" value={BACKGROUNDS.find((b) => b.id === (s.room.newbie && !s.room.settings?.background ? "newbie" : st.background))?.label} onClick={() => pick("background")} locked={locked} />
+              {s.room.newbie ? null : <Row label="Background" value={BACKGROUNDS.find((b) => b.id === st.background)?.label} onClick={() => pick("background")} locked={locked} />}
             </Group>
             {s.room.vip ? (
               <Group>
@@ -497,8 +497,49 @@ function ExtraSeatsGroup({ s, locked }: { s: RoomSession; locked: boolean }) {
       setBusy(false);
     }
   };
+  const pickFile = async (file: File | undefined) => {
+    if (!file || busy) return;
+    setBusy(true);
+    try {
+      const data = await cropImage(file, 768, 1376, 0.85);
+      const blob = await (await fetch(data)).blob();
+      await newbieApi.uploadBackground(id, blob);
+      applyRoom(await getRoomById(id));
+      toast("Room background changed", "gold");
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : "Couldn't change the background.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const reset = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await newbieApi.resetBackground(id);
+      applyRoom(await getRoomById(id));
+      toast("Back to the welcome room background", "gold");
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : "Couldn't reset the background.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <Group>
+      <div className="flex min-h-[58px] items-center gap-3 px-5">
+        <span className="flex-1">
+          <span className="block text-[15px] text-cream">Room background</span>
+          <span className="block text-[12px] text-cream/50">Put your own picture behind the room</span>
+        </span>
+        <label className={`rounded-full bg-gold px-3.5 py-1.5 text-[12.5px] font-bold text-ink ${locked || busy ? "opacity-50" : "cursor-pointer"}`}>
+          {busy ? "Wait…" : "Upload"}
+          <input type="file" accept="image/*" className="sr-only" disabled={locked || busy} onChange={(e) => { void pickFile(e.target.files?.[0]); e.target.value = ""; }} />
+        </label>
+        <button type="button" disabled={locked || busy} onClick={() => void reset()} className="rounded-full px-3 py-1.5 text-[12.5px] font-semibold text-cream/70 ring-1 ring-white/15 disabled:opacity-50">
+          Reset
+        </button>
+      </div>
       <SwitchRow label="Enable Extra Welcome Seats" hint={me && !me.extraSeatsAllowed ? "Turned off by the admin" : "Opens 6 more seats below the regular seats"} on={Boolean(s.room.extraSeats)} onChange={(v) => void change(v)} locked={locked || busy || Boolean(me && !me.extraSeatsAllowed)} />
     </Group>
   );

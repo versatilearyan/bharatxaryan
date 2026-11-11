@@ -40,5 +40,11 @@ export const newbieApi = {
   me: () => api<NewbieMe>(`${base}/me`, opts),
   welcomeSeen: () => api<{ ok: boolean }>(`${base}/me/welcome-seen`, { ...opts, method: "POST" }),
   check: (ids: string[]) => api<{ newbies: string[] }>(`${base}/check?ids=${ids.map(encodeURIComponent).join(",")}`, opts),
+  uploadBackground: (roomId: string, file: Blob) => {
+    const form = new FormData();
+    form.append("file", file, "background.jpg");
+    return api<{ roomId: number; background: string }>(`${base}/rooms/${roomId}/background`, { ...opts, method: "POST", body: form, timeoutMs: 60_000 });
+  },
+  resetBackground: (roomId: string) => api<{ roomId: number; background: string }>(`${base}/rooms/${roomId}/background`, { ...opts, method: "DELETE" }),
   setExtraSeats: (roomId: string, enabled: boolean) => api<{ roomId: number; extraSeats: boolean }>(`${base}/rooms/${roomId}/extra-seats`, { ...opts, method: "PUT", body: { enabled } }),
 };

@@ -20,9 +20,9 @@ const DICE = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 const RPS: Record<string, string> = { rock: "✊", paper: "✋", scissors: "✌️" };
 
 /**
- * Bear stickers: 15 picture emotes. Each one is drawn inside the person's seat (their profile picture is covered for a
+ * Bear stickers: 17 picture emotes. Each one is drawn inside the person's seat (their profile picture is covered for a
  * moment) and moves in its own way, with little floating pieces around it. The pictures are in /public/emotes.
- * The server just passes the id on ("bear-1" ... "bear-15").
+ * The server just passes the id on ("bear-1" ... "bear-17").
  */
 type Move = "sway" | "wave" | "bob" | "shake" | "pulse" | "jump" | "pop" | "zoom" | "tilt" | "slide";
 export const STICKER_EMOTES: { id: string; label: string; move: Move; fx: string[]; caption?: string }[] = [
@@ -41,6 +41,8 @@ export const STICKER_EMOTES: { id: string; label: string; move: Move; fx: string
   { id: "bear-13", label: "Cool", move: "slide", fx: ["😎", "❄️", "✨"] },
   { id: "bear-14", label: "Gale milna", move: "pulse", fx: ["🤗", "💖", "💖"], caption: "Gale milna 🤗" },
   { id: "bear-15", label: "I love you", move: "pulse", fx: ["❤️", "💖", "💕"], caption: "I love you ❤️" },
+  { id: "bear-16", label: "DJ", move: "bob", fx: ["🎧", "🎵", "✨"], caption: "DJ time 🎧" },
+  { id: "bear-17", label: "Gussa", move: "shake", fx: ["🔥", "💢", "😤"], caption: "Gussa 😤" },
 ];
 
 export const isSticker = (e: string) => STICKER_EMOTES.some((x) => x.id === e);

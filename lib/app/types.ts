@@ -104,6 +104,8 @@ export type Room = {
   newbie?: boolean;
   /** Its 6 extra welcome seats are open. */
   extraSeats?: boolean;
+  /** The welcome room's background picture (the admin's, or the host's own). */
+  newbieBackground?: string;
   /** Pre-loaded video for Watch Together rooms. */
   videoId?: string;
   /**

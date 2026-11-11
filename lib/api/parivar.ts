@@ -166,3 +166,16 @@ export const parivarExtra = {
   voice: (id: string) => api<VoiceInfo>(`${base}/${id}/voice`, opts),
   startVoice: (id: string) => api<VoiceInfo>(`${base}/${id}/voice`, { ...opts, method: "POST" }),
 };
+
+/** Gift cards in the family chat come as a system line: a gift emoji and a small JSON. */
+export function parseGiftCard(text: string): { giftId: string; count: number; from: string; to: string; people: number; everyone: boolean; self: boolean; earned: number; charm: number } | null {
+  if (!text.startsWith("🎁{")) return null;
+  try {
+    const o = JSON.parse(text.slice(2)) as Record<string, unknown>;
+    if (typeof o.g !== "string") return null;
+    const people = Number(o.n) || 1;
+    return { giftId: o.g, count: Number(o.c) || 1, from: String(o.f ?? "Someone"), to: String(o.t ?? ""), people, everyone: !o.t, self: o.s === true, earned: Number(o.e) || 0, charm: Number(o.h) || 0 };
+  } catch {
+    return null;
+  }
+}
