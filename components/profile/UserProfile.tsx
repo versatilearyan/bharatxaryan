@@ -658,7 +658,7 @@ export function BffChip({ tag, viewer }: { tag: Tag; viewer: string }) {
       <span className="leading-tight">
         <span className="block max-w-[90px] truncate text-[12.5px] font-bold text-cream">{partner.id === ME_ID ? "You" : partner.name}</span>
         <span className="text-[10.5px] font-semibold" style={{ color: rel.tint }}>
-          {rel.emoji} {rel.label} · Lv {lv}
+          {rel.label} · Lv {lv}
         </span>
       </span>
     </span>

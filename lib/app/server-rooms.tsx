@@ -283,7 +283,7 @@ export function ServerRoomsProvider({ children }: { children: ReactNode }) {
     if (leaving.current.has(serverId)) return;
     leaving.current.add(serverId);
     // Your own temporary room closes when you leave it, as on the create screen
-    const close = Boolean(room?.server?.mine && room.permanent === false);
+    const close = Boolean(room?.server?.mine && room.permanent === false && !room.newbie);
     (close ? closeRoom(serverId) : leaveRoom(serverId))
       .then(() => {
         if (close) toast("Room closed");

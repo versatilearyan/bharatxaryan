@@ -45,12 +45,6 @@ export function TagLink({ tag, gap, size }: { tag: Tag; gap: number; size: numbe
       </svg>
       <motion.span className="relative grid place-items-center" animate={{ y: [0, -2, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} aria-hidden>
         <BffBadge id={tag.relation} size={icon} />
-        {/* Tag Lv 10 perk: the badge sparkles */}
-        {lv >= 10 ? <span className="absolute -right-2 -top-1.5 text-[9px]">✨</span> : null}
-        {/* The tag's emoji (✊🏻 Bro, 🎀 Bestie, …) on the badge */}
-        <span className="absolute -bottom-1.5 -right-2 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]" style={{ fontSize: Math.max(11, icon * 0.5) }}>
-          {rel.emoji}
-        </span>
       </motion.span>
     </span>
   );
@@ -306,9 +300,6 @@ export function TagTitleChip({ personId, className = "" }: { personId: string; c
       <span className="relative inline-flex items-center gap-1 overflow-hidden rounded-full py-0.5 pl-1 pr-2 text-[11px] font-extrabold text-white" style={{ background: `linear-gradient(90deg, ${c.to}, ${c.from})` }}>
         <BffBadge id={best.relation} size={15} />
         <span className="max-w-[160px] truncate">{best.nickname ? `${title} · “${best.nickname}”` : title}</span>
-        <span className="text-[13px] leading-none drop-shadow" aria-hidden>
-          {relationshipById(best.relation).emoji}
-        </span>
         <motion.span aria-hidden className="pointer-events-none absolute inset-y-0 -left-6 w-5 -skew-x-12 bg-white/35" animate={{ x: [0, 240] }} transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 4, ease: "easeInOut" }} />
       </span>
     </span>
