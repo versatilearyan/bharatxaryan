@@ -52,16 +52,16 @@ export function ParivarGiftSheet({ p, open, onClose, toId, onSent }: { p: Pariva
     try {
       if (everyone) {
         const r = await parivarApi.giftAll(gift.id, count);
-        playGift({ giftId: gift.id, fromName: "You", toName: `${r.sent} members`, count, combo: 1, charm: 0, earned: 0 });
-        toast(`You sent ${gift.name}${count > 1 ? ` ×${count}` : ""} to ${r.sent} members`, "gold");
+        playGift({ giftId: gift.id, fromName: "You", toName: `${r.sent} members`, count, combo: 1, charm: r.charm, earned: r.earned });
+        toast(`You sent ${gift.name}${count > 1 ? ` ×${count}` : ""} to ${r.sent} members · +${n(r.charm)} charm for them, +${n(r.earned)} coins for them`, "gold");
         void refreshCoins();
         onSent?.();
         onClose();
         return;
       }
       const r = await sendDirectGift(receiver!.userId, gift.id, count, "PARIVAR");
-      playGift({ giftId: gift.id, fromName: "You", toName: receiver!.name, count, combo: 1, charm: r.charm, earned: 0 });
-      toast(`You sent ${receiver!.name} ${gift.name}${count > 1 ? ` ×${count}` : ""}${r.charm ? ` · +${n(r.charm)} charm for them` : ""}`, "gold");
+      playGift({ giftId: gift.id, fromName: "You", toName: receiver!.name, count, combo: 1, charm: r.charm, earned: r.earned });
+      toast(`You sent ${receiver!.name} ${gift.name}${count > 1 ? ` ×${count}` : ""}${r.charm ? ` · +${n(r.charm)} charm` : ""}${r.earned ? ` · +${n(r.earned)} coins` : ""} for them`, "gold");
       void refreshCoins();
       onSent?.();
       onClose();

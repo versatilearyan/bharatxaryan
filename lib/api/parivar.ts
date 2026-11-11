@@ -73,7 +73,7 @@ export const parivarApi = {
   ranking: (period: "weekly" | "total") => api<{ rows: RankRow[]; mine: RankRow | null }>(`${base}/ranking?period=${period}`, opts),
   profile: (id: string) => api<ParivarProfile>(`${base}/${id}`, opts),
   /** The same gift to every other member of your Parivar (the server checks the whole cost first). */
-  giftAll: (giftId: string, count: number) => api<{ sent: number; coins: number; charm: number; senderBalance: number }>(`${base}/gift-all`, { ...opts, method: "POST", body: { giftId, count, requestId: key() } }),
+  giftAll: (giftId: string, count: number) => api<{ sent: number; coins: number; charm: number; earned: number; senderBalance: number }>(`${base}/gift-all`, { ...opts, method: "POST", body: { giftId, count, requestId: key() } }),
   uploadLogo: (file: Blob) => {
     const form = new FormData();
     form.append("file", file, "logo.jpg");

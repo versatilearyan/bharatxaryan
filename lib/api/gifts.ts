@@ -99,7 +99,7 @@ export async function sendDirectGift(toUserId: string, giftId: string, count = 1
     method: "POST",
     body: { giftId, count, requestId: newRequestId(), context },
   })) as Record<string, unknown> | null;
-  return { coins: Number(d?.coins) || 0, senderBalance: Number(d?.senderBalance) || 0, charm: Number(d?.charm) || 0 };
+  return { coins: Number(d?.coins) || 0, senderBalance: Number(d?.senderBalance) || 0, charm: Number(d?.charm) || 0, earned: Number(d?.earned) || 0 };
 }
 
 function readRows(raw: unknown): DirectGiftRow[] {

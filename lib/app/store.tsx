@@ -861,6 +861,16 @@ function useAppState() {
         : { ...fx, id: seq++ },
     );
   }, []);
+  // A gift someone sends you inside the Parivar plays its animation for you too
+  useEffect(() => {
+    if (!levelEmail) return;
+    return subscribe("/user/queue/notify", (body) => {
+      const b = body && typeof body === "object" ? (body as Record<string, unknown>) : null;
+      if (!b || b.type !== "GIFT" || typeof b.context !== "string" || !b.context.startsWith("PARIVAR") || typeof b.giftId !== "string") return;
+      const count = Number(b.count) > 0 ? Number(b.count) : 1;
+      playGift({ giftId: b.giftId as GiftFx["giftId"], fromName: typeof b.fromName === "string" ? b.fromName : "Someone", toName: "You", count, combo: 1, charm: Math.floor(Number(b.coins ?? 0) / 5), earned: Number(b.earned ?? 0) });
+    });
+  }, [levelEmail, playGift]);
   /** Offer the Combo button for the gift just sent (n = sends so far in this combo). */
   const armCombo = useCallback((c: Omit<GiftCombo, "key">) => setGiftCombo({ ...c, key: seq++ }), []);
   const clearCombo = useCallback(() => setGiftCombo(null), []);
