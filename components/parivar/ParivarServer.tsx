@@ -1174,7 +1174,7 @@ function MembersPanel({ p, can, busy, run, onGift }: { p: ParivarProfile; can: (
               <RolePill role={m.role} />
             </span>
             <span className="text-[14px] font-semibold text-cream/70">{n(m.contribution)}</span>
-            {m.userId !== myId ? (
+            {true ? (
               <button type="button" onClick={() => onGift(m.userId)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gold/15 text-gold ring-1 ring-gold/30" aria-label={`Send ${m.name} a gift`}>
                 <Gift className="h-4 w-4" aria-hidden />
               </button>

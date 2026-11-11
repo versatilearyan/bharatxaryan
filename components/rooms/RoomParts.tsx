@@ -32,7 +32,7 @@ import type { RoomSession } from "./useRoomSession";
 import { nameFace } from "@/lib/app/fonts";
 import { ParivarTag } from "@/components/parivar/ParivarScreens";
 import { LevelPill } from "@/components/profile/IdTags";
-import { ANIMATED_EMOTES, EmoteBurst, GAME_EMOTES } from "./Emotes";
+import { ANIMATED_EMOTES, EmoteBurst, GAME_EMOTES, STICKER_EMOTES } from "./Emotes";
 import { MentionPicker, MentionText, mentions, useMentionAlerts } from "./Mentions";
 import { CpLink, useCpLevelBetween } from "./RoomSocial";
 import { ChatInviteSheet } from "@/components/social/Invites";
@@ -313,7 +313,7 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
       </AnimatePresence>
       <AnimatePresence>
         {reactions.map((r) => (
-          <EmoteBurst key={r.id} emote={r.emoji} result={r.result} />
+          <EmoteBurst key={r.id} emote={r.emoji} result={r.result} size={size} />
         ))}
       </AnimatePresence>
       {p ? (
@@ -815,6 +815,27 @@ export function EmojiSheet({ open, onClose, s, onInsert }: { open: boolean; onCl
               aria-label={`Emote ${e}`}
             >
               {e}
+            </motion.button>
+          ))}
+        </div>
+        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Bear stickers</p>
+        <div className="mt-2 grid grid-cols-5 gap-2">
+          {STICKER_EMOTES.map((st) => (
+            <motion.button
+              key={st.id}
+              type="button"
+              whileTap={{ scale: 0.85, rotate: -6 }}
+              onClick={() => {
+                if (!s.seated) s.addSystem(`You sent a sticker: ${st.label}`);
+                s.react(st.id);
+                onClose();
+              }}
+              className="flex flex-col items-center gap-1"
+              aria-label={`Sticker ${st.label}`}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/emotes/${st.id}.webp`} alt="" loading="lazy" className="aspect-square w-full rounded-2xl bg-white/[0.07] object-contain p-1 ring-1 ring-gold/30" />
+              <span className="w-full truncate text-center text-[9.5px] font-semibold text-cream/70">{st.label}</span>
             </motion.button>
           ))}
         </div>

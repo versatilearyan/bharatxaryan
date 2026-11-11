@@ -1188,7 +1188,7 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
                   {m.kind === "SYSTEM" ? (
                     <p className={`mx-auto my-1.5 w-fit max-w-[88%] rounded-2xl px-3 py-1.5 text-center text-[11.5px] leading-snug ${/won|gift|sent|🎁|🎰/.test(m.text) ? "bg-gold/10 text-gold/90 ring-1 ring-gold/20" : "bg-black/35 text-cream/65"}`}>{m.text}</p>
                   ) : mine ? (
-                    <div className={`flex justify-end ${first ? "mt-2.5" : "mt-0.5"}`}>
+                    <div className={`flex justify-end ${first ? "mt-2.5" : "mt-0.5"} ${onGift ? "cursor-pointer" : ""}`} onClick={() => onGift && m.userId && setPick(m)}>
                       <div className={`max-w-[80%] rounded-2xl bg-gradient-to-br from-[#f2cf8c] to-[#d9a84f] px-3 py-1.5 text-[#2a1a0c] shadow-sm ${lastOfRun ? "rounded-br-md" : ""}`}>
                         <p className="text-[14px] leading-snug break-words whitespace-pre-wrap">{m.text}</p>
                         <p className="mt-0.5 text-right text-[10px] text-[#2a1a0c]/55">{clock(m.at)}</p>
@@ -1291,7 +1291,7 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
                 }}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[15px] font-extrabold text-[#2a1a0c]"
               >
-                <Gift className="h-5 w-5" aria-hidden /> Send a gift to {pick?.name ?? "them"}
+                <Gift className="h-5 w-5" aria-hidden /> {pick?.userId === me ? "Send a gift to yourself" : `Send a gift to ${pick?.name ?? "them"}`}
               </button>
               <button type="button" onClick={() => setPick(null)} className="mt-2 h-11 w-full rounded-full bg-white/10 text-[14px] font-semibold text-cream">
                 Cancel

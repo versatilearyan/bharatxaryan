@@ -1078,7 +1078,7 @@ export function useRoomSession(room: Room) {
   const showReaction = useCallback((personId: string, emoji: string, result?: string) => {
     const r = { id: mid(), personId, emoji, result };
     setReactions((list) => [...list.filter((x) => x.personId !== personId), r]);
-    window.setTimeout(() => setReactions((list) => list.filter((x) => x.id !== r.id)), result ? 3200 : 2000);
+    window.setTimeout(() => setReactions((list) => list.filter((x) => x.id !== r.id)), result ? 3200 : /^bear-\d{1,2}$/.test(emoji) ? 3700 : 2000);
   }, []);
   /** Backend rooms: emotes go through the server so everyone sees them (and the same dice roll). */
   const react = useCallback(

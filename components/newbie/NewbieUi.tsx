@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Gift, Sparkles, Users } from "lucide-react";
+import { Armchair, Gift, Sparkles, Users } from "lucide-react";
 import { NewbieBadge } from "./NewbieBadge";
 import { Seat } from "@/components/rooms/RoomParts";
 import { useSeatScale } from "@/components/rooms/useSeatScale";
@@ -101,13 +101,44 @@ export function NewbieRooms({ className = "mt-3" }: { className?: string }) {
  * The seats of a welcome room: a bigger glowing seat for the host on top, the regular seats under it, and (when the
  * host has opened them) a separate section with the 6 extra seats.
  */
+/** Each person can hide the seats (to enjoy the room picture and the chat) and show them again. Remembered on this device. */
+function useSeatsOn() {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem("pv-newbie-seats") === "off") setOn(false);
+    } catch {
+      /* no storage */
+    }
+  }, []);
+  const set = (v: boolean) => {
+    setOn(v);
+    try {
+      window.localStorage.setItem("pv-newbie-seats", v ? "on" : "off");
+    } catch {
+      /* no storage */
+    }
+  };
+  return [on, set] as const;
+}
+
 export function NewbieSeatLayout({ s, scale = 1 }: { s: RoomSession; scale?: number }) {
+  const [seatsOn, setSeatsOn] = useSeatsOn();
   const hostSize = Math.round(92 * scale);
   const size = Math.round(56 * scale);
   const regular = s.seats.map((_, i) => i).filter((i) => i >= 1 && i < 10);
   const extra = s.seats.map((_, i) => i).filter((i) => i >= 10);
   return (
-    <div className="w-full px-2">
+    <div className="relative w-full px-2">
+      <button
+        type="button"
+        onClick={() => setSeatsOn(!seatsOn)}
+        aria-pressed={seatsOn}
+        aria-label={seatsOn ? "Hide the seats" : "Show the seats"}
+        className={`absolute top-1 right-2 z-20 flex items-center gap-1 rounded-full px-2.5 py-1 text-[10.5px] font-extrabold tracking-wide ring-1 backdrop-blur ${seatsOn ? "bg-gold/25 text-gold ring-gold/50" : "bg-black/55 text-cream/70 ring-white/20"}`}
+      >
+        <Armchair className="h-3.5 w-3.5" aria-hidden /> Seats {seatsOn ? "ON" : "OFF"}
+      </button>
       <div className="relative mx-auto flex w-fit flex-col items-center pt-3">
         <motion.span aria-hidden className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 rounded-full bg-[radial-gradient(circle,rgba(246,216,153,0.6),transparent_68%)] blur-md" style={{ width: hostSize + 46, height: hostSize + 46 }} animate={{ opacity: [0.55, 1, 0.55] }} transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }} />
         <span className="relative rounded-full bg-gradient-to-br from-[#f6d899] via-[#e7bc72] to-[#b8862f] p-[3px] shadow-[0_0_30px_rgba(231,188,114,0.7)]">
@@ -118,16 +149,16 @@ export function NewbieSeatLayout({ s, scale = 1 }: { s: RoomSession; scale?: num
         <span className="absolute top-0 left-1/2 z-10 -translate-x-1/2 rounded-full bg-gradient-to-r from-[#f6d899] to-[#d9a84f] px-3 py-0.5 text-[10px] font-extrabold tracking-[0.2em] text-[#2a1a0c] shadow-md">HOST</span>
       </div>
 
-      <div className="mt-3 flex flex-wrap justify-center gap-x-2 gap-y-2.5">
+      {seatsOn ? <div className="mt-3 flex flex-wrap justify-center gap-x-2 gap-y-2.5">
         {regular.map((i) => (
           <div key={i} className="flex justify-center" style={{ width: size + 18 }}>
             <Seat s={s} index={i} size={size} gold />
           </div>
         ))}
-      </div>
+      </div> : null}
 
       <AnimatePresence initial={false}>
-        {extra.length ? (
+        {seatsOn && extra.length ? (
           <motion.div key="extra" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
             <div className="mx-1 mt-3.5 rounded-3xl bg-gradient-to-b from-gold/[0.12] to-gold/[0.03] px-2 py-3 ring-1 ring-gold/30">
               <p className="text-center text-[10.5px] font-extrabold tracking-[0.22em] text-gold">✨ EXTRA WELCOME SEATS</p>

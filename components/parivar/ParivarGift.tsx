@@ -26,7 +26,9 @@ export function ParivarGiftSheet({ p, open, onClose, toId, onSent }: { p: Pariva
   const { myId } = useServerRooms();
   const giftsV = useGiftsVersion();
   const gifts = useMemo(() => giftsOnSale().filter((g) => (g.id as string) !== WELCOME_GIFT_ID), [giftsV]); // eslint-disable-line react-hooks/exhaustive-deps
-  const members = useMemo(() => p.members.filter((m) => m.userId !== myId), [p.members, myId]);
+  // Everyone in the Parivar can be picked, you included (a gift to yourself); "Everyone" means the others
+  const others = useMemo(() => p.members.filter((m) => m.userId !== myId), [p.members, myId]);
+  const members = useMemo(() => [...p.members.filter((m) => m.userId === myId), ...others], [p.members, myId, others]);
   // "all" = every other member, else one member
   const [to, setTo] = useState<string | undefined>(toId);
   const [giftId, setGiftId] = useState<string | undefined>();
@@ -40,7 +42,7 @@ export function ParivarGiftSheet({ p, open, onClose, toId, onSent }: { p: Pariva
   }, [open, toId, members]);
   const gift = gifts.find((g) => g.id === giftId) ?? gifts[0];
   const everyone = to === "all";
-  const total = gift ? gift.cost * count * (everyone ? members.length : 1) : 0;
+  const total = gift ? gift.cost * count * (everyone ? others.length : 1) : 0;
   const receiver = members.find((m) => m.userId === to);
   const enough = coins >= total;
 
@@ -100,7 +102,7 @@ export function ParivarGiftSheet({ p, open, onClose, toId, onSent }: { p: Pariva
                       </span>
                     ) : null}
                   </span>
-                  <span className="w-full truncate text-center text-[11px] text-cream/80">{m.name}</span>
+                  <span className="w-full truncate text-center text-[11px] text-cream/80">{m.userId === myId ? "You" : m.name}</span>
                 </button>
               ))}
             </div>
@@ -136,8 +138,8 @@ export function ParivarGiftSheet({ p, open, onClose, toId, onSent }: { p: Pariva
                 Balance <Coin className="h-3.5 w-3.5" /> <b className="text-cream">{n(coins)}</b>
               </span>
             </div>
-            <button type="button" disabled={!gift || !receiver || busy || !enough} onClick={() => void send()} className="mt-3 h-12 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[15px] font-extrabold text-[#2a1a0c] disabled:opacity-50">
-              {busy ? "Sending…" : !enough ? "Not enough coins" : everyone && gift ? `Send to all ${members.length} members · ${n(total)} coins` : receiver && gift ? `Send to ${receiver.name} · ${n(total)} coins` : "Pick a gift"}
+            <button type="button" disabled={!gift || (!receiver && !everyone) || busy || !enough} onClick={() => void send()} className="mt-3 h-12 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[15px] font-extrabold text-[#2a1a0c] disabled:opacity-50">
+              {busy ? "Sending…" : !enough ? "Not enough coins" : everyone && gift ? `Send to all ${others.length} members · ${n(total)} coins` : receiver && gift ? `Send to ${receiver.name} · ${n(total)} coins` : "Pick a gift"}
             </button>
           </>
         )}
