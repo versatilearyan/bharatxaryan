@@ -670,6 +670,35 @@ export function ParivarHome({ id }: { id: string }) {
           <motion.div className="h-full rounded-full bg-gradient-to-r from-coral to-gold" initial={{ width: 0 }} animate={{ width: `${nextPct}%` }} transition={{ duration: 0.7 }} />
         </div>
         <p className="mt-1.5 text-[11.5px] text-cream/55">{p.nextLevelExp ? `Next level Lv.${p.level + 1}: ${n(p.nextLevelExp)} activeness` : "Your Parivar is at the top level 🏆"}</p>
+        {p.levelUp && isMember ? (
+          <div className="mt-3 rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
+            <p className="text-[12.5px] font-bold text-cream">Level {p.levelUp.level} needs both:</p>
+            <ul className="mt-1.5 space-y-1 text-[12px]">
+              <li className={p.levelUp.expOk ? "text-[#7fe0a0]" : "text-cream/70"}>
+                {p.levelUp.expOk ? "✓" : "○"} Activity {n(Math.min(p.exp, p.levelUp.expNeeded))} / {n(p.levelUp.expNeeded)}
+              </li>
+              <li className={p.levelUp.fundOk ? "text-[#7fe0a0]" : "text-cream/70"}>
+                {p.levelUp.fundOk ? "✓" : "○"} Family fund {n(Math.min(p.funds, p.levelUp.fundNeeded))} / {n(p.levelUp.fundNeeded)}
+              </li>
+            </ul>
+            {p.levelUp.ready ? (
+              p.myRole === "LEADER" ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => window.confirm(`Level up to ${p.levelUp!.level}? ${n(p.levelUp!.fundNeeded)} will be taken from the family fund.`) && void run(() => parivarApi.levelUp(p.id), `Your Parivar is now level ${p.levelUp!.level}`)}
+                  className="mt-2.5 h-11 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c] disabled:opacity-50"
+                >
+                  Level up to {p.levelUp.level} · uses {n(p.levelUp.fundNeeded)} fund
+                </button>
+              ) : (
+                <p className="mt-2 text-[11.5px] text-gold">Ready! The Mukhiya can level the Parivar up now.</p>
+              )
+            ) : (
+              <p className="mt-2 text-[11.5px] text-cream/50">The Parivar levels up only when the Mukhiya presses Level up, after both are complete.</p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {!isMember ? (

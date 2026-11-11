@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, ChevronDown, ChevronLeft, Coins as CoinsI, Gift, Heart as HeartI, House, Landmark, Lock, MessagesSquare, Pin, Send, Settings2, Smile, Star as StarI, Trash2 } from "lucide-react";
-import { Glyph, KIND_GLYPH, TILE_GLYPH } from "./ParivarUi";
+import { Glyph, KIND_GLYPH, RewardArt, TILE_GLYPH } from "./ParivarUi";
 import { GiftArt } from "@/components/art/GiftArt";
 import type { GiftId } from "@/lib/app/types";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -264,10 +264,7 @@ export function ShopSheet({ p, open, onClose, onChanged }: Props) {
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={i.imageUrl} alt="" className="h-full w-full rounded-xl object-cover" />
                   ) : (
-                    (() => {
-                      const G = KIND_GLYPH[i.kind] ?? Gift;
-                      return <G className="h-6 w-6 text-gold" strokeWidth={1.7} />;
-                    })()
+                    <RewardArt kind={i.kind} size={34} />
                   )}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -544,7 +541,7 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
                                     <GiftArt id={r.giftId as GiftId} />
                                   </span>
                                 ) : (
-                                  <G className="h-7 w-7" style={{ color: col }} strokeWidth={1.6} />
+                                  <RewardArt kind={r.kind} size={44} />
                                 )}
                                 {r.kind === "GIFT_CARD" ? <span className="absolute inset-x-0 bottom-0 rounded-b-2xl bg-black/55 text-center text-[8.5px] font-bold text-cream/90">Gift Card</span> : null}
                               </span>
@@ -599,7 +596,7 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
                       return (
                         <motion.div key={i} initial={{ rotateY: 90, opacity: 0, scale: 0.7 }} animate={{ rotateY: 0, opacity: 1, scale: 1 }} transition={{ delay: 0.12 + i * 0.09, type: "spring", stiffness: 200, damping: 16 }} className="flex flex-col items-center" style={{ perspective: 600 }}>
                           <span className="grid place-items-center rounded-2xl bg-white/[0.06]" style={{ width: won.length > 1 ? 74 : 104, height: won.length > 1 ? 74 : 104, boxShadow: `0 0 0 1.5px ${col}, 0 10px 28px -8px ${col}, inset 0 1px 0 rgba(255,255,255,0.15)` }}>
-                            <G style={{ color: col, width: won.length > 1 ? 32 : 48, height: won.length > 1 ? 32 : 48 }} strokeWidth={1.5} />
+                            <RewardArt kind={r.kind} size={won.length > 1 ? 50 : 78} />
                           </span>
                           <span className="mt-1.5 text-[11.5px] leading-tight font-bold text-cream">{r.label}</span>
                           <span className="text-[9.5px] font-bold tracking-wider uppercase" style={{ color: col }}>

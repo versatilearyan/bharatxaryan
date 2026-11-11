@@ -55,6 +55,8 @@ export type ParivarProfile = ParivarCard & {
   myPerms: ParivarPerm[];
   /** What the Mukhiya pays (coins) to change the name, title or logo (set in the admin panel). */
   identityPrices?: { name: number; sign: number; logo: number };
+  /** What the next level asks for (activity and family fund) and whether the Parivar has it; null at the top level. */
+  levelUp?: { level: number; expNeeded: number; fundNeeded: number; expOk: boolean; fundOk: boolean; ready: boolean } | null;
   pendingApplications: number;
   weekRank: number | null;
   totalRank: number | null;
@@ -91,6 +93,7 @@ export const parivarApi = {
   decide: (id: string, appId: string, accept: boolean) => api<unknown>(`${base}/${id}/applications/${appId}/${accept ? "accept" : "reject"}`, { ...opts, method: "POST" }),
   removeMember: (id: string, userId: string) => api<ParivarProfile>(`${base}/${id}/members/${userId}/remove`, { ...opts, method: "POST" }),
   setRole: (id: string, userId: string, role: ParivarRole) => api<ParivarProfile>(`${base}/${id}/members/${userId}/role`, { ...opts, method: "PUT", body: { role } }),
+  levelUp: (id: string) => api<ParivarProfile>(`${base}/${id}/level-up`, { ...opts, method: "POST" }),
   changeIdentity: (id: string, body: { name?: string; sign?: string; logo?: string; key: string }) => api<ParivarProfile>(`${base}/${id}/identity`, { ...opts, method: "PUT", body }),
   update: (id: string, body: { intro?: string; announcement?: string; joinMode?: "OPEN" | "APPROVAL"; emblem?: string; color?: string; logo?: string }) => api<ParivarProfile>(`${base}/${id}`, { ...opts, method: "PUT", body }),
   donate: (id: string, amount: number) => api<ParivarProfile>(`${base}/${id}/donate`, { ...opts, method: "POST", body: { amount }, headers: { "Idempotency-Key": key() } }),
