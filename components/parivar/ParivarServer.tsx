@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Check, ChevronLeft, Coins, Crown, Dices, Ellipsis, Flame, Gift, MessageCircle, Pencil, Plus, Quote, RefreshCw, Search, Shield, Sparkles, Trophy, UsersRound } from "lucide-react";
-import { Glyph } from "./ParivarUi";
+import { Camera, Check, ChevronLeft, Crown, Ellipsis, Flame, Gift, MessageCircle, Pencil, Plus, Quote, RefreshCw, Search, Shield, Trophy, UsersRound } from "lucide-react";
+import { Glyph, RewardArt } from "./ParivarUi";
 import { ParivarGiftSheet } from "./ParivarGift";
 import { useServerRooms } from "@/lib/app/server-rooms";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -14,6 +14,8 @@ import { FRAME_ORDER, FramedPicture, SignBadge, frameName } from "./ParivarFrame
 import { ChatSheet, CheerSheet, ChestsSheet, ChoriSheet, FeatureTiles, GachaSheet, KavachSheet, NewsTab as NewsPanel, WorldNews, ShopSheet, TasksTab, type SheetName } from "./ParivarExtras";
 
 const n = (v: number) => v.toLocaleString("en-IN");
+/** Turns "fancy font" letters people paste in (𝑾𝑬𝑳𝑪𝑶𝑴𝑬, 𝓦𝓮𝓵𝓬𝓸𝓶𝓮, ｗｉｄｅ…) back into plain letters so they show in the app's own font. Emoji are kept. */
+const plainText = (v?: string | null) => (v ?? "").normalize("NFKC");
 const ago = (iso: string) => {
   const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
   if (s < 60) return "just now";
@@ -178,7 +180,7 @@ export function ParivarListScreen() {
                           </span>
                         ) : null}
                       </span>
-                      <span className="mt-1 block truncate text-[12px] text-cream/40">{c.intro || "No introduction yet."}</span>
+                      <span className="mt-1 block truncate text-[12px] font-medium text-cream/45">{plainText(c.intro) || "No introduction yet."}</span>
                     </span>
                     <span className="relative flex shrink-0 flex-col items-end gap-1.5 self-stretch justify-between py-0.5">
                       {mineCard ? <span className="rounded-full bg-gold/20 px-2 py-0.5 text-[10px] font-extrabold tracking-wide text-gold">MINE</span> : <span />}
@@ -601,177 +603,194 @@ export function ParivarHome({ id }: { id: string }) {
   const nextPct = p.nextLevelExp ? Math.min(100, (p.exp / p.nextLevelExp) * 100) : 100;
 
   return (
-    <div className="app-scroll h-full bg-gradient-to-b from-[#3a1420] via-[#1c1019] to-ink pb-10">
-      <header className="pt-safe relative z-20 flex h-14 items-center px-2">
-        <button type="button" onClick={pop} className="grid h-10 w-10 place-items-center rounded-full text-cream active:bg-white/10" aria-label="Back">
-          <ChevronLeft className="h-6 w-6" aria-hidden />
-        </button>
-        <h1 className="flex-1 text-center font-display text-[18px] font-extrabold text-cream">Parivar</h1>
-        <button type="button" onClick={() => push({ kind: "parivar-list" })} className="grid h-10 w-10 place-items-center rounded-full text-cream active:bg-white/10" aria-label="Rankings">
-          <Trophy className="h-5 w-5" aria-hidden />
-        </button>
-        <button type="button" onClick={() => setMenu((v) => !v)} className="grid h-10 w-10 place-items-center rounded-full text-cream active:bg-white/10" aria-label="More" aria-expanded={menu}>
-          <Ellipsis className="h-5 w-5" aria-hidden />
-        </button>
-        {menu ? (
-          <div className="absolute top-[calc(env(safe-area-inset-top)+52px)] right-3 z-30 w-52 overflow-hidden rounded-2xl bg-[#241018] py-1 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.8)] ring-1 ring-gold/25">
-            <button type="button" onClick={() => { setMenu(false); push({ kind: "parivar-chat", id: p.id }); }} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13.5px] font-semibold text-cream active:bg-white/10">
-              <MessageCircle className="h-4 w-4 text-gold" aria-hidden /> Parivar chat
-            </button>
-            <button type="button" onClick={() => { setMenu(false); push({ kind: "parivar-list" }); }} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13.5px] font-semibold text-cream active:bg-white/10">
-              <Trophy className="h-4 w-4 text-gold" aria-hidden /> Rankings
-            </button>
-            {p.myRole !== "LEADER" ? (
-              <button type="button" onClick={() => { setMenu(false); if (window.confirm(`Leave ${p.name}?`)) void run(async () => { await parivarApi.leave(); pop(); }, "You left the Parivar"); }} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13.5px] font-semibold text-coral active:bg-white/10">
-                Leave Parivar
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-      </header>
-      <section className="mx-4 flex items-center gap-4 pt-1 pb-1">
-        <Emblem p={p} size={78} />
-        <div className="min-w-0 flex-1">
-          <p className="flex items-center gap-2">
-            <span className="truncate font-display text-[22px] leading-tight font-extrabold text-cream">{p.name}</span>
-            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-gradient-to-r from-[#2d6f9e] to-[#3fa7ff] px-1.5 py-0.5 text-[11px] font-extrabold text-white">
-              <Shield className="h-3 w-3" aria-hidden /> {p.level}
-            </span>
-          </p>
-          <p className="mt-1">
-            <SignBadge sign={p.sign} frame={p.frame} />
-          </p>
-          <p className="mt-1.5 flex items-center gap-3 text-[12px] text-cream/60">
-            <span>ID: {p.code}</span>
-            <span className="inline-flex items-center gap-1">
-              <UsersRound className="h-3.5 w-3.5" aria-hidden /> {n(p.memberCount)}/{n(p.capacity)}
-            </span>
-            {p.weekRank ? <span className="rounded-full bg-gradient-to-r from-[#f6d899] to-[#e7bc72] px-2 py-0.5 text-[10.5px] font-extrabold text-[#2a1a0c]">Weekly Rank {p.weekRank}</span> : null}
-          </p>
-        </div>
-      </section>
-
-      <div className="mx-4 mt-3">
-        <div className="mb-1.5 flex items-center justify-between">
-          <p className="flex items-center gap-2 font-display text-[16px] font-extrabold text-cream">
-            <span className="h-4 w-1 rounded-full bg-gold" aria-hidden /> Activeness
-          </p>
-          <span className="flex items-center gap-2">
-            <span className="text-[12.5px] font-bold text-gold">
-              <Flame className="mr-0.5 -mt-0.5 inline h-3.5 w-3.5" aria-hidden /> {n(p.exp)}
-              {p.nextLevelExp ? `/${n(p.nextLevelExp)}` : ""}
-            </span>
-            <button type="button" onClick={() => setSheet("cheer")} className="rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] px-3.5 py-1 text-[12px] font-extrabold text-[#2a1a0c]">
-              Cheer
-            </button>
-          </span>
-        </div>
-        <div className="h-2.5 overflow-hidden rounded-full bg-black/40 ring-1 ring-white/5">
-          <motion.div className="h-full rounded-full bg-gradient-to-r from-coral to-gold" initial={{ width: 0 }} animate={{ width: `${nextPct}%` }} transition={{ duration: 0.7 }} />
-        </div>
-        <p className="mt-1.5 text-[11.5px] text-cream/55">{p.nextLevelExp ? `Next level Lv.${p.level + 1}: ${n(p.nextLevelExp)} activeness` : "Your Parivar is at the top level 🏆"}</p>
-        {p.levelUp && isMember ? (
-          <div className="mt-3 rounded-2xl bg-black/25 p-3 ring-1 ring-white/10">
-            <p className="text-[12.5px] font-bold text-cream">Level {p.levelUp.level} needs both:</p>
-            <ul className="mt-1.5 space-y-1 text-[12px]">
-              <li className={p.levelUp.expOk ? "text-[#7fe0a0]" : "text-cream/70"}>
-                {p.levelUp.expOk ? "✓" : "○"} Activity {n(Math.min(p.exp, p.levelUp.expNeeded))} / {n(p.levelUp.expNeeded)}
-              </li>
-              <li className={p.levelUp.fundOk ? "text-[#7fe0a0]" : "text-cream/70"}>
-                {p.levelUp.fundOk ? "✓" : "○"} Family fund {n(Math.min(p.funds, p.levelUp.fundNeeded))} / {n(p.levelUp.fundNeeded)}
-              </li>
-            </ul>
-            {p.levelUp.ready ? (
-              p.myRole === "LEADER" ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => window.confirm(`Level up to ${p.levelUp!.level}? ${n(p.levelUp!.fundNeeded)} will be taken from the family fund.`) && void run(() => parivarApi.levelUp(p.id), `Your Parivar is now level ${p.levelUp!.level}`)}
-                  className="mt-2.5 h-11 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c] disabled:opacity-50"
-                >
-                  Level up to {p.levelUp.level} · uses {n(p.levelUp.fundNeeded)} fund
-                </button>
-              ) : (
-                <p className="mt-2 text-[11.5px] text-gold">Ready! The Mukhiya can level the Parivar up now.</p>
-              )
-            ) : (
-              <p className="mt-2 text-[11.5px] text-cream/50">The Parivar levels up only when the Mukhiya presses Level up, after both are complete.</p>
-            )}
-          </div>
-        ) : null}
-      </div>
-
-      {!isMember ? (
-        <div className="mx-4 mt-3">
-          {p.myApplication === "PENDING" ? (
-            <button type="button" disabled={busy} onClick={() => void run(() => parivarApi.withdraw(p.id), "Request withdrawn")} className="h-12 w-full rounded-full bg-cream/10 text-[14px] font-bold text-cream">
-              Request sent · tap to withdraw
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={busy || p.memberCount >= p.capacity}
-              onClick={() =>
-                void run(async () => {
-                  const r = await parivarApi.join(p.id);
-                  if (!r.myRole) toast("Request sent. The Mukhiya will answer it.", "gold");
-                }, p.joinMode === "OPEN" ? `You joined ${p.name}` : undefined)
-              }
-              className="h-12 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[15px] font-extrabold text-[#2a1a0c] disabled:opacity-50"
-            >
-              {p.memberCount >= p.capacity ? "Full" : p.joinMode === "OPEN" ? "Join this Parivar" : "Apply to join"}
-            </button>
-          )}
-        </div>
-      ) : null}
-
-      <div className="no-scrollbar mx-2 mt-4 flex overflow-x-auto border-b border-white/10 px-2" role="tablist">
-        {tabs.map((t) => (
-          <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={`relative shrink-0 flex-1 whitespace-nowrap px-3 pt-2 pb-3 text-[14px] font-bold ${tab === t.key ? "text-cream" : "text-cream/50"}`}>
-            {t.label}
-            {tab === t.key ? <motion.span layoutId="pv-tab" className="absolute inset-x-3 bottom-0 h-[3px] rounded-full bg-gold" /> : null}
+    <div className="app-scroll flex h-full flex-col bg-gradient-to-b from-[#2e1019] via-[#1a0f17] to-ink">
+      <div className="sticky top-0 z-20 bg-[#2a0f18]/90 backdrop-blur-md">
+        <header className="pt-safe relative flex h-14 items-center px-2">
+          <button type="button" onClick={pop} className="grid h-10 w-10 place-items-center rounded-full text-cream active:bg-white/10" aria-label="Back">
+            <ChevronLeft className="h-6 w-6" aria-hidden />
           </button>
-        ))}
+          <h1 className="flex-1 pl-10 text-center font-display text-[18px] font-extrabold text-cream">Parivar</h1>
+          <button type="button" onClick={() => push({ kind: "parivar-list" })} className="grid h-10 w-10 place-items-center rounded-full active:bg-white/10" aria-label="Rankings">
+            <RewardArt kind="PODIUM" size={26} />
+          </button>
+          <button type="button" onClick={() => setMenu((v) => !v)} className="grid h-10 w-10 place-items-center rounded-full text-cream active:bg-white/10" aria-label="More" aria-expanded={menu}>
+            <Ellipsis className="h-5 w-5" aria-hidden />
+          </button>
+          {menu ? (
+            <div className="absolute top-[calc(env(safe-area-inset-top)+52px)] right-3 z-30 w-52 overflow-hidden rounded-2xl bg-[#241018] py-1 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.8)] ring-1 ring-gold/25">
+              <button type="button" onClick={() => { setMenu(false); push({ kind: "parivar-chat", id: p.id }); }} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13.5px] font-semibold text-cream active:bg-white/10">
+                <MessageCircle className="h-4 w-4 text-gold" aria-hidden /> Parivar chat
+              </button>
+              <button type="button" onClick={() => { setMenu(false); push({ kind: "parivar-list" }); }} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13.5px] font-semibold text-cream active:bg-white/10">
+                <Trophy className="h-4 w-4 text-gold" aria-hidden /> Rankings
+              </button>
+              {p.myRole !== "LEADER" ? (
+                <button type="button" onClick={() => { setMenu(false); if (window.confirm(`Leave ${p.name}?`)) void run(async () => { await parivarApi.leave(); pop(); }, "You left the Parivar"); }} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13.5px] font-semibold text-coral active:bg-white/10">
+                  Leave Parivar
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+        </header>
+        <div className="no-scrollbar flex overflow-x-auto border-b border-white/[0.07] px-2" role="tablist">
+          {tabs.map((t) => (
+            <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={`relative shrink-0 flex-1 whitespace-nowrap px-3 pt-1.5 pb-3 font-display text-[15px] font-extrabold transition-colors ${tab === t.key ? "text-cream" : "text-cream/45"}`}>
+              {t.label}
+              {tab === t.key ? <motion.span layoutId="pv-tab" className="absolute bottom-1.5 left-1/2 h-[3px] w-6 -translate-x-1/2 rounded-full bg-gradient-to-r from-[#f6d899] to-[#d9a84f]" /> : null}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="mx-4 mt-3">
+      <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="flex-1">
         {tab === "profile" ? (
-          <div className="space-y-4">
-            {isMember ? <WeeklyActiveness p={p} info={wk} onChanged={() => { loadExtras(); void load(); }} /> : null}
+          <div className="pb-4">
+            <section className="flex items-center gap-4 px-4 pt-5">
+              <Emblem p={p} size={84} />
+              <div className="min-w-0 flex-1">
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="truncate font-display text-[21px] leading-tight font-extrabold text-cream">{p.name}</span>
+                  <span className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-gradient-to-b from-[#3fd18f] to-[#1f9a63] px-1.5 py-0.5 text-[11px] font-extrabold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">
+                    <Shield className="h-3 w-3" aria-hidden /> {p.level}
+                  </span>
+                  <SignBadge sign={p.sign} frame={p.frame} />
+                </p>
+                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px] font-bold text-cream/50">
+                  <span>ID: {p.code}</span>
+                  <span className="inline-flex items-center gap-1">
+                    <UsersRound className="h-3.5 w-3.5" aria-hidden /> {n(p.memberCount)}/{n(p.capacity)}
+                  </span>
+                  {p.weekRank ? <span className="rounded-full bg-gradient-to-r from-[#f6d899] to-[#e7bc72] px-2 py-0.5 text-[10.5px] font-extrabold text-[#2a1a0c]">Weekly Rank {p.weekRank}</span> : null}
+                </p>
+              </div>
+            </section>
 
-            <div>
+            <section className="mt-5 px-4">
+              <div className="flex items-center justify-between">
+                <SectionTitle>Activeness</SectionTitle>
+                <span className="flex items-center gap-1.5">
+                  <RewardArt kind="FLAME" size={18} />
+                  <span className="text-[14px] font-extrabold text-cream/80">
+                    {n(p.exp)}
+                    {p.nextLevelExp ? `/${n(p.nextLevelExp)}` : ""}
+                  </span>
+                  <button type="button" onClick={() => setSheet("cheer")} className="ml-0.5 grid h-6 w-6 place-items-center rounded-full bg-gradient-to-b from-[#ffe08a] to-[#f2b52e] text-[#7a4a10] shadow-[0_2px_6px_rgba(242,181,46,0.45)]" aria-label="Cheer">
+                    <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
+                  </button>
+                </span>
+              </div>
+              <div className="relative mt-3 h-2.5 rounded-full bg-white/[0.07] shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)]">
+                <motion.div className="relative h-full rounded-full bg-gradient-to-r from-[#ffcf6b] via-[#ffb347] to-[#f2862e] shadow-[0_0_10px_rgba(255,179,71,0.35)]" initial={{ width: 0 }} animate={{ width: `${nextPct}%` }} transition={{ duration: 0.9, ease: [0.2, 0.8, 0.2, 1] }}>
+                  <span aria-hidden className="absolute inset-x-1.5 top-[2px] h-[2px] rounded-full bg-white/40" />
+                </motion.div>
+                {[25, 50, 75].map((t) => (
+                  <span key={t} aria-hidden className="absolute -bottom-1.5 h-1.5 w-px bg-cream/20" style={{ left: `${t}%` }} />
+                ))}
+              </div>
+              <p className="mt-1.5 text-[11.5px] text-cream/45">{p.nextLevelExp ? `Next level Lv.${p.level + 1}: ${n(p.nextLevelExp)} activeness` : "Your Parivar is at the top level 🏆"}</p>
+              {isMember ? (
+                <div className="mt-3">
+                  <WeeklyActiveness p={p} info={wk} onChanged={() => { loadExtras(); void load(); }} />
+                </div>
+              ) : null}
+              {p.levelUp && isMember ? (
+                <div className="mt-3 rounded-2xl bg-white/[0.04] p-3.5 ring-1 ring-white/[0.08]">
+                  <p className="flex items-center gap-2 text-[13px] font-extrabold text-cream">
+                    <RewardArt kind="EXP" size={20} /> Level {p.levelUp.level} needs both
+                  </p>
+                  <ul className="mt-2 space-y-1.5 text-[12px] font-semibold">
+                    <li className={`flex items-center gap-2 ${p.levelUp.expOk ? "text-[#7fe0a0]" : "text-cream/65"}`}>
+                      <span className={`grid h-4 w-4 place-items-center rounded-full text-[10px] ${p.levelUp.expOk ? "bg-[#7fe0a0] text-ink" : "ring-1 ring-cream/30"}`}>{p.levelUp.expOk ? "✓" : ""}</span>
+                      Activity {n(Math.min(p.exp, p.levelUp.expNeeded))} / {n(p.levelUp.expNeeded)}
+                    </li>
+                    <li className={`flex items-center gap-2 ${p.levelUp.fundOk ? "text-[#7fe0a0]" : "text-cream/65"}`}>
+                      <span className={`grid h-4 w-4 place-items-center rounded-full text-[10px] ${p.levelUp.fundOk ? "bg-[#7fe0a0] text-ink" : "ring-1 ring-cream/30"}`}>{p.levelUp.fundOk ? "✓" : ""}</span>
+                      Family fund {n(Math.min(p.funds, p.levelUp.fundNeeded))} / {n(p.levelUp.fundNeeded)}
+                    </li>
+                  </ul>
+                  {p.levelUp.ready ? (
+                    p.myRole === "LEADER" ? (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => window.confirm(`Level up to ${p.levelUp!.level}? ${n(p.levelUp!.fundNeeded)} will be taken from the family fund.`) && void run(() => parivarApi.levelUp(p.id), `Your Parivar is now level ${p.levelUp!.level}`)}
+                        className="mt-3 h-11 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c] disabled:opacity-50"
+                      >
+                        Level up to {p.levelUp.level} · uses {n(p.levelUp.fundNeeded)} fund
+                      </button>
+                    ) : (
+                      <p className="mt-2 text-[11.5px] text-gold">Ready! The Mukhiya can level the Parivar up now.</p>
+                    )
+                  ) : (
+                    <p className="mt-2 text-[11.5px] leading-snug text-cream/45">The Parivar levels up only when the Mukhiya presses Level up, after both are complete.</p>
+                  )}
+                </div>
+              ) : null}
+            </section>
+
+            {!isMember ? (
+              <div className="mt-4 px-4">
+                {p.myApplication === "PENDING" ? (
+                  <button type="button" disabled={busy} onClick={() => void run(() => parivarApi.withdraw(p.id), "Request withdrawn")} className="h-12 w-full rounded-full bg-cream/10 text-[14px] font-bold text-cream">
+                    Request sent · tap to withdraw
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busy || p.memberCount >= p.capacity}
+                    onClick={() =>
+                      void run(async () => {
+                        const r = await parivarApi.join(p.id);
+                        if (!r.myRole) toast("Request sent. The Mukhiya will answer it.", "gold");
+                      }, p.joinMode === "OPEN" ? `You joined ${p.name}` : undefined)
+                    }
+                    className="h-12 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[15px] font-extrabold text-[#2a1a0c] disabled:opacity-50"
+                  >
+                    {p.memberCount >= p.capacity ? "Full" : p.joinMode === "OPEN" ? "Join this Parivar" : "Apply to join"}
+                  </button>
+                )}
+              </div>
+            ) : null}
+
+            <Band />
+
+            <section className="px-4">
               <div className="flex items-center justify-between gap-2">
-                <p className="flex min-w-0 items-center gap-2 font-display text-[16px] font-extrabold text-cream">
-                  <span className="h-4 w-1 shrink-0 rounded-full bg-gold" aria-hidden /> Treasury
-                  <span className="flex min-w-0 items-center gap-1 truncate text-[12px] font-semibold text-cream/55">
-                    <Shield className={`h-4 w-4 shrink-0 ${kv?.active ? "text-speak" : "text-cream/40"}`} aria-hidden />
+                <span className="flex min-w-0 items-center gap-3">
+                  <SectionTitle>Treasury</SectionTitle>
+                  <span className={`flex min-w-0 items-center gap-1 truncate text-[12.5px] font-extrabold ${kv?.active ? "text-cream/70" : "text-cream/40"}`}>
+                    <span className={kv?.active ? "" : "opacity-50 grayscale"}>
+                      <RewardArt kind="BARRIER" size={18} />
+                    </span>
                     Kavach: {kv?.active ? `${kv.active.name} · ${kv.active.strength}` : "0"}
                   </span>
-                </p>
-                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.08] py-1 pr-1 pl-3 ring-1 ring-white/10">
-                  <Coin className="h-4 w-4" />
-                  <span className="text-[13.5px] font-extrabold text-gold">{n(p.funds)}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.07] py-1 pr-1 pl-1.5 ring-1 ring-white/10">
+                  <RewardArt kind="FUNDS" size={22} />
+                  <span className="text-[14px] font-extrabold text-cream">{n(p.funds)}</span>
                   {isMember ? (
-                    <button type="button" onClick={() => setDonate(true)} className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c]" aria-label="Donate">
-                      <Plus className="h-4 w-4" aria-hidden />
+                    <button type="button" onClick={() => setDonate(true)} className="grid h-6 w-6 place-items-center rounded-full bg-gradient-to-b from-[#ffe08a] to-[#f2b52e] text-[#7a4a10] shadow-[0_2px_6px_rgba(242,181,46,0.45)]" aria-label="Donate">
+                      <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
                     </button>
                   ) : null}
                 </span>
               </div>
-              <div className="mt-3 flex items-stretch gap-3 rounded-3xl bg-white/[0.05] p-3 ring-1 ring-white/10">
-                <button type="button" onClick={() => isMember && setSheet("chests")} className="relative flex w-[84px] shrink-0 flex-col items-center gap-1" aria-label="Chests">
-                  <span className="grid h-[58px] w-[58px] place-items-center rounded-2xl bg-gold/10 ring-1 ring-gold/30">
-                    <Gift className="h-8 w-8 text-gold" strokeWidth={1.5} aria-hidden />
+              <div className="mt-3 flex items-stretch">
+                <button type="button" onClick={() => isMember && setSheet("chests")} className="relative flex w-[92px] shrink-0 flex-col items-center gap-1.5 py-2" aria-label="Chests">
+                  <span className={ch && ch.sent.some((c) => c.status === "OPEN") ? "" : "opacity-45 grayscale"}>
+                    <RewardArt kind="CHEST" size={58} />
                   </span>
-                  <span className="text-[12px] text-cream/55">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open" : "To Unlock"}</span>
-                  {ch && ch.sent.filter((c) => c.status === "OPEN").length ? <span className="absolute top-0 right-1 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{ch.sent.filter((c) => c.status === "OPEN").length}</span> : null}
+                  <span className="text-[12.5px] font-extrabold text-cream/50">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open" : "To Unlock"}</span>
+                  {ch && ch.sent.filter((c) => c.status === "OPEN").length ? <span className="absolute top-1 right-2 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{ch.sent.filter((c) => c.status === "OPEN").length}</span> : null}
                 </button>
-                <span aria-hidden className="w-px bg-white/10" />
-                <p className="grid flex-1 place-items-center text-center text-[14px] text-cream/50">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open chests are waiting. Tap the box." : "No chest"}</p>
+                <span aria-hidden className="mx-2 w-0 border-l-2 border-dotted border-white/15" />
+                <p className="grid min-h-[110px] flex-1 place-items-center text-center text-[14.5px] font-extrabold text-cream/40">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open chests are waiting. Tap the box." : "No chest"}</p>
               </div>
-            </div>
+            </section>
 
-            <div>
+            <Band />
+
+            <section className="px-4">
               <div className="flex items-center justify-between">
                 <SectionTitle>Announcement</SectionTitle>
                 {isMember && can("EDIT_ANNOUNCEMENT") ? (
@@ -781,25 +800,38 @@ export function ParivarHome({ id }: { id: string }) {
                 ) : null}
               </div>
               {editAnn ? (
-                <AnnouncementEditor p={p} busy={busy} onSave={(text) => run(() => parivarApi.update(p.id, { announcement: text }), "Announcement saved").then(() => setEditAnn(false))} />
+                <AnnouncementEditor plain p={p} busy={busy} onSave={(text) => run(() => parivarApi.update(p.id, { announcement: text }), "Announcement saved").then(() => setEditAnn(false))} />
               ) : (
-                <p className="mt-2 text-[13px] leading-snug whitespace-pre-wrap text-cream/75">{p.announcement || (can("EDIT_ANNOUNCEMENT") ? "Write something for your members." : "No announcement yet.")}</p>
+                <div className="relative mt-4 -rotate-[0.6deg] rounded-[14px_18px_16px_20px] bg-gradient-to-b from-[#fbf1dc] to-[#f1e0bd] px-4 pt-5 pb-4 text-[#3a2612] shadow-[0_10px_24px_-10px_rgba(0,0,0,0.75),inset_0_0_0_1px_rgba(138,84,18,0.18)]">
+                  <svg width="22" height="26" viewBox="0 0 22 26" aria-hidden className="absolute -top-3 left-1/2 -translate-x-1/2 rotate-6 drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]">
+                    <circle cx="11" cy="8" r="6.5" fill="#e0456b" />
+                    <circle cx="9" cy="6" r="2" fill="#fff" opacity="0.55" />
+                    <path d="M11 14.5v10" stroke="#7a6a58" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                  <p className="text-[14px] leading-relaxed font-semibold whitespace-pre-wrap">{p.announcement || (can("EDIT_ANNOUNCEMENT") ? "Write something for your members." : "No announcement yet.")}</p>
+                  {(() => {
+                    const lead = p.members.find((m) => m.role === "LEADER");
+                    return lead && p.announcement ? <p className="mt-2 text-right font-[Dancing_Script] text-[19px] leading-none font-bold text-[#8a5412]">— {lead.name}</p> : null;
+                  })()}
+                </div>
               )}
-            </div>
+            </section>
 
-            <div>
+            <Band />
+
+            <section className="px-4">
               <SectionTitle>Introduction</SectionTitle>
-              <div className="relative mt-2.5 overflow-hidden rounded-3xl bg-white/[0.045] p-4 ring-1 ring-white/10 backdrop-blur-sm">
-                <Quote className="absolute top-3 right-3 h-8 w-8 text-gold/15" aria-hidden />
-                <p className="relative text-[13.5px] leading-relaxed whitespace-pre-wrap text-cream/85">{p.intro || "This Parivar hasn't written an introduction yet."}</p>
-                <div className="relative mt-3 flex items-center gap-2 border-t border-white/10 pt-3 text-[11.5px] text-cream/50">
+              <div className="relative mt-3">
+                <Quote className="absolute top-0 right-0 h-8 w-8 text-gold/15" aria-hidden />
+                <p className="relative pr-8 text-[14px] leading-relaxed font-semibold whitespace-pre-wrap text-cream/70">{p.intro || "This Parivar hasn't written an introduction yet."}</p>
+                <div className="relative mt-3 flex items-center gap-2 border-t border-dashed border-white/[0.12] pt-3 text-[11.5px] text-cream/50">
                   {(() => {
                     const lead = p.members.find((m) => m.role === "LEADER");
                     return lead ? (
                       <>
                         <Avatar name={lead.name} url={lead.avatarUrl} size={22} />
                         <span>
-                          Led by <b className="text-cream/80">{lead.name}</b>
+                          Led by <b className="font-[Dancing_Script] text-[16px] font-bold text-gold">{lead.name}</b>
                         </span>
                       </>
                     ) : null;
@@ -807,72 +839,81 @@ export function ParivarHome({ id }: { id: string }) {
                   <span className="ml-auto">Since {new Date(p.createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</span>
                 </div>
               </div>
-            </div>
+            </section>
 
             {isMember ? (
-              <div>
-                <SectionTitle>Activity</SectionTitle>
-                <div className="mt-2.5 overflow-hidden rounded-3xl bg-white/[0.045] ring-1 ring-white/10 backdrop-blur-sm">
-                  {!p.activity?.length ? (
-                    <p className="px-4 py-6 text-center text-[12.5px] text-cream/50">Nothing yet. Gifts between members and donations show here.</p>
-                  ) : (
-                    <ul className="divide-y divide-white/[0.06]">
-                      {p.activity.map((a, i) => {
-                        const kind = `${a.kind} ${a.text}`.toLowerCase();
-                        const Icon = kind.includes("gacha") ? Dices : kind.includes("donat") ? Coins : kind.includes("creat") ? Crown : kind.includes("kavach") || kind.includes("shield") ? Shield : kind.includes("gift") ? Gift : Sparkles;
-                        return (
-                          <motion.li key={a.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }} className="flex items-center gap-3 px-3.5 py-3">
-                            <span className="relative shrink-0">
-                              <Avatar name={a.who ?? "?"} url={a.whoAvatar} size={40} />
-                              <span className="absolute -right-1 -bottom-1 grid h-[18px] w-[18px] place-items-center rounded-full bg-gradient-to-b from-[#f2d595] to-[#b9803a] text-[#2a1a0c] ring-2 ring-[#1a1018]">
-                                <Icon className="h-2.5 w-2.5" strokeWidth={2.4} aria-hidden />
+              <>
+                <Band />
+                <section className="px-4">
+                  <SectionTitle>Activity</SectionTitle>
+                  <div className="mt-2">
+                    {!p.activity?.length ? (
+                      <p className="py-6 text-center text-[12.5px] text-cream/45">Nothing yet. Gifts between members and donations show here.</p>
+                    ) : (
+                      <ul className="relative before:absolute before:top-5 before:bottom-5 before:left-[19px] before:border-l-2 before:border-dashed before:border-gold/20">
+                        {p.activity.map((a, i) => {
+                          const kind = `${a.kind} ${a.text}`.toLowerCase();
+                          const art = kind.includes("gacha") ? "P_DICE" : kind.includes("donat") ? "FUNDS" : kind.includes("join") || kind.includes("creat") ? "P_THALI" : kind.includes("kavach") || kind.includes("shield") ? "P_KAVACH" : kind.includes("cheer") ? "P_DHOL" : kind.includes("chest") ? "P_CHEST" : kind.includes("chori") || kind.includes("raid") ? "P_MASK" : kind.includes("gift") || kind.includes("sent") ? "P_GIFT" : kind.includes("level") ? "P_ANAAR" : "EXP";
+                          return (
+                            <motion.li key={a.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }} className="relative flex items-center gap-3 py-2.5">
+                              <span className="relative shrink-0 rounded-full ring-[3px] ring-[#1d1018]">
+                                <Avatar name={a.who ?? "?"} url={a.whoAvatar} size={40} />
+                                <span className="absolute -right-1.5 -bottom-1.5 grid h-[24px] w-[24px] place-items-center rounded-full bg-[radial-gradient(circle_at_50%_35%,#5a2a1c,#2a120f)] ring-[1.5px] ring-gold/60">
+                                  <RewardArt kind={art} size={18} />
+                                </span>
                               </span>
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block text-[13px] leading-snug text-cream/90">
-                                <b className="font-bold text-cream">{a.who ?? "Someone"}</b> {a.text}
-                                {a.other ? (
-                                  <>
-                                    {" "}
-                                    to <b className="font-bold text-cream">{a.other}</b>
-                                  </>
-                                ) : null}
+                              <span className="min-w-0 flex-1">
+                                <span className="block text-[13px] leading-snug text-cream/85">
+                                  <b className="font-bold text-cream">{a.who ?? "Someone"}</b> {a.text}
+                                  {a.other ? (
+                                    <>
+                                      {" "}
+                                      to <b className="font-bold text-cream">{a.other}</b>
+                                    </>
+                                  ) : null}
+                                </span>
+                                <span className="text-[11px] text-cream/40">{ago(a.at)}</span>
                               </span>
-                              <span className="text-[11px] text-cream/40">{ago(a.at)}</span>
-                            </span>
-                            {a.exp > 0 ? <span className="shrink-0 rounded-full bg-gold/12 px-2.5 py-1 text-[11px] font-extrabold text-gold ring-1 ring-gold/25">+{n(a.exp)}</span> : null}
-                          </motion.li>
-                        );
-                      })}
-                    </ul>
-                  )}
-                </div>
-              </div>
+                              {a.exp > 0 ? <span className="shrink-0 rounded-full bg-gold/12 px-2.5 py-1 text-[11px] font-extrabold text-gold ring-1 ring-gold/25">+{n(a.exp)}</span> : null}
+                            </motion.li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </section>
+              </>
             ) : null}
           </div>
         ) : null}
 
-        {tab === "members" ? <MembersPanel p={p} can={can} busy={busy} run={run} onGift={(uid) => { setGiftTo(uid); setSheet("gift"); }} /> : null}
+        <div className={tab === "profile" ? "hidden" : "mx-4 mt-4 pb-6"}>
+          {tab === "members" ? <MembersPanel p={p} can={can} busy={busy} run={run} onGift={(uid) => { setGiftTo(uid); setSheet("gift"); }} /> : null}
 
-        {tab === "news" ? isMember ? <NewsPanel p={p} onChanged={() => void load()} /> : <div className="space-y-3"><Section title="Announcement">{p.announcement || <span className="text-muted">No announcement.</span>}</Section><WorldNews /></div> : null}
-        {tab === "tasks" && isMember ? <TasksTab p={p} onChanged={() => void load()} onGo={(m) => (m === "CHEERS" ? setSheet("cheer") : m === "GIFT_EXP" ? (setGiftTo(undefined), setSheet("gift")) : m === "DONATED_COINS" ? setDonate(true) : undefined)} /> : null}
+          {tab === "news" ? isMember ? <NewsPanel p={p} onChanged={() => void load()} /> : <div className="space-y-3"><Section title="Announcement">{p.announcement || <span className="text-muted">No announcement.</span>}</Section><WorldNews /></div> : null}
+          {tab === "tasks" && isMember ? <TasksTab p={p} onChanged={() => void load()} onGo={(m) => (m === "CHEERS" ? setSheet("cheer") : m === "GIFT_EXP" ? (setGiftTo(undefined), setSheet("gift")) : m === "DONATED_COINS" ? setDonate(true) : undefined)} /> : null}
 
-        {tab === "manage" && isMember ? <ManageTab p={p} can={can} run={run} busy={busy} push={() => push({ kind: "parivar-list" })} /> : null}
+          {tab === "manage" && isMember ? <ManageTab p={p} can={can} run={run} busy={busy} push={() => push({ kind: "parivar-list" })} /> : null}
+        </div>
       </motion.div>
 
       {isMember ? (
-        <div className="sticky bottom-0 z-10 mt-6 flex items-end justify-between bg-gradient-to-t from-ink via-ink/95 to-transparent px-6 pt-6 pb-3">
-          <button type="button" onClick={() => setSheet("chat")} className="relative grid h-11 w-11 place-items-center rounded-full bg-surface ring-1 ring-line-strong" aria-label="Family chat">
-            <MessageCircle className="h-5 w-5 text-cream" aria-hidden />
-            {unread ? <span className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-coral" /> : null}
+        <div className="sticky bottom-0 z-10 mt-auto flex shrink-0 items-end justify-between border-t border-white/[0.07] bg-[#1a0f17]/95 px-5 pt-2 pb-[max(env(safe-area-inset-bottom),10px)] backdrop-blur-md">
+          <button type="button" onClick={() => setSheet("chat")} className="relative grid h-12 w-12 place-items-center rounded-2xl active:bg-white/10" aria-label="Family chat">
+            <RewardArt kind="P_CHAT" size={36} />
+            {unread ? <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-[#1a0f17]" /> : null}
           </button>
-          <button type="button" onClick={() => setSheet("gacha")} className="-mb-1 flex flex-col items-center" aria-label="Gacha">
-            <span className="grid h-[62px] w-[62px] place-items-center rounded-full bg-gradient-to-b from-[#f6d899] to-[#b9803a] text-[#2a1a0c] shadow-[0_10px_26px_-6px_rgb(231_188_114/0.7)] ring-4 ring-ink"><Dices className="h-7 w-7" strokeWidth={1.8} /></span>
-            <span className="-mt-2 rounded-full bg-coral px-2.5 py-0.5 text-[10.5px] font-extrabold text-white">Gacha</span>
-          </button>
-          <button type="button" onClick={() => setMore(true)} className="grid h-11 w-11 place-items-center rounded-full bg-surface ring-1 ring-line-strong" aria-label="More">
-            <Plus className="h-5 w-5 text-cream" aria-hidden />
-          </button>
+          <span className="ml-auto flex items-end gap-3">
+            <button type="button" onClick={() => setSheet("gacha")} className="relative flex flex-col items-center active:scale-95" aria-label="Gacha">
+              <motion.span animate={{ rotate: [0, -6, 6, 0] }} transition={{ duration: 1.6, repeat: Infinity, repeatDelay: 2.5 }}>
+                <RewardArt kind="P_DICE" size={42} />
+              </motion.span>
+              <span className="-mt-1 rounded-full bg-gradient-to-b from-[#ffe08a] to-[#e0a842] px-2 py-px text-[10px] font-extrabold text-[#3a2208] shadow-[0_2px_6px_rgba(242,181,46,0.5)]">Gacha</span>
+            </button>
+            <button type="button" onClick={() => setMore(true)} className="relative mb-1 grid h-11 w-11 place-items-center rounded-[14px_16px_14px_16px] bg-[radial-gradient(circle_at_50%_35%,#5a2a1c,#2a120f)] text-gold shadow-[inset_0_1px_0_rgba(255,220,160,0.18)] ring-1 ring-gold/45 active:scale-95" aria-label="More">
+              <Plus className="h-6 w-6" strokeWidth={2.6} aria-hidden />
+            </button>
+          </span>
         </div>
       ) : null}
 
@@ -889,8 +930,9 @@ export function ParivarHome({ id }: { id: string }) {
         </>
       ) : null}
 
-      <BottomSheet open={more} onClose={() => setMore(false)} title="Parivar">
-        <div className="px-5 pb-6" onClick={() => setMore(false)}>
+      <BottomSheet open={more} onClose={() => setMore(false)} title="Parivar" className="border-t-gold/35 bg-gradient-to-b from-[#3a1420] via-[#24101a] to-[#160c12]">
+        <div className="pattern-panchayat pointer-events-none absolute inset-x-0 top-0 h-40 opacity-40 [mask-image:linear-gradient(to_bottom,black,transparent)]" aria-hidden />
+        <div className="relative px-5 pb-6" onClick={() => setMore(false)}>
           <FeatureTiles p={p} onOpen={(k) => setSheet(k)} />
         </div>
       </BottomSheet>
@@ -911,26 +953,50 @@ export function ParivarHome({ id }: { id: string }) {
   );
 }
 
+/** A section heading with a little peepal-leaf mark and a pen-drawn underline, so it reads as drawn rather than templated. */
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="flex items-center gap-2 font-display text-[16px] font-extrabold text-cream">
-      <span className="h-4 w-1 rounded-full bg-gold" aria-hidden /> {children}
+    <p className="relative inline-flex shrink-0 items-center gap-1.5 pb-1.5 font-display text-[17px] font-extrabold text-cream">
+      <svg width="16" height="18" viewBox="0 0 16 18" aria-hidden className="-mt-0.5 shrink-0">
+        <path d="M8 1.5C12.6 3 14.4 8.2 8 14.2 1.6 8.2 3.4 3 8 1.5Z" fill="#e7bc72" stroke="#b9803a" strokeWidth="0.9" />
+        <path d="M8 3.4c-.3 3.4-.2 6.9.1 10.6M8 6.4 5.9 4.9M8.1 9.2l2.3-1.6" stroke="#8a5412" strokeWidth="0.8" strokeLinecap="round" fill="none" />
+        <path d="M8.1 14.2c.1 1 .5 1.7 1.2 2.2" stroke="#b9803a" strokeWidth="0.9" strokeLinecap="round" fill="none" />
+      </svg>
+      {children}
+      <svg aria-hidden viewBox="0 0 100 6" preserveAspectRatio="none" className="absolute right-1 bottom-0 left-5 h-[5px] w-[calc(100%-1.5rem)]">
+        <path d="M1 3.8C14 2.2 23 4.6 37 3.1S63 1.9 76 3.6 92 3.9 99 2.4" stroke="#e7bc72" strokeOpacity="0.55" strokeWidth="1.6" strokeLinecap="round" fill="none" />
+      </svg>
     </p>
+  );
+}
+
+/** The divider between Profile sections: a faint strip of the Panchayat crown-and-leaf pattern with a hand-inked rule and a little diya in the middle. */
+function Band() {
+  return (
+    <div aria-hidden className="pattern-panchayat relative my-6 flex h-6 items-center bg-black/25 [background-size:84px_84px]">
+      <svg viewBox="0 0 360 12" preserveAspectRatio="none" className="h-3 w-full">
+        <path d="M14 6.6C60 5.2 104 7.3 150 5.9M210 6.2c44-1.3 92 .9 136-.6" stroke="#e7bc72" strokeOpacity="0.32" strokeWidth="1.1" strokeLinecap="round" strokeDasharray="1 0 7 3" fill="none" />
+      </svg>
+      <svg width="30" height="16" viewBox="0 0 30 16" className="absolute left-1/2 -translate-x-1/2">
+        <path d="M15 1.6c1.6 2.2 2.4 3.6 0 6.1-2.4-2.5-1.6-3.9 0-6.1Z" fill="#ffb347" />
+        <path d="M4 9c3.2 4.6 18.8 4.6 22 0-3.4 1.2-18.6 1.2-22 0Z" fill="#d9a84f" stroke="#8a5412" strokeWidth="0.7" />
+      </svg>
+    </div>
   );
 }
 
 function WeeklyActiveness({ p, info, onChanged }: { p: ParivarProfile; info: TasksInfo | null; onChanged: () => void }) {
   const { toast } = useApp();
   const steps = (info?.tasks ?? []).filter((t) => t.period === "WEEKLY").sort((a, b) => a.target - b.target);
-  const short = (v: number) => (v >= 1000 ? `${+(v / 1000).toFixed(1)}K` : String(v));
+  const short = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v));
   return (
-    <div className="flex items-stretch gap-2 rounded-3xl bg-gradient-to-br from-surface to-ink-2 p-3 ring-1 ring-line-strong">
-      <div className="flex w-[104px] shrink-0 flex-col justify-center rounded-2xl bg-black/30 px-2.5 py-2">
-        <p className="text-[11px] font-bold text-cream/70">Weekly Activeness</p>
-        <p className="font-display text-[24px] leading-tight font-extrabold text-gold">{short(info?.weekExp ?? p.weekExp)}</p>
-        <p className="text-[9.5px] text-cream/45">Refresh on Mon 00:00</p>
+    <div className="flex items-stretch gap-2 rounded-[18px_14px_18px_14px] bg-white/[0.045] p-2 ring-1 ring-white/[0.07]">
+      <div className="relative flex w-[112px] shrink-0 -rotate-[1.5deg] flex-col justify-center rounded-[10px] bg-gradient-to-b from-[#fff6e4] to-[#f0dcb4] px-2.5 py-2 text-center shadow-[0_6px_14px_-6px_rgba(0,0,0,0.7)] after:absolute after:inset-y-2 after:-right-[3px] after:border-r-[3px] after:border-dotted after:border-[#1d1018]">
+        <p className="text-[10.5px] font-extrabold text-[#6b4a22]">Weekly Activeness</p>
+        <p className="font-display text-[24px] leading-tight font-extrabold text-[#2a1a0c]">{n(info?.weekExp ?? p.weekExp)}</p>
+        <p className="text-[9.5px] font-bold text-[#8a6a42]">Refresh on Mon. 0:00</p>
       </div>
-      <div className="flex min-w-0 flex-1 items-start justify-around">
+      <div className="flex min-w-0 flex-1 items-center justify-around">
         {steps.length ? (
           steps.slice(0, 4).map((t) => (
             <button
@@ -946,16 +1012,18 @@ function WeeklyActiveness({ p, info, onChanged }: { p: ParivarProfile; info: Tas
                   })
                   .catch((e) => toast(errText(e), "error"))
               }
-              className="relative flex flex-col items-center gap-1"
+              className="relative flex flex-col items-center gap-0.5"
               aria-label={t.title}
             >
-              <Glyph icon={Gift} size={44} tone={t.claimable ? "light" : "gold"} className={t.claimable ? "animate-pulse" : t.claimed ? "" : "opacity-50"} />
+              <motion.span animate={t.claimable ? { y: [0, -3, 0] } : undefined} transition={{ duration: 1, repeat: Infinity }} className={t.claimed ? "opacity-60" : t.claimable ? "" : "opacity-80"}>
+                <RewardArt kind="GIFT" size={40} />
+              </motion.span>
               {t.claimed ? (
-                <span className="absolute -top-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-speak text-ink">
+                <span className="absolute top-0 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-speak text-ink">
                   <Check className="h-3 w-3" aria-hidden />
                 </span>
               ) : null}
-              <span className={`text-[11px] font-extrabold ${t.claimed || t.claimable ? "text-gold" : "text-cream/45"}`}>{short(t.target)}</span>
+              <span className={`text-[12px] font-extrabold ${t.claimed || t.claimable ? "text-gold" : "text-cream/45"}`}>{short(t.target)}</span>
             </button>
           ))
         ) : (
@@ -975,11 +1043,13 @@ function Stat({ big, label }: { big: string; label: string }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+/** A card on the Manage and News tabs: warm surface, slightly uneven corners, a leaf-marked heading and an inked rule under it. */
+function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl bg-surface p-3.5 ring-1 ring-line">
-      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">{title}</p>
-      <div className="mt-1.5 whitespace-pre-wrap text-[13px] leading-snug text-cream/90">{children}</div>
+    <div className="relative rounded-[20px_16px_20px_18px] bg-gradient-to-b from-white/[0.06] to-white/[0.025] p-4 shadow-[0_12px_28px_-18px_rgba(0,0,0,0.9)] ring-1 ring-white/[0.08]">
+      <SectionTitle>{title}</SectionTitle>
+      {hint ? <p className="mt-1 text-[11.5px] text-cream/45">{hint}</p> : null}
+      <div className="mt-3 whitespace-pre-wrap text-[13.5px] leading-snug text-cream/90">{children}</div>
     </div>
   );
 }
@@ -1004,11 +1074,19 @@ function ManageTab({ p, can, run, busy, push }: { p: ParivarProfile; can: (perm:
       {can("ACCEPT_APPLICATIONS") ? (
         <Section title={`Requests to join${apps ? ` (${apps.length})` : ""}`}>
           {!apps?.length ? (
-            <span className="text-muted">No requests right now.</span>
+            <div className="flex items-center gap-3 rounded-2xl border border-dashed border-white/[0.12] px-3 py-3">
+              <span className="opacity-60 grayscale">
+                <RewardArt kind="CHAT" size={30} />
+              </span>
+              <span>
+                <span className="block text-[13.5px] font-bold text-cream/75">No requests right now</span>
+                <span className="block text-[11.5px] text-cream/40">New requests to join show up here.</span>
+              </span>
+            </div>
           ) : (
             <ul className="space-y-2">
               {apps.map((a) => (
-                <li key={a.id} className="flex items-center gap-2.5">
+                <li key={a.id} className="flex items-center gap-2.5 rounded-2xl bg-black/20 px-2.5 py-2">
                   <Avatar name={a.name} url={a.avatarUrl} size={34} />
                   <span className="min-w-0 flex-1 truncate font-semibold">{a.name}</span>
                   <button
@@ -1020,7 +1098,7 @@ function ManageTab({ p, can, run, busy, push }: { p: ParivarProfile; can: (perm:
                         reload();
                       }, `${a.name} joined`)
                     }
-                    className="grid h-8 w-8 place-items-center rounded-full bg-[#14301f] text-speak"
+                    className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-b from-[#3fd18f] to-[#1f9a63] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
                     aria-label={`Accept ${a.name}`}
                   >
                     <Check className="h-4 w-4" />
@@ -1049,14 +1127,14 @@ function ManageTab({ p, can, run, busy, push }: { p: ParivarProfile; can: (perm:
 
       {can("EDIT_PROFILE") ? (
         <Section title="How people join">
-          <div className="flex gap-2">
+          <div className="flex gap-1 rounded-full bg-black/30 p-1 ring-1 ring-white/[0.06]">
             {(
               [
                 ["OPEN", "Anyone"],
                 ["APPROVAL", "By approval"],
               ] as const
             ).map(([k, label]) => (
-              <button key={k} type="button" disabled={busy} onClick={() => void run(() => parivarApi.update(p.id, { joinMode: k }), "Saved")} className={`flex-1 rounded-xl py-2 text-[12.5px] font-bold ring-1 ${p.joinMode === k ? "bg-gold/15 text-gold ring-gold/50" : "text-cream/70 ring-line"}`}>
+              <button key={k} type="button" disabled={busy} onClick={() => void run(() => parivarApi.update(p.id, { joinMode: k }), "Saved")} className={`flex-1 rounded-full py-2 text-[13px] font-extrabold transition-colors ${p.joinMode === k ? "bg-gradient-to-b from-[#f6d899] to-[#d9a84f] text-[#2a1a0c] shadow-[0_2px_8px_rgba(217,168,79,0.35)]" : "text-cream/55"}`}>
                 {label}
               </button>
             ))}
@@ -1072,13 +1150,14 @@ function ManageTab({ p, can, run, busy, push }: { p: ParivarProfile; can: (perm:
             {p.members
               .filter((m) => m.role !== "LEADER")
               .map((m) => (
-                <li key={m.userId} className="flex items-center gap-2">
+                <li key={m.userId} className="flex items-center gap-2.5 border-b border-dashed border-white/[0.08] pb-2 last:border-0 last:pb-0">
+                  <Avatar name={m.name} url={m.avatarUrl} size={30} />
                   <span className="min-w-0 flex-1 truncate font-semibold">{m.name}</span>
                   <select
                     value={m.role}
                     disabled={busy}
                     onChange={(e) => void run(() => parivarApi.setRole(p.id, m.userId, e.target.value as ParivarRole), "Role changed")}
-                    className="h-9 rounded-lg bg-ink px-2 text-[12.5px] text-cream ring-1 ring-line"
+                    className="h-9 rounded-full bg-black/35 px-3 text-[12.5px] font-bold text-gold ring-1 ring-gold/25"
                     aria-label={`Role of ${m.name}`}
                   >
                     {roles.map((r) => (
@@ -1098,7 +1177,7 @@ function ManageTab({ p, can, run, busy, push }: { p: ParivarProfile; can: (perm:
         type="button"
         disabled={busy}
         onClick={() => window.confirm(p.myRole === "LEADER" ? "Leave and close this Parivar? (Only possible when you are the last member.)" : "Leave this Parivar?") && void run(async () => { await parivarApi.leave(); push(); }, "You left the Parivar")}
-        className="h-11 w-full rounded-full bg-coral/15 text-[13.5px] font-bold text-coral"
+        className="mt-2 h-12 w-full rounded-full border-[1.5px] border-dashed border-coral/45 text-[14px] font-extrabold text-coral active:bg-coral/10 disabled:opacity-50"
       >
         Leave Parivar
       </button>
@@ -1106,16 +1185,29 @@ function ManageTab({ p, can, run, busy, push }: { p: ParivarProfile; can: (perm:
   );
 }
 
-function AnnouncementEditor({ p, busy, onSave }: { p: ParivarProfile; busy: boolean; onSave: (t: string) => void }) {
+function AnnouncementEditor({ p, busy, onSave, plain = false }: { p: ParivarProfile; busy: boolean; onSave: (t: string) => void; plain?: boolean }) {
   const [text, setText] = useState(p.announcement ?? "");
-  return (
-    <Section title="Announcement (shown on the profile)">
-      <textarea value={text} maxLength={500} rows={3} onChange={(e) => setText(e.target.value)} className="w-full resize-none rounded-xl bg-ink px-3 py-2 text-[14px] text-cream ring-1 ring-line focus:outline-none" aria-label="Announcement" />
-      <button type="button" disabled={busy || text === (p.announcement ?? "")} onClick={() => onSave(text)} className="mt-2 h-10 w-full rounded-full bg-gold text-[13.5px] font-extrabold text-ink disabled:opacity-50">
+  const body = (
+    <>
+      <div className="relative -rotate-[0.4deg] rounded-[12px_16px_14px_16px] bg-gradient-to-b from-[#fbf1dc] to-[#f1e0bd] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.8),inset_0_0_0_1px_rgba(138,84,18,0.18)]">
+        <textarea
+          value={text}
+          maxLength={500}
+          rows={4}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Write something for your members…"
+          className="block w-full resize-none bg-transparent px-4 pt-3 pb-6 text-[14px] leading-[24px] font-semibold text-[#3a2612] placeholder:text-[#8a6a42]/60 focus:outline-none"
+          style={{ backgroundImage: "repeating-linear-gradient(to bottom, transparent 0 23px, rgba(138,84,18,0.14) 23px 24px)", backgroundPosition: "0 12px" }}
+          aria-label="Announcement"
+        />
+        <span className="pointer-events-none absolute right-3 bottom-1.5 text-[10.5px] font-bold text-[#8a6a42]/70">{text.length}/500</span>
+      </div>
+      <button type="button" disabled={busy || text === (p.announcement ?? "")} onClick={() => onSave(text)} className="mt-3 h-11 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c] shadow-[0_6px_16px_-6px_rgba(231,188,114,0.6)] disabled:from-white/10 disabled:via-white/10 disabled:to-white/10 disabled:text-cream/35 disabled:shadow-none">
         Save
       </button>
-    </Section>
+    </>
   );
+  return plain ? <div className="mt-4">{body}</div> : <Section title="Announcement" hint="Shown on the Parivar profile as a pinned note.">{body}</Section>;
 }
 
 function DonateForm({ funds, onDonate }: { funds: number; onDonate: (amount: number) => Promise<void> }) {

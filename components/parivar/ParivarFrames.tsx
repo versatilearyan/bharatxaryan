@@ -5,7 +5,7 @@
  * Parivar levels up (wood, bronze, silver, gold, ruby, diamond, royal). Which frame a level gets
  * is set by the admin; the app only draws the frame the server names.
  */
-import type { ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 export const FRAME_ORDER = ["wood", "bronze", "silver", "gold", "ruby", "diamond", "royal"] as const;
 export type FrameKey = (typeof FRAME_ORDER)[number];
@@ -42,28 +42,97 @@ function Wing({ side, scale, a, b }: { side: "l" | "r"; scale: number; a: string
   );
 }
 
-/** The Parivar sign with its level frame, e.g. "KING" between wings. */
+/**
+ * The sign badge art for each frame level, in order (wood → royal): chrome, sapphire, purple, royal pink,
+ * golden legend, neon ice-blue and mythic. Each is a winged crest with an empty name plate on the right;
+ * `plate` is where the sign text goes, as fractions of the image (x0, x1, y0, y1), and `fill`/`stroke`
+ * colour the lettering to match the badge.
+ */
+type SignArt = { src: string; ar: number; plate: [number, number, number, number]; fill: [string, string, string]; stroke: string; glow: string };
+const SIGN_ART: Record<FrameKey, SignArt> = {
+  wood: { src: "/signs/sign-1.webp", ar: 2.701, plate: [0.4319, 0.9556, 0.4085, 0.7454], fill: ["#ffffff", "#e9edf3", "#9aa3b2"], stroke: "#1d2230", glow: "rgba(220,228,240,0.35)" },
+  bronze: { src: "/signs/sign-2.webp", ar: 2.701, plate: [0.4314, 0.955, 0.4085, 0.7454], fill: ["#ffffff", "#e3f1ff", "#8fc4ff"], stroke: "#0a2350", glow: "rgba(90,170,255,0.4)" },
+  silver: { src: "/signs/sign-3.webp", ar: 2.6979, plate: [0.4272, 0.9471, 0.405, 0.7392], fill: ["#ffffff", "#f1e6ff", "#c9a3ff"], stroke: "#2e0c5a", glow: "rgba(176,123,255,0.45)" },
+  gold: { src: "/signs/sign-4.webp", ar: 2.7195, plate: [0.4328, 0.9499, 0.4062, 0.7413], fill: ["#ffffff", "#ffe6f0", "#ff9cc2"], stroke: "#4a0a24", glow: "rgba(255,92,150,0.45)" },
+  ruby: { src: "/signs/sign-5.webp", ar: 2.7489, plate: [0.4389, 0.956, 0.4062, 0.7413], fill: ["#fff6c8", "#ffd45a", "#d98f1a"], stroke: "#3a1c02", glow: "rgba(255,190,70,0.5)" },
+  diamond: { src: "/signs/sign-6.webp", ar: 2.8407, plate: [0.4748, 0.9478, 0.4011, 0.732], fill: ["#ffffff", "#e6f8ff", "#8fdcff"], stroke: "#06244a", glow: "rgba(110,200,255,0.55)" },
+  royal: { src: "/signs/sign-7.webp", ar: 2.9088, plate: [0.4842, 0.9483, 0.41, 0.73], fill: ["#fff6c8", "#ffd45a", "#d98f1a"], stroke: "#3a0606", glow: "rgba(255,120,60,0.55)" },
+};
+const SIGN_H = { sm: 32, md: 40, lg: 52 } as const;
+
+/** The Parivar sign on its level badge: a winged crest with the sign written on the name plate. */
 export function SignBadge({ sign, frame, size = "md" }: { sign: string; frame?: string | null; size?: "sm" | "md" | "lg" }) {
-  const t = TIERS[frameKey(frame)];
-  const h = size === "lg" ? 30 : size === "sm" ? 17 : 22;
-  const fs = size === "lg" ? 15 : size === "sm" ? 9.5 : 12;
-  const ws = (size === "lg" ? 1.15 : size === "sm" ? 0.55 : 0.8) * (0.9 + t.wings * 0.12);
+  const key = frameKey(frame);
+  const art = SIGN_ART[key];
+  const h = SIGN_H[size];
+  const W = 600;
+  const H = Math.round(W / art.ar);
+  const [px0, px1, py0, py1] = art.plate;
+  // Lettering box inside the plate (a little in from the rounded ends)
+  const bx0 = (px0 + 0.008) * W;
+  const bx1 = (px1 - 0.03) * W;
+  const by0 = py0 * H;
+  const by1 = py1 * H;
+  const boxW = bx1 - bx0;
+  const text = (sign || "").toUpperCase();
+  const fullFs = (by1 - by0) * 0.86;
+  // A long sign gets a smaller font (normal letter shapes, never squashed) so it fits the plate.
+  // Start from an estimate, then measure the real width once the font has loaded and correct it.
+  const estimate = Math.min(fullFs, boxW / Math.max(1, text.length * 0.72));
+  const [fs, setFs] = useState(estimate);
+  const textRef = useRef<SVGTextElement>(null);
+  useLayoutEffect(() => {
+    let live = true;
+    const fit = () => {
+      const el = textRef.current;
+      if (!el || !live) return;
+      el.setAttribute("font-size", String(fullFs));
+      el.setAttribute("letter-spacing", String(fullFs * 0.02));
+      const w = el.getComputedTextLength();
+      const next = w > boxW ? (fullFs * boxW) / w : fullFs;
+      el.setAttribute("font-size", String(next));
+      el.setAttribute("letter-spacing", String(next * 0.02));
+      setFs(next);
+    };
+    fit();
+    if (typeof document !== "undefined" && document.fonts?.ready) void document.fonts.ready.then(fit);
+    return () => {
+      live = false;
+    };
+  }, [text, fullFs, boxW]);
+  // Unique per badge: a shared id breaks when the first badge using it sits in a hidden tab (the text then shows as an empty outline)
+  const gid = `sg-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   return (
-    <span className="relative inline-flex items-center align-middle" style={{ height: h, filter: t.glow !== "transparent" ? `drop-shadow(0 0 6px ${t.glow})` : undefined }}>
-      {t.wings > 0 ? (
-        <span className="-mr-1" style={{ marginLeft: size === "sm" ? -2 : -4 }}>
-          <Wing side="l" scale={ws} a={t.a} b={t.b} />
-        </span>
-      ) : null}
-      <span className="relative inline-flex items-center rounded-full px-2.5 font-extrabold tracking-wide" style={{ height: h, fontSize: fs, color: t.ink, background: `linear-gradient(180deg, ${t.a}, ${t.b})`, boxShadow: `inset 0 1px 0 rgba(255,255,255,0.55), inset 0 -2px 0 rgba(0,0,0,0.18), 0 0 0 1.5px ${t.b}` }}>
-        {t.gem ? <span className="mr-1 inline-block h-[0.55em] w-[0.55em] rotate-45 rounded-[2px]" style={{ background: t.gem, boxShadow: `0 0 5px ${t.gem}` }} aria-hidden /> : null}
-        {sign}
-      </span>
-      {t.wings > 0 ? (
-        <span className="-ml-1" style={{ marginRight: size === "sm" ? -2 : -4 }}>
-          <Wing side="r" scale={ws} a={t.a} b={t.b} />
-        </span>
-      ) : null}
+    <span className="relative inline-block shrink-0 align-middle" style={{ height: h, width: h * art.ar, filter: `drop-shadow(0 0 ${size === "sm" ? 3 : 6}px ${art.glow})` }} title={`${sign} · ${frameName(frame)}`}>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" role="img" aria-label={`${sign} sign, ${frameName(frame)} frame`}>
+        <defs>
+          <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor={art.fill[0]} />
+            <stop offset="0.5" stopColor={art.fill[1]} />
+            <stop offset="1" stopColor={art.fill[2]} />
+          </linearGradient>
+        </defs>
+        <image href={art.src} x="0" y="0" width={W} height={H} preserveAspectRatio="none" />
+        <filter id={`${gid}-sh`} x="-10%" y="-30%" width="120%" height="160%">
+          <feDropShadow dx="0" dy={fs * 0.06} stdDeviation={fs * 0.05} floodColor={art.stroke} floodOpacity="0.9" />
+        </filter>
+        <g transform={`translate(${(bx0 + bx1) / 2} ${(by0 + by1) / 2})`} filter={`url(#${gid}-sh)`}>
+          <text
+            ref={textRef}
+            x="0"
+            y="0"
+            dy="0.36em"
+            textAnchor="middle"
+            fontFamily="var(--font-sans), system-ui, sans-serif"
+            fontWeight={800}
+            fontSize={fs}
+            letterSpacing={fs * 0.02}
+            fill={`url(#${gid})`}
+          >
+            {text}
+          </text>
+        </g>
+      </svg>
     </span>
   );
 }

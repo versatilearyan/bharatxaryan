@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ImageOff } from "lucide-react";
 import { SvgaAnim } from "@/components/effects/SvgaAnim";
 import { readAssetType, type ShopAssetType } from "@/lib/api/shop";
+import { cutoutSrc } from "@/lib/app/cutout";
 
 /** The asset type the backend gave, or else the one the URL's file extension implies (query string and hash ignored). */
 export function assetTypeOf(url: string | undefined, given?: string): ShopAssetType | undefined {
@@ -57,6 +58,17 @@ export function ShopProductAsset({ url, type, name, className = "" }: { url?: st
   const reduced = useReducedMotion();
   const [box, near] = useNearViewport<HTMLDivElement>();
   const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
+  // Photos uploaded with a black or white/checkered backdrop: show them with it removed
+  const [imgSrc, setImgSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (!url || kind !== "IMAGE" || !near || imgSrc) return;
+    let live = true;
+    cutoutSrc(url).then((s) => live && setImgSrc(s));
+    return () => {
+      live = false;
+    };
+  }, [url, kind, near, imgSrc]);
+  const src = kind === "IMAGE" ? imgSrc : url;
 
   const fallback = (
     <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted" role="img" aria-label={`${name}: picture unavailable`}>
@@ -86,8 +98,9 @@ export function ShopProductAsset({ url, type, name, className = "" }: { url?: st
       ) : (
         <>
           {/* eslint-disable-next-line @next/next/no-img-element -- remote product art from any host, sized by the box */}
+          {src && (
           <img
-            src={url}
+            src={src}
             alt={name}
             loading="lazy"
             decoding="async"
@@ -96,6 +109,7 @@ export function ShopProductAsset({ url, type, name, className = "" }: { url?: st
             onError={() => setState("failed")}
             className={`h-full w-full object-contain transition-opacity ${state === "ready" ? "opacity-100" : "opacity-0"}`}
           />
+          )}
           {state === "loading" && <span className="absolute inset-3 animate-pulse rounded-2xl bg-cream/5" aria-hidden />}
         </>
       )}

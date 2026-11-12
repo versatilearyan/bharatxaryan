@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, ChevronLeft, Coins as CoinsI, Gift, Heart as HeartI, House, Landmark, Lock, MessagesSquare, Pin, Send, Settings2, Smile, Star as StarI, Trash2 } from "lucide-react";
-import { Glyph, KIND_GLYPH, RewardArt, TILE_GLYPH } from "./ParivarUi";
+import { Check, ChevronDown, ChevronLeft, Coins as CoinsI, Gift, Heart as HeartI, House, Landmark, Lock, MessagesSquare, Pin, Plus, Send, Settings2, Smile, Star as StarI, Trash2 } from "lucide-react";
+import { Glyph, KIND_GLYPH, RewardArt } from "./ParivarUi";
 import { GiftArt } from "@/components/art/GiftArt";
 import type { GiftId } from "@/lib/app/types";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -96,25 +96,36 @@ const TILES: { key: Exclude<SheetName, null>; icon?: string; label: string; sub:
   { key: "chori", icon: "🥷", label: "Chori", sub: "Raid rival treasuries" },
 ];
 
+/** Full-colour Panchayat art for each feature tile. */
+const TILE_ART: Record<string, string> = { chat: "P_CHAT", gift: "P_GIFT", gacha: "P_DICE", cheer: "P_DHOL", chests: "P_CHEST", shop: "P_POTLI", kavach: "P_KAVACH", chori: "P_MASK", voice: "P_MIC" };
+
+function TileArt({ k }: { k: string }) {
+  return (
+    <span className="grid h-[48px] w-[48px] shrink-0 place-items-center rounded-[14px_16px_14px_16px] bg-[radial-gradient(circle_at_50%_35%,#5a2a1c,#2a120f)] shadow-[inset_0_1px_0_rgba(255,220,160,0.18),0_4px_10px_-4px_rgba(0,0,0,0.8)] ring-1 ring-gold/40">
+      <RewardArt kind={TILE_ART[k] ?? "EXP"} size={34} />
+    </span>
+  );
+}
+
 export function FeatureTiles({ p, onOpen }: { p: ParivarProfile; onOpen: (s: Exclude<SheetName, null>) => void }) {
   const { info: voice, go: onVoice } = useParivarVoice(p);
   return (
     <div className="grid grid-cols-2 gap-2">
       {TILES.map((t) => (
-        <button key={t.key} type="button" onClick={() => onOpen(t.key)} className="flex items-center gap-3 rounded-2xl bg-white/[0.045] p-3 text-left ring-1 ring-white/10 backdrop-blur-sm transition active:scale-[0.98]">
-          <Glyph icon={TILE_GLYPH[t.key]} size={42} />
+        <button key={t.key} type="button" onClick={() => onOpen(t.key)} className="group relative flex items-center gap-3 overflow-hidden rounded-[18px_14px_18px_16px] bg-gradient-to-br from-[#4a1a26]/90 via-[#2c1219]/90 to-[#1c0e14]/90 p-3 text-left shadow-[0_8px_18px_-12px_rgba(0,0,0,0.9)] ring-1 ring-gold/20 transition active:scale-[0.97] active:ring-gold/50">
+          <TileArt k={t.key} />
           <span className="min-w-0">
-            <span className="block truncate text-[13px] font-bold text-cream">{t.label}</span>
-            <span className="block truncate text-[10.5px] text-muted">{t.sub}</span>
+            <span className="block truncate font-display text-[14px] font-extrabold text-cream">{t.label}</span>
+            <span className="block truncate text-[11px] font-semibold text-gold/60">{t.sub}</span>
           </span>
         </button>
       ))}
       {voice?.enabled ? (
-        <button type="button" onClick={onVoice} className="flex items-center gap-3 rounded-2xl bg-white/[0.045] p-3 text-left ring-1 ring-white/10 backdrop-blur-sm transition active:scale-[0.98]">
-          <Glyph icon={TILE_GLYPH.voice} size={42} />
+        <button type="button" onClick={onVoice} className="group relative flex items-center gap-3 overflow-hidden rounded-[18px_14px_18px_16px] bg-gradient-to-br from-[#4a1a26]/90 via-[#2c1219]/90 to-[#1c0e14]/90 p-3 text-left shadow-[0_8px_18px_-12px_rgba(0,0,0,0.9)] ring-1 ring-gold/20 transition active:scale-[0.97] active:ring-gold/50">
+          <TileArt k="voice" />
           <span className="min-w-0">
-            <span className="block truncate text-[13px] font-bold text-cream">Voice room</span>
-            <span className="block truncate text-[10.5px] text-muted">{voice.roomId ? "Open now" : voice.unlocked ? "Start one" : `Unlocks at level ${voice.minLevel}`}</span>
+            <span className="block truncate font-display text-[14px] font-extrabold text-cream">Voice room</span>
+            <span className="block truncate text-[11px] font-semibold text-gold/60">{voice.roomId ? "Open now" : voice.unlocked ? "Start one" : `Unlocks at level ${voice.minLevel}`}</span>
           </span>
         </button>
       ) : null}
@@ -154,9 +165,13 @@ export function CheerSheet({ p, open, onClose, onChanged }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [burst, setBurst] = useState(0);
   return (
-    <BottomSheet open={open} onClose={onClose} title="📣 Cheer">
+    <BottomSheet open={open} onClose={onClose} title="Cheer" className="border-t-gold/35 bg-gradient-to-b from-[#3a1420] via-[#24101a] to-[#160c12]">
+      <div className="pattern-panchayat pointer-events-none absolute inset-x-0 top-0 h-40 opacity-40 [mask-image:linear-gradient(to_bottom,black,transparent)]" aria-hidden />
       <div className="relative px-4 pb-6">
-        <p className="text-[12.5px] text-muted">Cheer costs coins from your wallet and gives your Parivar EXP.</p>
+        <div className="flex items-center gap-3 rounded-[16px_20px_16px_18px] border border-dashed border-gold/25 bg-black/20 px-3 py-2.5">
+          <RewardArt kind="P_DHOL" size={36} />
+          <p className="text-[12.5px] leading-snug font-semibold text-cream/70">Bajao dhol! Cheer costs coins from your wallet and gives your Parivar EXP.</p>
+        </div>
         {!d.data ? (
           <Loading error={d.error} retry={d.reload} />
         ) : (
@@ -180,16 +195,16 @@ export function CheerSheet({ p, open, onClose, onChanged }: Props) {
                       setBusy(null);
                     }
                   }}
-                  className="flex w-full items-center gap-3 rounded-2xl bg-surface p-3 text-left ring-1 ring-line disabled:opacity-60"
+                  className="flex w-full items-center gap-3 rounded-[18px_14px_18px_16px] bg-gradient-to-br from-[#4a1a26]/90 via-[#2c1219]/90 to-[#1c0e14]/90 p-3 text-left shadow-[0_8px_18px_-12px_rgba(0,0,0,0.9)] ring-1 ring-gold/20 transition active:scale-[0.98] active:ring-gold/50 disabled:opacity-60"
                 >
-                  <span className="grid h-11 w-11 place-items-center rounded-xl bg-gold/15 text-[20px]" aria-hidden>
-                    {t.times >= 100 ? "🎆" : t.times >= 10 ? "🎉" : "👏"}
+                  <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[14px_16px_14px_16px] bg-[radial-gradient(circle_at_50%_35%,#5a2a1c,#2a120f)] shadow-[inset_0_1px_0_rgba(255,220,160,0.18),0_4px_10px_-4px_rgba(0,0,0,0.8)] ring-1 ring-gold/40" aria-hidden>
+                    <RewardArt kind={t.times >= 100 ? "P_ANAAR" : t.times >= 10 ? "P_THALI" : "P_DHOL"} size={40} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[14px] font-bold text-cream">{t.name}</span>
-                    <span className="text-[11.5px] text-muted">+{n(t.expGain)} EXP · up to {n(t.dailyLimit)} a day</span>
+                    <span className="block font-display text-[15px] font-extrabold text-cream">{t.name}</span>
+                    <span className="text-[11.5px] font-semibold text-gold/60">+{n(t.expGain)} EXP · up to {n(t.dailyLimit)} a day</span>
                   </span>
-                  <span className="flex items-center gap-1 text-[13px] font-extrabold text-gold">
+                  <span className="flex items-center gap-1 rounded-full bg-gradient-to-b from-[#ffe08a] to-[#e0a842] px-3 py-1.5 text-[13px] font-extrabold text-[#3a2208] shadow-[0_3px_10px_-3px_rgba(242,181,46,0.6)]">
                     <Coin className="h-4 w-4" /> {n(t.coinsCost)}
                   </span>
                 </button>
@@ -200,9 +215,9 @@ export function CheerSheet({ p, open, onClose, onChanged }: Props) {
         <AnimatePresence>
           {burst ? (
             <motion.div key={burst} className="pointer-events-none absolute inset-x-0 top-6 flex justify-center gap-2 text-[26px]" initial={{ opacity: 1, y: 0 }} animate={{ opacity: 0, y: -90 }} transition={{ duration: 1.4 }} aria-hidden>
-              {["🎉", "✨", "👏", "🎊", "✨"].map((e, i) => (
+              {["EXP", "P_ANAAR", "P_DHOL", "P_ANAAR", "EXP"].map((k, i) => (
                 <motion.span key={i} animate={{ rotate: [0, (i % 2 ? 1 : -1) * 25, 0] }}>
-                  {e}
+                  <RewardArt kind={k} size={30} />
                 </motion.span>
               ))}
             </motion.div>
@@ -336,23 +351,54 @@ const PILE: [string, number, number][] = [
   ["#c2263f", 146, 102],
 ];
 
-function Machine({ phase, name, dropColor }: { phase: Phase; name: string; dropColor: string }) {
+/** Shrinks its child (never grows it) so it fits the space it is given, keeping the whole screen on one page with no scrolling. */
+function FitBox({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const outer = useRef<HTMLDivElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const o = outer.current;
+    const i = inner.current;
+    if (!o || !i || typeof ResizeObserver === "undefined") return;
+    const fit = () => {
+      const h = i.offsetHeight;
+      const w = i.offsetWidth;
+      if (!h || !w) return;
+      setScale(Math.min(1, o.clientHeight / h, o.clientWidth / w));
+    };
+    const ro = new ResizeObserver(fit);
+    ro.observe(o);
+    ro.observe(i);
+    fit();
+    return () => ro.disconnect();
+  }, []);
+  return (
+    <div ref={outer} className={`relative flex items-start justify-center overflow-visible ${className}`}>
+      <div ref={inner} className="shrink-0" style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Machine({ phase, name, dropColor, controls }: { phase: Phase; name: string; dropColor: string; controls?: React.ReactNode }) {
   const spin = phase === "spin";
   return (
-    <motion.div className="relative mx-auto w-[300px]" animate={spin ? { x: [0, -3, 3, -3, 3, 0], rotate: [0, -0.6, 0.6, -0.6, 0.6, 0] } : { x: 0, rotate: 0 }} transition={spin ? { duration: 0.5, repeat: Infinity } : { duration: 0.2 }}>
-      <div className="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] opacity-70 blur-2xl" style={{ background: "radial-gradient(circle at 50% 30%, rgba(240,205,130,0.35), transparent 65%)" }} aria-hidden />
-      {/* crown */}
-      <div className="relative mx-auto h-11 w-[268px] rounded-t-[22px] bg-gradient-to-b from-[#f2d595] via-[#c79a4b] to-[#7d5724] shadow-[0_-2px_0_rgba(255,255,255,0.25)_inset]">
-        <p className="absolute inset-0 grid place-items-center font-display text-[13px] font-extrabold tracking-[0.2em] text-[#3a2208] uppercase">{name}</p>
-        <div className="absolute inset-x-4 bottom-1 flex justify-between" aria-hidden>
-          {Array.from({ length: 9 }).map((_, i) => (
-            <motion.span key={i} className="h-1.5 w-1.5 rounded-full bg-[#fff6d8]" animate={{ opacity: spin ? [0.2, 1, 0.2] : [0.7, 1, 0.7] }} transition={{ duration: spin ? 0.4 : 2, repeat: Infinity, delay: i * 0.08 }} style={{ boxShadow: "0 0 6px #ffe7a3" }} />
+    <motion.div className="relative mx-auto w-[316px]" animate={spin ? { x: [0, -3, 3, -3, 3, 0], rotate: [0, -0.6, 0.6, -0.6, 0.6, 0] } : { x: 0, rotate: 0 }} transition={spin ? { duration: 0.5, repeat: Infinity } : { duration: 0.2 }}>
+      <div className="pointer-events-none absolute -inset-8 -z-10 rounded-[48px] opacity-80 blur-2xl" style={{ background: "radial-gradient(circle at 50% 35%, rgba(255,190,110,0.35), transparent 65%)" }} aria-hidden />
+      {/* canopy: a maroon jharokha top with a gold rim and marquee bulbs */}
+      <div className="relative mx-auto h-[18px] w-[200px] rounded-t-[100px] bg-gradient-to-b from-[#ff8a5b] to-[#e0563a] shadow-[inset_0_2px_0_rgba(255,255,255,0.3)]" aria-hidden />
+      <div className="relative mx-auto h-12 w-[300px] rounded-[16px] bg-gradient-to-b from-[#a3354f] via-[#7a1a30] to-[#5a1426] shadow-[inset_0_2px_0_rgba(255,255,255,0.18),0_0_0_3px_#e7bc72]">
+        <div className="absolute inset-x-5 top-1/2 flex -translate-y-1/2 justify-between" aria-hidden>
+          {Array.from({ length: 10 }).map((_, i) => (
+            <motion.span key={i} className="h-3 w-3 rounded-full bg-[#fff6d8]" animate={{ opacity: spin ? [0.25, 1, 0.25] : [0.75, 1, 0.75] }} transition={{ duration: spin ? 0.4 : 2, repeat: Infinity, delay: i * 0.08 }} style={{ boxShadow: "0 0 8px #ffe7a3, inset 0 -2px 2px rgba(201,130,26,0.5)" }} />
           ))}
         </div>
       </div>
+      <div className="relative mx-auto h-3 w-[276px] bg-gradient-to-b from-[#f2d595] to-[#b98b44]" aria-hidden />
       {/* glass dome */}
-      <div className="relative mx-auto h-[236px] w-[268px] overflow-hidden border-x-[6px] border-[#b98b44] bg-gradient-to-b from-[#1a1018] to-[#0d0709]" style={{ boxShadow: "inset 0 0 40px rgba(0,0,0,0.7)" }}>
-        <div className="pointer-events-none absolute inset-0 opacity-60" style={{ background: "radial-gradient(circle at 50% 100%, rgba(240,205,130,0.25), transparent 60%)" }} aria-hidden />
+      <div className="relative mx-auto h-[236px] w-[268px] overflow-hidden border-x-[7px] border-[#e7bc72] bg-gradient-to-b from-[#5a1e2c]/70 via-[#3a1420]/60 to-[#24101a]/80" style={{ boxShadow: "inset 0 0 40px rgba(0,0,0,0.55)" }}>
+        <div className="pointer-events-none absolute inset-0 opacity-70" style={{ background: "radial-gradient(circle at 50% 100%, rgba(255,190,110,0.35), transparent 60%)" }} aria-hidden />
         <div className="absolute inset-0">
           {PILE.map(([c, x, y], i) => (
             <motion.span
@@ -366,36 +412,53 @@ function Machine({ phase, name, dropColor }: { phase: Phase; name: string; dropC
             </motion.span>
           ))}
         </div>
-        {/* glass reflections */}
-        <div className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(115deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.05) 18%, transparent 30%, transparent 70%, rgba(255,255,255,0.06) 82%, transparent 100%)" }} aria-hidden />
-        <div className="pointer-events-none absolute top-3 left-3 h-24 w-3 rotate-[14deg] rounded-full bg-white/25 blur-[2px]" aria-hidden />
+        <div className="pointer-events-none absolute inset-0" style={{ background: "linear-gradient(115deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.05) 18%, transparent 30%, transparent 70%, rgba(255,255,255,0.07) 82%, transparent 100%)" }} aria-hidden />
+        <div className="pointer-events-none absolute top-3 left-3 h-24 w-3 rotate-[14deg] rounded-full bg-white/30 blur-[2px]" aria-hidden />
+        <div className="absolute inset-x-[30%] bottom-2 h-1.5 rounded-full bg-white/70" aria-hidden />
       </div>
-      {/* waist */}
-      <div className="relative mx-auto h-4 w-[268px] bg-gradient-to-b from-[#f2d595] via-[#b78a3d] to-[#6b4818]" />
-      {/* cabinet with dispenser */}
-      <div className="relative mx-auto h-[120px] w-[268px] rounded-b-[24px] bg-gradient-to-b from-[#34172a] via-[#22101c] to-[#12080e] shadow-[0_24px_40px_-14px_rgba(0,0,0,0.9)]" style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12), 0 24px 40px -14px rgba(0,0,0,0.9)" }}>
-        <div className="absolute inset-y-0 left-0 w-1.5 rounded-bl-[24px] bg-[#b98b44]" aria-hidden />
-        <div className="absolute inset-y-0 right-0 w-1.5 rounded-br-[24px] bg-[#b98b44]" aria-hidden />
-        {/* knob */}
-        <div className="absolute top-5 left-5 grid h-[62px] w-[62px] place-items-center rounded-full bg-gradient-to-b from-[#3a2a33] to-[#120a10] shadow-[inset_0_2px_6px_rgba(255,255,255,0.15),0_6px_14px_rgba(0,0,0,0.6)]">
-          <motion.span className="relative block h-11 w-11 rounded-full bg-gradient-to-b from-[#f2d595] to-[#9a6f2c]" animate={{ rotate: spin ? 720 : 0 }} transition={{ duration: spin ? 1.4 : 0.4, ease: "easeInOut" }} style={{ boxShadow: "inset 0 2px 4px rgba(255,255,255,0.5), 0 3px 8px rgba(0,0,0,0.6)" }}>
-            <span className="absolute top-1.5 left-1/2 h-4 w-1.5 -translate-x-1/2 rounded-full bg-[#3a2208]" />
-          </motion.span>
+      {/* cabinet: cream and gold, with the dispenser on the left and the roll buttons on the right */}
+      <div className="relative mx-auto mt-0 rounded-t-[14px] bg-gradient-to-b from-[#fbe9c0] to-[#f0cd82] px-2 pt-2.5 pb-2 shadow-[inset_0_2px_0_rgba(255,255,255,0.6)]" style={{ width: 300 }}>
+        <div className="flex h-[132px] gap-1.5">
+          <div className="relative flex w-[92px] shrink-0 flex-col items-center justify-center rounded-xl bg-gradient-to-b from-[#a3354f] to-[#6e1428] shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]">
+            <span className="h-2 w-14 rounded-full bg-[#2a0a12] shadow-[0_1px_0_rgba(255,255,255,0.25)]" aria-hidden />
+            {/* little striped awning over the chute */}
+            <span className="mt-2.5 flex h-4 w-[64px] overflow-hidden rounded-t-md" aria-hidden>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <span key={i} className={`h-full flex-1 rounded-b-full ${i % 2 ? "bg-[#fff6dc]" : "bg-[#f2b52e]"}`} />
+              ))}
+            </span>
+            <span className="relative h-[50px] w-[56px] rounded-b-[28px] bg-[#1a060c] shadow-[inset_0_8px_14px_rgba(0,0,0,0.9)]" aria-hidden />
+            <span className="mt-2 h-1.5 w-14 rounded-full bg-[#f2b52e]" aria-hidden />
+            <AnimatePresence>
+              {phase === "drop" || phase === "open" ? (
+                <motion.div className="absolute top-[38px] left-1/2 z-10 -ml-[29px]" initial={{ y: -260, opacity: 0, scale: 0.8 }} animate={{ y: [-260, 6, -14, 6], opacity: 1, scale: 1 }} transition={{ duration: 0.85, times: [0, 0.6, 0.8, 1], ease: "easeIn" }}>
+                  <Capsule color={dropColor} size={58} open={phase === "open" ? 1 : 0} />
+                  {phase === "open" ? <motion.span className="absolute top-1/2 left-1/2 block h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full" initial={{ opacity: 0, scale: 0.2 }} animate={{ opacity: [0, 1, 0], scale: [0.2, 1.5, 2.2] }} transition={{ duration: 0.7 }} style={{ background: `radial-gradient(circle, ${dropColor}, rgba(255,240,200,0.6) 30%, transparent 65%)` }} /> : null}
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+          <div className="flex min-w-0 flex-1 gap-1.5">{controls}</div>
         </div>
-        {/* chute */}
-        <div className="absolute top-6 right-6 h-[70px] w-[132px] rounded-2xl bg-black shadow-[inset_0_8px_16px_rgba(0,0,0,0.9),0_0_0_3px_#b98b44]" aria-hidden>
-          <div className="absolute inset-x-2 top-1 h-3 rounded-full bg-gradient-to-b from-white/15 to-transparent" />
-        </div>
-        <AnimatePresence>
-          {phase === "drop" || phase === "open" ? (
-            <motion.div className="absolute top-[26px] right-[53px] z-10" initial={{ y: -230, opacity: 0, scale: 0.8 }} animate={{ y: [-230, 6, -14, 6], opacity: 1, scale: 1 }} transition={{ duration: 0.85, times: [0, 0.6, 0.8, 1], ease: "easeIn" }}>
-              <Capsule color={dropColor} size={58} open={phase === "open" ? 1 : 0} />
-              {phase === "open" ? <motion.span className="absolute top-1/2 left-1/2 block h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full" initial={{ opacity: 0, scale: 0.2 }} animate={{ opacity: [0, 1, 0], scale: [0.2, 1.5, 2.2] }} transition={{ duration: 0.7 }} style={{ background: `radial-gradient(circle, ${dropColor}, rgba(255,240,200,0.6) 30%, transparent 65%)` }} /> : null}
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
       </div>
+      <div className="relative mx-auto h-3 rounded-b-[10px] bg-gradient-to-b from-[#e0563a] to-[#a3354f] shadow-[0_18px_30px_-12px_rgba(0,0,0,0.9)]" style={{ width: 312 }} aria-hidden />
     </motion.div>
+  );
+}
+
+/** A round medallion roll button that sits in the machine's cabinet. */
+function RollButton({ label, sub, tone, badge, disabled, onClick }: { label: string; sub: string; tone: "gold" | "maroon"; badge?: string; disabled?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" disabled={disabled} onClick={onClick} className="group relative flex flex-1 flex-col items-center justify-center rounded-xl bg-gradient-to-b from-[#a3354f] to-[#6e1428] px-1 shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)] transition active:scale-[0.97] disabled:opacity-50">
+      {badge ? <span className="absolute -top-2 right-1 z-10 rounded-full bg-gradient-to-b from-[#3fd18f] to-[#1f9a63] px-2 py-0.5 text-[9.5px] font-extrabold text-white shadow ring-2 ring-[#fbe9c0]">{badge}</span> : null}
+      <span className={`grid h-[58px] w-[58px] place-items-center rounded-full ring-4 shadow-[0_4px_10px_rgba(0,0,0,0.45),inset_0_3px_4px_rgba(255,255,255,0.45)] transition group-active:translate-y-0.5 ${tone === "gold" ? "bg-gradient-to-b from-[#ffe08a] to-[#e0a842] ring-[#fff3d0]" : "bg-gradient-to-b from-[#ff8a5b] to-[#e0563a] ring-[#ffd3b0]"}`}>
+        <svg width="28" height="28" viewBox="0 0 24 24" aria-hidden>
+          <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.3l-5.9 3.2 1.2-6.5L2.5 9.4l6.6-.9z" fill="#fff" stroke={tone === "gold" ? "#c9821a" : "#a3354f"} strokeWidth="1.2" strokeLinejoin="round" />
+        </svg>
+      </span>
+      <span className="mt-1.5 font-display text-[15px] leading-none font-extrabold text-[#fff3da]">{label}</span>
+      <span className="mt-1 line-clamp-1 text-[10px] font-bold text-[#f0cd82]">{sub}</span>
+    </button>
   );
 }
 
@@ -456,128 +519,154 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
     }
   };
 
+  const tenSub = m
+    ? (() => {
+        const free = canFree ? 1 : 0;
+        const tk = Math.min(Math.max(0, 10 - free), d.data?.tickets ?? 0);
+        const gold = Math.max(0, 10 - free - tk) * m.rollPriceCoins;
+        return [free ? "1 free" : "", tk ? `${tk} card${tk > 1 ? "s" : ""}` : "", gold ? `${n(gold)} gold` : ""].filter(Boolean).join(" + ");
+      })()
+    : "";
+
   return (
     <AnimatePresence>
       {open ? (
-        <motion.div className="absolute inset-0 z-50 flex flex-col overflow-hidden bg-[#0d0709]" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 320, damping: 36 }} role="dialog" aria-modal="true" aria-label="Parivar Gacha">
-          <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: "radial-gradient(circle at 50% 8%, rgba(240,205,130,0.22), transparent 45%), repeating-conic-gradient(from 0deg at 50% 18%, rgba(240,205,130,0.05) 0deg 6deg, transparent 6deg 12deg), linear-gradient(180deg, #2a1220, #0d0709 60%)" }} aria-hidden />
-          <header className="relative z-10 flex items-center gap-2 px-3 pt-3 pb-2">
-            <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full bg-white/[0.07] text-cream ring-1 ring-white/10 active:scale-95" aria-label="Back">
-              <ChevronLeft className="h-6 w-6" aria-hidden />
-            </button>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-display text-[17px] leading-tight font-extrabold text-cream">{p.name}</p>
-              <p className="text-[11px] font-semibold tracking-[0.16em] text-gold/80 uppercase">Parivar Gacha</p>
-            </div>
+        <motion.div className="absolute inset-0 z-50 flex flex-col overflow-hidden bg-[#3a1420]" initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} transition={{ type: "spring", stiffness: 320, damping: 36 }} role="dialog" aria-modal="true" aria-label="Parivar Gacha">
+          {/* sunburst behind the machine */}
+          <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: "repeating-conic-gradient(from 0deg at 50% 42%, rgba(255,214,150,0.07) 0deg 8deg, transparent 8deg 16deg), radial-gradient(circle at 50% 42%, #7a2436 0%, #4a1626 45%, #24101a 100%)" }} aria-hidden />
+          <div className="pattern-panchayat pointer-events-none absolute inset-0 opacity-25" aria-hidden />
+
+          {/* curved top banner */}
+          <div className="relative z-10 shrink-0">
+            <div className="absolute inset-x-0 top-0 bottom-0 rounded-b-[50%_36px] bg-gradient-to-b from-[#c2263f] via-[#a3354f] to-[#7a1a30] shadow-[0_10px_0_-4px_#f2b52e,0_14px_30px_-10px_rgba(0,0,0,0.7)]" aria-hidden />
+            <header className="pt-safe relative flex h-14 items-center px-2">
+              <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full text-[#fff3da] active:bg-white/10" aria-label="Back">
+                <ChevronLeft className="h-6 w-6" aria-hidden />
+              </button>
+              <p className="flex-1 truncate pr-10 text-center font-display text-[18px] font-extrabold text-[#fff3da] drop-shadow-[0_2px_0_rgba(90,20,38,0.6)]">{m ? `${m.name} Gacha` : "Parivar Gacha"}</p>
+            </header>
             {d.data ? (
-              <span className="flex items-center gap-1.5">
-                <span className="flex items-center gap-1.5 rounded-full bg-white/[0.07] px-3 py-1.5 text-[12.5px] font-bold text-gold ring-1 ring-white/10" title="Parivar fund">
-                  <Landmark className="h-3.5 w-3.5" strokeWidth={1.8} aria-hidden /> {n(d.data.funds)}
+              <div className="relative flex gap-2 px-3 pb-5">
+                <span className="flex min-w-0 flex-1 items-center gap-1.5 rounded-[12px] bg-black/30 py-1.5 pr-1.5 pl-1.5 ring-1 ring-[#f2b52e]/40" title="Family fund">
+                  <RewardArt kind="FUNDS" size={26} />
+                  <span className="text-[11px] leading-tight font-extrabold text-[#fff3da]/85">Family Fund</span>
+                  <span className="ml-auto text-[13.5px] font-extrabold text-[#ffe08a]">{n(d.data.funds)}</span>
                 </span>
-                <span className="flex items-center gap-1 rounded-full bg-white/[0.07] py-1 pr-1 pl-3 text-[12.5px] font-bold text-cream ring-1 ring-white/10" title="Your Gacha tickets">
-                  🎟️ {n(d.data.tickets)}
-                  <button type="button" disabled={buying} onClick={() => void buyTickets(1)} className="ml-0.5 grid h-6 w-6 place-items-center rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[15px] leading-none font-extrabold text-[#2a1a0c] disabled:opacity-50" aria-label={`Buy a Gacha ticket for ${n(d.data.ticketPrice)} gold`}>
-                    +
+                <span className="flex min-w-0 flex-1 items-center gap-1.5 rounded-[12px] bg-black/30 py-1.5 pr-1.5 pl-1.5 ring-1 ring-[#f2b52e]/40" title="Your Gacha cards">
+                  <RewardArt kind="GACHA_CARD" size={26} />
+                  <span className="text-[11px] leading-tight font-extrabold text-[#fff3da]/85">Gacha Card</span>
+                  <span className="ml-auto text-[13.5px] font-extrabold text-[#ffe08a]">{n(d.data.tickets)}</span>
+                  <button type="button" disabled={buying} onClick={() => void buyTickets(1)} className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-gradient-to-b from-[#ffe08a] to-[#e0a842] text-[#7a4a10] shadow-[0_2px_6px_rgba(242,181,46,0.45)] disabled:opacity-50" aria-label={`Buy a Gacha card for ${n(d.data.ticketPrice)} gold`}>
+                    <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
                   </button>
                 </span>
-              </span>
+              </div>
             ) : null}
-          </header>
+          </div>
 
-          <div className="app-scroll relative z-10 min-h-0 flex-1 pb-28">
+          <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden pb-2">
             {!d.data ? (
               <Loading error={d.error} retry={d.reload} />
             ) : (
               <>
-                <div className="no-scrollbar mx-3 mt-1 flex gap-1.5 overflow-x-auto rounded-full bg-black/35 p-1 ring-1 ring-white/10">
-                  {d.data.machines.map((x, i) => (
-                    <button key={x.id} type="button" onClick={() => !busy && setSel(i)} className={`flex shrink-0 flex-1 items-center justify-center gap-1 rounded-full px-3.5 py-2 text-[12.5px] font-bold whitespace-nowrap transition ${i === sel ? "bg-gradient-to-b from-[#f2d595] to-[#c79a4b] text-[#2a1a0c]" : "text-cream/65"}`}>
-                      {x.name} {x.locked ? <Lock className="h-3 w-3" aria-hidden /> : null}
-                    </button>
-                  ))}
-                </div>
+                {d.data.machines.length > 1 ? (
+                  <div className="no-scrollbar mx-3 mt-3 flex shrink-0 gap-1 overflow-x-auto rounded-full bg-black/30 p-1 ring-1 ring-[#f2b52e]/25">
+                    {d.data.machines.map((x, i) => (
+                      <button key={x.id} type="button" onClick={() => !busy && setSel(i)} className={`flex shrink-0 flex-1 items-center justify-center gap-1 rounded-full px-3.5 py-1.5 text-[12.5px] font-extrabold whitespace-nowrap transition ${i === sel ? "bg-gradient-to-b from-[#ffe08a] to-[#e0a842] text-[#3a2208] shadow-[0_2px_8px_rgba(242,181,46,0.4)]" : "text-[#fff3da]/65"}`}>
+                        {x.name} {x.locked ? <Lock className="h-3 w-3" aria-hidden /> : null}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
 
                 {m ? (
                   <>
-                    <div className="mt-8">
-                      <Machine phase={phase} name={m.name} dropColor={dropColor} />
-                    </div>
-                    <p className="mt-5 px-6 text-center text-[12px] text-cream/60">
+                    <FitBox className="mt-3 min-h-0 flex-1">
+                      <Machine
+                        phase={phase}
+                        name={m.name}
+                        dropColor={dropColor}
+                        controls={
+                          m.locked ? (
+                            <div className="grid flex-1 place-items-center rounded-xl bg-gradient-to-b from-[#a3354f] to-[#6e1428] px-3 text-center shadow-[inset_0_2px_6px_rgba(0,0,0,0.35)]">
+                              <span>
+                                <Lock className="mx-auto h-7 w-7 text-[#f0cd82]" aria-hidden />
+                                <span className="mt-1.5 block text-[12px] leading-snug font-extrabold text-[#fff3da]">Opens at Parivar level {m.minLevel}</span>
+                              </span>
+                            </div>
+                          ) : (
+                            <>
+                              <RollButton label="Roll ×1" sub={canFree ? "Free" : d.data && d.data.tickets > 0 ? "1 Gacha Card" : `${n(m.rollPriceCoins)} gold`} tone="gold" badge={canFree ? "FREE" : undefined} disabled={busy} onClick={() => void roll(1)} />
+                              <RollButton label="Roll ×10" sub={tenSub} tone="maroon" disabled={busy} onClick={() => void roll(10)} />
+                            </>
+                          )
+                        }
+                      />
+                    </FitBox>
+                    <p className="mt-2 shrink-0 px-6 text-center text-[12px] font-semibold text-[#fff3da]/65">
                       {m.locked
                         ? `Your Parivar needs level ${m.minLevel} to open this machine.`
                         : canFree
                           ? `1 free roll today · the Parivar fund pays ${n(m.freeFundCost)}`
-                          : `Each roll: 1 Gacha ticket or ${n(m.rollPriceCoins)} gold`}
+                          : `Each roll: 1 Gacha Card or ${n(m.rollPriceCoins)} gold`}
                     </p>
                     {!m.locked && m.freeLeft > 0 && !fundOk ? (
-                      <p className="mx-6 mt-2 rounded-2xl bg-coral/10 px-3 py-2 text-center text-[11.5px] text-coral">Family Fund not enough for the free roll ({n(m.freeFundCost)} needed). Donate to the fund, or use a ticket or gold.</p>
+                      <p className="mx-6 mt-1.5 shrink-0 rounded-2xl bg-black/30 px-3 py-1.5 text-center text-[11.5px] font-semibold text-[#ff9ab0] ring-1 ring-[#ff9ab0]/30">Family Fund not enough for the free roll ({n(m.freeFundCost)} needed). Donate to the fund, or use a card or gold.</p>
                     ) : null}
                     {!m.locked ? (
-                      <div className="mt-3 flex justify-center gap-2">
+                      <div className="mt-2 flex shrink-0 justify-center gap-2 px-3">
                         {[1, 5, 10].map((q) => (
-                          <button key={q} type="button" disabled={buying || busy} onClick={() => void buyTickets(q)} className="rounded-full bg-white/[0.07] px-3.5 py-1.5 text-[11.5px] font-bold text-cream ring-1 ring-white/10 disabled:opacity-50">
-                            🎟️ Buy {q} · {n((d.data?.ticketPrice ?? 0) * q)} gold
+                          <button key={q} type="button" disabled={buying || busy} onClick={() => void buyTickets(q)} className="flex items-center gap-1 rounded-full bg-black/30 py-1 pr-2.5 pl-1 text-[11px] font-extrabold whitespace-nowrap text-[#fff3da] ring-1 ring-[#f2b52e]/35 active:scale-95 disabled:opacity-50">
+                            <RewardArt kind="GACHA_CARD" size={18} /> ×{q} · <Coin className="h-3.5 w-3.5" /> {n((d.data?.ticketPrice ?? 0) * q)}
                           </button>
                         ))}
                       </div>
                     ) : null}
-
-                    <div className="mx-4 mt-7">
-                      <p className="flex items-center gap-2 font-display text-[15px] font-extrabold text-cream">
-                        <span className="h-4 w-1 rounded-full bg-gold" aria-hidden /> What you can win
-                      </p>
-                      <ul className="mt-3 grid grid-cols-4 gap-2.5">
-                        {m.rewards.map((r, i) => {
-                          const G = KIND_GLYPH[r.kind] ?? Gift;
-                          const col = RARITY[r.rarity] ?? "#e7bc72";
-                          return (
-                            <motion.li key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i }} className="flex flex-col items-center text-center">
-                              <span className="relative grid h-[62px] w-[62px] place-items-center rounded-2xl bg-white/[0.05] backdrop-blur-sm" style={{ boxShadow: `0 0 0 1px ${col}77, inset 0 1px 0 rgba(255,255,255,0.12), 0 8px 20px -10px ${col}` }} aria-hidden>
-                                {r.imageUrl ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={r.imageUrl} alt="" className="h-11 w-11 object-contain" />
-                                ) : r.kind === "GIFT_CARD" && r.giftId ? (
-                                  <span className="h-10 w-10">
-                                    <GiftArt id={r.giftId as GiftId} />
-                                  </span>
-                                ) : (
-                                  <RewardArt kind={r.kind} size={44} />
-                                )}
-                                {r.kind === "GIFT_CARD" ? <span className="absolute inset-x-0 bottom-0 rounded-b-2xl bg-black/55 text-center text-[8.5px] font-bold text-cream/90">Gift Card</span> : null}
-                              </span>
-                              <span className="mt-1.5 line-clamp-2 text-[10.5px] leading-tight font-semibold text-cream/85">{r.label}</span>
-                              <span className="text-[10px] font-bold" style={{ color: col }}>
-                                {r.chance}%
-                              </span>
-                            </motion.li>
-                          );
-                        })}
-                      </ul>
-                    </div>
                   </>
                 ) : null}
               </>
             )}
           </div>
 
-          {m && !m.locked ? (
-            <div className="absolute inset-x-0 bottom-0 z-10 flex gap-3 bg-gradient-to-t from-[#0d0709] via-[#0d0709]/95 to-transparent px-4 pt-8 pb-[max(1rem,env(safe-area-inset-bottom))]">
-              <button type="button" disabled={busy} onClick={() => void roll(1)} className="relative flex h-14 flex-1 flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-[#f6dc9c] to-[#c08f43] text-[#2a1a0c] shadow-[0_10px_24px_-8px_rgba(240,205,130,0.6)] transition active:scale-[0.97] disabled:opacity-45">
-                {canFree ? <span className="absolute -top-1.5 -right-1.5 rounded-full bg-coral px-2 py-0.5 text-[9.5px] font-extrabold text-white">FREE</span> : null}
-                <span className="font-display text-[15px] leading-tight font-extrabold">Roll ×1</span>
-                <span className="text-[10.5px] font-semibold opacity-70">{canFree ? "Free roll" : d.data && d.data.tickets > 0 ? "1 ticket" : `${n(m.rollPriceCoins)} gold`}</span>
-              </button>
-              <button type="button" disabled={busy} onClick={() => void roll(10)} className="flex h-14 flex-1 flex-col items-center justify-center rounded-2xl bg-white/[0.08] text-cream ring-1 ring-gold/40 backdrop-blur-md transition active:scale-[0.97] disabled:opacity-45">
-                <span className="font-display text-[15px] leading-tight font-extrabold">Roll ×10</span>
-                <span className="text-[10.5px] font-semibold text-gold/90">
-                  {(() => {
-                    const free = canFree ? 1 : 0;
-                    const tk = Math.min(Math.max(0, 10 - free), d.data?.tickets ?? 0);
-                    const gold = Math.max(0, 10 - free - tk) * m.rollPriceCoins;
-                    return [free ? "1 free" : "", tk ? `${tk} ticket${tk > 1 ? "s" : ""}` : "", gold ? `${n(gold)} gold` : ""].filter(Boolean).join(" + ");
-                  })()}
-                </span>
-              </button>
+          {/* Reward preview strip */}
+          {m ? (
+            <div className="relative z-10 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <div className="flex items-end justify-between">
+                <span className="rounded-tr-[18px] bg-gradient-to-b from-[#ffb347] to-[#e0563a] py-2 pr-6 pl-4 font-display text-[16px] font-extrabold text-[#fff3da] shadow-[inset_0_2px_0_rgba(255,255,255,0.3)] drop-shadow-[0_2px_0_rgba(122,26,48,0.5)]">Reward Preview</span>
+                {!m.locked && m.freeLeft > 0 ? (
+                  <span className="mr-3 mb-1.5 flex items-center gap-1 text-[11.5px] font-extrabold text-[#fff3da]/80">
+                    Free roll fee: <RewardArt kind="FUNDS" size={16} /> {n(m.freeFundCost)}
+                  </span>
+                ) : null}
+              </div>
+              <div className="border-t-[3px] border-[#ffb347] bg-[#1c0c13]/95 pt-2.5 pb-1">
+                <ul className="grid grid-cols-5 gap-x-2 gap-y-2 px-3">
+                  {m.rewards.map((r, i) => {
+                    const col = RARITY[r.rarity] ?? "#e7bc72";
+                    return (
+                      <motion.li key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 * i }} className="flex min-w-0 flex-col items-center text-center">
+                        <span className="relative grid aspect-square w-full max-w-[62px] place-items-center overflow-hidden rounded-[14px] bg-gradient-to-b from-[#fff6e4] to-[#f0dcb4]" style={{ boxShadow: `0 0 0 2px ${col}, inset 0 1px 0 rgba(255,255,255,0.7), 0 8px 18px -10px ${col}` }} aria-hidden>
+                          {r.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={r.imageUrl} alt="" className="h-12 w-12 object-contain" />
+                          ) : r.kind === "GIFT_CARD" && r.giftId ? (
+                            <span className="h-11 w-11">
+                              <GiftArt id={r.giftId as GiftId} />
+                            </span>
+                          ) : (
+                            <RewardArt kind={r.kind} size={46} />
+                          )}
+                          {r.kind === "GIFT_CARD" ? <span className="absolute inset-x-0 bottom-0 bg-[#7a1a30]/85 text-center text-[9px] font-extrabold text-[#fff3da]">Gift Card</span> : null}
+                        </span>
+                        <span className="mt-1 line-clamp-1 w-full text-[10px] leading-tight font-extrabold text-[#fff3da]/90">{r.label}</span>
+                        <span className="text-[10px] font-extrabold" style={{ color: col }}>
+                          {r.chance}%
+                        </span>
+                      </motion.li>
+                    );
+                  })}
+                </ul>
+              </div>
             </div>
           ) : null}
 
