@@ -199,6 +199,8 @@ const RETIRED_GIFTS: Gift[] = [
  * Until it loads (or without the backend) the bundled list is used.
  */
 let serverGifts: Map<string, Gift> | null = null;
+/** Gifts that are off sale but still shown when someone gets them (the Newbie welcome reward). Never listed to send. */
+const rewardOnlyGifts = new Map<string, Gift>();
 const giftListeners = new Set<() => void>();
 
 /** Category tabs from the server, in order, and who can send each kind (NORMAL: anyone, VIP: VIP members, CP: your partner). */
@@ -234,6 +236,10 @@ export function setServerGifts(list: ServerGift[]) {
       g.video = { src: sg.animationUrl, poster: sg.imageUrl ?? icon, icon, ...(ratio ? { floating: true, ratio } : {}) };
       delete g.svga;
     }
+    if (sg.offSale) {
+      rewardOnlyGifts.set(sg.id, g);
+      continue;
+    }
     map.set(sg.id, g);
   }
   serverGifts = map;
@@ -254,7 +260,7 @@ export const giftCategories = (): GiftCategory[] =>
 
 export const isGiftOnSale = (id: string) => (serverGifts ? serverGifts.has(id) : GIFTS.some((g) => g.id === id));
 export const giftById = (id: string): Gift =>
-  serverGifts?.get(id) ?? GIFTS.find((g) => g.id === id) ?? RETIRED_GIFTS.find((g) => g.id === id) ?? { id: id as GiftId, name: "Gift", cost: 0, categories: [], tier: "ordinary" };
+  serverGifts?.get(id) ?? rewardOnlyGifts.get(id) ?? GIFTS.find((g) => g.id === id) ?? RETIRED_GIFTS.find((g) => g.id === id) ?? { id: id as GiftId, name: "Gift", cost: 0, categories: [], tier: "ordinary" };
 
 /** Sample YouTube videos (Blender Foundation open movies) offered in the Add Video modal. */
 export const SAMPLE_VIDEOS = [

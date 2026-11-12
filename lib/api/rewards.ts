@@ -50,6 +50,8 @@ export type ServerGift = {
   animationFormat: "SVGA" | "MP4" | null;
   animationRatio?: string | null;
   soundUrl: string | null;
+  /** Not on sale (the Newbie welcome reward gift): known so the room can show it, never listed to send. */
+  offSale?: boolean;
 };
 
 const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined);
@@ -159,6 +161,7 @@ export async function getGiftCatalog(): Promise<ServerGift[]> {
         animationFormat: fmt === "SVGA" || fmt === "MP4" ? fmt : null,
         animationRatio: str(o.animationRatio) ?? null,
         soundUrl: mediaSrc(o.soundUrl),
+        offSale: o.offSale === true,
       },
     ];
   });
