@@ -19,7 +19,7 @@ const subs = new Map<SyncTopic, Set<() => void>>();
 export function onSync(topics: SyncTopic[], cb: () => void): () => void {
   for (const t of topics) {
     if (!subs.has(t)) subs.set(t, new Set());
-    subs.get(t)!.add(cb); 
+    subs.get(t)!.add(cb);
   }
   return () => {
     for (const t of topics) subs.get(t)?.delete(cb);
