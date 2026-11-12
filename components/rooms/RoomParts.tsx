@@ -27,7 +27,7 @@ import type { RoomMessage } from "@/lib/app/types";
 import { MODE_LABEL, type RoomMode } from "./useRoomSession";
 import { RoomLevelCard } from "./RoomLevel";
 import { relationshipById, tagLevel } from "@/lib/app/tags";
-import { TagLink } from "./TagParts";
+import { SeatTagChips, TagLink } from "./TagParts";
 import type { RoomSession } from "./useRoomSession";
 import { nameFace } from "@/lib/app/fonts";
 import { ParivarTag } from "@/components/parivar/ParivarScreens";
@@ -244,7 +244,7 @@ export function RoleBadge({ role, className = "" }: { role: "owner" | "admin"; c
   );
 }
 
-export function Seat({ s, index, size = 56, gold = false, numbered = false }: { s: RoomSession; index: number; size?: number; gold?: boolean; numbered?: boolean }) {
+export function Seat({ s, index, size = 56, gold = false, numbered = false, skipTagWith = null }: { s: RoomSession; index: number; size?: number; gold?: boolean; numbered?: boolean; skipTagWith?: string | null }) {
   const person = usePeople();
   const id = s.seats[index];
   const isOwnerSeat = index === 0;
@@ -392,6 +392,8 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
         {p ? p.name : owner ? owner.name : "Empty"}
       </span>
       {p && isNewbieSeat ? <NewbieBadge className="relative z-[2]" /> : null}
+      {/* The tags this person has with others sitting in the room (the one with their seat neighbour is the link between the seats) */}
+      {p && id ? <SeatTagChips personId={id} seatedIds={s.seats} skip={skipTagWith} size={Math.max(10, Math.round(size * 0.18))} /> : null}
     </div>
   );
 }
@@ -448,13 +450,13 @@ export function Pair({ s, a, b, size, gap, gold, linked, numbered = false }: { s
   return (
     <div className="flex items-start justify-center">
       <div className="relative z-10">
-        <Seat s={s} index={a} size={size} gold={gold} numbered={numbered} />
+        <Seat s={s} index={a} size={size} gold={gold} numbered={numbered} skipTagWith={tag && !cpLevel ? y : null} />
       </div>
       {b !== undefined ? (
         <>
           {cpLevel ? <CpLink gap={gap} size={size} level={cpLevel} /> : tag ? <TagLink tag={tag} gap={gap} size={size} /> : <Heartbeat gap={gap} size={size} live={Boolean(x && y)} linked={linked} />}
           <div className="relative z-10">
-            <Seat s={s} index={b} size={size} gold={gold} numbered={numbered} />
+            <Seat s={s} index={b} size={size} gold={gold} numbered={numbered} skipTagWith={tag && !cpLevel ? x : null} />
           </div>
         </>
       ) : null}
