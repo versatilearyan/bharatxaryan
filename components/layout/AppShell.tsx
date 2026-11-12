@@ -8,6 +8,7 @@ import { RewardWon } from "@/components/market/RewardWon";
 import { PaymentReturn } from "@/components/market/PaymentReturn";
 import { AnimatePresence, motion } from "framer-motion";
 import { AppProvider, useApp, type Screen } from "@/lib/app/store";
+import { NativeBridge } from "@/components/system/NativeBridge";
 import { MarketProvider } from "@/lib/app/market-store";
 import { ParivarProvider } from "@/lib/app/parivar-store";
 import { RedPacketProvider } from "@/lib/app/redpacket-store";
@@ -76,6 +77,7 @@ export function AppShell() {
           <RedPacketProvider>
             <MusicProvider>
               <GiftNewsProvider>
+                <NativeBridge />
                 <Frame />
               </GiftNewsProvider>
             </MusicProvider>

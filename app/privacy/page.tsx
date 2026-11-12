@@ -9,7 +9,7 @@ const H = ({ children }: { children: string }) => <h2 className="pt-4 font-displ
 export default function PrivacyPage() {
   return (
     <InfoPage title="Privacy Policy">
-      <p className="text-sm">Last updated: 10 November 2026</p>
+      <p className="text-sm">Last updated: 12 November 2026</p>
       <p>Panchayat is a voice-room and chat app. This page explains what we collect, why, and the choices you have.</p>
 
       <H>What we collect</H>
@@ -19,6 +19,7 @@ export default function PrivacyPage() {
         <li>Messages and media you send in chats and rooms, including photos you upload.</li>
         <li>Voice: audio in a room is streamed live to the people in it. We do not record room audio.</li>
         <li>Device and usage data: app version, device type, and basic logs we need to keep the service secure and working.</li>
+        <li>In the Android app: a push notification token for your phone (so we can notify you of messages, gifts and follows), and your Google Play purchase records when you buy coins or VIP.</li>
       </ul>
 
       <H>How we use it</H>
@@ -42,9 +43,9 @@ export default function PrivacyPage() {
 
       <H>Keeping and deleting data</H>
       <p>
-        We keep your data while your account is active. To delete your account and the personal data tied to it, contact us from the{" "}
-        <Link href="/contact" className="text-gold underline-offset-4 hover:underline">
-          Contact page
+        We keep your data while your account is active. You can delete your account yourself in the app (Profile, then &quot;Delete my account&quot;); see{" "}
+        <Link href="/delete-account" className="text-gold underline-offset-4 hover:underline">
+          how to delete your account
         </Link>
         . Some records, such as wallet transactions, may be kept for as long as the law or fraud prevention needs.
       </p>

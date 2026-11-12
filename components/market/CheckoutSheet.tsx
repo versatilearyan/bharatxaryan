@@ -31,6 +31,10 @@ import { readToken } from "@/lib/auth/token";
 import { BILLING_FIELDS, billingErrors, cleanBilling, EMPTY_BILLING, splitName, type BillingDetails } from "@/lib/payments/billing";
 import { ACTIVE_GATEWAY, checkoutProblem, goToCheckout } from "@/lib/payments/gateway";
 import { savePending } from "@/lib/payments/pending";
+import { isNativeApp } from "@/lib/native/bridge";
+import { buyWithGooglePlay, playProductFor } from "@/lib/native/play";
+import { useMe } from "@/lib/app/me-store";
+import { forgetCached } from "@/lib/app/use-wallet";
 
 export type CheckoutItem = {
   id: string;
@@ -50,7 +54,12 @@ type Stage = "form" | "starting" | "leaving";
 const inputClass = "h-11 w-full rounded-2xl border border-line bg-surface px-4 text-[15px] text-cream placeholder:text-cream/30 focus:border-gold/50 focus:outline-none";
 
 export function CheckoutSheet({ item, onClose }: { item: CheckoutItem | null; onClose: () => void }) {
-  const { profile } = useApp();
+  const { profile, refreshCoins, toast } = useApp();
+  const me = useMe();
+  // In the Android app everything digital is bought with Google Play (Google's rule), not PayU
+  const [native, setNative] = useState(false);
+  useEffect(() => setNative(isNativeApp()), []);
+  const [playId, setPlayId] = useState<string | null | undefined>(undefined);
   const [stage, setStage] = useState<Stage>("form");
   const [billing, setBilling] = useState<BillingDetails>(EMPTY_BILLING);
   const [tried, setTried] = useState(false);
@@ -102,6 +111,41 @@ export function CheckoutSheet({ item, onClose }: { item: CheckoutItem | null; on
   const it = item ?? shown;
   const purchase = it?.purchase;
   const productId = purchase ? productIdNumber(purchase.productId) : null;
+  // Is this item on sale in Google Play?
+  useEffect(() => {
+    if (!native || !open || !purchase || productId === null) return;
+    setPlayId(undefined);
+    let live = true;
+    playProductFor(purchase.purpose, productId)
+      .then((id) => live && setPlayId(id))
+      .catch(() => live && setPlayId(null));
+    return () => {
+      live = false;
+    };
+  }, [native, open, purchase?.purpose, productId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const payPlay = async () => {
+    if (busy.current || stage !== "form" || !it || !purchase || productId === null) return;
+    busy.current = true;
+    setStage("starting");
+    setError("");
+    try {
+      await buyWithGooglePlay(purchase.purpose, productId);
+      forgetCached("inventory:");
+      await refreshCoins();
+      if (purchase.purpose === "VIP") me.refresh(true);
+      toast(purchase.purpose === "VIP" ? "VIP is on 👑" : "Added to your wallet 🪙", "gold");
+      busy.current = false;
+      setStage("form");
+      onClose();
+    } catch (e) {
+      busy.current = false;
+      setStage("form");
+      const m = e instanceof Error ? e.message : "";
+      // Closing Google's sheet is not an error
+      if (!/cancel/i.test(m)) setError(m || "The purchase didn't finish. If money was taken, it will be added soon.");
+    }
+  };
   const signedIn = Boolean(readToken());
   const canBuy = Boolean(purchase && productId !== null && signedIn);
 
@@ -143,7 +187,7 @@ export function CheckoutSheet({ item, onClose }: { item: CheckoutItem | null; on
                   <Loader2 className="h-9 w-9 animate-spin text-gold" aria-hidden />
                 </span>
               </span>
-              <p className="mt-5 font-display text-[20px] font-bold text-cream">{stage === "starting" ? "Setting up your payment…" : `Opening ${ACTIVE_GATEWAY.name}…`}</p>
+              <p className="mt-5 font-display text-[20px] font-bold text-cream">{stage === "starting" ? (native ? "Opening Google Play…" : "Setting up your payment…") : `Opening ${ACTIVE_GATEWAY.name}…`}</p>
               <p className="mt-1 text-[12px] text-muted">Don&apos;t close this screen or press back.</p>
             </motion.div>
           ) : (
@@ -166,6 +210,29 @@ export function CheckoutSheet({ item, onClose }: { item: CheckoutItem | null; on
                 <p role="status" className="rounded-2xl bg-surface p-4 text-[13px] leading-snug text-cream/85 ring-1 ring-line">
                   Sign in to buy this. Payments go through your Panchayat account so the item reaches your wallet.
                 </p>
+              ) : native ? (
+                <>
+                  <div className="space-y-1.5 rounded-2xl bg-surface p-4 text-[13px] ring-1 ring-line">
+                    <Row k={<span className="font-bold text-cream">Price</span>} v={<span className="font-display text-[16px] font-bold text-cream">{formatInr(it.inr)}</span>} />
+                    <p className="text-[11px] text-muted">Google Play shows the final price (with taxes) before you pay.</p>
+                  </div>
+                  {playId === null ? (
+                    <p role="status" className="rounded-2xl bg-surface p-4 text-[13px] leading-snug text-cream/85 ring-1 ring-line">
+                      This isn&apos;t available in the app yet. Nothing has been charged.
+                    </p>
+                  ) : null}
+                  {error ? (
+                    <p role="alert" className="rounded-2xl bg-[#3a1418] px-3.5 py-3 text-[12.5px] text-[#ffb0b4] ring-1 ring-coral/25">
+                      {error}
+                    </p>
+                  ) : null}
+                  <motion.button type="button" whileTap={{ scale: 0.97 }} onClick={() => void payPlay()} disabled={!playId} className="flex h-13 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[16px] font-extrabold text-[#2a1a0c] disabled:opacity-50">
+                    {playId === undefined ? "Checking…" : `Buy with Google Play`}
+                  </motion.button>
+                  <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-cream/45">
+                    <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden /> Paid securely through Google Play
+                  </p>
+                </>
               ) : (
                 <>
                   {/* Billing details (needed by the payment gateway) */}
