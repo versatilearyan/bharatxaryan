@@ -270,7 +270,7 @@ function readError(data: unknown): { message: string; fields: Record<string, str
 function friendly(status: number, message: string) {
   const internal = !message || message.length > 160 || /exception|stack|sql|jdbc|hibernate|smtp|at [\w.$]+\(|org\.|java\./i.test(message);
   if (status >= 500) return "Something went wrong on our side. Try again in a moment.";
-  if (status === 413) return "That file is too large for the server. Choose a smaller image.";
+  if (status === 413) return "That file is too large for the server. Choose a smaller file.";
   if (status === 415) return "The server doesn't accept that file type. Use a JPG, PNG or WebP image.";
   if (status === 429) return internal ? "Too many attempts. Wait a little and try again." : message;
   if (internal) return status === 404 ? "That service isn't available right now." : "That didn't work. Check your details and try again.";

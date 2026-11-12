@@ -5,7 +5,7 @@
  *   DELETE /api/v1/music/songs/{id}
  *   GET    /api/v1/music/search?source=audius|jamendo&q=
  */
-import { api } from "./client";
+import { ApiError, api } from "./client";
 import { mediaSrc } from "./rewards";
 import type { Song } from "@/lib/app/music";
 
@@ -44,7 +44,15 @@ export const musicApi = {
     form.append("artist", artist);
     form.append("duration", String(duration));
     form.append("rights", "true");
-    const s = readSong(await api<unknown>("/api/v1/music/songs", { ...opts, method: "POST", body: form, timeoutMs: 120_000 }), "upload");
+    let raw: unknown;
+    try {
+      raw = await api<unknown>("/api/v1/music/songs", { ...opts, method: "POST", body: form, timeoutMs: 120_000 });
+    } catch (e) {
+      // The web server in front refused the size before our app saw it: say so about the song, not about an image
+      if (e instanceof ApiError && e.status === 413) throw new Error("The server couldn't take this song because of its size limit. Please try again later, or use a smaller MP3.");
+      throw e;
+    }
+    const s = readSong(raw, "upload");
     if (!s) throw new Error("The song was saved but the app couldn't read it. Reopen the music list.");
     return s;
   },
