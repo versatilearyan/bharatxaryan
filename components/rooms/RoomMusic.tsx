@@ -1,14 +1,13 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Disc3, Heart, Music2, Pause, Play, Plus, Repeat1, SkipForward, Trash2, Upload, Volume2 } from "lucide-react";
+import { Disc3, Heart, Music2, Pause, Play, Plus, Repeat1, Search, SkipForward, Trash2, Upload, Volume2 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
-import { DAY_MS } from "@/lib/app/market";
-import { MAX_SONG_MB, REVIEW_MAX_DAYS, REVIEW_MIN_DAYS, mmss, type Song } from "@/lib/app/music";
+import { musicApi } from "@/lib/api/music";
+import { MAX_SONG_MB, mmss, spotifyTrackId, type Song } from "@/lib/app/music";
 import { useMusic } from "@/lib/app/music-store";
-import { usePeople } from "@/lib/app/people";
-import { ME_ID } from "@/lib/app/store";
+import { useApp } from "@/lib/app/store";
 
 /** The spinning-disc pill beside the top seats: what's playing in the room. Tap for the songs. */
 export function MusicPill({ className = "", onOpen, onlyMe = false }: { className?: string; onOpen: () => void; onlyMe?: boolean }) {
@@ -36,9 +35,14 @@ export function MusicPill({ className = "", onOpen, onlyMe = false }: { classNam
   );
 }
 
+function sourceLabel(song: Song) {
+  if (song.source === "audius") return "Audius";
+  if (song.source === "jamendo") return "Jamendo";
+  if (song.source === "upload") return `Uploaded by ${song.mine ? "you" : (song.uploaderName ?? "someone")}`;
+  return "Panchayat";
+}
+
 function SongRow({ song, right, active, onClick }: { song: Song; right: React.ReactNode; active?: boolean; onClick?: () => void }) {
-  const person = usePeople();
-  const by = song.uploader === "Panchayat" ? "Panchayat" : song.uploader === ME_ID ? "you" : person(song.uploader).name;
   return (
     <li className={`flex items-center gap-3 border-l-[3px] px-3 py-2.5 ${active ? "border-[#3d9bff] bg-[#3d9bff]/10" : "border-transparent"}`}>
       <button type="button" onClick={onClick} className="flex min-w-0 flex-1 items-center gap-3 text-left" disabled={!onClick}>
@@ -48,7 +52,8 @@ function SongRow({ song, right, active, onClick }: { song: Song; right: React.Re
         <span className="min-w-0 flex-1">
           <span className={`block truncate text-[14px] font-bold ${active ? "text-[#7fb6ff]" : "text-cream"}`}>{song.title}</span>
           <span className="block truncate text-[11px] text-muted">
-            {song.artist} · {mmss(song.duration)} · Uploaded by {by}
+            {song.artist}
+            {song.duration ? ` · ${mmss(song.duration)}` : ""} · {sourceLabel(song)}
           </span>
         </span>
       </button>
@@ -57,10 +62,20 @@ function SongRow({ song, right, active, onClick }: { song: Song; right: React.Re
   );
 }
 
-/** Songs ordered in the room, the library to order from, and contributing your own. */
+const OrderButton = ({ song, onOrder }: { song: Song; onOrder: () => void }) => (
+  <button type="button" onClick={onOrder} aria-label={`Order ${song.title}`} className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-[#3d9bff] px-3 text-[12px] font-bold text-white">
+    <Plus className="h-3.5 w-3.5" aria-hidden /> Order
+  </button>
+);
+
+/** Songs ordered in the room, the library to order from, and uploading your own. */
 export function MusicSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const m = useMusic();
   const [tab, setTab] = useState<"ordered" | "library" | "contribute">("ordered");
+  useEffect(() => {
+    if (open) void m.refreshSongs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   return (
     <BottomSheet open={open} onClose={onClose} title={`🎵 ${m.queue.length} ${m.queue.length === 1 ? "song" : "songs"} ordered`} tall className="h-[84%]">
       <div className="flex h-full min-h-0 flex-col">
@@ -69,7 +84,7 @@ export function MusicSheet({ open, onClose }: { open: boolean; onClose: () => vo
             [
               ["ordered", "Ordered"],
               ["library", "Library"],
-              ["contribute", "Contribute"],
+              ["contribute", "Upload"],
             ] as const
           ).map(([id, label]) => (
             <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`h-9 flex-1 rounded-full text-[13px] font-bold ${tab === id ? "bg-[#3d9bff] text-white" : "text-cream/65"}`}>
@@ -115,27 +130,130 @@ export function MusicSheet({ open, onClose }: { open: boolean; onClose: () => vo
               </div>
             )
           ) : tab === "library" ? (
-            <ul>
-              {m.library.map((s) => (
-                <SongRow
-                  key={s.id}
-                  song={s}
-                  right={
-                    <button type="button" onClick={() => m.order(s.id)} aria-label={`Order ${s.title}`} className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-[#3d9bff] px-3 text-[12px] font-bold text-white">
-                      <Plus className="h-3.5 w-3.5" aria-hidden /> Order
-                    </button>
-                  }
-                />
-              ))}
-            </ul>
+            <Library />
           ) : (
-            <Contribute />
+            <UploadTab />
           )}
         </div>
 
+        {m.onlyHere && m.current?.id === m.onlyHere ? <p className="mx-4 mb-1 rounded-xl bg-gold/10 px-3 py-1.5 text-center text-[11.5px] text-gold">This song plays only for you: its website doesn&apos;t let us send it to the room.</p> : null}
         <Player />
       </div>
     </BottomSheet>
+  );
+}
+
+/** The library: our songs and uploads, songs from Audius (and Jamendo when it is on), and a Spotify link. */
+function Library() {
+  const m = useMusic();
+  const [source, setSource] = useState<"ours" | "audius" | "jamendo" | "spotify">("ours");
+  const [jamendo, setJamendo] = useState(false);
+  useEffect(() => {
+    musicApi.sources().then((s) => setJamendo(s.jamendo)).catch(() => undefined);
+  }, []);
+  const chips: [typeof source, string][] = [["ours", "Panchayat"], ["audius", "Audius"], ...(jamendo ? ([["jamendo", "Jamendo"]] as [typeof source, string][]) : []), ["spotify", "Spotify"]];
+  return (
+    <div>
+      <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-2" role="tablist" aria-label="Where to find songs">
+        {chips.map(([id, label]) => (
+          <button key={id} type="button" role="tab" aria-selected={source === id} onClick={() => setSource(id)} className={`h-8 shrink-0 rounded-full px-3.5 text-[12.5px] font-bold ring-1 ${source === id ? "bg-[#3d9bff]/20 text-[#7fb6ff] ring-[#3d9bff]/60" : "text-cream/65 ring-white/15"}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {source === "ours" ? (
+        <ul>
+          {m.library.map((s) => (
+            <SongRow key={s.id} song={s} right={<OrderButton song={s} onOrder={() => m.order(s.id)} />} />
+          ))}
+        </ul>
+      ) : source === "spotify" ? (
+        <SpotifyBox />
+      ) : (
+        <Catalogue key={source} source={source} />
+      )}
+    </div>
+  );
+}
+
+/** Search a free music catalogue (Audius / Jamendo) and order a result. */
+function Catalogue({ source }: { source: "audius" | "jamendo" }) {
+  const m = useMusic();
+  const { toast } = useApp();
+  const [q, setQ] = useState("");
+  const [rows, setRows] = useState<Song[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const go = async () => {
+    if (q.trim().length < 2 || busy) return;
+    setBusy(true);
+    try {
+      setRows((await musicApi.search(source, q.trim())).results);
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : "Couldn't search right now", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div>
+      <form
+        className="mx-4 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void go();
+        }}
+      >
+        <input value={q} onChange={(e) => setQ(e.target.value)} maxLength={60} placeholder={`Search ${source === "audius" ? "Audius" : "Jamendo"}`} aria-label="Search songs" className="h-10 min-w-0 flex-1 rounded-xl bg-surface px-3 text-[14px] text-cream ring-1 ring-line placeholder:text-muted focus:outline-none" />
+        <button type="submit" disabled={busy || q.trim().length < 2} className="grid h-10 w-10 place-items-center rounded-xl bg-[#3d9bff] text-white disabled:bg-cream/10 disabled:text-muted" aria-label="Search">
+          <Search className="h-4.5 w-4.5" aria-hidden />
+        </button>
+      </form>
+      <p className="mx-4 mt-1.5 text-[11px] text-muted">{source === "audius" ? "Free songs by artists on Audius." : "Free music from Jamendo."} The song plays from your phone and goes into the room for everyone.</p>
+      {rows === null ? null : rows.length === 0 ? (
+        <p className="px-6 pt-8 text-center text-[13px] text-muted">{busy ? "Searching…" : "No songs found. Try another word."}</p>
+      ) : (
+        <ul className="mt-1">
+          {rows.map((s) => (
+            <SongRow key={s.id} song={s} right={<OrderButton song={s} onOrder={() => m.order(s)} />} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Spotify: paste a track link to listen on your own phone. Spotify does not let any app send its songs into a room. */
+function SpotifyBox() {
+  const [link, setLink] = useState("");
+  const [id, setId] = useState<string | null>(null);
+  const [bad, setBad] = useState(false);
+  const show = () => {
+    const t = spotifyTrackId(link);
+    setId(t);
+    setBad(!t);
+  };
+  return (
+    <div className="px-4">
+      <p className="text-[12.5px] text-muted">Paste a Spotify song link. It plays here for you (full song if you are logged in to Spotify, a short preview if not).</p>
+      <div className="mt-2 flex gap-2">
+        <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://open.spotify.com/track/..." aria-label="Spotify link" className="h-10 min-w-0 flex-1 rounded-xl bg-surface px-3 text-[13px] text-cream ring-1 ring-line placeholder:text-muted focus:outline-none" />
+        <button type="button" onClick={show} disabled={!link.trim()} className="h-10 rounded-xl bg-[#3d9bff] px-4 text-[13px] font-bold text-white disabled:bg-cream/10 disabled:text-muted">
+          Show
+        </button>
+      </div>
+      {bad ? <p className="mt-2 text-[12px] text-[#ff8a8f]">That doesn&apos;t look like a Spotify song link.</p> : null}
+      {id ? (
+        <iframe
+          title="Spotify player"
+          className="mt-3 w-full rounded-2xl"
+          style={{ border: 0, height: 152 }}
+          src={`https://open.spotify.com/embed/track/${id}?utm_source=generator`}
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy"
+        />
+      ) : null}
+      <p className="mt-3 rounded-xl bg-white/[0.05] px-3 py-2 text-[11.5px] leading-snug text-cream/70">Spotify&apos;s rules say its songs can only play inside Spotify, on the listener&apos;s own account. So the room can&apos;t hear this one. To play music for the whole room, use Panchayat songs, Audius, or upload your own.</p>
+    </div>
   );
 }
 
@@ -169,44 +287,37 @@ function Player() {
   );
 }
 
-function reviewLeft(liveAt: number, now: number) {
-  const ms = liveAt - now;
-  const d = Math.floor(ms / DAY_MS);
-  const h = Math.max(1, Math.floor((ms % DAY_MS) / 3_600_000));
-  return d ? `${d}d ${h}h` : `${h}h`;
-}
-
-function Contribute() {
+function UploadTab() {
   const m = useMusic();
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
   const [artist, setArtist] = useState("");
+  const [rights, setRights] = useState(false);
   const [busy, setBusy] = useState(false);
   const input = useRef<HTMLInputElement>(null);
   const submit = async () => {
-    if (!file || !title.trim()) return;
+    if (!file || !title.trim() || !rights) return;
     setBusy(true);
-    const ok = await m.contribute(file, title, artist);
+    const ok = await m.upload(file, title, artist);
     setBusy(false);
     if (ok) {
       setFile(null);
       setTitle("");
       setArtist("");
+      setRights(false);
       if (input.current) input.current.value = "";
     }
   };
   return (
     <div className="px-4 pb-4">
-      <p className="text-[12.5px] text-muted">
-        Add your song to Panchayat. Our team reviews it and it goes live for everyone in {REVIEW_MIN_DAYS}–{REVIEW_MAX_DAYS} days. Only upload music you made or have the rights to.
-      </p>
+      <p className="text-[12.5px] text-muted">Upload your song (MP3). It goes live for everyone right away. Only upload music you made or have the rights to; songs that break this are removed.</p>
       <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-[#3d9bff]/60 bg-[#3d9bff]/5 px-3 py-3">
         <Upload className="h-5 w-5 shrink-0 text-[#7fb6ff]" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-cream">{file ? file.name : `Choose an audio file (up to ${MAX_SONG_MB} MB)`}</span>
+        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-cream">{file ? file.name : `Choose an MP3 (up to ${MAX_SONG_MB} MB)`}</span>
         <input
           ref={input}
           type="file"
-          accept="audio/*"
+          accept=".mp3,audio/mpeg"
           className="sr-only"
           onChange={(e) => {
             const f = e.target.files?.[0] ?? null;
@@ -215,51 +326,42 @@ function Contribute() {
           }}
         />
       </label>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={60} placeholder="Song title" aria-label="Song title" className="mt-2 h-11 w-full rounded-xl bg-surface px-3 text-[14px] text-cream ring-1 ring-line placeholder:text-muted focus:outline-none focus:ring-[#3d9bff]" />
-      <input value={artist} onChange={(e) => setArtist(e.target.value)} maxLength={60} placeholder="Artist" aria-label="Artist" className="mt-2 h-11 w-full rounded-xl bg-surface px-3 text-[14px] text-cream ring-1 ring-line placeholder:text-muted focus:outline-none focus:ring-[#3d9bff]" />
-      <button type="button" onClick={submit} disabled={!file || !title.trim() || busy} className="mt-3 h-11 w-full rounded-full bg-[#3d9bff] text-[14px] font-bold text-white disabled:bg-cream/10 disabled:text-muted">
-        {busy ? "Sending…" : "Send for review"}
+      <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={60} placeholder="Song title" aria-label="Song title" className="mt-2 h-11 w-full rounded-xl bg-surface px-3 text-[14px] text-cream ring-1 ring-line placeholder:text-muted focus:outline-none" />
+      <input value={artist} onChange={(e) => setArtist(e.target.value)} maxLength={60} placeholder="Artist" aria-label="Artist" className="mt-2 h-11 w-full rounded-xl bg-surface px-3 text-[14px] text-cream ring-1 ring-line placeholder:text-muted focus:outline-none" />
+      <label className="mt-3 flex items-start gap-2 text-[12px] text-cream/75">
+        <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} className="mt-0.5" />
+        <span>I made this song or I have the right to share it.</span>
+      </label>
+      <button type="button" onClick={submit} disabled={!file || !title.trim() || !rights || busy} className="mt-3 h-11 w-full rounded-full bg-[#3d9bff] text-[14px] font-bold text-white disabled:bg-cream/10 disabled:text-muted">
+        {busy ? "Uploading…" : "Upload song"}
       </button>
 
-      {m.contributions.length ? (
+      {m.mine.length ? (
         <>
           <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Your songs</p>
           <ul className="mt-2 space-y-2">
-            {m.contributions.map((c) => {
-              const live = m.isLive(c);
-              return (
-                <li key={c.id} className="rounded-2xl bg-surface p-3 ring-1 ring-line">
-                  <div className="flex items-center gap-2">
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[14px] font-bold text-cream">{c.title}</span>
-                      <span className="block truncate text-[11px] text-muted">
-                        {c.artist}
-                        {c.duration ? ` · ${mmss(c.duration)}` : ""}
-                      </span>
+            {m.mine.map((c) => (
+              <li key={c.id} className="rounded-2xl bg-surface p-3 ring-1 ring-line">
+                <div className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[14px] font-bold text-cream">{c.title}</span>
+                    <span className="block truncate text-[11px] text-muted">
+                      {c.artist}
+                      {c.duration ? ` · ${mmss(c.duration)}` : ""}
                     </span>
-                    {live ? (
-                      <span className="rounded-full bg-[#3ddc84]/15 px-2 py-0.5 text-[11px] font-bold text-[#3ddc84]">Live ✓</span>
-                    ) : (
-                      <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-bold text-gold">In review · live in {reviewLeft(c.liveAt, m.now)}</span>
-                    )}
-                  </div>
-                  <div className="mt-2 flex items-center gap-3 text-[11.5px] font-semibold">
-                    {live ? (
-                      <button type="button" onClick={() => m.order(c.id)} className="text-[#7fb6ff]">
-                        Order in this room
-                      </button>
-                    ) : (
-                      <button type="button" onClick={() => m.approveNow(c.id)} className="text-cream/60 underline decoration-dotted">
-                        Demo: finish review now
-                      </button>
-                    )}
-                    <button type="button" onClick={() => m.removeContribution(c.id)} className="ml-auto text-[#ff8a8f]">
-                      Remove
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
+                  </span>
+                  <span className="rounded-full bg-[#3ddc84]/15 px-2 py-0.5 text-[11px] font-bold text-[#3ddc84]">Live ✓</span>
+                </div>
+                <div className="mt-2 flex items-center gap-3 text-[11.5px] font-semibold">
+                  <button type="button" onClick={() => m.order(c.id)} className="text-[#7fb6ff]">
+                    Order in this room
+                  </button>
+                  <button type="button" onClick={() => window.confirm(`Remove "${c.title}" for everyone?`) && void m.removeSong(c.id)} className="ml-auto text-[#ff8a8f]">
+                    Remove
+                  </button>
+                </div>
+              </li>
+            ))}
           </ul>
         </>
       ) : null}

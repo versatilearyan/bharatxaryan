@@ -735,7 +735,7 @@ export function useRoomSession(room: Room) {
    * for you. Other people's songs show up as a chat line.
    */
   const songTitle = music.current ? `${music.current.title} — ${music.current.artist}` : "";
-  const streamSong = Boolean(live && music.playing && music.current && seated && !adminMutedMe && roomOpen);
+  const streamSong = Boolean(live && music.playing && music.current && seated && !adminMutedMe && roomOpen && music.onlyHere !== music.current.id);
   const voiceConnected = voice?.status === "connected";
   const setMusicOnCall = voice?.setMusic;
   useEffect(() => {

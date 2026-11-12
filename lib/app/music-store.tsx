@@ -1,48 +1,14 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { DAY_MS } from "./market";
-import { LIBRARY, MAX_SONG_MB, REVIEW_MAX_DAYS, REVIEW_MIN_DAYS, type Contribution, type Song } from "./music";
-import { ME_ID, useApp } from "./store";
+import { musicApi } from "@/lib/api/music";
+import { LIBRARY, MAX_SONG_MB, isExternalSong, type Song } from "./music";
+import { useApp } from "./store";
 
-const STORAGE_KEY = "panchayat-music-v1";
-type Saved = { contributions: Contribution[]; favourites: string[]; volume: number };
+const STORAGE_KEY = "panchayat-music-v2";
+type Saved = { favourites: string[]; volume: number };
 /** Saved on its own and written the moment it changes, so a reload keeps it. */
 const MUSIC_OFF_KEY = "panchayat-music-off-v1";
-
-/* Song files you contribute are kept in IndexedDB (too big for localStorage). */
-const DB = "panchayat-songs";
-function db(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
-    req.onupgradeneeded = () => req.result.createObjectStore("files");
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function putFile(id: string, file: Blob) {
-  const d = await db();
-  await new Promise<void>((resolve, reject) => {
-    const tx = d.transaction("files", "readwrite");
-    tx.objectStore("files").put(file, id);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-async function getFile(id: string): Promise<Blob | undefined> {
-  const d = await db();
-  return new Promise((resolve, reject) => {
-    const req = d.transaction("files").objectStore("files").get(id);
-    req.onsuccess = () => resolve(req.result as Blob | undefined);
-    req.onerror = () => reject(req.error);
-  });
-}
-async function deleteFile(id: string) {
-  const d = await db();
-  d.transaction("files", "readwrite").objectStore("files").delete(id);
-}
-
-const uid = () => Math.random().toString(36).slice(2, 10);
 
 /** Reads an audio file's length in seconds. */
 function durationOf(file: Blob) {
@@ -62,9 +28,19 @@ function durationOf(file: Blob) {
   });
 }
 
+/** A song from another site, or a file on another address, needs a CORS request so it can go into the call. */
+function needsCors(song?: Song) {
+  if (!song?.src) return false;
+  if (isExternalSong(song)) return true;
+  try {
+    return new URL(song.src, window.location.href).origin !== window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
 function useMusicState() {
-  const { activeRoomId, toast, resetCount } = useApp();
-  const [contributions, setContributions] = useState<Contribution[]>([]);
+  const { activeRoomId, toast, signedIn } = useApp();
   const [favourites, setFavourites] = useState<string[]>([]);
   const [volume, setVolumeState] = useState(0.8);
   /** This listener turned room music off: the music pill is hidden and nothing plays for them. */
@@ -77,15 +53,11 @@ function useMusicState() {
       /* storage unavailable */
     }
   }, []);
-  /** Object URLs for contributed songs that are live. */
-  const [urls, setUrls] = useState<Record<string, string>>({});
-  const [now, setNow] = useState(() => Date.now());
   const hydrated = useRef(false);
 
   useEffect(() => {
     try {
       const s = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? "{}") as Partial<Saved>;
-      if (Array.isArray(s.contributions)) setContributions(s.contributions);
       if (Array.isArray(s.favourites)) setFavourites(s.favourites);
       if (typeof s.volume === "number") setVolumeState(s.volume);
       setMusicOffState(window.localStorage.getItem(MUSIC_OFF_KEY) === "1");
@@ -97,78 +69,63 @@ function useMusicState() {
   useEffect(() => {
     if (!hydrated.current) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ contributions, favourites, volume } satisfies Saved));
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ favourites, volume } satisfies Saved));
     } catch {
       /* storage unavailable */
     }
-  }, [contributions, favourites, volume]);
+  }, [favourites, volume]);
 
-  const firstReset = useRef(resetCount);
-  useEffect(() => {
-    if (resetCount === firstReset.current) return;
-    contributions.forEach((c) => deleteFile(c.id).catch(() => {}));
-    setContributions([]);
-    setFavourites([]);
-  }, [resetCount]); // only on reset
-
-  // Review countdowns tick once a minute
-  useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(t);
+  /* ---- The shared library: songs people uploaded (live for everyone at once) ---- */
+  const [uploaded, setUploaded] = useState<Song[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  /** Songs from Audius / Jamendo that were ordered here, so the queue can find them again. */
+  const [external, setExternal] = useState<Record<string, Song>>({});
+  const refreshSongs = useCallback(async () => {
+    try {
+      setUploaded(await musicApi.songs());
+    } catch {
+      /* the built-in songs still work */
+    } finally {
+      setLoaded(true);
+    }
   }, []);
-  const isLive = useCallback((c: Contribution) => now >= c.liveAt, [now]);
-
-  // Load the files of songs that went live
   useEffect(() => {
-    let alive = true;
-    contributions
-      .filter((c) => now >= c.liveAt && !urls[c.id])
-      .forEach((c) =>
-        getFile(c.id)
-          .then((f) => f && alive && setUrls((u) => ({ ...u, [c.id]: URL.createObjectURL(f) })))
-          .catch(() => {}),
-      );
-    return () => {
-      alive = false;
-    };
-  }, [contributions, now, urls]);
+    if (signedIn) void refreshSongs();
+  }, [signedIn, refreshSongs]);
 
-  /** Everything people can play: built-in songs plus contributions that passed review. */
-  const library = useMemo<Song[]>(
-    () => [...contributions.filter((c) => now >= c.liveAt && urls[c.id]).map((c) => ({ id: c.id, title: c.title, artist: c.artist, uploader: ME_ID, duration: c.duration, src: urls[c.id] })), ...LIBRARY],
-    [contributions, now, urls],
-  );
-  const songById = useCallback((id: string) => library.find((s) => s.id === id), [library]);
+  const library = useMemo<Song[]>(() => [...uploaded, ...LIBRARY.map((s) => ({ ...s, source: "built-in" as const }))], [uploaded]);
+  const songById = useCallback((id: string) => library.find((s) => s.id === id) ?? external[id], [library, external]);
+  const mine = useMemo(() => uploaded.filter((s) => s.mine), [uploaded]);
 
-  /** Send a song for review. It goes live 2–3 days later. */
-  const contribute = useCallback(
+  /** Upload an MP3. It is in everyone's library straight away. */
+  const upload = useCallback(
     async (file: File, title: string, artist: string) => {
-      if (!file.type.startsWith("audio/")) return toast("Pick an audio file (mp3, m4a, wav…)", "error"), false;
+      if (!/\.mp3$/i.test(file.name)) return toast("Pick an MP3 file", "error"), false;
       if (file.size > MAX_SONG_MB * 1024 * 1024) return toast(`Songs can be up to ${MAX_SONG_MB} MB`, "error"), false;
-      const id = `c-${uid()}`;
       try {
-        await putFile(id, file);
-      } catch {
-        return toast("Couldn't save the song on this device", "error"), false;
+        const duration = await durationOf(file);
+        const song = await musicApi.upload(file, title.trim(), artist.trim() || "Unknown artist", duration);
+        setUploaded((l) => [song, ...l.filter((x) => x.id !== song.id)]);
+        toast("Your song is live for everyone 🎵", "gold");
+        return true;
+      } catch (e) {
+        toast(e instanceof Error && e.message ? e.message : "Couldn't upload the song", "error");
+        return false;
       }
-      const days = REVIEW_MIN_DAYS + Math.random() * (REVIEW_MAX_DAYS - REVIEW_MIN_DAYS);
-      const duration = await durationOf(file);
-      const at = Date.now();
-      setContributions((list) => [{ id, title: title.trim(), artist: artist.trim() || "Unknown artist", duration, at, liveAt: at + days * DAY_MS }, ...list]);
-      toast("Song sent for review 🎵 It goes live in 2–3 days", "gold");
-      return true;
     },
     [toast],
   );
-  /** Demo only: finish the review now. */
-  const approveNow = useCallback((id: string) => {
-    setContributions((list) => list.map((c) => (c.id === id ? { ...c, liveAt: Date.now() } : c)));
-    setNow(Date.now());
-  }, []);
-  const removeContribution = useCallback((id: string) => {
-    setContributions((list) => list.filter((c) => c.id !== id));
-    deleteFile(id).catch(() => {});
-  }, []);
+  const removeSong = useCallback(
+    async (id: string) => {
+      try {
+        await musicApi.remove(id);
+        setUploaded((l) => l.filter((s) => s.id !== id));
+      } catch (e) {
+        toast(e instanceof Error && e.message ? e.message : "Couldn't remove the song", "error");
+      }
+    },
+    [toast],
+  );
   const toggleFavourite = useCallback((id: string) => setFavourites((f) => (f.includes(id) ? f.filter((x) => x !== id) : [id, ...f])), []);
 
   /* ---- The room's player ---- */
@@ -179,6 +136,8 @@ function useMusicState() {
   const [repeat, setRepeat] = useState(false);
   const [pos, setPos] = useState(0);
   const current = queue[index] ? songById(queue[index]) : undefined;
+  /** The song that could not be sent into the call (the host of the file refused the request), so it plays only here. */
+  const [onlyHere, setOnlyHere] = useState<string | null>(null);
 
   useEffect(() => {
     const a = new Audio();
@@ -201,6 +160,8 @@ function useMusicState() {
 
   // Load the current song when it changes
   const src = current?.src;
+  const cors = needsCors(current);
+  const currentId = current?.id;
   useEffect(() => {
     const a = audio.current;
     if (!a) return;
@@ -210,11 +171,25 @@ function useMusicState() {
       setPos(0);
       return;
     }
-    if (a.src.endsWith(src)) return;
+    if (a.src.endsWith(src) && a.src !== "") return;
+    a.crossOrigin = cors ? "anonymous" : null;
+    a.onerror = () => {
+      // The other site did not allow the request: play it for this person only, instead of nothing
+      if (a.crossOrigin) {
+        a.crossOrigin = null;
+        a.src = src;
+        setOnlyHere(currentId ?? null);
+        toast("This song plays only for you", "error");
+        a.play().catch(() => setPlaying(false));
+      } else {
+        toast("This song couldn't be played", "error");
+      }
+    };
+    setOnlyHere(null);
     a.src = src;
     setPos(0);
     a.play().catch(() => setPlaying(false));
-  }, [src]);
+  }, [src, cors, currentId, toast]);
 
   const next = useCallback(() => {
     setIndex((i) => (queue.length ? (i + 1) % queue.length : 0));
@@ -235,13 +210,15 @@ function useMusicState() {
     };
   }, [repeat, next]);
 
+  /** Order a song from the library, or one found in Audius / Jamendo. */
   const order = useCallback(
-    (id: string) => {
-      const s = songById(id);
+    (idOrSong: string | Song) => {
+      const s = typeof idOrSong === "string" ? songById(idOrSong) : idOrSong;
       if (!s) return;
+      if (typeof idOrSong !== "string") setExternal((e) => ({ ...e, [s.id]: s }));
       setQueue((q) => {
         if (!q.length) setIndex(0);
-        return [...q, id];
+        return [...q, s.id];
       });
       toast(`🎵 ${s.title} added to the room's songs`);
     },
@@ -280,9 +257,9 @@ function useMusicState() {
   }, [activeRoomId]);
 
   return {
-    library, songById, contributions, isLive, contribute, approveNow, removeContribution, favourites, toggleFavourite, now,
+    library, songById, mine, loaded, refreshSongs, upload, removeSong, favourites, toggleFavourite,
     queue, index, current, playing, repeat, setRepeat, pos, volume, setVolume, order, removeFromQueue, playAt, toggle, next, seek,
-    musicOff, setMusicOff,
+    musicOff, setMusicOff, onlyHere,
     /** The element the current song plays in (streamed into a live room's call by whoever plays it). */
     audioElement,
   };

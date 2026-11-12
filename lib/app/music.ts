@@ -1,8 +1,8 @@
 /**
  * Room music. Built-in songs are short original instrumentals made by
  * scripts/compose-songs.py and scripts/compose-music.py (no rights issues).
- * People can contribute their own songs: each one is reviewed and goes live in
- * the app's library 2 to 3 days later.
+ * People can upload their own songs (MP3): they are live for everyone at once.
+ * Free songs from Audius (and Jamendo when its key is set) can be ordered too.
  */
 export type Song = {
   id: string;
@@ -13,7 +13,22 @@ export type Song = {
   /** Seconds. */
   duration: number;
   src?: string;
+  /** Where it comes from: our library, a song someone uploaded, or an open catalogue. */
+  source?: "built-in" | "upload" | "audius" | "jamendo";
+  uploaderName?: string;
+  /** Uploaded by you. */
+  mine?: boolean;
 };
+
+/** Songs from another site: they play with a CORS request so they can go into the call too. */
+export const isExternalSong = (s?: Song) => s?.source === "audius" || s?.source === "jamendo";
+
+/** "Paste a Spotify link" -> the track id, or null. */
+export function spotifyTrackId(input: string): string | null {
+  const t = input.trim();
+  const m = t.match(/open\.spotify\.com\/(?:intl-[a-z-]+\/)?track\/([A-Za-z0-9]{10,30})/) ?? t.match(/^spotify:track:([A-Za-z0-9]{10,30})$/);
+  return m ? m[1] : null;
+}
 
 export const LIBRARY: Song[] = [
   { id: "panchayat-raag", title: "Panchayat Raag", artist: "Bansuri & tabla · Raag Bhupali", uploader: "Panchayat", duration: 72, src: "/audio/panchayat-raag.mp3" },
@@ -23,11 +38,6 @@ export const LIBRARY: Song[] = [
   { id: "barish-ki-boondein", title: "Barish Ki Boondein", artist: "Sitar · Raag Megh", uploader: "tara", duration: 77, src: "/audio/songs/barish-ki-boondein.mp3" },
 ];
 
-/** A song you contributed. It's playable for everyone once `liveAt` has passed. */
-export type Contribution = { id: string; title: string; artist: string; duration: number; at: number; liveAt: number };
-
-export const REVIEW_MIN_DAYS = 2;
-export const REVIEW_MAX_DAYS = 3;
 /** Biggest file you can contribute. */
 export const MAX_SONG_MB = 15;
 
