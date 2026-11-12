@@ -6,41 +6,7 @@ import { RelationIcon } from "@/components/art/RelationIcon";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
-import { partnerOf, relationshipById, tagColors, tagLevel, tokenById, type Tag } from "@/lib/app/tags";
-
-/**
- * Under a seat's name: the tags this person has with other people who are sitting in the room right now.
- * The tag with the person beside them is the link between the two seats, so that one is left out here (skip).
- * A person with several tags (even of the same type) shows each one with its partner.
- */
-export function SeatTagChips({ personId, seatedIds, skip, size = 11 }: { personId: string; seatedIds: (string | null)[]; skip?: string | null; size?: number }) {
-  const { tagsOf } = useApp();
-  const person = usePeople();
-  const here = new Set(seatedIds.filter((x): x is string => Boolean(x)));
-  const list = tagsOf(personId)
-    .filter((t) => {
-      const other = partnerOf(t, personId);
-      return other !== personId && here.has(other) && other !== skip;
-    })
-    .sort((x, y) => y.intimacy - x.intimacy)
-    .slice(0, 3);
-  if (!list.length) return null;
-  return (
-    <span className="relative z-[2] mt-0.5 flex max-w-full flex-wrap items-center justify-center gap-1" aria-label="Tags with people in this room">
-      {list.map((t) => {
-        const other = partnerOf(t, personId);
-        const rel = relationshipById(t.relation);
-        const name = other === ME_ID ? "You" : person(other).name;
-        return (
-          <span key={t.id} title={`${rel.label} with ${name}`} className="inline-flex items-center gap-0.5 rounded-full bg-black/45 py-[1px] pl-0.5 pr-1.5 text-[9px] font-bold leading-none text-white/90 ring-1 ring-white/15">
-            <BffBadge id={t.relation} size={size} still />
-            <span className="max-w-[40px] truncate">{name.split(" ")[0]}</span>
-          </span>
-        );
-      })}
-    </span>
-  );
-}
+import { relationshipById, tagColors, tagLevel, tokenById, type Tag } from "@/lib/app/tags";
 
 /** "Kabir's Bestie": the nameplate for someone's tag partner. */
 export function useTagTitle() {
