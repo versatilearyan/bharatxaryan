@@ -354,7 +354,7 @@ const PILE: [string, number, number][] = [
 ];
 
 /** Shrinks its child (never grows it) so it fits the space it is given, keeping the whole screen on one page with no scrolling. */
-function FitBox({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function FitBox({ children, className = "", max = 1 }: { children: React.ReactNode; className?: string; max?: number }) {
   const outer = useRef<HTMLDivElement>(null);
   const inner = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -366,14 +366,14 @@ function FitBox({ children, className = "" }: { children: React.ReactNode; class
       const h = i.offsetHeight;
       const w = i.offsetWidth;
       if (!h || !w) return;
-      setScale(Math.min(1, o.clientHeight / h, o.clientWidth / w));
+      setScale(Math.min(max, o.clientHeight / h, o.clientWidth / w));
     };
     const ro = new ResizeObserver(fit);
     ro.observe(o);
     ro.observe(i);
     fit();
     return () => ro.disconnect();
-  }, []);
+  }, [max]);
   return (
     <div ref={outer} className={`relative flex items-start justify-center overflow-visible ${className}`}>
       <div ref={inner} className="shrink-0" style={{ transform: `scale(${scale})`, transformOrigin: "top center" }}>
@@ -583,7 +583,7 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
 
                 {m ? (
                   <>
-                    <FitBox className="mt-3 min-h-0 flex-1">
+                    <FitBox className="mt-3 min-h-0 flex-1" max={1.16}>
                       <Machine
                         phase={phase}
                         name={m.name}
@@ -642,11 +642,11 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
                 ) : null}
               </div>
               <div className="border-t-[3px] border-[#ffb347] bg-[#1c0c13]/95 pt-2.5 pb-1">
-                <ul className="grid grid-cols-5 gap-x-2 gap-y-2 px-3">
+                <ul className="scroll-thin flex gap-2.5 overflow-x-auto px-3 pb-1">
                   {m.rewards.map((r, i) => {
                     const col = RARITY[r.rarity] ?? "#e7bc72";
                     return (
-                      <motion.li key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 * i }} className="flex min-w-0 flex-col items-center text-center">
+                      <motion.li key={i} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.04 * i }} className="flex w-[66px] shrink-0 flex-col items-center text-center">
                         <span className="relative grid aspect-square w-full max-w-[62px] place-items-center overflow-hidden rounded-[14px] bg-gradient-to-b from-[#fff6e4] to-[#f0dcb4]" style={{ boxShadow: `0 0 0 2px ${col}, inset 0 1px 0 rgba(255,255,255,0.7), 0 8px 18px -10px ${col}` }} aria-hidden>
                           {r.imageUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
