@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { SvgaAnim } from "@/components/effects/SvgaAnim";
 import { titlesApi, type MyTitles, type ProfileTitle } from "@/lib/api/titles";
 import { myUserIdFromToken } from "@/lib/auth/token";
 import { ME_ID, useApp } from "@/lib/app/store";
@@ -19,8 +20,9 @@ export function TitlePill({ t, size = "md" }: { t: ProfileTitle; size?: "sm" | "
       style={{ background: `linear-gradient(90deg, ${t.colorFrom}, ${t.colorTo})`, color: t.textColor }}
     >
       {t.iconUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={t.iconUrl} alt="" className={sm ? "h-4 w-4 object-contain" : "h-5 w-5 object-contain"} />
+        <span className={sm ? "block h-4 w-4 shrink-0" : "block h-6 w-6 shrink-0"}>
+          <SvgaAnim src={t.iconUrl} className="h-full w-full object-contain" />
+        </span>
       ) : (
         <span className={sm ? "text-[10px]" : "text-[12px]"}>★</span>
       )}
@@ -126,7 +128,7 @@ export function MyTitlesSheet({ open, onClose }: { open: boolean; onClose: () =>
         ) : (
           <>
             <p className="text-[12.5px] text-muted">
-              Wearing <b className="text-gold">{wearing}</b> of {d.maxWorn}. Worn titles show on your profile for everyone.
+              Wearing <b className="text-gold">{wearing}</b>{d.maxWorn > 0 ? ` of ${d.maxWorn}` : ""}. Worn titles show on your profile for everyone.
             </p>
             <p className="mb-2 mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Your titles</p>
             <ul className="space-y-2">
