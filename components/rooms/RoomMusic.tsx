@@ -69,9 +69,11 @@ const OrderButton = ({ song, onOrder }: { song: Song; onOrder: () => void }) => 
 );
 
 /** Songs ordered in the room, the library to order from, and uploading your own. */
-export function MusicSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function MusicSheet({ open, onClose, canControl = true }: { open: boolean; onClose: () => void; canControl?: boolean }) {
   const m = useMusic();
-  const [tab, setTab] = useState<"ordered" | "library" | "contribute">("ordered");
+  const [tabPicked, setTab] = useState<"ordered" | "library" | "contribute">("ordered");
+  // Only the room owner and admins can order and play songs; everyone else just sees what is ordered
+  const tab = canControl ? tabPicked : "ordered";
   useEffect(() => {
     if (open) void m.refreshSongs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -79,6 +81,8 @@ export function MusicSheet({ open, onClose }: { open: boolean; onClose: () => vo
   return (
     <BottomSheet open={open} onClose={onClose} title={`🎵 ${m.queue.length} ${m.queue.length === 1 ? "song" : "songs"} ordered`} tall className="h-[84%]">
       <div className="flex h-full min-h-0 flex-col">
+        {canControl ? null : <p className="mx-4 mb-1 rounded-xl bg-gold/10 px-3 py-2 text-center text-[12px] font-semibold text-gold">Only the room owner and admins can play songs here.</p>}
+        {canControl ? (
         <div className="mx-4 flex rounded-full bg-surface p-1 ring-1 ring-line" role="tablist">
           {(
             [
@@ -92,6 +96,7 @@ export function MusicSheet({ open, onClose }: { open: boolean; onClose: () => vo
             </button>
           ))}
         </div>
+        ) : null}
 
         <div className="app-scroll mt-2 min-h-0 flex-1">
           {tab === "ordered" ? (
@@ -105,15 +110,17 @@ export function MusicSheet({ open, onClose }: { open: boolean; onClose: () => vo
                       key={`${id}-${i}`}
                       song={s}
                       active={i === m.index}
-                      onClick={() => m.playAt(i)}
+                      onClick={canControl ? () => m.playAt(i) : undefined}
                       right={
                         <span className="flex shrink-0 items-center gap-1">
                           <button type="button" onClick={() => m.toggleFavourite(id)} aria-label={m.favourites.includes(id) ? "Unfavourite" : "Favourite"} className="grid h-8 w-8 place-items-center rounded-full text-cream/60">
                             <Heart className={`h-4 w-4 ${m.favourites.includes(id) ? "fill-pink text-pink" : ""}`} />
                           </button>
-                          <button type="button" onClick={() => m.removeFromQueue(i)} aria-label={`Remove ${s.title}`} className="grid h-8 w-8 place-items-center rounded-full text-cream/60">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {canControl ? (
+                            <button type="button" onClick={() => m.removeFromQueue(i)} aria-label={`Remove ${s.title}`} className="grid h-8 w-8 place-items-center rounded-full text-cream/60">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          ) : null}
                         </span>
                       }
                     />
@@ -123,10 +130,12 @@ export function MusicSheet({ open, onClose }: { open: boolean; onClose: () => vo
             ) : (
               <div className="px-6 pt-10 text-center">
                 <Disc3 className="mx-auto h-10 w-10 text-cream/30" aria-hidden />
-                <p className="mt-2 text-[13px] text-muted">No songs yet. Order one from the Library.</p>
-                <button type="button" onClick={() => setTab("library")} className="mt-3 h-9 rounded-full bg-[#3d9bff] px-5 text-[13px] font-bold text-white">
-                  Order a song
-                </button>
+                <p className="mt-2 text-[13px] text-muted">{canControl ? "No songs yet. Order one from the Library." : "No songs are playing."}</p>
+                {canControl ? (
+                  <button type="button" onClick={() => setTab("library")} className="mt-3 h-9 rounded-full bg-[#3d9bff] px-5 text-[13px] font-bold text-white">
+                    Order a song
+                  </button>
+                ) : null}
               </div>
             )
           ) : tab === "library" ? (
@@ -137,7 +146,7 @@ export function MusicSheet({ open, onClose }: { open: boolean; onClose: () => vo
         </div>
 
         {m.onlyHere && m.current?.id === m.onlyHere ? <p className="mx-4 mb-1 rounded-xl bg-gold/10 px-3 py-1.5 text-center text-[11.5px] text-gold">This song plays only for you: its website doesn&apos;t let us send it to the room.</p> : null}
-        <Player />
+        {canControl ? <Player /> : <p className="shrink-0 border-t border-line bg-ink-2 px-4 py-3 text-center text-[12px] font-semibold text-cream/80">{m.current ? `Now playing: ${m.current.title} · ${m.current.artist}` : "Nothing playing"}</p>}
       </div>
     </BottomSheet>
   );

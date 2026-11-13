@@ -735,13 +735,25 @@ export function useRoomSession(room: Room) {
    * for you. Other people's songs show up as a chat line.
    */
   const songTitle = music.current ? `${music.current.title} — ${music.current.artist}` : "";
-  const streamSong = Boolean(live && music.playing && music.current && seated && !adminMutedMe && roomOpen && music.onlyHere !== music.current.id);
+  // Only the room owner and the admins can play songs in a room
+  const streamSong = Boolean(live && canModerate && music.playing && music.current && seated && !adminMutedMe && roomOpen && music.onlyHere !== music.current.id);
   const voiceConnected = voice?.status === "connected";
   const setMusicOnCall = voice?.setMusic;
   useEffect(() => {
     if (!setMusicOnCall || !voiceConnected) return;
     setMusicOnCall(streamSong ? music.audioElement() : null, songTitle);
   }, [setMusicOnCall, voiceConnected, streamSong, songTitle, music.audioElement]);
+  // A song that was already playing when you came in stops: only the owner and admins can play songs here
+  useEffect(() => {
+    if (live && !canModerate && music.playing) music.toggle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live, canModerate, music.playing]);
+  // Songs heard in this room come only from the owner and the admins
+  const setMusicAllowed = voice?.setMusicAllowed;
+  const allowedKey = [room.hostId, ...admins].map((id) => id.replace(SERVER_USER_PREFIX, "")).join(",");
+  useEffect(() => {
+    setMusicAllowed?.(live ? allowedKey.split(",") : null);
+  }, [setMusicAllowed, live, allowedKey]);
   // Leaving the room stops sending the song
   useEffect(() => () => setMusicOnCall?.(null, ""), [setMusicOnCall]);
   // "Music off" also silences other people's songs on this device

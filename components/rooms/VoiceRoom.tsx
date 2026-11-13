@@ -97,7 +97,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
       <NewbieWelcome s={s} />
       <GiftPanel open={sheet === "gift"} onClose={close} s={s} />
       <CreatePkSheet open={sheet === "pk"} onClose={close} />
-      <MusicSheet open={sheet === "music"} onClose={close} />
+      <MusicSheet open={sheet === "music"} onClose={close} canControl={s.canModerate} />
       <EmojiSheet open={sheet === "emoji"} onClose={close} s={s} onInsert={(e) => setDraft((d) => d + e)} />
       <InviteSheet open={sheet === "invite"} onClose={close} roomName={s.room.name} roomId={s.room.server?.id} roomCode={s.room.code} />
       <RoomMenuSheet

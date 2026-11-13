@@ -56,10 +56,10 @@ const inputClass = "h-11 w-full rounded-2xl border border-line bg-surface px-4 t
 export function CheckoutSheet({ item, onClose }: { item: CheckoutItem | null; onClose: () => void }) {
   const { profile, refreshCoins, toast } = useApp();
   const me = useMe();
-  // The app installed from the Play Store buys with Google Play (Google's rule). The app downloaded from our website
-  // (the default) pays with PayU just like the website does: set NEXT_PUBLIC_APP_BILLING=play for a Play Store build.
+  // The app installed from the Play Store (its user agent says PanchayatPlay) buys with Google Play (Google's rule).
+  // The app downloaded from our website pays with PayU, just like the website.
   const [native, setNative] = useState(false);
-  useEffect(() => setNative(isNativeApp() && process.env.NEXT_PUBLIC_APP_BILLING === "play"), []);
+  useEffect(() => setNative(isNativeApp() && /PanchayatPlay/.test(navigator.userAgent)), []);
   const [playId, setPlayId] = useState<string | null | undefined>(undefined);
   const [stage, setStage] = useState<Stage>("form");
   const [billing, setBilling] = useState<BillingDetails>(EMPTY_BILLING);

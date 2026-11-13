@@ -190,6 +190,8 @@ export type LiveVoice = {
   retry: () => void;
   /** Send a song into the call, or stop (null). */
   setMusic: (el: HTMLAudioElement | null, title: string) => void;
+  /** Only these people's songs are heard (the room owner and admins). null = everyone's. */
+  setMusicAllowed: (ids: string[] | null) => void;
   /** Mute other people's songs on this device. */
   setRemoteMusicMuted: (muted: boolean) => void;
 };
@@ -258,6 +260,8 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
   /** Changes to your song run one at a time. */
   const musicQueue = useRef<Promise<unknown>>(Promise.resolve());
   const remoteMusicMuted = useRef(false);
+  const musicAllowed = useRef<Set<string> | null>(null);
+  const heardMusic = (identity: string) => !musicAllowed.current || musicAllowed.current.has(identity.replace(/^user[-_:]/i, ""));
 
   useEffect(() => {
     if (!serverRoomId) return;
@@ -302,13 +306,15 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
     };
 
     room
-      .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication) => {
+      .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: { identity: string }) => {
         if (track.kind !== Track.Kind.Audio) return;
         const el = track.attach();
         // Other people's songs: silent for listeners who turned music off
         if (pub.trackName?.startsWith(MUSIC_PREFIX)) {
           el.dataset.music = "1";
-          el.muted = remoteMusicMuted.current;
+          el.dataset.musicFrom = participant.identity;
+          // Only the room owner's and admins' songs are played for the room
+          el.muted = remoteMusicMuted.current || !heardMusic(participant.identity);
         }
         audioBox.appendChild(el);
         applySpeaker();
@@ -602,7 +608,15 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
   const setRemoteMusicMuted = useCallback((muted: boolean) => {
     remoteMusicMuted.current = muted;
     document.querySelectorAll<HTMLAudioElement>("[data-live-voice] audio[data-music]").forEach((a) => {
-      a.muted = muted;
+      a.muted = muted || !heardMusic(a.dataset.musicFrom ?? "");
+    });
+  }, []);
+
+  /** Who may play songs in this room: the owner and the admins. Songs from anyone else stay silent here. */
+  const setMusicAllowed = useCallback((ids: string[] | null) => {
+    musicAllowed.current = ids ? new Set(ids) : null;
+    document.querySelectorAll<HTMLAudioElement>("[data-live-voice] audio[data-music]").forEach((a) => {
+      a.muted = remoteMusicMuted.current || !heardMusic(a.dataset.musicFrom ?? "");
     });
   }, []);
 
@@ -621,7 +635,7 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
 
   // One object for as long as nothing in it changed, so a re-render above doesn't re-run everything below
   return useMemo(
-    () => (serverRoomId ? { status, joined, error, removed, micNotice, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry, setMusic, setRemoteMusicMuted } : null),
-    [serverRoomId, status, joined, error, removed, micNotice, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry, setMusic, setRemoteMusicMuted],
+    () => (serverRoomId ? { status, joined, error, removed, micNotice, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry, setMusic, setMusicAllowed, setRemoteMusicMuted } : null),
+    [serverRoomId, status, joined, error, removed, micNotice, people, micOn, micBusy, canPlayAudio, setMic, setSpeaker, startAudio, retry, setMusic, setMusicAllowed, setRemoteMusicMuted],
   );
 }
