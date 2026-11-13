@@ -3,7 +3,7 @@ import { api } from "./client";
 
 export type ProfileTitle = { id: string; name: string; iconUrl?: string | null; colorFrom: string; colorTo: string; textColor: string; rarity: string };
 export type OwnedTitle = ProfileTitle & { worn: boolean; wornPos?: number | null; expiresAt?: string | null; free: boolean };
-export type StoreTitle = ProfileTitle & { priceCoins: number };
+export type StoreTitle = ProfileTitle & { priceCoins: number; durationDays: number; renew: boolean; blocked?: string | null };
 export type MyTitles = { maxWorn: number; owned: OwnedTitle[]; store: StoreTitle[] };
 
 const opts = { auth: true, forbiddenIsAccess: true } as const;

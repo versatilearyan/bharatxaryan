@@ -159,10 +159,15 @@ export function MyTitlesSheet({ open, onClose }: { open: boolean; onClose: () =>
                     <li key={t.id} className="flex items-center gap-3 rounded-2xl bg-black/20 p-3 ring-1 ring-white/10">
                       <span className="min-w-0 flex-1">
                         <TitlePill t={t} />
+                        <span className="mt-1 block text-[10.5px] text-muted">{t.durationDays > 0 ? `Lasts ${t.durationDays} days` : "Yours for ever"}{t.renew ? " · adds more time" : ""}</span>
                       </span>
-                      <button type="button" disabled={busy !== null} onClick={() => void run(t.id, () => titlesApi.buy(t.id), `${t.name} is yours`)} className="flex items-center gap-1 rounded-full bg-gold/15 px-3.5 py-2 text-[12.5px] font-extrabold text-gold ring-1 ring-gold/40 disabled:opacity-45">
-                        🪙 {n(t.priceCoins)}
-                      </button>
+                      {t.blocked ? (
+                        <span className="rounded-full bg-black/30 px-3 py-2 text-[11.5px] font-bold text-cream/60">{t.blocked}</span>
+                      ) : (
+                        <button type="button" disabled={busy !== null} onClick={() => void run(t.id, () => titlesApi.buy(t.id), `${t.name} is yours`)} className="flex items-center gap-1 rounded-full bg-gold/15 px-3.5 py-2 text-[12.5px] font-extrabold text-gold ring-1 ring-gold/40 disabled:opacity-45">
+                          {t.renew ? "Renew " : ""}🪙 {n(t.priceCoins)}
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>

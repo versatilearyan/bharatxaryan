@@ -566,7 +566,7 @@ export function TreasureSheet({ p, open, onClose, onChanged }: Props) {
                                 {c.imageUrl ? <SvgaAnim src={c.imageUrl} className="h-full w-full object-contain" /> : <span className="text-[26px]">{c.kind === "TITLE" ? "🏷️" : c.kind === "GIFT" ? "🎁" : "🎖️"}</span>}
                               </span>
                               <span className="mt-1 line-clamp-2 text-[11.5px] font-bold leading-tight text-cream">{c.label}</span>
-                              <span className="text-[9.5px] uppercase tracking-wider text-gold/70">{c.kind}</span>
+                              <span className="text-[9.5px] uppercase tracking-wider text-gold/70">{c.category || c.kind}</span>
                             </div>
                           ))}
                         </div>

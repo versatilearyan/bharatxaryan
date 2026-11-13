@@ -245,7 +245,7 @@ export type TreasureOpening = {
 export type TreasureMine = {
   diamonds: number;
   wins: { chest: string; tier: string; mode: string; coins: number; diamonds: number; items: TreasureItem[]; at: string }[];
-  collection: { kind: "TITLE" | "BADGE" | "ANIMATION" | "GIFT"; label: string; imageUrl: string; source: string; at: string }[];
+  collection: { kind: string; label: string; imageUrl: string; category?: string; source: string; at: string }[];
 };
 
 export const treasureApi = {
