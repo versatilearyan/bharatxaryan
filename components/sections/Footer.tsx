@@ -4,6 +4,7 @@ import { SITE, SOCIAL_LINKS } from "@/lib/site";
 
 const LINKS = [
   { label: "Open the app", href: "/" },
+  { label: "Download for Android", href: "/download" },
   { label: "Home", href: "/about#home" },
   { label: "Features", href: "/about#features" },
   { label: "Coming Soon", href: "/about#coming-soon" },

@@ -76,7 +76,7 @@ export function ParivarGuideSheet({ p, open, onClose }: { p: ParivarProfile; ope
                 <b className={lu.fundOk ? "text-speak" : "text-gold"}>{n(lu.fundNeeded)} fund {lu.fundOk ? "✓" : ""}</b>.
               </>
             ) : null}{" "}
-            A higher level gives a bigger frame, more members and more features.
+            {lu?.spendAll ? <b className="text-gold">Levelling up uses up the whole family fund, so the fund starts again from 0. </b> : null}A higher level gives a bigger frame, more members and more features.
           </Step>
           <Step no={5} title="Climb the ranking and win prizes">
             The weekly and the total ranking compare all Parivars. Top Parivars get prizes and appear in the World news.

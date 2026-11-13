@@ -56,7 +56,7 @@ export type ParivarProfile = ParivarCard & {
   /** What the Mukhiya pays (coins) to change the name, title or logo (set in the admin panel). */
   identityPrices?: { name: number; sign: number; logo: number };
   /** What the next level asks for (activity and family fund) and whether the Parivar has it; null at the top level. */
-  levelUp?: { level: number; expNeeded: number; fundNeeded: number; expOk: boolean; fundOk: boolean; ready: boolean } | null;
+  levelUp?: { level: number; expNeeded: number; fundNeeded: number; /** True: the whole fund is used on level up */ spendAll?: boolean; /** What the fund goes down by if the Mukhiya levels up now */ fundUsed?: number; expOk: boolean; fundOk: boolean; ready: boolean } | null;
   pendingApplications: number;
   weekRank: number | null;
   totalRank: number | null;

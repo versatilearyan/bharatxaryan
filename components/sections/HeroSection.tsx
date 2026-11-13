@@ -6,6 +6,7 @@ import { Logo } from "@/components/brand/Logo";
 import { VoiceRing } from "@/components/mock/VoiceRing";
 import { GameGlyph } from "@/components/mock/GameTile";
 import { LinkButton } from "@/components/ui/Button";
+import { PlayStoreSoon } from "@/components/sections/PlayStoreSoon";
 import { ComingSoonBadge } from "@/components/ui/ComingSoonBadge";
 import { FloatingIcon } from "@/components/ui/FloatingIcon";
 
@@ -60,9 +61,15 @@ export function HeroSection() {
 
           <motion.div variants={item} className="mt-10 flex flex-col gap-3 sm:flex-row">
             <LinkButton href="#waitlist">Join the Waitlist</LinkButton>
+            <LinkButton href="/download" variant="ghost">
+              Download for Android
+            </LinkButton>
             <LinkButton href="#features" variant="ghost">
               See what’s coming
             </LinkButton>
+          </motion.div>
+          <motion.div variants={item} className="mt-6 max-w-[34rem]">
+            <PlayStoreSoon />
           </motion.div>
         </motion.div>
 
