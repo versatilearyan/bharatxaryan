@@ -11,6 +11,7 @@ import { Coin, ScreenHeader } from "@/components/ui/kit";
 import { parivarApi, parivarExtra, type ParivarApplication, type ParivarCard, type ParivarConfig, type ParivarProfile, type ParivarRole, type RankRow, type TasksInfo, type KavachInfo, type ChestsInfo } from "@/lib/api/parivar";
 import { useApp } from "@/lib/app/store";
 import { FRAME_ORDER, FramedPicture, SignBadge, frameName } from "./ParivarFrames";
+import { TreasureSheet, TreasureWatcher } from "./FamilyTreasure";
 import { ChatSheet, CheerSheet, ChestsSheet, ChoriSheet, FeatureTiles, GachaSheet, KavachSheet, NewsTab as NewsPanel, WorldNews, ShopSheet, TasksTab, type SheetName } from "./ParivarExtras";
 
 const n = (v: number) => v.toLocaleString("en-IN");
@@ -922,6 +923,8 @@ export function ParivarHome({ id }: { id: string }) {
           <ParivarGiftSheet p={p} open={sheet === "gift" || giftOver} onClose={() => { setSheet((s) => (s === "gift" ? null : s)); setGiftOver(false); }} toId={giftTo} onSent={() => void load()} />
           <CheerSheet p={p} open={sheet === "cheer"} onClose={() => setSheet(null)} onChanged={() => void load()} />
           <GachaSheet p={p} open={sheet === "gacha"} onClose={() => setSheet(null)} onChanged={() => void load()} />
+          <TreasureSheet p={p} open={sheet === "treasure"} onClose={() => setSheet(null)} onChanged={() => void load()} />
+          <TreasureWatcher p={p} />
           <ChestsSheet p={p} open={sheet === "chests"} onClose={() => setSheet(null)} onChanged={() => void load()} />
           <ShopSheet p={p} open={sheet === "shop"} onClose={() => setSheet(null)} onChanged={() => void load()} />
           <KavachSheet p={p} open={sheet === "kavach"} onClose={() => setSheet(null)} onChanged={() => void load()} />

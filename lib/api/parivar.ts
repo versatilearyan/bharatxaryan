@@ -187,3 +187,73 @@ export function parseGiftCard(text: string): { giftId: string; count: number; fr
     return null;
   }
 }
+
+/* ---------- Family Treasure ---------- */
+
+export type TreasureRarity = "COMMON" | "PREMIUM" | "EPIC" | "LEGENDARY" | "ULTRA_RARE";
+export type TreasureItem = { kind: "GIFT" | "ITEM" | "VIP_CARD" | "TITLE" | "BADGE"; label: string; rarity: TreasureRarity; amount: number; imageUrl?: string };
+export type TreasureTier = {
+  id: string;
+  code: string;
+  name: string;
+  enabled: boolean;
+  target: number;
+  unlockMinutes: number;
+  poolCoins: number;
+  poolDiamonds: number;
+  imageUrl?: string;
+  earnedThisWeek: boolean;
+  rewards: { kind: string; rarity: TreasureRarity; label: string; imageUrl?: string }[];
+};
+export type TreasureChest = {
+  id: string;
+  tier: string;
+  name: string;
+  status: "AVAILABLE" | "TREASURE";
+  poolCoins: number;
+  poolDiamonds: number;
+  earnedAt: string;
+  claimedBy?: string;
+  unlockAt?: string;
+  secondsLeft: number;
+  ready: boolean;
+};
+export type TreasureMember = { userId: string; name: string; role: string; avatarUrl?: string };
+export type TreasureHistory = { id: string; name: string; tier: string; mode: "ALL" | "TARGET" | "TAKE_ALL"; at: string; members: number; coins: number; diamonds: number; sentBy?: string; top?: string };
+export type TreasureInfo = {
+  canSend: boolean;
+  weekActivity: number;
+  tiers: TreasureTier[];
+  chests: TreasureChest[];
+  history: TreasureHistory[];
+  diamonds: number;
+  members: TreasureMember[];
+  pendingReveal: string | null;
+};
+export type TreasureOpening = {
+  id: string;
+  name: string;
+  tier: string;
+  mode: "ALL" | "TARGET" | "TAKE_ALL";
+  sentBy?: string;
+  at: string;
+  totalCoins: number;
+  totalDiamonds: number;
+  topUserId: string | null;
+  payouts: { userId: string; name: string; avatarUrl?: string; coins: number; diamonds: number; items: TreasureItem[]; score: number }[];
+};
+export type TreasureMine = {
+  diamonds: number;
+  wins: { chest: string; tier: string; mode: string; coins: number; diamonds: number; items: TreasureItem[]; at: string }[];
+  collection: { kind: "TITLE" | "BADGE"; label: string; source: string; at: string }[];
+};
+
+export const treasureApi = {
+  state: (id: string) => api<TreasureInfo>(`${base}/${id}/treasure`, opts),
+  mine: (id: string) => api<TreasureMine>(`${base}/${id}/treasure/me`, opts),
+  claim: (id: string, chestId: string) => api<{ unlockAt: string }>(`${base}/${id}/treasure/chests/${chestId}/claim`, { ...opts, method: "POST" }),
+  send: (id: string, chestId: string, mode: "ALL" | "TARGET" | "TAKE_ALL", targetUserId?: string) =>
+    api<{ distributionId: string }>(`${base}/${id}/treasure/chests/${chestId}/send`, { ...opts, method: "POST", body: { mode, targetUserId: targetUserId ? Number(targetUserId) : undefined } }),
+  opening: (id: string, did: string) => api<TreasureOpening>(`${base}/${id}/treasure/openings/${did}`, opts),
+  seen: (id: string, did: string) => api<unknown>(`${base}/${id}/treasure/openings/${did}/seen`, { ...opts, method: "POST" }),
+};
