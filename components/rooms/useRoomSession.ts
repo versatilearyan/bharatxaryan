@@ -16,6 +16,7 @@ import { readGiftEvent, roomGiftsTopic, sendRoomGift, type RoomGiftEvent } from 
 import { readRoomMedia, roomMediaApi, roomMediaTopic, type RoomMedia, type ServerMode } from "@/lib/api/room-media";
 import type { VideoSync } from "./YouTubePlayer";
 import { SERVER_USER_PREFIX } from "@/lib/app/server-rooms";
+import { nativeEmit } from "@/lib/native/bridge";
 import { useRoomParticipants } from "./useRoomParticipants";
 import { useRoomState, type LiveRoomEvent } from "./useRoomState";
 import { roomStateApi } from "@/lib/api/room-state";
@@ -738,6 +739,30 @@ export function useRoomSession(room: Room) {
   // Only the room owner and the admins can play songs in a room
   const streamSong = Boolean(live && canModerate && music.playing && music.current && seated && !adminMutedMe && roomOpen && music.onlyHere !== music.current.id);
   const voiceConnected = voice?.status === "connected";
+  // In the Android app: while you are in a voice room the app keeps it running in the background and with the screen off
+  const micOnNow = voice ? voice.micOn : !muted;
+  useEffect(() => {
+    if (!voiceConnected) return;
+    return () => nativeEmit("voiceRoom", { active: false });
+  }, [voiceConnected]);
+  // The notification says Mic on / off and offers Mute / Unmute and Leave room; this updates it when the mic changes
+  useEffect(() => {
+    if (voiceConnected) nativeEmit("voiceRoom", { active: true, name: room.name, muted: !micOnNow });
+  }, [voiceConnected, room.name, micOnNow]);
+  // The notification's buttons come back here
+  const actionsRef = useRef({ toggleMute: () => {}, leave: () => {} });
+  useEffect(() => {
+    const on = (e: Event) => {
+      const a = (e as CustomEvent<{ action?: string }>).detail?.action;
+      if (a === "toggleMic") actionsRef.current.toggleMute();
+      else if (a === "leave") actionsRef.current.leave();
+    };
+    window.addEventListener("panchayat:voice-action", on);
+    return () => window.removeEventListener("panchayat:voice-action", on);
+  }, []);
+  useEffect(() => {
+    actionsRef.current = { toggleMute, leave: leaveRoom };
+  });
   const setMusicOnCall = voice?.setMusic;
   useEffect(() => {
     if (!setMusicOnCall || !voiceConnected) return;
