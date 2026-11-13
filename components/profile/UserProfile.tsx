@@ -42,6 +42,7 @@ import { useParivar } from "@/lib/app/parivar-store";
 import { NewbieBadge } from "@/components/newbie/NewbieBadge";
 import { useIsNewbie, useNewbieMe } from "@/lib/app/newbie";
 import { LevelPill } from "@/components/profile/IdTags";
+import { MyTitlesButton, WornTitles } from "@/components/profile/ProfileTitles";
 import { usePublicProfile } from "@/components/profile/usePublicProfile";
 import { useProfileFx } from "@/components/profile/useProfileFx";
 import { BadgeImg } from "@/components/market/CpCharm";
@@ -175,6 +176,10 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, char
           ) : null}
           {isNewbie ? <NewbieBadge className="!px-2 !py-0.5 !text-[10px]" /> : null}
           <ParivarTag personId={personId} className="!text-[11px]" />
+        </div>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <WornTitles personId={personId} />
+          {mine ? <MyTitlesButton /> : null}
         </div>
         <button
           type="button"

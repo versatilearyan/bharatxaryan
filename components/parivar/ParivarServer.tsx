@@ -8,10 +8,11 @@ import { ParivarGiftSheet } from "./ParivarGift";
 import { useServerRooms } from "@/lib/app/server-rooms";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin, ScreenHeader } from "@/components/ui/kit";
-import { parivarApi, parivarExtra, type ParivarApplication, type ParivarCard, type ParivarConfig, type ParivarProfile, type ParivarRole, type RankRow, type TasksInfo, type KavachInfo, type ChestsInfo } from "@/lib/api/parivar";
+import { parivarApi, parivarExtra, type ParivarApplication, type ParivarCard, type ParivarConfig, type ParivarProfile, type ParivarRole, type RankRow, type TasksInfo, type KavachInfo, type ChestsInfo, treasureApi, type TreasureInfo } from "@/lib/api/parivar";
 import { useApp } from "@/lib/app/store";
 import { FRAME_ORDER, FramedPicture, SignBadge, frameName } from "./ParivarFrames";
-import { TreasureSheet, TreasureWatcher } from "./FamilyTreasure";
+import { ChestArt, TreasureSheet, TreasureWatcher, themeOf } from "./FamilyTreasure";
+import { ParivarGuideSheet } from "./ParivarGuide";
 import { ChatSheet, CheerSheet, ChestsSheet, ChoriSheet, FeatureTiles, GachaSheet, KavachSheet, NewsTab as NewsPanel, WorldNews, ShopSheet, TasksTab, type SheetName } from "./ParivarExtras";
 
 const n = (v: number) => v.toLocaleString("en-IN");
@@ -691,7 +692,7 @@ export function ParivarHome({ id }: { id: string }) {
               <p className="mt-1.5 text-[11.5px] text-cream/45">{p.nextLevelExp ? `Next level Lv.${p.level + 1}: ${n(p.nextLevelExp)} activeness` : "Your Parivar is at the top level 🏆"}</p>
               {isMember ? (
                 <div className="mt-3">
-                  <WeeklyActiveness p={p} info={wk} onChanged={() => { loadExtras(); void load(); }} />
+                  <WeeklyActiveness p={p} info={wk} onOpenTreasure={() => setSheet("treasure")} />
                 </div>
               ) : null}
               {p.levelUp && isMember ? (
@@ -925,6 +926,7 @@ export function ParivarHome({ id }: { id: string }) {
           <GachaSheet p={p} open={sheet === "gacha"} onClose={() => setSheet(null)} onChanged={() => void load()} />
           <TreasureSheet p={p} open={sheet === "treasure"} onClose={() => setSheet(null)} onChanged={() => void load()} />
           <TreasureWatcher p={p} />
+          <ParivarGuideSheet p={p} open={sheet === "guide"} onClose={() => setSheet(null)} />
           <ChestsSheet p={p} open={sheet === "chests"} onClose={() => setSheet(null)} onChanged={() => void load()} />
           <ShopSheet p={p} open={sheet === "shop"} onClose={() => setSheet(null)} onChanged={() => void load()} />
           <KavachSheet p={p} open={sheet === "kavach"} onClose={() => setSheet(null)} onChanged={() => void load()} />
@@ -988,49 +990,51 @@ function Band() {
   );
 }
 
-function WeeklyActiveness({ p, info, onChanged }: { p: ParivarProfile; info: TasksInfo | null; onChanged: () => void }) {
-  const { toast } = useApp();
-  const steps = (info?.tasks ?? []).filter((t) => t.period === "WEEKLY").sort((a, b) => a.target - b.target);
-  const short = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v));
+/** The weekly activity card: one chest per Family Treasure target (the admin sets how many there are and their numbers). Tap to open the Treasure. */
+function WeeklyActiveness({ p, info, onOpenTreasure }: { p: ParivarProfile; info: TasksInfo | null; onOpenTreasure: () => void }) {
+  const [tr, setTr] = useState<TreasureInfo | null>(null);
+  useEffect(() => {
+    let live = true;
+    const load = () => void treasureApi.state(p.id).then((r) => live && setTr(r)).catch(() => undefined);
+    load();
+    const t = window.setInterval(load, 30_000);
+    return () => {
+      live = false;
+      window.clearInterval(t);
+    };
+  }, [p.id]);
+  const tiers = (tr?.tiers ?? []).filter((t) => t.enabled).sort((a, b) => a.target - b.target);
+  const week = tr?.weekActivity ?? info?.weekExp ?? p.weekExp;
+  const short = (v: number) => (v >= 1000 ? `${(v / 1000).toFixed(1)}K` : String(v));
   return (
     <div className="flex items-stretch gap-2 rounded-[18px_14px_18px_14px] bg-white/[0.045] p-2 ring-1 ring-white/[0.07]">
       <div className="relative flex w-[112px] shrink-0 -rotate-[1.5deg] flex-col justify-center rounded-[10px] bg-gradient-to-b from-[#fff6e4] to-[#f0dcb4] px-2.5 py-2 text-center shadow-[0_6px_14px_-6px_rgba(0,0,0,0.7)] after:absolute after:inset-y-2 after:-right-[3px] after:border-r-[3px] after:border-dotted after:border-[#1d1018]">
         <p className="text-[10.5px] font-extrabold text-[#6b4a22]">Weekly Activeness</p>
-        <p className="font-display text-[24px] leading-tight font-extrabold text-[#2a1a0c]">{n(info?.weekExp ?? p.weekExp)}</p>
+        <p className="font-display text-[24px] leading-tight font-extrabold text-[#2a1a0c]">{n(week)}</p>
         <p className="text-[9.5px] font-bold text-[#8a6a42]">Refresh on Mon. 0:00</p>
       </div>
-      <div className="flex min-w-0 flex-1 items-center justify-around">
-        {steps.length ? (
-          steps.slice(0, 4).map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              disabled={!t.claimable}
-              onClick={() =>
-                parivarExtra
-                  .claimTask(p.id, t.id)
-                  .then(() => {
-                    toast("Reward collected", "gold");
-                    onChanged();
-                  })
-                  .catch((e) => toast(errText(e), "error"))
-              }
-              className="relative flex flex-col items-center gap-0.5"
-              aria-label={t.title}
-            >
-              <motion.span animate={t.claimable ? { y: [0, -3, 0] } : undefined} transition={{ duration: 1, repeat: Infinity }} className={t.claimed ? "opacity-60" : t.claimable ? "" : "opacity-80"}>
-                <RewardArt kind="GIFT" size={40} />
-              </motion.span>
-              {t.claimed ? (
-                <span className="absolute top-0 -right-0.5 grid h-4 w-4 place-items-center rounded-full bg-speak text-ink">
-                  <Check className="h-3 w-3" aria-hidden />
-                </span>
-              ) : null}
-              <span className={`text-[12px] font-extrabold ${t.claimed || t.claimable ? "text-gold" : "text-cream/45"}`}>{short(t.target)}</span>
-            </button>
-          ))
+      <div className="scroll-thin flex min-w-0 flex-1 items-center justify-around gap-1 overflow-x-auto">
+        {tiers.length ? (
+          tiers.map((t) => {
+            const reached = t.earnedThisWeek || week >= t.target;
+            const waiting = (tr?.chests ?? []).some((c) => c.tier === t.code && c.status === "AVAILABLE");
+            const th = themeOf(t.code);
+            return (
+              <button key={t.id} type="button" onClick={onOpenTreasure} className="relative flex shrink-0 flex-col items-center gap-0.5 px-1" aria-label={`${t.name}, ${short(t.target)} activity`}>
+                <motion.span animate={waiting ? { y: [0, -3, 0] } : undefined} transition={{ duration: 1, repeat: Infinity }} className={reached ? "" : "opacity-55 saturate-50"} style={reached ? { filter: `drop-shadow(0 0 8px ${th.glow}99)` } : undefined}>
+                  <ChestArt tier={t.code} size={46} />
+                </motion.span>
+                {waiting ? <span className="absolute top-0 right-0 h-3 w-3 rounded-full bg-[#ff4d4f] ring-2 ring-[#1a0f16]" aria-hidden /> : t.earnedThisWeek ? (
+                  <span className="absolute top-0 right-0 grid h-4 w-4 place-items-center rounded-full bg-speak text-ink">
+                    <Check className="h-3 w-3" aria-hidden />
+                  </span>
+                ) : null}
+                <span className={`text-[12px] font-extrabold ${reached ? "text-gold" : "text-cream/45"}`}>{short(t.target)}</span>
+              </button>
+            );
+          })
         ) : (
-          <p className="self-center px-2 text-[11.5px] text-cream/50">Weekly rewards appear here when the admin adds them.</p>
+          <p className="self-center px-2 text-[11.5px] text-cream/50">Weekly chests appear here when the admin adds them.</p>
         )}
       </div>
     </div>

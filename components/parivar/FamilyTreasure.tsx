@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import { SvgaAnim } from "@/components/effects/SvgaAnim";
 import { treasureApi, type ParivarProfile, type TreasureInfo, type TreasureItem, type TreasureMine, type TreasureOpening, type TreasureRarity } from "@/lib/api/parivar";
 import { useApp } from "@/lib/app/store";
 
@@ -19,10 +20,10 @@ const THEMES: Record<string, Theme> = {
   RARE: { name: "Rare", body: ["#7b2fc9", "#35125f"], lid: ["#9a4de6", "#451a7a"], trim: "#ffd36e", glow: "#c07bff", accent: "#ffd36e" },
   SUPER: { name: "Super", body: ["#d9a62b", "#6b4208"], lid: ["#f6cf5c", "#8a5a10"], trim: "#fff1b0", glow: "#ffcf4a", accent: "#b04dff", flame: true },
 };
-const themeOf = (code: string): Theme => THEMES[code] ?? THEMES.NORMAL;
+export const themeOf = (code: string): Theme => THEMES[code] ?? THEMES.NORMAL;
 const RARITY_COLOR: Record<TreasureRarity, string> = { COMMON: "#b9c0cc", PREMIUM: "#5fb7ff", EPIC: "#c58bff", LEGENDARY: "#ffd36e", ULTRA_RARE: "#ff5d8f" };
 const RARITY_LABEL: Record<TreasureRarity, string> = { COMMON: "Common", PREMIUM: "Premium", EPIC: "Epic", LEGENDARY: "Legendary", ULTRA_RARE: "Ultra Rare" };
-const KIND_EMOJI: Record<string, string> = { GIFT: "🎁", ITEM: "🖼️", VIP_CARD: "👑", TITLE: "🏷️", BADGE: "🎖️" };
+const KIND_EMOJI: Record<string, string> = { GIFT: "🎁", ITEM: "🖼️", VIP_CARD: "👑", TITLE: "🏷️", BADGE: "🎖️", COLLECTIBLE: "✨", PROFILE_TITLE: "🏷️" };
 const bigRarity = (r: TreasureRarity) => r === "LEGENDARY" || r === "ULTRA_RARE";
 
 function useNow(ms = 1000) {
@@ -90,7 +91,7 @@ function useSound() {
 
 /* ------------------------------ the chest ------------------------------ */
 
-function ChestArt({ tier, size = 170, open = false, shake = false }: { tier: string; size?: number; open?: boolean; shake?: boolean }) {
+export function ChestArt({ tier, size = 170, open = false, shake = false }: { tier: string; size?: number; open?: boolean; shake?: boolean }) {
   const t = themeOf(tier);
   const id = useMemo(() => `ch${tier}${Math.random().toString(36).slice(2, 7)}`, [tier]);
   return (
@@ -293,8 +294,9 @@ function ItemChip({ it }: { it: TreasureItem }) {
   return (
     <span className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-bold" style={{ background: `${c}22`, color: c, boxShadow: `inset 0 0 0 1px ${c}66` }}>
       {it.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={it.imageUrl} alt="" className="h-4 w-4 object-contain" />
+        <span className="block h-5 w-5 shrink-0">
+          <SvgaAnim src={it.imageUrl} className="h-full w-full object-contain" />
+        </span>
       ) : (
         <span>{KIND_EMOJI[it.kind] ?? "🎁"}</span>
       )}
@@ -555,13 +557,20 @@ export function TreasureSheet({ p, open, onClose, onChanged }: Props) {
                 ) : (
                   <div className="mt-4 space-y-3">
                     {mine.collection.length ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {mine.collection.map((c, i) => (
-                          <span key={i} className="rounded-full bg-gold/15 px-2.5 py-1 text-[11.5px] font-bold text-gold ring-1 ring-gold/30">
-                            {c.kind === "TITLE" ? "🏷️" : "🎖️"} {c.label}
-                          </span>
-                        ))}
-                      </div>
+                      <>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">My Parivar collection</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {mine.collection.map((c, i) => (
+                            <div key={i} className="flex flex-col items-center rounded-2xl bg-surface p-2 text-center ring-1 ring-gold/25">
+                              <span className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl bg-black/30">
+                                {c.imageUrl ? <SvgaAnim src={c.imageUrl} className="h-full w-full object-contain" /> : <span className="text-[26px]">{c.kind === "TITLE" ? "🏷️" : c.kind === "GIFT" ? "🎁" : "🎖️"}</span>}
+                              </span>
+                              <span className="mt-1 line-clamp-2 text-[11.5px] font-bold leading-tight text-cream">{c.label}</span>
+                              <span className="text-[9.5px] uppercase tracking-wider text-gold/70">{c.kind}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
                     ) : null}
                     {!mine.wins.length ? <p className="rounded-2xl bg-surface p-4 text-center text-[12.5px] text-muted ring-1 ring-line">You haven&apos;t won from a chest yet.</p> : null}
                     {mine.wins.map((w, i) => (

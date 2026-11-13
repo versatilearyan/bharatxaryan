@@ -21,7 +21,7 @@ const errText = (e: unknown, fallback = "That didn't work. Try again.") => (e in
 const RARITY: Record<string, string> = { COMMON: "#b9c0cc", RARE: "#5fb7ff", EPIC: "#c58bff", LEGENDARY: "#ffd36e" };
 const KIND_ICON: Record<string, string> = {};
 
-export type SheetName = "gift" | "cheer" | "gacha" | "chests" | "treasure" | "shop" | "kavach" | "chori" | "chat" | null;
+export type SheetName = "gift" | "cheer" | "gacha" | "chests" | "treasure" | "guide" | "shop" | "kavach" | "chori" | "chat" | null;
 
 function useLoad<T>(fn: () => Promise<T>, deps: unknown[], every = 0) {
   const [data, setData] = useState<T | null>(null);
@@ -91,6 +91,7 @@ const TILES: { key: Exclude<SheetName, null>; icon?: string; label: string; sub:
   { key: "gacha", icon: "🎰", label: "Gacha", sub: "Win rewards" },
   { key: "cheer", icon: "📣", label: "Cheer", sub: "Boost activity" },
   { key: "treasure", icon: "🗝️", label: "Family Treasure", sub: "Weekly chests" },
+  { key: "guide", icon: "📖", label: "Guide", sub: "How a Parivar grows" },
   { key: "chests", icon: "🎁", label: "Chests", sub: "Send and claim" },
   { key: "shop", icon: "🛒", label: "Shop", sub: "Cards and chests" },
   { key: "kavach", icon: "🛡️", label: "Kavach", sub: "Guard the treasury" },
@@ -98,7 +99,7 @@ const TILES: { key: Exclude<SheetName, null>; icon?: string; label: string; sub:
 ];
 
 /** Full-colour Panchayat art for each feature tile. */
-const TILE_ART: Record<string, string> = { chat: "P_CHAT", gift: "P_GIFT", gacha: "P_DICE", cheer: "P_DHOL", chests: "P_CHEST", treasure: "P_CHEST", shop: "P_POTLI", kavach: "P_KAVACH", chori: "P_MASK", voice: "P_MIC" };
+const TILE_ART: Record<string, string> = { chat: "P_CHAT", gift: "P_GIFT", gacha: "P_DICE", cheer: "P_DHOL", chests: "P_CHEST", treasure: "P_CHEST", guide: "P_THALI", shop: "P_POTLI", kavach: "P_KAVACH", chori: "P_MASK", voice: "P_MIC" };
 
 function TileArt({ k }: { k: string }) {
   return (

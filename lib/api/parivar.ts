@@ -191,7 +191,7 @@ export function parseGiftCard(text: string): { giftId: string; count: number; fr
 /* ---------- Family Treasure ---------- */
 
 export type TreasureRarity = "COMMON" | "PREMIUM" | "EPIC" | "LEGENDARY" | "ULTRA_RARE";
-export type TreasureItem = { kind: "GIFT" | "ITEM" | "VIP_CARD" | "TITLE" | "BADGE"; label: string; rarity: TreasureRarity; amount: number; imageUrl?: string };
+export type TreasureItem = { kind: "GIFT" | "ITEM" | "VIP_CARD" | "TITLE" | "BADGE" | "COLLECTIBLE" | "PROFILE_TITLE"; collectibleKind?: string; label: string; rarity: TreasureRarity; amount: number; imageUrl?: string };
 export type TreasureTier = {
   id: string;
   code: string;
@@ -245,7 +245,7 @@ export type TreasureOpening = {
 export type TreasureMine = {
   diamonds: number;
   wins: { chest: string; tier: string; mode: string; coins: number; diamonds: number; items: TreasureItem[]; at: string }[];
-  collection: { kind: "TITLE" | "BADGE"; label: string; source: string; at: string }[];
+  collection: { kind: "TITLE" | "BADGE" | "ANIMATION" | "GIFT"; label: string; imageUrl: string; source: string; at: string }[];
 };
 
 export const treasureApi = {
