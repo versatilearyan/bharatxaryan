@@ -187,5 +187,9 @@
 }
 
 /* Festival decorations */
+/* The "install the app" ribbon: the text runs along and loops (two copies, so it moves by exactly half) */
+@keyframes apk-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.apk-marquee { animation: apk-marquee 16s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .apk-marquee { animation: none; } }
 @keyframes festival-twinkle { 0%, 100% { opacity: 0.45; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.1); } }
 @keyframes festival-flame { 0%, 100% { transform: scaleY(1) scaleX(1); opacity: 0.95; } 50% { transform: scaleY(1.2) scaleX(0.85); opacity: 0.75; } }

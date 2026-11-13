@@ -15,6 +15,7 @@ import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, Pill, SectionTitle, formatCoins, formatCount } from "@/components/ui/kit";
 import { RoomCard, RoomRow } from "@/components/rooms/RoomCards";
 import { GAMES, PEOPLE } from "@/lib/app/data";
+import { AppDownloadBanner } from "@/components/system/AppDownloadBanner";
 import { usePeople } from "@/lib/app/people";
 import { useApp } from "@/lib/app/store";
 import { nameFace } from "@/lib/app/fonts";
@@ -85,6 +86,7 @@ function TopBar() {
           <PersonAvatar person={{ id: "me", look: profile.look, photo: profile.photo, frame: profile.frame }} size={34} />
         </button>
       </div>
+      <AppDownloadBanner />
     </header>
   );
 }
