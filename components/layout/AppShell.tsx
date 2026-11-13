@@ -37,6 +37,7 @@ import { Toasts } from "@/components/ui/Toasts";
 import { AuthFlow } from "@/components/auth/AuthFlow";
 import { FestivalBackground } from "@/components/festival/FestivalBackground";
 import { FestivalPopup } from "@/components/festival/FestivalPopup";
+import { AppDownloadBanner } from "@/components/system/AppDownloadBanner";
 
 const ReferScreen = dynamic(() => import("@/components/rewards/ReferScreen").then((m) => m.ReferScreen), { ssr: false });
 const LudoScreen = dynamic(() => import("@/components/games/ludo/LudoScreen").then((m) => m.LudoScreen), { ssr: false });
@@ -118,6 +119,7 @@ function Frame() {
               <VipLevelUpPrompt />
               <VipRenewPrompt />
               <SarpanchBanner />
+              <AppDownloadBanner />
               <WelcomeGift />
               <ReferralCapture />
               <PaymentReturn />

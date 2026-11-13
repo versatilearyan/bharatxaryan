@@ -3,7 +3,7 @@
 import { BagIcon, RankingIcon, ShopIcon, VisitorsIcon } from "@/components/art/ProfileIcons";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, ChevronRight, Crown, Eye, FileText, Info, MessageCircle, Pencil, RotateCw, LogOut, Shield, Smartphone, Volume2 } from "lucide-react";
+import { Bell, ChevronRight, Crown, Download, Eye, FileText, Info, MessageCircle, Pencil, RotateCw, LogOut, Shield, Smartphone, Volume2 } from "lucide-react";
 import { setNotifyPrefs, useNotifyPrefs, notify as ping } from "@/lib/app/notify";
 import { getPrivacy, setShowOnline } from "@/lib/api/chat";
 import { GameArt } from "@/components/art/GameArt";
@@ -17,10 +17,12 @@ import { useMarket } from "@/lib/app/market-store";
 import { ME_ID, useApp } from "@/lib/app/store";
 import { useVisitorStats } from "./ServerVisitors";
 import { useMe } from "@/lib/app/me-store";
+import { useIsNativeApp } from "@/components/system/AppDownloadBanner";
 
 export function ProfileScreen() {
   const { profile, coins, setSheet, push, toast, signOut, session, vip: appVip } = useApp();
   const myServerId = session ? myUserIdFromToken() : null;
+  const native = useIsNativeApp();
   const [notify, setNotify] = useState(true);
   const [sounds, setSounds] = useState(true);
   const alerts = useNotifyPrefs();
@@ -184,6 +186,7 @@ export function ProfileScreen() {
             />
           }
         />
+        {!native ? <LinkRow href="/download" icon={<Download className="h-4.5 w-4.5" />} label="Download the Android app (soon on Google Play)" /> : null}
         <LinkRow href="/about" icon={<Info className="h-4.5 w-4.5" />} label="About Panchayat" />
         <LinkRow href="/privacy" icon={<Shield className="h-4.5 w-4.5" />} label="Privacy Policy" />
         <LinkRow href="/terms" icon={<FileText className="h-4.5 w-4.5" />} label="Terms of Service" />
