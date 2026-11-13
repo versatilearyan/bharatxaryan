@@ -1,4 +1,8 @@
+"use client";
+
 import Image from "next/image";
+import { SvgaAnim } from "@/components/effects/SvgaAnim";
+import { useFestival } from "@/components/festival/FestivalProvider";
 import { BRAND } from "@/lib/site";
 import { Crown } from "./Crown";
 
@@ -20,6 +24,15 @@ type LogoProps = {
  * `BRAND.logoSrc` in lib/site.ts to use it everywhere automatically.
  */
 export function Logo({ size = "1.6rem", sparkle = false, className, sizes = "(min-width: 1024px) 420px, 60vw" }: LogoProps) {
+  const { config } = useFestival();
+  // During a festival the admin can swap the logo
+  if (config?.sections.logo && config.assets.logoUrl) {
+    return (
+      <span className={`inline-block ${className ?? ""}`} style={{ height: `calc(${size} * 1.9)`, aspectRatio: "3 / 1" }}>
+        <SvgaAnim src={config.assets.logoUrl} className="h-full w-auto object-contain" />
+      </span>
+    );
+  }
   if (BRAND.logoSrc) {
     return (
       <span className={`inline-block ${className ?? ""}`} style={{ height: `calc(${size} * 1.9)` }}>

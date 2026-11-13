@@ -35,6 +35,8 @@ import { GlobalSheets } from "@/components/sheets/GlobalSheets";
 import { GiftOverlay } from "@/components/gifts/GiftOverlay";
 import { Toasts } from "@/components/ui/Toasts";
 import { AuthFlow } from "@/components/auth/AuthFlow";
+import { FestivalBackground } from "@/components/festival/FestivalBackground";
+import { FestivalPopup } from "@/components/festival/FestivalPopup";
 
 const ReferScreen = dynamic(() => import("@/components/rewards/ReferScreen").then((m) => m.ReferScreen), { ssr: false });
 const LudoScreen = dynamic(() => import("@/components/games/ludo/LudoScreen").then((m) => m.LudoScreen), { ssr: false });
@@ -92,7 +94,7 @@ export function AppShell() {
 }
 
 function Frame() {
-  const { activeRoomId, roomOpen, signedIn } = useApp();
+  const { activeRoomId, roomOpen, signedIn, setTab } = useApp();
   // Screens add this to their bottom padding so the mini player never covers content
   const mini = activeRoomId && !roomOpen ? "64px" : "0px";
   return (
@@ -103,8 +105,10 @@ function Frame() {
           style={{ "--mini": mini } as React.CSSProperties}
           className="relative h-full w-full overflow-clip bg-ink min-[480px]:max-w-[420px] min-[480px]:shadow-[0_0_0_1px_rgb(255_255_255/0.04),0_30px_80px_-10px_rgb(0_0_0/0.75)]"
         >
+          <FestivalBackground />
           {signedIn ? (
             <>
+              <FestivalPopup onCta={() => setTab("rooms")} />
               <Tabs />
               <BottomNav />
               <Stack />

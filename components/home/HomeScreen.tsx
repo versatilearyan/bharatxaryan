@@ -9,6 +9,7 @@ import { useLiveCounts } from "@/lib/app/live-counts";
 import { NewbieRooms } from "@/components/newbie/NewbieUi";
 import { ShortcutIcon } from "@/components/art/ShortcutIcon";
 import { Logo } from "@/components/brand/Logo";
+import { FestivalBanner } from "@/components/festival/FestivalBanner";
 import { GameArt } from "@/components/art/GameArt";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, Pill, SectionTitle, formatCoins, formatCount } from "@/components/ui/kit";
@@ -22,6 +23,7 @@ export function HomeScreen() {
   return (
     <div className="app-scroll h-full pb-[calc(84px+var(--mini,0px)+env(safe-area-inset-bottom))]">
       <TopBar />
+      <HomeFestival />
       <NewbieRooms />
       <Shortcuts />
       <GameModes />
@@ -35,6 +37,11 @@ export function HomeScreen() {
       </p>
     </div>
   );
+}
+
+function HomeFestival() {
+  const { setTab } = useApp();
+  return <FestivalBanner onOpen={() => setTab("rooms")} />;
 }
 
 export function CoinPill() {
