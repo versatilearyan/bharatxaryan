@@ -1,5 +1,6 @@
 "use client";
 
+import { OfficialBadge } from "@/components/rooms/OfficialBadge";
 import { usePublicProfile } from "@/components/profile/usePublicProfile";
 import { onMicIn, useLiveCounts } from "@/lib/app/live-counts";
 import { RoomCover } from "@/components/rooms/RoomCover";
@@ -89,6 +90,7 @@ export function RoomRow({ room }: { room: Room }) {
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className={`truncate font-display text-[16px] font-bold ${room.vip ? "gold-shine pr-1" : "text-cream"}`} style={nameFace(room.settings?.nameFont)}>{room.name}</span>
+          {room.official ? <OfficialBadge /> : null}
           {room.isPrivate || room.password ? <Lock className="h-3.5 w-3.5 shrink-0 text-muted" aria-label={room.password ? "Password" : "Private"} /> : null}
         </span>
         <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-muted">
@@ -165,6 +167,7 @@ export function RoomCard({ room, wide = false }: { room: Room; wide?: boolean })
       </span>
       <span className="absolute inset-x-0 bottom-0 p-3">
         <span className={`line-clamp-2 font-display text-[15px] font-bold leading-tight ${room.vip ? "gold-shine pr-1" : "text-cream"}`} style={nameFace(room.settings?.nameFont)}>{room.name}</span>
+        {room.official ? <OfficialBadge className="mt-1" /> : null}
         <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-cream/75">
           <PersonAvatar person={host} size={18} />
           <span className="truncate">{host.name}</span>

@@ -106,6 +106,8 @@ export type Room = {
   extraSeats?: boolean;
   /** The welcome room's background picture (the admin's, or the host's own). */
   newbieBackground?: string;
+  /** An official room of Panchayat (the Sarpanch owns it and sits on the owner seat). */
+  official?: boolean;
   /** Pre-loaded video for Watch Together rooms. */
   videoId?: string;
   /**

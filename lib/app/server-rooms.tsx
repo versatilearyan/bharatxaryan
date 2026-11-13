@@ -112,6 +112,7 @@ export function toAppRoom(v: VoiceRoom, myId: string | undefined, prefs: ServerR
     newbie: v.newbie || undefined,
     extraSeats: v.extraSeats || undefined,
     newbieBackground: v.newbieBackground || undefined,
+    official: v.official || undefined,
     settings: v.settings as Partial<RoomSettings>,
     server: { id: v.id, ownerId: v.ownerId, mine, status: v.status, description: v.description, maxParticipants: v.maxParticipants },
   };

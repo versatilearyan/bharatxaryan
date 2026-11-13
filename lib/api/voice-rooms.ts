@@ -63,6 +63,8 @@ export type VoiceRoom = {
   extraSeats?: boolean;
   /** The welcome room's background picture (the admin's, or the host's own). */
   newbieBackground?: string | null;
+  /** An official room of Panchayat (the Sarpanch owns it). */
+  official?: boolean;
 };
 
 /** What POST /voice-rooms/{id}/join returns: where and how to connect to LiveKit. */
@@ -198,6 +200,7 @@ export function readVoiceRoom(raw: unknown): VoiceRoom | null {
     fanCount: num(r.fanCount),
     points: num(r.points),
     exp: num(r.exp),
+    official: r.official === true ? true : undefined,
   };
 }
 

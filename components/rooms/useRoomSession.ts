@@ -378,7 +378,7 @@ export function useRoomSession(room: Room) {
    */
   const ownerHere = isOwner || onlineIds.includes(room.hostId);
   const adminHere = role === "admin" || onlineIds.some((id) => admins.includes(id));
-  const roomOpen = srv ? srv.open : ownerHere || adminHere;
+  const roomOpen = srv ? srv.open : Boolean(room.official) || ownerHere || adminHere;
   const openedByAdmin = srv ? srv.open && !srv.seats[0] : !ownerHere && adminHere;
   const CLOSED_TEXT = "The room is closed until the owner or an admin joins";
 

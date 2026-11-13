@@ -1,5 +1,6 @@
 "use client";
 
+import { OfficialBadge } from "@/components/rooms/OfficialBadge";
 import { useSeatScale } from "./useSeatScale";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { useState } from "react";
@@ -45,6 +46,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
 
       <div className="relative z-10 flex items-center justify-between gap-2 px-4 pt-1">
         <p className="min-w-0 truncate text-[12px] text-cream/70">
+          {s.room.official ? <OfficialBadge full className="mr-1.5 align-middle" /> : null}
           <span className="mr-1.5 rounded-md bg-cream/10 px-1.5 py-0.5 text-[10px] font-bold text-cream/80">{s.room.category}</span>
           {s.settings.event ? <span className="mr-1.5 rounded-md bg-coral px-1.5 py-0.5 text-[10px] font-bold text-white">🎉 Event</span> : null}
           {s.room.topic}
