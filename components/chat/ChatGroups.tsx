@@ -8,7 +8,7 @@
  * - ChatMenuSheet: a direct chat's mute and block.
  */
 import { useEffect, useMemo, useState } from "react";
-import { BellOff, Bell, Check, Crown, Loader2, LogOut, Pencil, Search, Shield, ShieldOff, UserMinus, UserPlus, Users, X, Ban } from "lucide-react";
+import { BellOff, Bell, Check, Crown, Loader2, LogOut, Pencil, Search, Shield, ShieldOff, Trash2, UserMinus, UserPlus, Users, X, Ban } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import {
@@ -18,6 +18,7 @@ import {
   presenceText,
   removeGroupMember,
   renameGroup,
+  clearChat,
   setChatMuted,
   setGroupAdmin,
   setUserBlocked,
@@ -26,6 +27,7 @@ import {
   type GroupMember,
 } from "@/lib/api/chat";
 import { searchServer, type FoundUser } from "@/lib/api/search";
+import { friendsApi } from "@/lib/api/social";
 import { useChat } from "@/lib/app/chat-store";
 import { usePeople } from "@/lib/app/people";
 import { userPersonId, useServerRooms } from "@/lib/app/server-rooms";
@@ -376,9 +378,20 @@ export function GroupInfoSheet({ open, onClose, conversationId, group, onChanged
 /* ------------------------------------------------------------------ */
 
 export function ChatMenuSheet({ open, onClose, c, name, personId }: { open: boolean; onClose: () => void; c: ChatConversation | undefined; name: string; personId: string }) {
-  const { toast, setSheet } = useApp();
+  const { toast, setSheet, pop } = useApp();
   const chat = useChat();
   const [busy, setBusy] = useState(false);
+  // Are they a friend? (the Remove friend row only shows for friends)
+  const [friend, setFriend] = useState(false);
+  const otherId = c?.otherUserId;
+  useEffect(() => {
+    if (!open || !otherId) return;
+    let live = true;
+    friendsApi.status(otherId).then((s) => live && setFriend(s.friends)).catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [open, otherId]);
   if (!c) return null;
   const run = async (f: () => Promise<unknown>, ok: string) => {
     setBusy(true);
@@ -424,6 +437,35 @@ export function ChatMenuSheet({ open, onClose, c, name, personId }: { open: bool
             }}
           />
         ) : null}
+        {c.otherUserId && friend ? (
+          <Row
+            icon={<UserMinus className="h-4 w-4" />}
+            label="Remove friend"
+            sub="You will no longer be friends. Your chat stays."
+            danger
+            onClick={() => {
+              if (!window.confirm(`Remove ${name} from your friends?`)) return;
+              void run(async () => {
+                await friendsApi.unfollow(c.otherUserId!);
+                setFriend(false);
+              }, `${name} removed from your friends`);
+            }}
+          />
+        ) : null}
+        <Row
+          icon={<Trash2 className="h-4 w-4" />}
+          label="Delete chat"
+          sub="Removes this chat from your list. The other person keeps their copy."
+          danger
+          onClick={() => {
+            if (!window.confirm(`Delete your chat with ${name}? ${name} will still have it.`)) return;
+            void run(async () => {
+              await clearChat(c.id);
+              chat.clearedLocally(c.id);
+              pop();
+            }, "Chat deleted");
+          }}
+        />
       </div>
     </BottomSheet>
   );

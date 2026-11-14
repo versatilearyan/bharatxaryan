@@ -11,12 +11,13 @@ import { getRoomById } from "@/lib/api/voice-rooms";
 import { invitePreview, parseInvite } from "@/lib/api/invites";
 import { InviteCard } from "@/components/social/Invites";
 import { OfficialTick, SystemBubble } from "@/components/sarpanch/Sarpanch";
-import { AlertCircle, BellOff, ChevronLeft, ImagePlus, Loader2, MoreVertical, RotateCcw, Send, Smile, Users, X } from "lucide-react";
+import { AlertCircle, BellOff, ChevronLeft, Copy, ImagePlus, Loader2, MoreVertical, RotateCcw, Send, Smile, Trash2, Undo2, Users, X } from "lucide-react";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ChatMenuSheet, GroupInfoSheet, useGroupInfo } from "./ChatGroups";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { IconButton } from "@/components/ui/kit";
 import { usePublicProfile } from "@/components/profile/usePublicProfile";
-import { acceptChatRequest, checkChatImage, declineChatRequest, getActiveNow, loadChatPhoto, presenceText, type ActivePerson, CHAT_TEXT_MAX, type ChatConversation, type ChatMessage } from "@/lib/api/chat";
+import { acceptChatRequest, checkChatImage, declineChatRequest, getActiveNow, hideMessage, unsendMessage, loadChatPhoto, presenceText, type ActivePerson, CHAT_TEXT_MAX, type ChatConversation, type ChatMessage } from "@/lib/api/chat";
 import { useChat, type Outgoing } from "@/lib/app/chat-store";
 import { usePeople } from "@/lib/app/people";
 import { SERVER_USER_PREFIX, serverRoomAppId, useServerPeople, useServerRooms } from "@/lib/app/server-rooms";
@@ -381,11 +382,33 @@ function useGoToRoom() {
 /* Conversation                                                        */
 /* ------------------------------------------------------------------ */
 
-function Bubble({ m, mine, from }: { m: ChatMessage; mine: boolean; from?: string }) {
+function Bubble({ m, mine, from, onHold }: { m: ChatMessage; mine: boolean; from?: string; onHold?: (m: ChatMessage) => void }) {
   const image = m.type === "IMAGE";
   const invite = image ? null : parseInvite(m.text);
+  // Hold a message (phone) or right-click it (computer) for Unsend / Delete for me / Copy
+  const timer = useRef<number | null>(null);
+  const cancel = () => {
+    if (timer.current !== null) window.clearTimeout(timer.current);
+    timer.current = null;
+  };
   return (
-    <div className={`flex ${mine ? "justify-end" : "justify-start"}`} data-message-id={m.id}>
+    <div
+      className={`flex ${mine ? "justify-end" : "justify-start"} select-none`}
+      data-message-id={m.id}
+      onPointerDown={() => {
+        cancel();
+        timer.current = window.setTimeout(() => onHold?.(m), 450);
+      }}
+      onPointerUp={cancel}
+      onPointerLeave={cancel}
+      onPointerCancel={cancel}
+      onPointerMove={cancel}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        cancel();
+        onHold?.(m);
+      }}
+    >
       <div className={`max-w-[78%] rounded-3xl ${image || invite ? "p-1.5" : "px-3.5 py-2"} text-[14px] leading-snug shadow-sm ${mine ? "rounded-br-md bg-gradient-to-br from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c]" : "rounded-bl-md bg-[#2c2530] text-cream ring-1 ring-white/5"}`}>
         {from ? <span className={`block text-[11.5px] font-bold text-gold ${image ? "px-2 pt-1" : ""}`}>{from}</span> : null}
         {image ? (
@@ -398,6 +421,67 @@ function Bubble({ m, mine, from }: { m: ChatMessage; mine: boolean; from?: strin
         <span className={`ml-2 inline-block translate-y-0.5 text-[10px] ${mine ? "text-[#2a1a0c]/55" : "text-cream/40"} ${image ? "px-2" : ""}`}>{fmt(m.at)}</span>
       </div>
     </div>
+  );
+}
+
+/** Options for a message you hold: take it back for everyone (yours only), delete it for yourself, copy the text. */
+function MessageSheet({ m, mine, onClose }: { m: ChatMessage | null; mine: boolean; onClose: () => void }) {
+  const chat = useChat();
+  const { toast } = useApp();
+  const [busy, setBusy] = useState(false);
+  // Keep the message while the sheet slides away
+  const last = useRef<ChatMessage | null>(null);
+  if (m) last.current = m;
+  const msg = m ?? last.current;
+  if (!msg) return null;
+  const act = async (f: () => Promise<unknown>, done: string) => {
+    setBusy(true);
+    try {
+      await f();
+      chat.dropMessage(msg.conversationId, msg.id);
+      toast(done);
+      onClose();
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : "That didn't work.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const Row = ({ icon, label, sub, onClick, danger }: { icon: React.ReactNode; label: string; sub?: string; onClick: () => void; danger?: boolean }) => (
+    <button type="button" disabled={busy} onClick={onClick} className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left hover:bg-cream/[0.04] disabled:opacity-60 ${danger ? "text-coral" : "text-cream"}`}>
+      <span className={`grid h-9 w-9 place-items-center rounded-full ${danger ? "bg-coral/10" : "bg-cream/[0.07]"}`}>{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14.5px] font-semibold">{label}</span>
+        {sub ? <span className="block text-[11.5px] text-muted">{sub}</span> : null}
+      </span>
+    </button>
+  );
+  return (
+    <BottomSheet open={Boolean(m)} onClose={onClose} title="Message">
+      <div className="px-3 pb-6">
+        {msg.type === "TEXT" && msg.text ? (
+          <Row
+            icon={<Copy className="h-4 w-4" />}
+            label="Copy"
+            onClick={() => {
+              void navigator.clipboard?.writeText(msg.text ?? "").catch(() => undefined);
+              toast("Copied");
+              onClose();
+            }}
+          />
+        ) : null}
+        <Row icon={<Trash2 className="h-4 w-4" />} label="Delete for me" sub="Only removed from your screen" onClick={() => void act(() => hideMessage(msg.conversationId, msg.id), "Message deleted")} />
+        {mine ? (
+          <Row
+            icon={<Undo2 className="h-4 w-4" />}
+            label="Unsend"
+            sub="Removed for everyone in this chat"
+            danger
+            onClick={() => window.confirm("Unsend this message? It will be removed for everyone in this chat.") && void act(() => unsendMessage(msg.conversationId, msg.id), "Message unsent")}
+          />
+        ) : null}
+      </div>
+    </BottomSheet>
   );
 }
 
@@ -471,6 +555,7 @@ export function ServerConversationView({ personId }: { personId: string }) {
   const official = Boolean(conv?.systemConversation || conv?.official);
   const { info: groupInfo, setInfo: setGroupInfo } = useGroupInfo(convId, Boolean(group));
   const [infoOpen, setInfoOpen] = useState(false);
+  const [sel, setSel] = useState<ChatMessage | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const otherId = userId ?? conv?.otherUserId ?? null;
   const { watchPresence, loadInbox } = chat;
@@ -627,7 +712,7 @@ export function ServerConversationView({ personId }: { personId: string }) {
             </div>
           ) : null;
           if (m.type === "SYSTEM") return <Fragment key={m.id}>{sep}<SystemBubble m={m} /></Fragment>;
-          return <Fragment key={m.id}>{sep}<Bubble m={m} mine={mine} from={from} /></Fragment>;
+          return <Fragment key={m.id}>{sep}<Bubble m={m} mine={mine} from={from} onHold={setSel} /></Fragment>;
         })}
         {typers.length ? (
           <div className="flex justify-start" aria-live="polite">
@@ -681,6 +766,7 @@ export function ServerConversationView({ personId }: { personId: string }) {
         </div>
       ) : null}
       {convId && group ? <GroupInfoSheet open={infoOpen} onClose={() => setInfoOpen(false)} conversationId={convId} group={groupInfo} onChanged={setGroupInfo} /> : null}
+      <MessageSheet m={sel} mine={Boolean(sel && chat.myId && sel.senderId === chat.myId)} onClose={() => setSel(null)} />
       {!group ? <ChatMenuSheet open={menuOpen} onClose={() => setMenuOpen(false)} c={conv} name={name} personId={personId} /> : null}
       {failedText || pickError ? (
         <p className="border-t border-line bg-coral/10 px-4 py-2 text-[12px] font-semibold text-coral" role="alert">

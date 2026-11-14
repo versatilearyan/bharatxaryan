@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { PenSquare, UserPlus, Users } from "lucide-react";
+import { MoreVertical, PenSquare, Trash2, UserPlus, Users } from "lucide-react";
+import { clearAllChats } from "@/lib/api/chat";
 import { CreateGroupSheet } from "./ChatGroups";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
@@ -29,6 +30,8 @@ export function ChatScreen() {
   const [q, setQ] = useState("");
   const [picker, setPicker] = useState(false);
   const [newGroup, setNewGroup] = useState(false);
+  const [menu, setMenu] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const list = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -37,16 +40,39 @@ export function ChatScreen() {
 
   const online = PEOPLE.filter((p) => p.online);
   // Signed in: your real chats from the backend instead of the demo ones
-  const server = useChat().enabled;
+  const chatCtx = useChat();
+  const server = chatCtx.enabled;
+  const { toast } = useApp();
+  const deleteAll = async () => {
+    if (!window.confirm("Delete all your chats? They are removed from your list only. The other people keep theirs.")) return;
+    setClearing(true);
+    try {
+      await clearAllChats();
+      chatCtx.clearedLocally();
+      setMenu(false);
+      toast("All chats deleted");
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : "That didn't work.", "error");
+    } finally {
+      setClearing(false);
+    }
+  };
 
   return (
     <div className="app-scroll h-full pb-[calc(84px+var(--mini,0px)+env(safe-area-inset-bottom))]">
       <header className="pt-safe sticky top-0 z-20 bg-ink/90 backdrop-blur-xl">
         <div className="flex h-14 items-center justify-between px-4">
           <h1 className="font-display text-[24px] font-extrabold text-cream">Chats</h1>
-          <IconButton label="New message" onClick={() => setPicker(true)}>
-            <PenSquare className="h-[18px] w-[18px]" />
-          </IconButton>
+          <div className="flex items-center gap-2">
+            {server ? (
+              <IconButton label="Chat options" onClick={() => setMenu(true)}>
+                <MoreVertical className="h-[18px] w-[18px]" />
+              </IconButton>
+            ) : null}
+            <IconButton label="New message" onClick={() => setPicker(true)}>
+              <PenSquare className="h-[18px] w-[18px]" />
+            </IconButton>
+          </div>
         </div>
         <div className="px-4 pb-3">
           <SearchField value={q} onChange={setQ} placeholder="Search chats" />
@@ -153,6 +179,19 @@ export function ChatScreen() {
             </li>
           ))}
         </ul>
+      </BottomSheet>
+      <BottomSheet open={menu} onClose={() => setMenu(false)} title="Chat options">
+        <div className="px-3 pb-6">
+          <button type="button" disabled={clearing} onClick={() => void deleteAll()} className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-coral hover:bg-cream/[0.04] disabled:opacity-60">
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-coral/10">
+              <Trash2 className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[14.5px] font-semibold">Delete all chats</span>
+              <span className="block text-[11.5px] text-muted">Clears your whole chat list. Other people keep their copies.</span>
+            </span>
+          </button>
+        </div>
       </BottomSheet>
       <CreateGroupSheet open={newGroup} onClose={() => setNewGroup(false)} />
     </div>

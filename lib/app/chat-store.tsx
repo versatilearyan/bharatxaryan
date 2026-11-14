@@ -80,6 +80,10 @@ type ChatCtx = {
   setTyping: (conversationId: string, on: boolean) => void;
   /** Goes up when a group's members, admins or name change, so open screens reload it. */
   groupVersion: number;
+  /** A message was unsent or deleted: take it off the screen and fix the list preview. */
+  dropMessage: (conversationId: string, messageId: string) => void;
+  /** A chat (or, with no id, every chat) was deleted for you: empty the open thread(s) and reload the list. */
+  clearedLocally: (conversationId?: string) => void;
 };
 
 const Ctx = createContext<ChatCtx | null>(null);
@@ -431,15 +435,37 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // Groups changed (made, people added or removed, admins, renamed), or someone blocked you: reload the list
   useEffect(() => {
     if (!enabled) return;
-    return subscribe("/user/queue/chat.events", () => {
+    return subscribe("/user/queue/chat.events", (body) => {
+      const b = body as { type?: unknown; conversationId?: unknown; messageId?: unknown } | null;
+      // Someone unsent a message: it disappears from this screen too
+      if (b && b.type === "MESSAGE_DELETED" && typeof b.conversationId === "string" && typeof b.messageId === "string") {
+        dropRef.current(b.conversationId, b.messageId);
+        return;
+      }
       loadInboxRef.current(true);
       setGroupVersion((v) => v + 1);
     });
   }, [enabled]);
 
+  const dropMessage = useCallback((conversationId: string, messageId: string) => {
+    setThreads((all) => (all[conversationId] ? { ...all, [conversationId]: { ...all[conversationId], messages: all[conversationId].messages.filter((m) => m.id !== messageId) } } : all));
+    // The list preview may have been that message
+    loadInboxRef.current(true);
+  }, []);
+  const dropRef = useRef(dropMessage);
+  dropRef.current = dropMessage;
+  const clearedLocally = useCallback((conversationId?: string) => {
+    setThreads((all) => {
+      if (!conversationId) return Object.fromEntries(Object.entries(all).map(([k, t]) => [k, { ...t, messages: [] }]));
+      return all[conversationId] ? { ...all, [conversationId]: { ...all[conversationId], messages: [] } } : all;
+    });
+    loadInboxRef.current(true);
+    refreshUnread();
+  }, [refreshUnread]);
+
   const value = useMemo<ChatCtx>(
-    () => ({ enabled, myId: myId ?? null, inbox, unread, threads, outgoing, loadInbox, conversationWith, openThread, closeThread, loadOlder, sendText, sendImage, retry, discard, presence, watchPresence, typing, setTyping, groupVersion }),
-    [enabled, myId, inbox, unread, threads, outgoing, loadInbox, conversationWith, openThread, closeThread, loadOlder, sendText, sendImage, retry, discard, presence, watchPresence, typing, setTyping, groupVersion],
+    () => ({ enabled, myId: myId ?? null, inbox, unread, threads, outgoing, loadInbox, conversationWith, openThread, closeThread, loadOlder, sendText, sendImage, retry, discard, presence, watchPresence, typing, setTyping, groupVersion, dropMessage, clearedLocally }),
+    [enabled, myId, inbox, unread, threads, outgoing, loadInbox, conversationWith, openThread, closeThread, loadOlder, sendText, sendImage, retry, discard, presence, watchPresence, typing, setTyping, groupVersion, dropMessage, clearedLocally],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

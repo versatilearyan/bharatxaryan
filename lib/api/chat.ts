@@ -426,7 +426,15 @@ export const addGroupMembers = (conversationId: string, userIds: string[]) => gr
 export const removeGroupMember = (conversationId: string, userId: string) => api<unknown>(`${conv(conversationId)}/members/${encodeURIComponent(userId)}`, { method: "DELETE", auth: true, forbiddenIsAccess: true });
 export const setGroupAdmin = (conversationId: string, userId: string, on: boolean) => groupCall(`${conv(conversationId)}/admins/${encodeURIComponent(userId)}`, "PUT", { on });
 export const setChatMuted = (conversationId: string, on: boolean) => api<unknown>(`${conv(conversationId)}/mute`, { method: "PUT", auth: true, forbiddenIsAccess: true, body: { on } });
-export const setUserBlocked = (userId: string, on: boolean) => api<unknown>(`/api/v1/chat/blocks/${encodeURIComponent(userId)}`, { method: on ? "PUT" : "DELETE", auth: true, forbiddenIsAccess: true });
+/** Take back your own message: it disappears for everyone in the chat. */
+export const unsendMessage = (conversationId: string, messageId: string) => api<unknown>(`${conv(conversationId)}/messages/${encodeURIComponent(messageId)}`, { method: "DELETE", auth: true, forbiddenIsAccess: true });
+/** Delete a message for yourself only. */
+export const hideMessage = (conversationId: string, messageId: string) => api<unknown>(`${conv(conversationId)}/messages/${encodeURIComponent(messageId)}/hide`, { method: "POST", auth: true, forbiddenIsAccess: true });
+/** Delete one chat for yourself (the other person keeps theirs). */
+export const clearChat = (conversationId: string) => api<unknown>(`${conv(conversationId)}/clear`, { method: "POST", auth: true, forbiddenIsAccess: true });
+/** Delete all your chats for yourself. */
+export const clearAllChats = () => api<unknown>(`/api/v1/chat/conversations/clear-all`, { method: "POST", auth: true, forbiddenIsAccess: true });
+export const setUserBlocked =(userId: string, on: boolean) => api<unknown>(`/api/v1/chat/blocks/${encodeURIComponent(userId)}`, { method: on ? "PUT" : "DELETE", auth: true, forbiddenIsAccess: true });
 
 export async function getPresence(userIds: string[]): Promise<Record<string, Presence>> {
   const list = userIds.filter((x) => /^\d+$/.test(x)).slice(0, 200);
