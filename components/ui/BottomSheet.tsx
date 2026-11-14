@@ -3,6 +3,7 @@
 import { useEffect, useId, type ReactNode } from "react";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { X } from "lucide-react";
+import { useBackClose } from "@/lib/app/back";
 
 type Props = {
   open: boolean;
@@ -23,6 +24,7 @@ type Props = {
 export function BottomSheet({ open, onClose, title, children, className = "", tall = false, headerRight }: Props) {
   const titleId = useId();
   const drag = useDragControls();
+  useBackClose(open, onClose);
 
   useEffect(() => {
     if (!open) return;

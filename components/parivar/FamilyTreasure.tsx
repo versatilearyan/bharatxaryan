@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { AnimatePresence, motion } from "framer-motion";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { SvgaAnim } from "@/components/effects/SvgaAnim";
+import { GiftArt } from "@/components/art/GiftArt";
+import type { GiftId } from "@/lib/app/types";
 import { treasureApi, type ParivarProfile, type TreasureInfo, type TreasureItem, type TreasureMine, type TreasureOpening, type TreasureRarity } from "@/lib/api/parivar";
 import { useApp } from "@/lib/app/store";
 
@@ -289,6 +291,16 @@ function Initial({ name, url }: { name: string; url?: string }) {
   return url ? <img src={url} alt="" className="h-full w-full rounded-full object-cover" /> : <span className="font-display text-[15px] font-extrabold text-cream">{name.slice(0, 1).toUpperCase()}</span>;
 }
 
+/** "5 days left", "3 hours left" or "No time limit". */
+function timeLeft(expiresAt?: string): string {
+  if (!expiresAt) return "No time limit";
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (!Number.isFinite(ms) || ms <= 0) return "Expired";
+  const days = Math.ceil(ms / 86_400_000);
+  if (ms < 86_400_000) return `${Math.max(1, Math.ceil(ms / 3_600_000))} hours left`;
+  return `${days} day${days === 1 ? "" : "s"} left`;
+}
+
 function ItemChip({ it }: { it: TreasureItem }) {
   const c = RARITY_COLOR[it.rarity] ?? "#b9c0cc";
   return (
@@ -556,6 +568,23 @@ export function TreasureSheet({ p, open, onClose, onChanged }: Props) {
                   <div className="mx-auto my-8 h-8 w-8 animate-spin rounded-full border-2 border-white/10 border-t-gold" />
                 ) : (
                   <div className="mt-4 space-y-3">
+                    {mine.bag?.length ? (
+                      <>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Gifts and items won (in my Bag)</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {mine.bag.map((b, i) => (
+                            <div key={i} className="relative flex flex-col items-center rounded-2xl bg-surface p-2 text-center ring-1 ring-gold/25">
+                              {b.kind === "GIFT" && b.qty > 1 ? <span className="absolute top-1 right-1 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{b.qty}</span> : null}
+                              <span className="grid h-16 w-16 place-items-center overflow-hidden rounded-xl bg-black/30">
+                                {b.imageUrl ? <SvgaAnim src={b.imageUrl} className="h-full w-full object-contain" /> : b.kind === "GIFT" && b.giftId ? <GiftArt id={b.giftId as GiftId} className="h-14 w-14" /> : b.imageUrl ? <SvgaAnim src={b.imageUrl} className="h-full w-full object-contain" /> : <span className="text-[26px]">{b.kind === "GIFT" ? "🎁" : "🖼️"}</span>}
+                              </span>
+                              <span className="mt-1 line-clamp-2 text-[11.5px] font-bold leading-tight text-cream">{b.label}</span>
+                              <span className="text-[9.5px] font-semibold text-gold/80">{timeLeft(b.expiresAt)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : null}
                     {mine.collection.length ? (
                       <>
                         <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">My Parivar collection</p>
@@ -567,6 +596,7 @@ export function TreasureSheet({ p, open, onClose, onChanged }: Props) {
                               </span>
                               <span className="mt-1 line-clamp-2 text-[11.5px] font-bold leading-tight text-cream">{c.label}</span>
                               <span className="text-[9.5px] uppercase tracking-wider text-gold/70">{c.category || c.kind}</span>
+                              {c.expiresAt ? <span className="text-[9.5px] font-semibold text-gold/80">{timeLeft(c.expiresAt)}</span> : null}
                             </div>
                           ))}
                         </div>

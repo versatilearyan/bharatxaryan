@@ -9,6 +9,7 @@ import { PaymentReturn } from "@/components/market/PaymentReturn";
 import { AnimatePresence, motion } from "framer-motion";
 import { AppProvider, useApp, type Screen } from "@/lib/app/store";
 import { NativeBridge } from "@/components/system/NativeBridge";
+import { BackNavigation } from "@/components/system/BackNavigation";
 import { MarketProvider } from "@/lib/app/market-store";
 import { ParivarProvider } from "@/lib/app/parivar-store";
 import { RedPacketProvider } from "@/lib/app/redpacket-store";
@@ -80,6 +81,7 @@ export function AppShell() {
             <MusicProvider>
               <GiftNewsProvider>
                 <NativeBridge />
+                <BackNavigation />
                 <Frame />
               </GiftNewsProvider>
             </MusicProvider>

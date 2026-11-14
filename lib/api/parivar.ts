@@ -245,7 +245,9 @@ export type TreasureOpening = {
 export type TreasureMine = {
   diamonds: number;
   wins: { chest: string; tier: string; mode: string; coins: number; diamonds: number; items: TreasureItem[]; at: string }[];
-  collection: { kind: string; label: string; imageUrl: string; category?: string; source: string; at: string }[];
+  collection: { kind: string; label: string; imageUrl: string; category?: string; source: string; at: string; expiresAt?: string }[];
+  /** Gift cards and frames / bubbles / effects won from chests and Gacha that are still in the Bag. expiresAt is empty when they never run out. */
+  bag?: { kind: "GIFT" | "ITEM"; label: string; giftId: string; qty: number; imageUrl: string; expiresAt: string; at: string }[];
 };
 
 export const treasureApi = {

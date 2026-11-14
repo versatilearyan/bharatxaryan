@@ -554,6 +554,9 @@ export function ParivarHome({ id }: { id: string }) {
   const [giftTo, setGiftTo] = useState<string | undefined>();
   const [giftOver, setGiftOver] = useState(false);
   const member = Boolean(p?.myRole);
+  /** What the Parivar owns from chests, Gacha and the shop: Kavach and chests waiting to be used or sent. */
+  const kavachStock = (kv?.types ?? []).reduce((a, t) => a + (t.owned ?? 0), 0);
+  const chestStock = (ch?.types ?? []).reduce((a, t) => a + (t.owned ?? 0), 0);
   const loadExtras = useCallback(() => {
     if (!member) return;
     parivarExtra.tasks(id).then(setWk).catch(() => undefined);
@@ -760,11 +763,12 @@ export function ParivarHome({ id }: { id: string }) {
               <div className="flex items-center justify-between gap-2">
                 <span className="flex min-w-0 items-center gap-3">
                   <SectionTitle>Treasury</SectionTitle>
-                  <span className={`flex min-w-0 items-center gap-1 truncate text-[12.5px] font-extrabold ${kv?.active ? "text-cream/70" : "text-cream/40"}`}>
-                    <span className={kv?.active ? "" : "opacity-50 grayscale"}>
+                  <span className={`flex min-w-0 items-center gap-1 truncate text-[12.5px] font-extrabold ${kv?.active || kavachStock ? "text-cream/70" : "text-cream/40"}`}>
+                    <span className={kv?.active || kavachStock ? "" : "opacity-50 grayscale"}>
                       <RewardArt kind="BARRIER" size={18} />
                     </span>
-                    Kavach: {kv?.active ? `${kv.active.name} · ${kv.active.strength}` : "0"}
+                    Kavach: {kv?.active ? `${kv.active.name} · ${kv.active.strength}` : kavachStock ? "ready" : "0"}
+                    {kavachStock ? <span className="rounded-full bg-gold/20 px-1.5 text-[10.5px] text-gold">×{kavachStock} in stock</span> : null}
                   </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.07] py-1 pr-1 pl-1.5 ring-1 ring-white/10">
@@ -779,14 +783,14 @@ export function ParivarHome({ id }: { id: string }) {
               </div>
               <div className="mt-3 flex items-stretch">
                 <button type="button" onClick={() => isMember && setSheet("chests")} className="relative flex w-[92px] shrink-0 flex-col items-center gap-1.5 py-2" aria-label="Chests">
-                  <span className={ch && ch.sent.some((c) => c.status === "OPEN") ? "" : "opacity-45 grayscale"}>
+                  <span className={ch && (ch.sent.some((c) => c.status === "OPEN") || chestStock > 0) ? "" : "opacity-45 grayscale"}>
                     <RewardArt kind="CHEST" size={58} />
                   </span>
-                  <span className="text-[12.5px] font-extrabold text-cream/50">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open" : "To Unlock"}</span>
-                  {ch && ch.sent.filter((c) => c.status === "OPEN").length ? <span className="absolute top-1 right-2 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{ch.sent.filter((c) => c.status === "OPEN").length}</span> : null}
+                  <span className="text-[12.5px] font-extrabold text-cream/50">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open" : chestStock > 0 ? "In stock" : "To Unlock"}</span>
+                  {ch && ch.sent.filter((c) => c.status === "OPEN").length + chestStock ? <span className="absolute top-1 right-2 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{ch.sent.filter((c) => c.status === "OPEN").length + chestStock}</span> : null}
                 </button>
                 <span aria-hidden className="mx-2 w-0 border-l-2 border-dotted border-white/15" />
-                <p className="grid min-h-[110px] flex-1 place-items-center text-center text-[14.5px] font-extrabold text-cream/40">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open chests are waiting. Tap the box." : "No chest"}</p>
+                <p className="grid min-h-[110px] flex-1 place-items-center text-center text-[14.5px] font-extrabold text-cream/40">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open chests are waiting. Tap the box." : chestStock > 0 ? `${chestStock} chest${chestStock === 1 ? "" : "s"} in the Parivar store. Tap the box to send.` : "No chest"}</p>
               </div>
             </section>
 

@@ -3,12 +3,14 @@
 import { useEffect, useId, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
+import { useBackClose } from "@/lib/app/back";
 
 type Props = { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; className?: string };
 
 /** Centered dialog inside the app container. */
 export function Modal({ open, onClose, title, children, className = "" }: Props) {
   const titleId = useId();
+  useBackClose(open, onClose);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
