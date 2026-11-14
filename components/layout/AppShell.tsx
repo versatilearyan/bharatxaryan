@@ -34,6 +34,7 @@ import { VipRenewPrompt } from "@/components/vip/VipRenewPrompt";
 import { ActiveRoomHost } from "@/components/rooms/ActiveRoomHost";
 import { GlobalSheets } from "@/components/sheets/GlobalSheets";
 import { GiftOverlay } from "@/components/gifts/GiftOverlay";
+import { AppUpdatePrompt } from "@/components/system/AppUpdatePrompt";
 import { Toasts } from "@/components/ui/Toasts";
 import { AuthFlow } from "@/components/auth/AuthFlow";
 import { FestivalBackground } from "@/components/festival/FestivalBackground";
@@ -127,6 +128,7 @@ function Frame() {
               <RedPacketBanner />
               <GiftBanner />
               <RewardWon />
+              <AppUpdatePrompt />
             </>
           ) : signedIn === false ? (
             <AuthFlow />
