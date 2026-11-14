@@ -16,6 +16,8 @@ import { ParivarGuideSheet } from "./ParivarGuide";
 import { ChatSheet, CheerSheet, ChestsSheet, ChoriSheet, FeatureTiles, GachaSheet, KavachSheet, NewsTab as NewsPanel, WorldNews, ShopSheet, TasksTab, type SheetName } from "./ParivarExtras";
 
 const n = (v: number) => v.toLocaleString("en-IN");
+/** Big numbers the Indian way: 1.5 L (lakh), 18 Cr (crore). Small ones stay as they are. */
+const lakhCr = (v: number) => (v >= 1e7 ? `${+(v / 1e7).toFixed(2)} Cr` : v >= 1e5 ? `${+(v / 1e5).toFixed(2)} L` : n(v));
 /** Turns "fancy font" letters people paste in (𝑾𝑬𝑳𝑪𝑶𝑴𝑬, 𝓦𝓮𝓵𝓬𝓸𝓶𝓮, ｗｉｄｅ…) back into plain letters so they show in the app's own font. Emoji are kept. */
 const plainText = (v?: string | null) => (v ?? "").normalize("NFKC");
 const ago = (iso: string) => {
@@ -706,11 +708,11 @@ export function ParivarHome({ id }: { id: string }) {
                   <ul className="mt-2 space-y-1.5 text-[12px] font-semibold">
                     <li className={`flex items-center gap-2 ${p.levelUp.expOk ? "text-[#7fe0a0]" : "text-cream/65"}`}>
                       <span className={`grid h-4 w-4 place-items-center rounded-full text-[10px] ${p.levelUp.expOk ? "bg-[#7fe0a0] text-ink" : "ring-1 ring-cream/30"}`}>{p.levelUp.expOk ? "✓" : ""}</span>
-                      Activity {n(Math.min(p.exp, p.levelUp.expNeeded))} / {n(p.levelUp.expNeeded)}
+                      Activity {lakhCr(Math.min(p.exp, p.levelUp.expNeeded))} / {lakhCr(p.levelUp.expNeeded)}
                     </li>
                     <li className={`flex items-center gap-2 ${p.levelUp.fundOk ? "text-[#7fe0a0]" : "text-cream/65"}`}>
                       <span className={`grid h-4 w-4 place-items-center rounded-full text-[10px] ${p.levelUp.fundOk ? "bg-[#7fe0a0] text-ink" : "ring-1 ring-cream/30"}`}>{p.levelUp.fundOk ? "✓" : ""}</span>
-                      Family fund {n(Math.min(p.funds, p.levelUp.fundNeeded))} / {n(p.levelUp.fundNeeded)}
+                      Family fund {lakhCr(Math.min(p.funds, p.levelUp.fundNeeded))} / {lakhCr(p.levelUp.fundNeeded)}
                     </li>
                   </ul>
                   {p.levelUp.ready ? (

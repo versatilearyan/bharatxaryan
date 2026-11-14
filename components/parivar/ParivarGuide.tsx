@@ -7,7 +7,7 @@ import { treasureApi, type ParivarProfile, type TreasureInfo } from "@/lib/api/p
 /* A plain guide for members: how a Parivar grows, what each feature does, and what the weekly chests need.
    The numbers that the admin can change (level needs, chest targets and pools) are read live from the server. */
 
-const n = (v: number) => v.toLocaleString("en-IN");
+const n = (v: number) => (v >= 1e7 ? `${+(v / 1e7).toFixed(2)} Cr` : v >= 1e5 ? `${+(v / 1e5).toFixed(2)} L` : v.toLocaleString("en-IN"));
 
 function Step({ no, title, children }: { no: number; title: string; children: ReactNode }) {
   return (
