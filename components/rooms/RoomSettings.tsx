@@ -364,6 +364,7 @@ export function RoomSettingsScreen({ s }: { s: RoomSession }) {
               <SwitchRow label="Ban Text Chatting" on={st.banText} onChange={(v) => s.updateSettings({ banText: v })} locked={locked} />
               <SwitchRow label="No Images" on={st.noImages} onChange={(v) => s.updateSettings({ noImages: v })} locked={locked} />
               <SwitchRow label="Ban Red Packet" on={st.banRedPacket} onChange={(v) => s.updateSettings({ banRedPacket: v })} locked={locked} />
+              <SwitchRow label="Ban Gift Animation" hint="Gifts only give coins and charm, no animation" on={Boolean(st.banGiftAnimation)} onChange={(v) => s.updateSettings({ banGiftAnimation: v })} locked={locked} />
             </Group>
             <Group>
               <SwitchRow

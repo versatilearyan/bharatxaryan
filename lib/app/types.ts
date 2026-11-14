@@ -58,6 +58,8 @@ export type RoomSettings = {
   banText: boolean;
   noImages: boolean;
   banRedPacket: boolean;
+  /** Gifts sent in this room give coins and charm but play no animation. */
+  banGiftAnimation?: boolean;
   event: boolean;
   /** VIP rooms: the VIP level needed to take a seat (default VIP 1). */
   vipSeatLevel?: number;

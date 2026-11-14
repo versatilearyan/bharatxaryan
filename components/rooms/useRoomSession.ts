@@ -46,6 +46,7 @@ const SETTING_MESSAGES: Partial<Record<keyof RoomSettings, [string, string]>> = 
   banText: ["Owner turned off text chatting for members", "Owner turned text chatting back on"],
   noImages: ["Owner turned off images in chat", "Owner allowed images in chat"],
   banRedPacket: ["Owner turned off red packets", "Owner allowed red packets"],
+  banGiftAnimation: ["Gift animations are off in this room. Gifts still give coins and charm.", "Gift animations are back on"],
   event: ["Owner started a room event 🎉", "Owner ended the room event"],
 };
 
@@ -1173,7 +1174,9 @@ export function useRoomSession(room: Room) {
       addCharm(toId, value, charm);
       trackReceived(toId, giftId, ev.count);
       setGiftCounts((g) => ({ ...g, [toId]: (g[toId] ?? 0) + value }));
-      playGift({ giftId, fromName: nameOf(fromId), toName: nameOf(toId), count: ev.count, combo, charm, earned: ev.earned });
+      // The owner / an admin can turn the gift animation off for this room: coins and charm still count, only the animation is skipped
+      if (!settings.banGiftAnimation) playGift({ giftId, fromName: nameOf(fromId), toName: nameOf(toId), count: ev.count, combo, charm, earned: ev.earned });
+      else if (fromId === ME_ID) toast(`Gift sent · animation is off in this room · +${charm} charm`, "gold");
       giftListener.current?.(fromId, toId, value);
       pkListener.current?.(fromId, toId, value);
       if (toId === ME_ID) toast(`${nameOf(fromId)} sent you ${giftById(giftId).name}${ev.count > 1 ? ` ×${ev.count}` : ""} · +${charm} charm · +${ev.earned.toLocaleString("en-IN")} coins`, "gold");
@@ -1182,7 +1185,7 @@ export function useRoomSession(room: Room) {
         applyRoomPoints(room.server.id, ev.roomPoints);
       }
     },
-    [myServerId, add, addIntimacy, addCharm, trackReceived, playGift, nameOf, toast, room.server, room.basePoints, room.name, applyRoomPoints],
+    [myServerId, add, addIntimacy, addCharm, trackReceived, playGift, nameOf, toast, room.server, room.basePoints, room.name, applyRoomPoints, settings.banGiftAnimation],
   );
   useEffect(() => {
     const serverId = room.server?.id;
@@ -1251,13 +1254,13 @@ export function useRoomSession(room: Room) {
       addCharm(toId, value);
       trackReceived(toId, giftId, count);
       setGiftCounts((g) => ({ ...g, [toId]: (g[toId] ?? 0) + value }));
-      playGift({ giftId, fromName: profile.name, toName: person(toId).name, count, combo, charm, earned });
+      if (!settings.banGiftAnimation) playGift({ giftId, fromName: profile.name, toName: person(toId).name, count, combo, charm, earned });
       giftListener.current?.(ME_ID, toId, value);
       pkListener.current?.(ME_ID, toId, value);
       if (!free) armCombo({ giftId, n: combo, send: () => sendGiftRef.current(giftId, toId, count, false, combo + 1) });
       return true;
     },
-    [spend, toast, add, playGift, profile.name, person, addRoomGift, addIntimacy, addCharm, trackReceived, room, armCombo, clearCombo, rs, coins, showServerGift, refreshCoins],
+    [spend, toast, add, playGift, profile.name, person, addRoomGift, addIntimacy, addCharm, trackReceived, room, armCombo, clearCombo, rs, coins, showServerGift, refreshCoins, settings.banGiftAnimation],
   );
   const sendGiftRef = useRef(sendGift);
   sendGiftRef.current = sendGift;
