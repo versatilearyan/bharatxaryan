@@ -20,6 +20,7 @@ import { Button, formatCount } from "@/components/ui/kit";
 import { usePeople } from "@/lib/app/people";
 import { vipName } from "@/lib/app/levels";
 import { ME_ID, useApp } from "@/lib/app/store";
+import { ParivarNameChip } from "@/components/parivar/ParivarScreens";
 import { MicQueueSheet, RoleBadge } from "./RoomParts";
 import { RoomPeopleSheet } from "./RoomPeopleSheet";
 import { TagStrip, TagTitleChip } from "./TagParts";
@@ -80,6 +81,8 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
   const membership = membershipOf(s.room, id);
   const eligible = membership.joined && membership.followed;
   const me = id === ME_ID;
+  // Their own profile banner (yours from your profile; others from their public profile)
+  const banner = me ? profile.banner : (pub.data?.bannerUrl ?? p.banner);
 
   const Action = ({ icon, label, onClick, danger }: { icon: ReactNode; label: string; onClick: () => void; danger?: boolean }) => (
     <button type="button" onClick={onClick} className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2 text-[11px] font-semibold ${danger ? "text-[#e2404a]" : "text-[#3a3340]"} hover:bg-black/[0.04]`}>
@@ -99,7 +102,7 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
           transition={{ type: "spring", stiffness: 420, damping: 32 }}
         >
           <div className="relative h-28">
-            {p.id === ME_ID && profile.banner ? <img src={profile.banner} alt="" className="h-full w-full object-cover" /> : <SunsetScene theme="rose" motif="lanterns" />}
+            {banner ? <img src={banner} alt="" className="h-full w-full object-cover" /> : <SunsetScene theme="rose" motif="lanterns" />}
             <button type="button" onClick={close} className="absolute right-2.5 top-2.5 grid h-8 w-8 place-items-center rounded-full bg-black/35 text-white" aria-label="Close">
               <X className="h-4 w-4" />
             </button>
@@ -156,8 +159,8 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
                   ) : (
                     <CharmBadge personId={id} light showCount />
                   )}
-                  <span className={`rounded px-1.5 text-[10px] font-bold ${membership.joined ? "bg-[#fff3e6] text-[#f08a24]" : "bg-[#f1edf4] text-[#a5a3bd] line-through"}`}>Member</span>
-                  <span className={`rounded px-1.5 text-[10px] font-bold ${membership.followed ? "bg-[#ffe9ea] text-[#f0505c]" : "bg-[#f1edf4] text-[#a5a3bd] line-through"}`}>Fan</span>
+                  {/* Their family (Parivar) name, instead of Member / Fan */}
+                  <ParivarNameChip personId={id} onBeforeOpen={() => (close(), minimizeRoom())} />
                 </div>
               </div>
             </div>

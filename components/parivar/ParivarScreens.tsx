@@ -36,9 +36,9 @@ function userIdOfPerson(personId: string) {
   return personId.startsWith("srv-user:") ? personId.slice(9) : null;
 }
 
-/** Small Parivar tag (sign and emblem) shown next to a member's name, from the server. Each person is looked up at most once a minute. */
-export function ParivarTag({ personId, className = "" }: { personId: string; className?: string }) {
-  const { push, session } = useApp();
+/** The Parivar a person belongs to (from the server, looked up at most once a minute), or null. */
+function useParivarTag(personId: string): Tag | null {
+  const { session } = useApp();
   useEffect(() => {
     const uid = userIdOfPerson(personId);
     if (!uid || !session) return;
@@ -64,6 +64,13 @@ export function ParivarTag({ personId, className = "" }: { personId: string; cla
   );
   const uid = userIdOfPerson(personId);
   const p = uid ? tagCache.get(uid)?.value : null;
+  return p && p.id ? p : null;
+}
+
+/** Small Parivar tag (sign and emblem) shown next to a member's name, from the server. Each person is looked up at most once a minute. */
+export function ParivarTag({ personId, className = "" }: { personId: string; className?: string }) {
+  const { push } = useApp();
+  const p = useParivarTag(personId);
   if (!p || !p.id) return null;
   return (
     <button
@@ -76,6 +83,28 @@ export function ParivarTag({ personId, className = "" }: { personId: string; cla
       aria-label={`Parivar ${p.name}`}
     >
       <SignBadge sign={p.sign ?? ""} frame={p.frame} size="sm" />
+    </button>
+  );
+}
+
+/** The person's family (Parivar) name as a small chip, for profile cards. Nothing if they are not in a Parivar. Tap opens the Parivar. */
+export function ParivarNameChip({ personId, onBeforeOpen, className = "" }: { personId: string; onBeforeOpen?: () => void; className?: string }) {
+  const { push } = useApp();
+  const p = useParivarTag(personId);
+  if (!p || !p.id) return null;
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onBeforeOpen?.();
+        push({ kind: "parivar", id: p.id! });
+      }}
+      className={`inline-flex max-w-[150px] items-center gap-1 rounded bg-[#f1e9ff] px-1.5 text-[10px] font-bold text-[#6a3fb0] ${className}`}
+      aria-label={`Family ${p.name}`}
+    >
+      <span aria-hidden>{p.emblem ?? "🏡"}</span>
+      <span className="truncate">{p.name}</span>
     </button>
   );
 }
