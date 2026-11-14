@@ -22,6 +22,8 @@ import { usePeople } from "@/lib/app/people";
 import { SERVER_USER_PREFIX, serverRoomAppId, useServerPeople, useServerRooms } from "@/lib/app/server-rooms";
 import { useApp } from "@/lib/app/store";
 import { useStompStatus } from "@/lib/realtime/stomp";
+import { vipName } from "@/lib/app/levels";
+import { VipBadgeFor } from "@/components/profile/IdTags";
 
 /** A conversation opened by id when the other person isn't known: "srv-conv:<id>". */
 export const SERVER_CONV_PREFIX = "srv-conv:";
@@ -146,14 +148,16 @@ function InboxRow({ c, onOpen }: { c: ChatConversation; onOpen: (personId: strin
   const lastFrom = group && c.lastSenderId ? (c.lastSenderId === chat.myId ? "You: " : `${(known[`${SERVER_USER_PREFIX}${c.lastSenderId}`]?.name ?? "").split(" ")[0] || "Someone"}: `) : c.lastSenderId && c.lastSenderId === chat.myId ? "You: " : "";
   return (
     <li>
-      <motion.button type="button" whileTap={{ scale: 0.985 }} onClick={() => onOpen(personId || `${SERVER_CONV_PREFIX}${c.id}`)} className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-cream/[0.03]" aria-label={`${group ? "Group" : "Chat with"} ${name}${unread ? `, ${unread} unread` : ""}`}>
+      <motion.button type="button" whileTap={{ scale: 0.985 }} onClick={() => onOpen(personId || `${SERVER_CONV_PREFIX}${c.id}`)} className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-cream/[0.03] ${p?.vip ? "bg-gradient-to-r from-gold/[0.10] via-gold/[0.03] to-transparent" : ""}`} aria-label={`${group ? "Group" : "Chat with"} ${name}${unread ? `, ${unread} unread` : ""}`}>
         <span className="relative shrink-0">
           {group ? (
             <span className="grid h-[52px] w-[52px] place-items-center rounded-full bg-gradient-to-br from-[#7b5cff] to-[#f4515b] text-white">
               <Users className="h-6 w-6" aria-hidden />
             </span>
           ) : p ? (
-            <PersonAvatar person={p} size={52} />
+            <span className={`block rounded-full ${p.vip ? "p-[2px] bg-gradient-to-tr from-[#f2a516] via-[#ffe58a] to-[#f2a516]" : ""}`}>
+              <PersonAvatar person={p} size={p.vip ? 48 : 52} />
+            </span>
           ) : (
             <span className="block h-[52px] w-[52px] rounded-full bg-surface" />
           )}
@@ -161,7 +165,8 @@ function InboxRow({ c, onOpen }: { c: ChatConversation; onOpen: (personId: strin
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
-            <span className={`truncate text-[15px] ${unread ? "font-bold text-cream" : "font-semibold text-cream/90"}`}>{name}</span>
+            <span className={`truncate text-[15px] ${p?.vip ? `font-bold ${vipName(p.vip)}` : unread ? "font-bold text-cream" : "font-semibold text-cream/90"}`}>{name}</span>
+            {p?.vip ? <VipBadgeFor personId={personId} vip={p.vip} size={16} /> : null}
             {c.official ? <OfficialTick className="h-4 w-4" /> : null}
             {c.pinned ? <span className="shrink-0 rounded-full bg-gold/15 px-1.5 py-px text-[9.5px] font-bold text-gold">PINNED</span> : null}
             {c.muted ? <BellOff className="h-3.5 w-3.5 shrink-0 text-muted" aria-label="Muted" /> : null}
@@ -556,7 +561,10 @@ export function ServerConversationView({ personId }: { personId: string }) {
               </span>
             ) : null}
             <span className="min-w-0">
-              <span className="block truncate text-[15px] font-bold text-cream">{group ? (groupInfo?.name ?? conv?.otherName ?? "Group") : name}</span>
+              <span className="flex items-center gap-1.5">
+                <span className={`truncate text-[15px] font-bold ${!group && p?.vip ? vipName(p.vip) : "text-cream"}`}>{group ? (groupInfo?.name ?? conv?.otherName ?? "Group") : name}</span>
+                {!group && p?.vip ? <VipBadgeFor personId={personId} vip={p.vip} size={16} /> : null}
+              </span>
               <span className={`block truncate text-[11px] ${typers.length ? "text-speak" : "text-muted"}`} role="status">
                 {live ||
                   (typers.length
