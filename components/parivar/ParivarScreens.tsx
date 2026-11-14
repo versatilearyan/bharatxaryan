@@ -87,7 +87,7 @@ export function ParivarTag({ personId, className = "" }: { personId: string; cla
   );
 }
 
-/** The person's family (Parivar) name as a small chip, for profile cards. Nothing if they are not in a Parivar. Tap opens the Parivar. */
+/** The person's family (Parivar) badge (their sign, in the frame their Parivar level earned), for profile cards. Nothing if they are not in a Parivar. Tap opens the Parivar. */
 export function ParivarNameChip({ personId, onBeforeOpen, className = "" }: { personId: string; onBeforeOpen?: () => void; className?: string }) {
   const { push } = useApp();
   const p = useParivarTag(personId);
@@ -100,11 +100,11 @@ export function ParivarNameChip({ personId, onBeforeOpen, className = "" }: { pe
         onBeforeOpen?.();
         push({ kind: "parivar", id: p.id! });
       }}
-      className={`inline-flex max-w-[150px] items-center gap-1 rounded bg-[#f1e9ff] px-1.5 text-[10px] font-bold text-[#6a3fb0] ${className}`}
+      className={`inline-flex items-center align-middle ${className}`}
       aria-label={`Family ${p.name}`}
+      title={p.name}
     >
-      <span aria-hidden>{p.emblem ?? "🏡"}</span>
-      <span className="truncate">{p.name}</span>
+      <SignBadge sign={p.sign ?? ""} frame={p.frame} size="md" />
     </button>
   );
 }

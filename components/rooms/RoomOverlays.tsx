@@ -159,22 +159,24 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
                   ) : (
                     <CharmBadge personId={id} light showCount />
                   )}
-                  {/* Their family (Parivar) name, instead of Member / Fan */}
-                  <ParivarNameChip personId={id} onBeforeOpen={() => (close(), minimizeRoom())} />
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                const uid = pub.data?.publicId ?? p.uid;
-                navigator.clipboard?.writeText(uid).catch(() => {});
-                toast(`ID ${uid} copied`);
-              }}
-              className="mt-2 flex items-center gap-1 text-[13px] font-bold text-[#8d8796]"
-            >
-              ID: {pub.data?.publicId ?? p.uid} <Copy className="h-3.5 w-3.5" aria-hidden />
-            </button>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const uid = pub.data?.publicId ?? p.uid;
+                  navigator.clipboard?.writeText(uid).catch(() => {});
+                  toast(`ID ${uid} copied`);
+                }}
+                className="flex items-center gap-1 text-[13px] font-bold text-[#8d8796]"
+              >
+                ID: {pub.data?.publicId ?? p.uid} <Copy className="h-3.5 w-3.5" aria-hidden />
+              </button>
+              {/* Their family (Parivar) badge, instead of Member / Fan */}
+              <ParivarNameChip personId={id} onBeforeOpen={() => (close(), minimizeRoom())} />
+            </div>
             <TagTitleChip personId={id} className="mt-1.5 !text-[#7a3fa8]" />
             <p className="mt-1.5 line-clamp-2 text-[13px] text-[#5b5163]">{pub.data?.bio ?? p.bio}</p>
             <TagStrip
