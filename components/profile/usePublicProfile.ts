@@ -60,6 +60,7 @@ export function usePublicProfile(personId: string) {
             bio: r.bio,
             nameFont: r.nameFont && FONT_IDS.has(r.nameFont) ? (r.nameFont as NameFont) : undefined,
             gender: genderFromApi(r.gender),
+            level: r.level,
             look: Object.keys(look).length ? look : undefined,
             // This person's own VIP status and links, always replaced (never kept from an older load)
             vip: { vipActive: r.vipActive, vipLevel: r.vipLevel ?? null, vipExpiresAt: r.vipExpiresAt ?? null, badgeUrl: r.badgeUrl ?? null, frameUrl: r.frameUrl ?? null, bubbleUrl: r.bubbleUrl ?? null, entryAnimationUrl: r.entryAnimationUrl ?? null, rewardEffects: r.rewardEffects, giftSetWear: r.giftSetWear },

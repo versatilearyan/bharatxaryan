@@ -55,6 +55,8 @@ export type ServerPerson = {
   nameFont?: NameFont;
   gender?: Gender;
   look?: Partial<AvatarLook>;
+  /** Their Active Level from their public profile */
+  level?: number;
   /** VIP status and cosmetics from their public profile (GET /users/{id}/profile). Replaced on every load. */
   vip?: Partial<VipProfileFields>;
 };

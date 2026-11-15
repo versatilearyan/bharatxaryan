@@ -58,7 +58,8 @@ export function usePeople() {
           frame: "none",
           // Their VIP level from their public profile, only while it's active
           vip: activeVipLevel(sp?.vip),
-          level: 1,
+          // Their real level from their public profile (it was always Lv.1 here)
+          level: sp?.level ?? 1,
           gender: sp?.gender,
           nameFont: sp?.nameFont,
           bio: sp?.bio ?? "",
