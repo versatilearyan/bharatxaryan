@@ -59,7 +59,7 @@ export function DiscoverScreen() {
   const hosts = [...PEOPLE].sort((a, b) => b.followers - a.followers).slice(0, 6);
 
   return (
-    <div className="app-scroll h-full pb-[calc(84px+var(--mini,0px)+env(safe-area-inset-bottom))]">
+    <div className="app-scroll h-full pb-[calc(84px+var(--mini,0px)+var(--sab))]">
       <header className="pt-safe sticky top-0 z-20 bg-ink/90 backdrop-blur-xl">
         <div className="flex h-14 items-center px-4">
           <h1 className="font-display text-[24px] font-extrabold text-cream">Discover</h1>

@@ -105,7 +105,7 @@ export function MomentsScreen({ personId }: { personId?: string }) {
   return (
     <div className="relative flex h-full flex-col bg-[radial-gradient(130%_55%_at_50%_0%,#4a1626_0%,#2a1430_42%,#141018_100%)]">
       <Toran />
-      <header className="relative flex items-center gap-2 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+10px)]">
+      <header className="relative flex items-center gap-2 px-3 pb-2 pt-[calc(var(--sat)+10px)]">
         <button type="button" onClick={pop} aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full text-cream">
           <ChevronLeft className="h-6 w-6" />
         </button>
@@ -180,7 +180,7 @@ export function MomentsScreen({ personId }: { personId?: string }) {
       </div>
 
       {session && (!uid || mineOnly) ? (
-        <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => setComposing(true)} className="absolute bottom-[calc(env(safe-area-inset-bottom)+20px)] right-5 flex h-14 items-center gap-2 rounded-full bg-gradient-to-r from-coral to-gold px-5 font-bold text-white shadow-[0_10px_30px_-8px_rgba(255,120,90,0.7)]">
+        <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => setComposing(true)} className="absolute bottom-[calc(var(--sab)+20px)] right-5 flex h-14 items-center gap-2 rounded-full bg-gradient-to-r from-coral to-gold px-5 font-bold text-white shadow-[0_10px_30px_-8px_rgba(255,120,90,0.7)]">
           <ImagePlus className="h-5 w-5" /> Post
         </motion.button>
       ) : null}
@@ -262,13 +262,13 @@ function MediaViewer({ list, start, onClose }: { list: Moment["media"]; start: n
         )}
       </motion.div>
       {list.length > 1 ? (
-        <span className="absolute bottom-[calc(env(safe-area-inset-bottom)+24px)] left-1/2 flex -translate-x-1/2 gap-1.5">
+        <span className="absolute bottom-[calc(var(--sab)+24px)] left-1/2 flex -translate-x-1/2 gap-1.5">
           {list.map((_, k) => (
             <span key={k} className={`h-1.5 rounded-full transition-all ${k === i ? "w-5 bg-white" : "w-1.5 bg-white/40"}`} />
           ))}
         </span>
       ) : null}
-      <button type="button" onClick={onClose} aria-label="Close" className="absolute right-4 top-[calc(env(safe-area-inset-top)+14px)] grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white">
+      <button type="button" onClick={onClose} aria-label="Close" className="absolute right-4 top-[calc(var(--sat)+14px)] grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white">
         <X className="h-5 w-5" />
       </button>
     </motion.div>

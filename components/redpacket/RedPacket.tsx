@@ -91,7 +91,7 @@ export function RedPacketBanner() {
   const here = d?.roomId === activeRoomId;
   const locked = Boolean(room?.password) && room?.hostId !== ME_ID;
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[calc(env(safe-area-inset-top)+50px)] z-[66] h-[48px] overflow-hidden">
+    <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--sat)+50px)] z-[66] h-[48px] overflow-hidden">
       <AnimatePresence>
         {d && room && p ? (
           <motion.div
@@ -403,7 +403,7 @@ export function RoomRedPacket({ s }: { s: RoomSession }) {
         whileTap={{ scale: 0.9 }}
         onClick={() => setOpen(true)}
         aria-label="Send a red packet"
-        className="absolute bottom-[calc(env(safe-area-inset-bottom)+76px)] right-3 z-20"
+        className="absolute bottom-[calc(var(--sab)+76px)] right-3 z-20"
         animate={{ rotate: [0, -6, 6, 0] }}
         transition={{ duration: 0.6, repeat: Infinity, repeatDelay: 4 }}
       >

@@ -6,7 +6,7 @@ import { useApp } from "@/lib/app/store";
 export function Toasts() {
   const { toasts } = useApp();
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[max(env(safe-area-inset-top),0px)] z-[70] flex flex-col items-center gap-2 pt-3" aria-live="polite">
+    <div className="pointer-events-none absolute inset-x-0 top-[max(var(--sat),0px)] z-[70] flex flex-col items-center gap-2 pt-3" aria-live="polite">
       <AnimatePresence>
         {toasts.map((t) => (
           <motion.div

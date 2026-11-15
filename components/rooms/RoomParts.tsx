@@ -706,7 +706,7 @@ function ChatPhoto({ src }: { src: string }) {
           <motion.div className="fixed inset-0 z-[95] grid place-items-center bg-black/90 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)} role="dialog" aria-label="Photo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <motion.img src={src} alt="Photo in chat" className="max-h-full max-w-full rounded-xl object-contain" initial={{ scale: 0.92 }} animate={{ scale: 1 }} exit={{ scale: 0.92 }} />
-            <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="absolute right-4 top-[calc(env(safe-area-inset-top)+14px)] grid h-9 w-9 place-items-center rounded-full bg-white/15 text-white">
+            <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="absolute right-4 top-[calc(var(--sat)+14px)] grid h-9 w-9 place-items-center rounded-full bg-white/15 text-white">
               <X className="h-5 w-5" />
             </button>
           </motion.div>

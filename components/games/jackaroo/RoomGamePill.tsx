@@ -37,7 +37,7 @@ export function RoomGamePill({ roomId, inRoom }: { roomId?: string; inRoom: bool
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: 80, opacity: 0 }}
           onClick={() => push({ kind: "ludo", roomId })}
-          className="absolute right-2 top-[calc(env(safe-area-inset-top)+108px)] z-30 flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7b5cff] to-[#ff7fa8] py-1.5 pl-2 pr-3 text-[11.5px] font-extrabold text-white shadow-[0_6px_20px_-6px_rgba(123,92,255,0.9)]"
+          className="absolute right-2 top-[calc(var(--sat)+108px)] z-30 flex items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7b5cff] to-[#ff7fa8] py-1.5 pl-2 pr-3 text-[11.5px] font-extrabold text-white shadow-[0_6px_20px_-6px_rgba(123,92,255,0.9)]"
         >
           <motion.span animate={{ rotate: [0, 15, -15, 0] }} transition={{ duration: 1.6, repeat: Infinity }} aria-hidden>
             🎲

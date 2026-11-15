@@ -111,7 +111,7 @@ function ChatImage({ conversationId, messageId }: { conversationId: string; mess
           <motion.span className="fixed inset-0 z-[95] grid place-items-center bg-black/90 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setZoom(false)} role="dialog" aria-label="Photo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <motion.img src={url} alt="Photo" className="max-h-full max-w-full rounded-xl object-contain" initial={{ scale: 0.92 }} animate={{ scale: 1 }} exit={{ scale: 0.92 }} />
-            <span className="absolute right-4 top-[calc(env(safe-area-inset-top)+14px)] grid h-9 w-9 place-items-center rounded-full bg-white/15 text-white" aria-hidden>
+            <span className="absolute right-4 top-[calc(var(--sat)+14px)] grid h-9 w-9 place-items-center rounded-full bg-white/15 text-white" aria-hidden>
               <X className="h-5 w-5" />
             </span>
           </motion.span>

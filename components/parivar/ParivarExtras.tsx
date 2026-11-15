@@ -632,7 +632,7 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
 
           {/* Reward preview strip */}
           {m ? (
-            <div className="relative z-10 shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            <div className="relative z-10 shrink-0 pb-[max(0.75rem,var(--sab))]">
               <div className="flex items-end justify-between">
                 <span className="rounded-tr-[18px] bg-gradient-to-b from-[#ffb347] to-[#e0563a] py-2 pr-6 pl-4 font-display text-[16px] font-extrabold text-[#fff3da] shadow-[inset_0_2px_0_rgba(255,255,255,0.3)] drop-shadow-[0_2px_0_rgba(122,26,48,0.5)]">Reward Preview</span>
                 {!m.locked && m.freeLeft > 0 ? (
@@ -1348,7 +1348,7 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
               ))}
             </div>
           ) : null}
-          <div className="flex items-end gap-2 border-t border-white/10 bg-black/45 px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+          <div className="flex items-end gap-2 border-t border-white/10 bg-black/45 px-3 py-2.5 pb-[max(0.625rem,var(--sab))] backdrop-blur-md">
             <button type="button" onClick={() => setTray((v) => !v)} className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${tray ? "bg-gold/20 text-gold" : "bg-white/8 text-cream/80"}`} aria-label="Emoji" aria-expanded={tray}>
               <Smile className="h-5 w-5" aria-hidden />
             </button>

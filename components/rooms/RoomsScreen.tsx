@@ -49,7 +49,7 @@ export function RoomsScreen() {
   const recommended = [...rooms].filter((r) => r.live && !r.createdByMe).sort((a, b) => b.members - a.members).slice(0, 5);
 
   return (
-    <div className="app-scroll h-full pb-[calc(96px+var(--mini,0px)+env(safe-area-inset-bottom))]">
+    <div className="app-scroll h-full pb-[calc(96px+var(--mini,0px)+var(--sab))]">
       <header className="pt-safe sticky top-0 z-20 bg-ink/90 backdrop-blur-xl">
         <div className="flex h-14 items-center justify-between px-4">
           <h1 className="sr-only">Rooms</h1>

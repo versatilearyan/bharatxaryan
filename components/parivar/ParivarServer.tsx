@@ -282,7 +282,7 @@ function RankingView({ period }: { period: "weekly" | "total" }) {
         ))}
       </ul>
       {/* Your own Parivar, always at the bottom */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] px-3 pb-[calc(env(safe-area-inset-bottom)+10px)]">
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[430px] px-3 pb-[calc(var(--sab)+10px)]">
         {data.mine ? (
           <div className="pointer-events-auto flex items-center gap-3 rounded-2xl bg-[#241018]/95 px-3 py-2.5 ring-1 ring-gold/40 backdrop-blur">
             <span className="w-7 text-center font-display text-[15px] font-extrabold text-gold">{data.mine.rank}</span>
@@ -624,7 +624,7 @@ export function ParivarHome({ id }: { id: string }) {
             <Ellipsis className="h-5 w-5" aria-hidden />
           </button>
           {menu ? (
-            <div className="absolute top-[calc(env(safe-area-inset-top)+52px)] right-3 z-30 w-52 overflow-hidden rounded-2xl bg-[#241018] py-1 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.8)] ring-1 ring-gold/25">
+            <div className="absolute top-[calc(var(--sat)+52px)] right-3 z-30 w-52 overflow-hidden rounded-2xl bg-[#241018] py-1 shadow-[0_20px_50px_-10px_rgba(0,0,0,0.8)] ring-1 ring-gold/25">
               <button type="button" onClick={() => { setMenu(false); push({ kind: "parivar-chat", id: p.id }); }} className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13.5px] font-semibold text-cream active:bg-white/10">
                 <MessageCircle className="h-4 w-4 text-gold" aria-hidden /> Parivar chat
               </button>
@@ -906,7 +906,7 @@ export function ParivarHome({ id }: { id: string }) {
       </motion.div>
 
       {isMember ? (
-        <div className="sticky bottom-0 z-10 mt-auto flex shrink-0 items-end justify-between border-t border-white/[0.07] bg-[#1a0f17]/95 px-5 pt-2 pb-[max(env(safe-area-inset-bottom),10px)] backdrop-blur-md">
+        <div className="sticky bottom-0 z-10 mt-auto flex shrink-0 items-end justify-between border-t border-white/[0.07] bg-[#1a0f17]/95 px-5 pt-2 pb-[max(var(--sab),10px)] backdrop-blur-md">
           <button type="button" onClick={() => setSheet("chat")} className="relative grid h-12 w-12 place-items-center rounded-2xl active:bg-white/10" aria-label="Family chat">
             <RewardArt kind="P_CHAT" size={36} />
             {unread ? <span className="absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-[#1a0f17]" /> : null}
@@ -1403,7 +1403,7 @@ function ParivarPreview({ p, busy, run, toast, onBack }: { p: ParivarProfile; bu
         </div>
       </div>
 
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink via-ink/95 to-transparent px-4 pt-8 pb-[calc(16px+env(safe-area-inset-bottom))]">
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-ink via-ink/95 to-transparent px-4 pt-8 pb-[calc(16px+var(--sab))]">
         {p.myApplication === "PENDING" ? (
           <button type="button" disabled={busy} onClick={() => void run(() => parivarApi.withdraw(p.id), "Request withdrawn")} className="h-13 w-full rounded-full bg-white/10 text-[15px] font-bold text-cream">
             Request sent · tap to withdraw
