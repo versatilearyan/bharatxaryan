@@ -193,7 +193,7 @@ export function ProfileScreen() {
         <LinkRow href="/privacy" icon={<Shield className="h-4.5 w-4.5" />} label="Privacy Policy" />
         <LinkRow href="/terms" icon={<FileText className="h-4.5 w-4.5" />} label="Terms of Service" />
         <Row icon={<LogOut className="h-4.5 w-4.5" />} label="Log out" danger onClick={signOut} />
-        {session ? <Row icon={<Trash2 className="h-4.5 w-4.5" />} label="Delete my account" danger onClick={() => setDeleteOpen(true)} /> : null}
+        {session && native ? <Row icon={<Trash2 className="h-4.5 w-4.5" />} label="Delete my account" danger onClick={() => setDeleteOpen(true)} /> : null}
       </section>
       <DeleteAccountSheet open={deleteOpen} onClose={() => setDeleteOpen(false)} />
       <p className="px-6 pt-4 text-center text-[11px] text-muted/70">{session ? `Signed in with ${{ google: "Google", apple: "Apple", email: "email" }[session.method]} as ${session.email}.` : ""}</p>

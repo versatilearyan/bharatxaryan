@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Download, ShieldCheck, Smartphone } from "lucide-react";
 import { Logo } from "@/components/brand/Logo";
+import { BackButton } from "@/components/system/BackButton";
 import { apkInfo } from "@/lib/apk";
 import { PlayStoreSoon } from "@/components/sections/PlayStoreSoon";
 
@@ -19,11 +20,14 @@ export default async function DownloadPage() {
   const info = await apkInfo();
   const mb = info ? Math.max(1, Math.round(info.size / 1048576)) : 0;
   return (
-    <main className="mx-auto flex min-h-[80vh] max-w-2xl flex-col px-4 py-16 sm:px-6">
-      <Link href="/about" aria-label="Panchayat home" className="w-fit rounded-lg pt-3">
-        <Logo size="2rem" />
-      </Link>
-      <h1 className="mt-14 font-display text-5xl font-bold tracking-[-0.035em] text-cream">Panchayat for Android</h1>
+    <main className="mx-auto flex min-h-[80vh] max-w-2xl flex-col px-4 py-6 sm:px-6 sm:py-16">
+      <div className="flex items-center justify-between gap-3">
+        <BackButton />
+        <Link href="/about" aria-label="Panchayat home" className="w-fit rounded-lg">
+          <Logo size="2rem" />
+        </Link>
+      </div>
+      <h1 className="mt-8 font-display text-[32px] font-bold leading-tight tracking-[-0.035em] text-cream sm:mt-14 sm:text-5xl">Panchayat for Android</h1>
       <p className="mt-4 text-lg leading-relaxed text-muted">The full Panchayat app on your phone: voice rooms, games, chat, gifts and your Parivar.</p>
 
       <PlayStoreSoon className="mt-8" />
