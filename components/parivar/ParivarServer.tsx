@@ -550,6 +550,7 @@ export function ParivarHome({ id }: { id: string }) {
   const [wk, setWk] = useState<TasksInfo | null>(null);
   const [kv, setKv] = useState<KavachInfo | null>(null);
   const [ch, setCh] = useState<ChestsInfo | null>(null);
+  const [trs, setTrs] = useState<TreasureInfo | null>(null);
   const [more, setMore] = useState(false);
   const [editAnn, setEditAnn] = useState(false);
   const [menu, setMenu] = useState(false);
@@ -559,11 +560,17 @@ export function ParivarHome({ id }: { id: string }) {
   /** What the Parivar owns from chests, Gacha and the shop: Kavach and chests waiting to be used or sent. */
   const kavachStock = (kv?.types ?? []).reduce((a, t) => a + (t.owned ?? 0), 0);
   const chestStock = (ch?.types ?? []).reduce((a, t) => a + (t.owned ?? 0), 0);
+  /** Family Treasure chests: claimed ones wait in the Treasury (unlocking, then ready to send); the rest wait to be claimed. */
+  const trClaimed = (trs?.chests ?? []).filter((c) => c.status === "TREASURE");
+  const trReady = trClaimed.filter((c) => c.ready || c.secondsLeft <= 0).length;
+  const trToClaim = (trs?.chests ?? []).filter((c) => c.status === "AVAILABLE").length;
+  const trCount = trClaimed.length + trToClaim;
   const loadExtras = useCallback(() => {
     if (!member) return;
     parivarExtra.tasks(id).then(setWk).catch(() => undefined);
     parivarExtra.kavach(id).then(setKv).catch(() => undefined);
     parivarExtra.chests(id).then(setCh).catch(() => undefined);
+    treasureApi.state(id).then(setTrs).catch(() => undefined);
   }, [id, member]);
   useEffect(() => {
     loadExtras();
@@ -825,15 +832,29 @@ export function ParivarHome({ id }: { id: string }) {
                 </span>
               </div>
               <div className="mt-3 flex items-stretch">
-                <button type="button" onClick={() => isMember && setSheet("chests")} className="relative flex w-[92px] shrink-0 flex-col items-center gap-1.5 py-2" aria-label="Chests">
-                  <span className={ch && (ch.sent.some((c) => c.status === "OPEN") || chestStock > 0) ? "" : "opacity-45 grayscale"}>
+                <button type="button" onClick={() => isMember && setSheet(trCount > 0 ? "treasure" : "chests")} className="relative flex w-[92px] shrink-0 flex-col items-center gap-1.5 py-2" aria-label="Chests">
+                  <span className={ch && (ch.sent.some((c) => c.status === "OPEN") || chestStock > 0 || trCount > 0) ? "" : "opacity-45 grayscale"}>
                     <RewardArt kind="CHEST" size={58} />
                   </span>
-                  <span className="text-[12.5px] font-extrabold text-cream/50">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open" : chestStock > 0 ? "In stock" : "To Unlock"}</span>
-                  {ch && ch.sent.filter((c) => c.status === "OPEN").length + chestStock ? <span className="absolute top-1 right-2 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{ch.sent.filter((c) => c.status === "OPEN").length + chestStock}</span> : null}
+                  <span className="text-[12.5px] font-extrabold text-cream/50">
+                    {trReady > 0 ? "Ready" : trClaimed.length > 0 ? "Unlocking" : trToClaim > 0 ? "To claim" : ch && ch.sent.some((c) => c.status === "OPEN") ? "Open" : chestStock > 0 ? "In stock" : "To Unlock"}
+                  </span>
+                  {(ch ? ch.sent.filter((c) => c.status === "OPEN").length : 0) + chestStock + trCount ? <span className="absolute top-1 right-2 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{(ch ? ch.sent.filter((c) => c.status === "OPEN").length : 0) + chestStock + trCount}</span> : null}
                 </button>
                 <span aria-hidden className="mx-2 w-0 border-l-2 border-dotted border-white/15" />
-                <p className="grid min-h-[110px] flex-1 place-items-center text-center text-[14.5px] font-extrabold text-cream/40">{ch && ch.sent.some((c) => c.status === "OPEN") ? "Open chests are waiting. Tap the box." : chestStock > 0 ? `${chestStock} chest${chestStock === 1 ? "" : "s"} in the Parivar store. Tap the box to send.` : "No chest"}</p>
+                <div className="grid min-h-[110px] flex-1 place-items-center px-1 text-center text-[14px] font-extrabold text-cream/60">
+                  {trCount > 0 || chestStock > 0 || (ch && ch.sent.some((c) => c.status === "OPEN")) ? (
+                    <ul className="space-y-1">
+                      {trReady > 0 ? <li className="text-[#7fe0a0]">{trReady} Treasure chest{trReady === 1 ? "" : "s"} ready to open</li> : null}
+                      {trClaimed.length - trReady > 0 ? <li>{trClaimed.length - trReady} Treasure chest{trClaimed.length - trReady === 1 ? "" : "s"} unlocking</li> : null}
+                      {trToClaim > 0 ? <li className="text-gold">{trToClaim} chest{trToClaim === 1 ? "" : "s"} to claim</li> : null}
+                      {chestStock > 0 ? <li>{chestStock} chest{chestStock === 1 ? "" : "s"} in the Parivar store</li> : null}
+                      {ch && ch.sent.some((c) => c.status === "OPEN") ? <li>Open chests are waiting</li> : null}
+                    </ul>
+                  ) : (
+                    <p className="text-cream/40">No chest</p>
+                  )}
+                </div>
               </div>
             </section>
 
