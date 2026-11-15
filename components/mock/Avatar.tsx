@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { MicOff } from "lucide-react";
 import type { Member } from "@/lib/mock-data";
 import { Crown } from "@/components/brand/Crown";
@@ -90,7 +91,7 @@ export function Avatar({ member, size = 64, showName = true, live = true }: Avat
 export type AvatarLook = Pick<Member, "bg" | "skin" | "hair" | "hairStyle" | "outfit">;
 
 /** The illustrated face itself, shared by the landing mockups and the web app. */
-export function AvatarArt({ look, gid, className = "h-full w-full rounded-full" }: { look: AvatarLook; gid: string; className?: string }) {
+function AvatarArtBase({ look, gid, className = "h-full w-full rounded-full" }: { look: AvatarLook; gid: string; className?: string }) {
   return (
     <svg viewBox="0 0 64 64" className={className} aria-hidden>
       <defs>
@@ -137,3 +138,7 @@ export function AvatarArt({ look, gid, className = "h-full w-full rounded-full" 
     </svg>
   );
 }
+
+const sameLook = (a: AvatarLook, b: AvatarLook) => a === b || (a.bg === b.bg && a.skin === b.skin && a.hair === b.hair && a.hairStyle === b.hairStyle && a.outfit === b.outfit);
+/** The face only draws again when the look, its id or its class really change (a room re-draws often, the faces don't change). */
+export const AvatarArt = memo(AvatarArtBase, (p, n) => p.gid === n.gid && p.className === n.className && sameLook(p.look, n.look));

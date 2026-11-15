@@ -36,6 +36,7 @@ import { ANIMATED_EMOTES, EmoteBurst, GAME_EMOTES, STICKER_EMOTES } from "./Emot
 import { MentionPicker, MentionText, mentions, useMentionAlerts } from "./Mentions";
 import { CpLink, useCpLevelBetween } from "./RoomSocial";
 import { ChatInviteSheet } from "@/components/social/Invites";
+import { lazySheet } from "@/components/ui/lazySheet";
 
 /* ------------------------------------------------------------------ */
 /* Top bar                                                             */
@@ -777,7 +778,7 @@ export function ChatInput({ s, value, setValue, compact = false }: { s: RoomSess
 /* Sheets                                                              */
 /* ------------------------------------------------------------------ */
 
-export function EmojiSheet({ open, onClose, s, onInsert }: { open: boolean; onClose: () => void; s: RoomSession; onInsert: (e: string) => void }) {
+function EmojiSheetImpl({ open, onClose, s, onInsert }: { open: boolean; onClose: () => void; s: RoomSession; onInsert: (e: string) => void }) {
   return (
     <BottomSheet open={open} onClose={onClose} title="Emoji">
       <div className="px-5 pb-5">
@@ -870,7 +871,7 @@ export function EmojiSheet({ open, onClose, s, onInsert }: { open: boolean; onCl
 }
 
 /** Invite people: in live rooms into your chats and to your friends (with Join); otherwise the demo list. */
-export function InviteSheet({ open, onClose, roomName, roomId, roomCode }: { open: boolean; onClose: () => void; roomName: string; roomId?: string; roomCode?: string }) {
+function InviteSheetImpl({ open, onClose, roomName, roomId, roomCode }: { open: boolean; onClose: () => void; roomName: string; roomId?: string; roomCode?: string }) {
   if (roomId) return <ChatInviteSheet open={open} onClose={onClose} kind="ROOM" roomId={roomId} code={roomCode} title={`Invite to ${roomName}`} />;
   return <DemoInviteSheet open={open} onClose={onClose} roomName={roomName} />;
 }
@@ -939,7 +940,7 @@ const MODES: { id: RoomMode; icon: ReactNode; hint: string }[] = [
   { id: "kharidari", icon: <Gavel className="h-5 w-5" />, hint: "Auction" },
 ];
 
-export function RoomMenuSheet({ open, onClose, s, extra, onInvite }: { open: boolean; onClose: () => void; s: RoomSession; extra?: ReactNode; onInvite?: () => void }) {
+function RoomMenuSheetImpl({ open, onClose, s, extra, onInvite }: { open: boolean; onClose: () => void; s: RoomSession; extra?: ReactNode; onInvite?: () => void }) {
   const { toast, leaveRoom, push } = useApp();
   const music = useMusic();
   const live = useServerRooms();
@@ -1241,3 +1242,6 @@ export function MicQueueSheet({ s }: { s: RoomSession }) {
     </BottomSheet>
   );
 }
+export const EmojiSheet = lazySheet(EmojiSheetImpl);
+export const RoomMenuSheet = lazySheet(RoomMenuSheetImpl);
+export const InviteSheet = lazySheet(InviteSheetImpl);

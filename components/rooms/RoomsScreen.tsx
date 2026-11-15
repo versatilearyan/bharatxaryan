@@ -4,7 +4,7 @@ import { NewbieRooms } from "@/components/newbie/NewbieUi";
 import { isGameTable, useLiveCounts } from "@/lib/app/live-counts";
 import { activeRooms, byOnline } from "@/lib/app/active-rooms";
 import { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Compass, Hash, Plus, Radio, SearchX } from "lucide-react";
 import { RoomCover } from "./RoomCover";
 import { Chips, IconButton, SearchField, SectionTitle } from "@/components/ui/kit";
@@ -44,6 +44,7 @@ export function RoomsScreen() {
     });
   }, [rooms, q, filter]);
   const sortedResults = useMemo(() => [...results].sort(byOnline(live)), [results, live]);
+  const [resultsShown, setResultsShown] = useState(30);
 
   const browsing = !q.trim() && filter === "All";
   const recommended = [...rooms].filter((r) => r.live && !r.createdByMe).sort((a, b) => b.members - a.members).slice(0, 5);
@@ -128,13 +129,10 @@ export function RoomsScreen() {
           <p className="px-4 pb-1 text-xs text-muted">
             {results.length} {results.length === 1 ? "room" : "rooms"}
           </p>
-          <AnimatePresence initial={false}>
-            {sortedResults.map((r) => (
-              <motion.div key={r.id} layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-                <RoomRow room={r} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
+          {sortedResults.slice(0, resultsShown).map((r) => (
+            <RoomRow key={r.id} room={r} />
+          ))}
+          {sortedResults.length > resultsShown ? <ShowMore left={sortedResults.length - resultsShown} onClick={() => setResultsShown((n) => n + 30)} /> : null}
           {results.length === 0 ? (
             <div className="flex flex-col items-center px-8 pt-14 text-center">
               <SearchX className="h-10 w-10 text-muted" aria-hidden />
@@ -259,6 +257,9 @@ function LiveRooms() {
   const active = useMemo(() => activeRooms(real, counts, { gameTables: true }), [real, counts]);
   const quiet = useMemo(() => real.filter((r) => !active.includes(r) && !(isGameTable(r.name) && counts)).sort((a, b) => b.members - a.members), [real, active, counts]);
   const firstLoad = live.status === "loading" && !live.loadedAt;
+  // A long list is drawn in pages: the first rows at once, the rest on "Show more" (hundreds of rows at once make the phone slow)
+  const [activeShown, setActiveShown] = useState(20);
+  const [quietShown, setQuietShown] = useState(15);
   return (
     <section className="mt-5" aria-live="polite" aria-busy={live.status === "loading"}>
       <SectionTitle action={live.status === "loading" ? undefined : "Refresh"} onAction={() => void refresh()}>
@@ -271,7 +272,12 @@ function LiveRooms() {
           ))}
         </div>
       ) : active.length ? (
-        active.map((r) => <RoomRow key={r.id} room={r} />)
+        <>
+          {active.slice(0, activeShown).map((r) => (
+            <RoomRow key={r.id} room={r} />
+          ))}
+          {active.length > activeShown ? <ShowMore left={active.length - activeShown} onClick={() => setActiveShown((n) => n + 20)} /> : null}
+        </>
       ) : (
         <div className="mx-4 flex items-center gap-3 rounded-2xl bg-cream/[0.05] px-4 py-3">
           <Radio className="h-5 w-5 shrink-0 text-muted" aria-hidden />
@@ -281,12 +287,21 @@ function LiveRooms() {
       {quiet.length ? (
         <>
           <SectionTitle>Other rooms</SectionTitle>
-          {quiet.map((r) => (
+          {quiet.slice(0, quietShown).map((r) => (
             <RoomRow key={r.id} room={r} />
           ))}
+          {quiet.length > quietShown ? <ShowMore left={quiet.length - quietShown} onClick={() => setQuietShown((n) => n + 15)} /> : null}
         </>
       ) : null}
     </section>
+  );
+}
+
+function ShowMore({ left, onClick }: { left: number; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="mx-4 my-2 block w-[calc(100%-2rem)] rounded-full bg-cream/[0.07] py-2.5 text-[13px] font-semibold text-cream/85 ring-1 ring-white/10">
+      Show more rooms ({left})
+    </button>
   );
 }
 

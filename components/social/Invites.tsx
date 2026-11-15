@@ -10,6 +10,7 @@ import { getRoomById, rememberRoomPassword } from "@/lib/api/voice-rooms";
 import { useChat } from "@/lib/app/chat-store";
 import { serverRoomAppId, useServerRooms } from "@/lib/app/server-rooms";
 import { useApp } from "@/lib/app/store";
+import { lazySheet } from "@/components/ui/lazySheet";
 
 const errText = (e: unknown, f: string) => (e instanceof Error && e.message ? e.message : f);
 
@@ -115,7 +116,7 @@ export function InviteCard({ inv, mine }: { inv: ChatInvite; mine: boolean }) {
  * Invite people to a room or a game table: your chats (people and groups)
  * and your friends. The invite arrives in their chat as a card with Join.
  */
-export function ChatInviteSheet({ open, onClose, kind, roomId, gameId, code, title }: { open: boolean; onClose: () => void; kind: "ROOM" | "GAME"; roomId: string; gameId?: string; code?: string; title: string }) {
+function ChatInviteSheetImpl({ open, onClose, kind, roomId, gameId, code, title }: { open: boolean; onClose: () => void; kind: "ROOM" | "GAME"; roomId: string; gameId?: string; code?: string; title: string }) {
   const { toast } = useApp();
   const chat = useChat();
   const [friends, setFriends] = useState<FriendCard[]>([]);
@@ -221,3 +222,4 @@ export function ChatInviteSheet({ open, onClose, kind, roomId, gameId, code, tit
     </BottomSheet>
   );
 }
+export const ChatInviteSheet = lazySheet(ChatInviteSheetImpl);

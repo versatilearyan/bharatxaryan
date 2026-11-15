@@ -14,6 +14,7 @@ import { ApiError } from "@/lib/api/client";
 import { API_GENDERS, MEDIA_MAX_MB, mediaFileError, type MediaKind, BIO_MAX, FAVORITE_GAMES_MAX, GENDER_LABELS, genderFromApi, validateProfileUpdate, type ApiGender, type UpdateProfileRequest } from "@/lib/api/users";
 import { MIN_AGE, ageOn } from "@/components/auth/AuthFlow";
 import type { GameId, Profile } from "@/lib/app/types";
+import { lazySheet } from "@/components/ui/lazySheet";
 
 const BGS = ["#3a2f55", "#7a2f45", "#2f4a63", "#2f5a49", "#7a5a2a", "#5a2f63"];
 const OUTFITS = ["#f4515b", "#e7bc72", "#ff687c", "#8fa8ff", "#6fe0a6", "#fff1d5"];
@@ -76,7 +77,7 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 const sameList = (a: readonly string[] = [], b: readonly string[] = []) => a.length === b.length && a.every((x, i) => x === b[i]);
 const handleFor = (name: string) => `@${name.toLowerCase().replace(/[^a-z0-9]+/g, "") || "you"}`;
 
-export function EditProfileSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+function EditProfileSheetImpl({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { profile, updateProfile, toast } = useApp();
   const me = useMe();
   const [draft, setDraft] = useState<Profile>(profile);
@@ -451,3 +452,4 @@ function Swatches({ label, colors, value, onPick }: { label: string; colors: str
     </div>
   );
 }
+export const EditProfileSheet = lazySheet(EditProfileSheetImpl);

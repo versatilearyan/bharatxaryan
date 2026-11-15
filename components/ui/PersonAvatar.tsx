@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import { motion } from "framer-motion";
 import { Crown as CrownIcon, MicOff } from "lucide-react";
 import { AvatarArt } from "@/components/mock/Avatar";
@@ -16,7 +16,7 @@ type Props = {
 };
 
 /** Illustrated avatar (or photo) with speaking ring and status badges. Frames are the animated VIP ones, drawn around it by VipFrame. */
-export function PersonAvatar({ person, size = 48, speaking = false, muted = false, host = false, className = "" }: Props) {
+function PersonAvatarBase({ person, size = 48, speaking = false, muted = false, host = false, className = "" }: Props) {
   const gid = `${person.id}-${person.look.bg.slice(1)}-${person.look.outfit.slice(1)}-${person.look.hairStyle}`;
   // A picture that fails to load falls back to the illustrated avatar (no broken-image icon)
   const [broken, setBroken] = useState<string | null>(null);
@@ -57,3 +57,12 @@ export function PersonAvatar({ person, size = 48, speaking = false, muted = fals
     </span>
   );
 }
+
+const sameLook = (a: Props["person"]["look"], b: Props["person"]["look"]) => a === b || (a.bg === b.bg && a.skin === b.skin && a.hair === b.hair && a.hairStyle === b.hairStyle && a.outfit === b.outfit);
+/** Draws again only when something it shows changes (people are re-read often, with the same content). */
+export const PersonAvatar = memo(
+  PersonAvatarBase,
+  (p, n) =>
+    p.size === n.size && p.speaking === n.speaking && p.muted === n.muted && p.host === n.host && p.className === n.className &&
+    p.person.id === n.person.id && p.person.photo === n.person.photo && p.person.frame === n.person.frame && sameLook(p.person.look, n.person.look),
+);

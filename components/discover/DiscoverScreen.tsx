@@ -100,7 +100,7 @@ export function DiscoverScreen() {
           </section>
           <section className="mt-6">
             <SectionTitle>Rooms · {roomResults.length}</SectionTitle>
-            {roomResults.map((r) => (
+            {roomResults.slice(0, 30).map((r) => (
               <RoomRow key={r.id} room={r} />
             ))}
           </section>

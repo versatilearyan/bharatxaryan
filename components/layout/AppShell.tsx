@@ -3,6 +3,7 @@
 import { ReferralCapture } from "@/components/rewards/ReferralCapture";
 import { WelcomeGift } from "@/components/rewards/WelcomeGift";
 import dynamic from "next/dynamic";
+import { Activity } from "react";
 import { SarpanchBanner } from "@/components/sarpanch/SarpanchBanner";
 import { RewardWon } from "@/components/market/RewardWon";
 import { PaymentReturn } from "@/components/market/PaymentReturn";
@@ -112,9 +113,14 @@ function Frame() {
           {signedIn ? (
             <>
               <FestivalPopup onCta={() => setTab("rooms")} />
-              <Tabs />
+              {/* While a room fills the screen, the screens behind it stop drawing (React keeps their state and picks them up again after) */}
+              <Activity mode={roomOpen && activeRoomId ? "hidden" : "visible"}>
+                <Tabs />
+              </Activity>
               <BottomNav />
-              <Stack />
+              <Activity mode={roomOpen && activeRoomId ? "hidden" : "visible"}>
+                <Stack />
+              </Activity>
               <ActiveRoomHost />
               <GlobalSheets />
               <CpProposalPrompt />

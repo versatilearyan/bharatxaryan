@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin } from "@/components/ui/kit";
-import { ChestArt } from "@/components/parivar/FamilyTreasure";
+import { ChestArt as ChestArtDrawing } from "@/components/parivar/FamilyTreasure";
+
+/** The chest is a detailed drawing: it is only drawn again when its look changes. */
+const ChestArt = memo(ChestArtDrawing);
 import { roomTreasureApi, type RoomTreasure, type TreasureBox } from "@/lib/api/room-treasure";
 import { useApp } from "@/lib/app/store";
 import type { RoomSession } from "./useRoomSession";

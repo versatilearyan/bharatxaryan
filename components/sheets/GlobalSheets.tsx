@@ -36,6 +36,7 @@ import { FriendsPanel } from "@/components/social/FriendsPanel";
 import { useJoinGameByCode } from "@/components/social/Invites";
 import { ServerTasks } from "./ServerTasks";
 import { looksLikeGameCode } from "@/lib/api/invites";
+import { lazySheet } from "@/components/ui/lazySheet";
 
 /** App-level bottom sheets opened from Home, Discover, Profile and rooms. */
 export function GlobalSheets() {
@@ -122,7 +123,7 @@ function PersonSheet({ personId, onClose }: { personId: string | null; onClose: 
   );
 }
 
-function NotificationsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+function NotificationsSheetImpl({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { notices, markNoticesRead } = useApp();
   const icon = { gift: Gift, room: Radio, friend: UserPlus, system: Sparkles };
   return (
@@ -163,7 +164,7 @@ function NotificationsSheet({ open, onClose }: { open: boolean; onClose: () => v
   );
 }
 
-function TasksSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+function TasksSheetImpl({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { claimed, claimTask, session } = useApp();
   if (session)
     return (
@@ -213,7 +214,7 @@ function TasksSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
-function FriendsSheet({ open, onClose, tab }: { open: boolean; onClose: () => void; tab?: "friends" | "following" | "followers" }) {
+function FriendsSheetImpl({ open, onClose, tab }: { open: boolean; onClose: () => void; tab?: "friends" | "following" | "followers" }) {
   const { profile, rooms, openRoom, openConversation, setSheet, session } = useApp();
   const friends = PEOPLE.filter((p) => profile.following.includes(p.id));
   // Signed in: friends, following, followers and activity come from the server
@@ -283,7 +284,7 @@ function FriendsSheet({ open, onClose, tab }: { open: boolean; onClose: () => vo
   );
 }
 
-function CoinsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CoinsSheetImpl({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { coins, toast } = useApp();
   const { coinPacks, redPackets, inventory, signedIn } = useWalletCatalog(open);
   const packs = coinPacks.data ?? [];
@@ -513,7 +514,7 @@ function useIdSearch() {
   return { state, run, reset: () => setState(null) };
 }
 
-function FindUserSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+function FindUserSheetImpl({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { push, openConversation } = useApp();
   const { rememberPeople } = useServerRooms();
   const person = usePeople();
@@ -594,7 +595,7 @@ function FindUserSheet({ open, onClose }: { open: boolean; onClose: () => void }
   );
 }
 
-function JoinRoomSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+function JoinRoomSheetImpl({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { openRoom } = useApp();
   const joinGame = useJoinGameByCode();
   const { addCreated, myId } = useServerRooms();
@@ -742,3 +743,9 @@ function RoomPasswordSheet({ roomId, onClose }: { roomId: string | null; onClose
     </BottomSheet>
   );
 }
+const NotificationsSheet = lazySheet(NotificationsSheetImpl);
+const CoinsSheet = lazySheet(CoinsSheetImpl);
+const FindUserSheet = lazySheet(FindUserSheetImpl);
+const TasksSheet = lazySheet(TasksSheetImpl);
+const FriendsSheet = lazySheet(FriendsSheetImpl);
+const JoinRoomSheet = lazySheet(JoinRoomSheetImpl);

@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { memo, useId } from "react";
 import type { Cover, CoverTheme } from "@/lib/app/types";
 
 /**
@@ -29,7 +29,7 @@ export const COVER_LABELS: Record<CoverTheme, string> = {
 
 type Props = Cover & { className?: string; /** Darken the bottom so text on top stays readable. */ shade?: boolean };
 
-export function SunsetScene({ theme, motif, className = "", shade = false }: Props) {
+function SunsetSceneBase({ theme, motif, className = "", shade = false }: Props) {
   const id = useId().replace(/:/g, "");
   const c = PALETTES[theme];
   const isNight = theme === "night";
@@ -217,3 +217,6 @@ function Motif({ motif, c }: { motif: Cover["motif"]; c: Palette }) {
       );
   }
 }
+
+/** Static artwork: it only draws again when its own inputs change. */
+export const SunsetScene = memo(SunsetSceneBase);

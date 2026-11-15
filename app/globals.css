@@ -119,6 +119,22 @@
    Web app shell
    ------------------------------------------------------------------ */
 @layer components {
+  /* Lite pages (the Android app, and phones with little memory or few cores): no blur behind panels (the most expensive effect to
+     draw while scrolling) and the big soft glows get a smaller blur. Looks almost the same, runs a lot smoother. */
+  html[data-lite] *,
+  html[data-lite] *::before,
+  html[data-lite] *::after {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  html[data-lite] [class*="blur-xl"],
+  html[data-lite] [class*="blur-2xl"],
+  html[data-lite] [class*="blur-3xl"] {
+    --tw-blur: blur(12px) !important;
+  }
+  /* Long lists: rows outside the screen aren't laid out or painted until they scroll near */
+  .cv-auto { content-visibility: auto; contain-intrinsic-size: auto 92px; }
+
   .no-scrollbar { scrollbar-width: none; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .app-scroll {

@@ -18,11 +18,12 @@ import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
 import type { GiftCategory, GiftId } from "@/lib/app/types";
 import type { RoomSession } from "@/components/rooms/useRoomSession";
+import { lazySheet } from "@/components/ui/lazySheet";
 
 const QTY = [1, 5, 10, 99];
 
 /** Gift store bottom sheet. All coins and costs are demo values. While GIFTS_LIVE is off, gifts can be browsed but not sent. */
-export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onClose: () => void; s: RoomSession; initialTo?: string }) {
+function GiftPanelImpl({ open, onClose, s, initialTo }: { open: boolean; onClose: () => void; s: RoomSession; initialTo?: string }) {
   const { coins, setSheet, toast } = useApp();
   const { pkg: localPkg, takePackage } = useMarket();
   // Backend rooms: the server's gifts (admin panel) and the gifts in your server Bag (won as rewards)
@@ -228,3 +229,4 @@ export function GiftPanel({ open, onClose, s, initialTo }: { open: boolean; onCl
     </BottomSheet>
   );
 }
+export const GiftPanel = lazySheet(GiftPanelImpl);

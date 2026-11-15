@@ -38,9 +38,18 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+/**
+ * Marks the page before it draws: data-native inside the Android app, and data-lite on the app and on phones that struggle
+ * (little memory or few cores). Lite pages skip the most expensive effects (see globals.css).
+ */
+const LITE_SCRIPT = `(function(){try{var d=document.documentElement,u=navigator.userAgent||"",n=/PanchayatApp[/]/.test(u),m=navigator.deviceMemory||8,c=navigator.hardwareConcurrency||8,p=/Android|iPhone|iPad|Mobile/i.test(u);if(n)d.setAttribute("data-native","1");if(n||(p&&(m<=4||c<=4)))d.setAttribute("data-lite","1")}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: LITE_SCRIPT }} />
+      </head>
       <body>
         <a
           href="#main"

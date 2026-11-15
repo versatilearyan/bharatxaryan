@@ -21,6 +21,7 @@ import { ME_ID, useApp } from "@/lib/app/store";
 import type { Cover, RoomBackground, RoomSettings } from "@/lib/app/types";
 import { RoomCover } from "./RoomCover";
 import { MODE_LABEL, type RoomMode, type RoomSession } from "./useRoomSession";
+import { useKeepMounted } from "@/components/ui/lazySheet";
 
 /** What each role can do. Shown in the room profile sheet. */
 const PERMISSIONS: [string, boolean, boolean][] = [
@@ -70,7 +71,7 @@ const COVERS: Cover[] = [
 /* ------------------------------------------------------------------ */
 
 /** Room profile, styled after the reference: cover, name, tag, ID, level and exp, owner and admins. */
-export function RoomInfoSheet({ s }: { s: RoomSession }) {
+function RoomInfoSheetImpl({ s }: { s: RoomSession }) {
   const { isJoined, isFollowingRoom, toggleJoinRoom, toggleFollowRoom, announcementOf, roomLevelOf, toast } = useApp();
   const person = usePeople();
   const open = s.panel === "info";
@@ -859,4 +860,10 @@ function BlockedGroup({ s, locked }: { s: RoomSession; locked: boolean }) {
       </BottomSheet>
     </>
   );
+}
+
+/** The room info sheet is only built while it is open (or closing). */
+export function RoomInfoSheet({ s }: { s: RoomSession }) {
+  const mounted = useKeepMounted(s.panel === "info");
+  return mounted ? <RoomInfoSheetImpl s={s} /> : null;
 }

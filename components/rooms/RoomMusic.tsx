@@ -8,6 +8,7 @@ import { musicApi } from "@/lib/api/music";
 import { MAX_SONG_MB, mmss, spotifyTrackId, type Song } from "@/lib/app/music";
 import { useMusic } from "@/lib/app/music-store";
 import { useApp } from "@/lib/app/store";
+import { lazySheet } from "@/components/ui/lazySheet";
 
 /** The spinning-disc pill beside the top seats: what's playing in the room. Tap for the songs. */
 export function MusicPill({ className = "", onOpen, onlyMe = false }: { className?: string; onOpen: () => void; onlyMe?: boolean }) {
@@ -69,7 +70,7 @@ const OrderButton = ({ song, onOrder }: { song: Song; onOrder: () => void }) => 
 );
 
 /** Songs ordered in the room, the library to order from, and uploading your own. */
-export function MusicSheet({ open, onClose, canControl = true }: { open: boolean; onClose: () => void; canControl?: boolean }) {
+function MusicSheetImpl({ open, onClose, canControl = true }: { open: boolean; onClose: () => void; canControl?: boolean }) {
   const m = useMusic();
   const [tabPicked, setTab] = useState<"ordered" | "library" | "contribute">("ordered");
   // Only the room owner and admins can order and play songs; everyone else just sees what is ordered
@@ -377,3 +378,4 @@ function UploadTab() {
     </div>
   );
 }
+export const MusicSheet = lazySheet(MusicSheetImpl);

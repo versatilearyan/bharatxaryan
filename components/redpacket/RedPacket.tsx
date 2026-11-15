@@ -15,6 +15,7 @@ import type { Room } from "@/lib/app/types";
 import type { RoomSession } from "@/components/rooms/useRoomSession";
 import { walletImageSrc, type RedPacketInventory, type WalletRedPacket } from "@/lib/api/wallet";
 import { useWalletCatalog, type Loaded } from "@/lib/app/use-wallet";
+import { lazySheet } from "@/components/ui/lazySheet";
 
 const TONES = {
   red: { body: ["#ff5a4e", "#d81f2a"], flap: "#b3121f", trim: "#f6d899" },
@@ -258,7 +259,7 @@ function RetryNote({ message, onRetry }: { message: string; onRetry: () => void 
 }
 
 /** Send a red packet: pick the amount, use one from your Bag or buy it, pick a cover and when the rain starts. */
-export function SendRedPacketSheet({ open, onClose, s, initial }: { open: boolean; onClose: () => void; s: RoomSession; initial?: RedPacketId | null }) {
+function SendRedPacketSheetImpl({ open, onClose, s, initial }: { open: boolean; onClose: () => void; s: RoomSession; initial?: RedPacketId | null }) {
   const { owned, send } = useRedPackets();
   const { coins, push } = useApp();
   const [packet, setPacket] = useState<RedPacketId>(initial ?? "rp-10k");
@@ -593,3 +594,4 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
     </div>
   );
 }
+export const SendRedPacketSheet = lazySheet(SendRedPacketSheetImpl);

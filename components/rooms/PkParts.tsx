@@ -8,6 +8,7 @@ import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { usePeople } from "@/lib/app/people";
 import { PK_MINUTES, usePkState, type Pk, type PkMode, type PkRule, type PkSide } from "./usePk";
 import type { RoomSession } from "./useRoomSession";
+import { lazySheet } from "@/components/ui/lazySheet";
 
 export const SIDE = {
   red: { name: "Red", solid: "#ff4f7b", soft: "rgb(255 79 123 / 0.16)" },
@@ -15,7 +16,7 @@ export const SIDE = {
 } as const;
 
 /** The owner or an admin picks the mode, the rule and how long the PK runs. */
-export function CreatePkSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CreatePkSheetImpl({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pkState = usePkState();
   const [mode, setMode] = useState<PkMode>("1v1");
   const [rule, setRule] = useState<PkRule>("gifts");
@@ -186,3 +187,4 @@ export function PkSeatTag({ side }: { side: PkSide }) {
     </span>
   );
 }
+export const CreatePkSheet = lazySheet(CreatePkSheetImpl);

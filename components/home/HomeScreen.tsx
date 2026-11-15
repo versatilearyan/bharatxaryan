@@ -149,9 +149,9 @@ function GameModes() {
         </h2>
         <Flame className="h-4.5 w-4.5 text-gold" aria-hidden />
       </div>
-      <motion.ul layout className="grid grid-cols-3 gap-2.5 px-4">
+      <motion.ul className="grid grid-cols-3 gap-2.5 px-4">
         {games.map((g) => (
-          <motion.li key={g.id} layout initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
+          <motion.li key={g.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
             <motion.button
               type="button"
               whileTap={{ scale: 0.95 }}
