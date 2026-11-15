@@ -64,10 +64,11 @@ export function CheckoutSheet({ item, onClose }: { item: CheckoutItem | null; on
   // Manual UPI top-up for coin packs, when the admin switched it on (never in the Play Store build)
   const { setSheet } = useApp();
   const [manualOn, setManualOn] = useState(false);
+  const [manualName, setManualName] = useState("Mukhiya ji");
   useEffect(() => {
     if (!item || item.purchase?.purpose !== "COIN_PACK" || /PanchayatPlay/.test(navigator.userAgent)) return;
     let live = true;
-    manualTopupApi.info().then((i) => live && setManualOn(i.enabled)).catch(() => undefined);
+    manualTopupApi.info().then((i) => { if (live) { setManualOn(i.enabled); setManualName(i.name); } }).catch(() => undefined);
     return () => {
       live = false;
     };
@@ -297,7 +298,7 @@ export function CheckoutSheet({ item, onClose }: { item: CheckoutItem | null; on
                   </p>
                   {manualOn && purchase?.purpose === "COIN_PACK" ? (
                     <button type="button" onClick={() => { onClose(); setSheet({ kind: "topup", packId: purchase.productId }); }} className="w-full rounded-2xl bg-emerald-500/10 px-4 py-2.5 text-center text-[12.5px] font-semibold text-emerald-200 ring-1 ring-emerald-400/25">
-                      Google Pay / Paytm says risky? <span className="underline">Pay Mukhiya ji by UPI</span>
+                      Google Pay / Paytm says risky? <span className="underline">Pay {manualName} by UPI</span>
                     </button>
                   ) : null}
                 </>

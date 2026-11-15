@@ -127,7 +127,7 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
       const r = await manualTopupApi.submit(current.id, utr, shot.blob);
       setCurrent(r);
       setStep("pick");
-      toast("Sent to Mukhiya ji for checking", "gold");
+      toast(`Sent to ${info?.name ?? "Mukhiya ji"} for checking`, "gold");
       void reload();
     } catch (e) {
       setError(errText(e, "Couldn't send. Try again."));
@@ -151,12 +151,13 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
     }
   };
 
+  const name = info?.name ?? "Mukhiya ji";
   const utrOk = /^[A-Za-z0-9]{10,30}$/.test(utr.replace(/\s/g, ""));
   const waiting = mine.filter((m) => m.status === "SUBMITTED" || m.status === "REQUESTED");
-  const label = (s: TopupRequest["status"]) => (s === "SUBMITTED" ? "Mukhiya ji is checking" : s === "APPROVED" ? "Coins added ✅" : s === "REJECTED" ? "Not verified" : s === "REQUESTED" ? "Waiting for your payment" : "Cancelled");
+  const label = (s: TopupRequest["status"]) => (s === "SUBMITTED" ? `${name} is checking` : s === "APPROVED" ? "Coins added ✅" : s === "REJECTED" ? "Not verified" : s === "REQUESTED" ? "Waiting for your payment" : "Cancelled");
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="Pay Mukhiya ji by UPI" tall>
+    <BottomSheet open={open} onClose={onClose} title={`Pay ${name} by UPI`} tall>
       <div className="space-y-4 px-5 pb-6">
         {!info ? (
           <p className="grid place-items-center py-10" role="status">
@@ -217,7 +218,7 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
             ) : step === "proof" && current ? (
               <>
                 <p className="text-[13px] text-cream/80">
-                  Send the <b>transaction ID (UTR)</b> and a <b>screenshot</b> of the payment for {formatInr(current.amountInr)}. Mukhiya ji checks it in the bank, then your coins arrive.
+                  Send the <b>transaction ID (UTR)</b> and a <b>screenshot</b> of the payment for {formatInr(current.amountInr)}. {name} checks it in the bank, then your coins arrive.
                 </p>
                 <label className="block">
                   <span className="mb-1 block text-[12px] font-semibold text-cream/70">Transaction ID (UTR)</span>
@@ -235,7 +236,7 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
                   </button>
                 </div>
                 <button type="button" disabled={!utrOk || !shot || busy} onClick={() => void submit()} className="flex h-12 w-full items-center justify-center rounded-full bg-coral text-[15px] font-extrabold text-white disabled:opacity-40">
-                  {busy ? "Sending…" : "Send to Mukhiya ji"}
+                  {busy ? "Sending…" : `Send to ${name}`}
                 </button>
                 <button type="button" onClick={() => setStep("pay")} className="h-10 w-full rounded-full text-[13px] font-semibold text-cream/60">
                   Back
@@ -248,7 +249,7 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
                     <p className="font-bold">{label(current.status)}</p>
                     <p className="mt-1 text-cream/75">
                       {current.status === "SUBMITTED"
-                        ? `We got your proof for ${formatInr(current.amountInr)} (${current.utr ?? ""}). Mukhiya ji will check it and message you in the Mukhiya ji chat. You can close this.`
+                        ? `We got your proof for ${formatInr(current.amountInr)} (${current.utr ?? ""}). ${name} will check it and message you in the chat. You can close this.`
                         : current.status === "REJECTED"
                           ? (current.rejectReason ?? "The payment couldn't be verified.")
                           : "Your coins are in the wallet."}
@@ -289,7 +290,7 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
                   </div>
                 )}
                 <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-cream/45">
-                  <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden /> Coins are added only after Mukhiya ji verifies your payment.
+                  <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden /> Coins are added only after {name} verifies your payment.
                 </p>
                 <button type="button" onClick={() => setSheet({ kind: "coins" })} className="h-10 w-full rounded-full text-[13px] font-semibold text-cream/60">
                   Back to the normal payment

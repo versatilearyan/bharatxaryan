@@ -15,7 +15,8 @@ const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : N
 const opts = { auth: true, forbiddenIsAccess: true } as const;
 
 export type TopupStatus = "REQUESTED" | "SUBMITTED" | "APPROVED" | "REJECTED" | "CANCELLED";
-export type TopupInfo = { enabled: boolean; upiId?: string; payeeName?: string; qrUrl?: string; note?: string };
+/** name: what the admin calls the person who checks payments (Mukhiya ji, Munshi ji, ...). */
+export type TopupInfo = { enabled: boolean; name: string; upiId?: string; payeeName?: string; qrUrl?: string; note?: string };
 export type TopupRequest = { id: string; reference: string; status: TopupStatus; packName: string; amountInr: number; coins: number; utr?: string; rejectReason?: string; upiLink?: string };
 
 const status = (v: unknown): TopupStatus => (v === "SUBMITTED" || v === "APPROVED" || v === "REJECTED" || v === "CANCELLED" ? v : "REQUESTED");
@@ -30,7 +31,7 @@ function readRequest(raw: unknown): TopupRequest | null {
 export const manualTopupApi = {
   info: async (): Promise<TopupInfo> => {
     const d = obj(await api<unknown>("/api/v1/manual-topup/info", opts));
-    return { enabled: d?.enabled === true, upiId: str(d?.upiId), payeeName: str(d?.payeeName), qrUrl: str(d?.qrUrl), note: str(d?.note) };
+    return { enabled: d?.enabled === true, name: str(d?.name) ?? "Mukhiya ji", upiId: str(d?.upiId), payeeName: str(d?.payeeName), qrUrl: str(d?.qrUrl), note: str(d?.note) };
   },
   request: async (packId: string) => {
     const r = readRequest(await api<unknown>("/api/v1/manual-topup/requests", { ...opts, method: "POST", body: { packId } }));

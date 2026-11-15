@@ -292,10 +292,11 @@ function CoinsSheetImpl({ open, onClose }: { open: boolean; onClose: () => void 
   const { coinPacks, redPackets, inventory, signedIn } = useWalletCatalog(open);
   // Manual UPI top-up (when Google Pay / Paytm doesn't like the gateway): shown when the admin switched it on. Not in the Play Store build.
   const [manualOn, setManualOn] = useState(false);
+  const [manualName, setManualName] = useState("Mukhiya ji");
   useEffect(() => {
     if (!open || !signedIn || /PanchayatPlay/.test(navigator.userAgent)) return;
     let live = true;
-    manualTopupApi.info().then((i) => live && setManualOn(i.enabled)).catch(() => undefined);
+    manualTopupApi.info().then((i) => { if (live) { setManualOn(i.enabled); setManualName(i.name); } }).catch(() => undefined);
     return () => {
       live = false;
     };
@@ -343,7 +344,7 @@ function CoinsSheetImpl({ open, onClose }: { open: boolean; onClose: () => void 
         <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Recharge coins</p>
         {manualOn ? (
           <button type="button" onClick={() => setSheet({ kind: "topup" })} className="mt-2 w-full rounded-2xl bg-emerald-500/10 px-4 py-2.5 text-left text-[12.5px] font-semibold text-emerald-200 ring-1 ring-emerald-400/25">
-            Problem paying with Google Pay / Paytm? <span className="underline">Pay Mukhiya ji by UPI</span>
+            Problem paying with Google Pay / Paytm? <span className="underline">Pay {manualName} by UPI</span>
           </button>
         ) : null}
         {coinPacks.error ? (

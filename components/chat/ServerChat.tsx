@@ -861,10 +861,11 @@ export function ServerConversationView({ personId }: { personId: string }) {
 function TopupFromChat() {
   const { setSheet } = useApp();
   const [on, setOn] = useState(false);
+  const [who, setWho] = useState("Mukhiya ji");
   useEffect(() => {
     if (/PanchayatPlay/.test(navigator.userAgent)) return;
     let live = true;
-    manualTopupApi.info().then((i) => live && setOn(i.enabled)).catch(() => undefined);
+    manualTopupApi.info().then((i) => { if (live) { setOn(i.enabled); setWho(i.name); } }).catch(() => undefined);
     return () => {
       live = false;
     };
@@ -872,7 +873,7 @@ function TopupFromChat() {
   if (!on) return null;
   return (
     <button type="button" onClick={() => setSheet({ kind: "topup" })} className="mt-2 block w-full rounded-full bg-emerald-500/15 py-2.5 text-[13px] font-bold text-emerald-200 ring-1 ring-emerald-400/30">
-      💰 Top up coins with Mukhiya ji (UPI)
+      💰 Top up coins with {who} (UPI)
     </button>
   );
 }
