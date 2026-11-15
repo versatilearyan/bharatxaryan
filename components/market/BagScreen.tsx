@@ -26,6 +26,7 @@ import { ME_ID, useApp } from "@/lib/app/store";
 import { useMe } from "@/lib/app/me-store";
 import { useRewards } from "@/lib/app/rewards-store";
 import { getMyShopItems, type OwnedShopItem } from "@/lib/api/shop";
+import { treasureApi, type TreasureMine } from "@/lib/api/parivar";
 import { ShopProductAsset } from "./ShopProductAsset";
 import { useEffect as useEffectBag } from "react";
 import { rewardTypeText } from "./RewardWon";
@@ -69,6 +70,21 @@ export function BagScreen() {
     let live = true;
     getMyShopItems()
       .then((list) => live && setBought(list))
+      .catch(() => {
+        /* the rest of the Bag still shows */
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  // What the Parivar chests gave you besides gift cards: badges, titles, animations and pictures (with how long they last)
+  const [chestWon, setChestWon] = useState<TreasureMine["collection"]>([]);
+  useEffectBag(() => {
+    if (!readToken()) return;
+    let live = true;
+    treasureApi
+      .mine("0")
+      .then((r) => live && setChestWon((r.collection ?? []).filter((c) => c.source === "TREASURE")))
       .catch(() => {
         /* the rest of the Bag still shows */
       });
@@ -139,7 +155,7 @@ export function BagScreen() {
     ),
     badge: rewardBadge(g.expiresAt),
     count: g.count,
-    source: `${g.from} (spend reward)`,
+    source: g.from === "Parivar Gacha" ? "Family chest / Gacha" : `${g.from} (spend reward)`,
     tint: GIFT_TINT,
     note: "Free to send: in a room, open Gifts and pick the Package tab.",
   }));
@@ -309,9 +325,20 @@ export function BagScreen() {
     tint: ITEM_TINT,
     note: isRing(b) ? (serverCp ? "Add it to your CP's ring box. It only adds Charm when partners send each other gifts." : "Propose to someone with this ring.") : b.description,
   }));
+  const chestItems: Entry[] = chestWon.map((c, i) => ({
+    key: `chest-won-${i}-${c.at}`,
+    name: c.label,
+    kind: c.kind === "TITLE" ? "Title" : c.kind === "BADGE" ? "Badge" : c.kind === "ITEM" ? "Chest reward" : c.kind.charAt(0) + c.kind.slice(1).toLowerCase(),
+    art: c.imageUrl ? rewardArt(c.imageUrl, (c.imageUrl.split("?")[0].split(".").pop() ?? "").toUpperCase()) : <span className="text-[34px]" aria-hidden>{c.kind === "TITLE" ? "🏷️" : "🎖️"}</span>,
+    badge: rewardBadge(c.expiresAt || null),
+    source: "Family chest",
+    tint: GIFT_TINT,
+    note: "Won from a Family Treasure chest. It stays in your Bag until its time runs out.",
+  }));
   const items: Entry[] = [
     ...boughtItems,
     ...rewardGifts,
+    ...chestItems,
     ...srv.items,
     // Signed in, your red packets are the server's inventory
     ...RED_PACKETS.filter((p) => !srv.signedIn && (owned[p.id] ?? 0) > 0).map<Entry>((p) => ({
