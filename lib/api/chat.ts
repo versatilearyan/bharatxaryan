@@ -198,7 +198,7 @@ export function readConversation(raw: unknown, myId?: string): ChatConversation 
     id,
     otherUserId,
     otherName: first(d, ["otherUserName", "otherName", "recipientName", "otherFullName"]) ?? (other ? first(other, ["fullName", "name", "displayName"]) : undefined),
-    otherAvatarUrl: first(d, ["otherUserAvatarUrl", "otherAvatarUrl"]) ?? (other ? first(other, ["avatarUrl", "profileImageUrl"]) : undefined),
+    otherAvatarUrl: first(d, ["otherUserAvatarUrl", "otherAvatarUrl"]) ?? (d.kind === "GROUP" ? first(d, ["otherUserAvatar"]) : undefined) ?? (other ? first(other, ["avatarUrl", "profileImageUrl"]) : undefined),
     lastMessage: last ? (last.type === "IMAGE" ? "📷 Photo" : last.type === "SYSTEM" && last.title ? `${last.title}: ${last.text ?? ""}` : last.text) : first(d, ["lastMessage", "lastMessagePreview", "lastMessageText"]),
     lastMessageType: last?.type ?? first(d, ["lastMessageType"])?.toUpperCase(),
     lastAt: last?.createdAt ?? first(d, ["lastMessageAt", "lastMessageTime", "updatedAt"]),
@@ -381,7 +381,7 @@ export function chatErrorText(e: unknown, action: "load" | "send" | "image" | "o
 
 export type GroupRole = "OWNER" | "ADMIN" | "MEMBER";
 export type GroupMember = { userId: string; publicId: string; name: string; avatarUrl?: string; role: GroupRole; online: boolean; lastSeenAt?: string };
-export type GroupInfo = { conversationId: string; kind: "DIRECT" | "GROUP"; name: string; myRole: GroupRole; muted: boolean; members: GroupMember[] };
+export type GroupInfo = { conversationId: string; kind: "DIRECT" | "GROUP"; name: string; imageUrl?: string; myRole: GroupRole; muted: boolean; members: GroupMember[] };
 export type Presence = { online: boolean; lastSeenAt?: string };
 
 const role = (v: unknown): GroupRole => (v === "OWNER" || v === "ADMIN" ? v : "MEMBER");
@@ -394,6 +394,7 @@ export function readGroupInfo(raw: unknown): GroupInfo | null {
     conversationId: id,
     kind: d.kind === "GROUP" ? "GROUP" : "DIRECT",
     name: str(d.name) ?? "Group",
+    imageUrl: str(d.imageUrl),
     myRole: role(d.myRole),
     muted: d.muted === true,
     members: Array.isArray(d.members)
@@ -421,6 +422,13 @@ export const createGroup = async (name: string, memberIds: string[]) => {
 };
 export const getGroupInfo = (conversationId: string) => groupCall(`${conv(conversationId)}/info`, "GET");
 export const renameGroup = (conversationId: string, name: string) => groupCall(conv(conversationId), "PATCH", { name });
+/** The group's picture (owner or admin). */
+export const setGroupImage = async (conversationId: string, file: Blob) => {
+  const form = new FormData();
+  form.append("file", file, "group.jpg");
+  return readGroupInfo(await api<unknown>(`${conv(conversationId)}/image`, { method: "POST", auth: true, forbiddenIsAccess: true, body: form, timeoutMs: 60_000 }));
+};
+export const removeGroupImage = (conversationId: string) => groupCall(`${conv(conversationId)}/image`, "DELETE");
 export const addGroupMembers = (conversationId: string, userIds: string[]) => groupCall(`${conv(conversationId)}/members`, "POST", { userIds: ids(userIds) });
 /** Remove someone (owner/admins) or leave (your own id). */
 export const removeGroupMember = (conversationId: string, userId: string) => api<unknown>(`${conv(conversationId)}/members/${encodeURIComponent(userId)}`, { method: "DELETE", auth: true, forbiddenIsAccess: true });

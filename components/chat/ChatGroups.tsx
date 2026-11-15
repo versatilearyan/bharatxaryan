@@ -7,8 +7,8 @@
  *   remove, make admin, rename. Everyone can mute or leave.
  * - ChatMenuSheet: a direct chat's mute and block.
  */
-import { useEffect, useMemo, useState } from "react";
-import { BellOff, Bell, Check, Crown, Loader2, LogOut, Pencil, Search, Shield, ShieldOff, Trash2, UserMinus, UserPlus, Users, X, Ban } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BellOff, Bell, Check, Crown, Eraser, ImageIcon, Loader2, LogOut, Pencil, Search, Shield, ShieldOff, Trash2, UserMinus, UserPlus, Users, X, Ban } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import {
@@ -18,6 +18,8 @@ import {
   presenceText,
   removeGroupMember,
   renameGroup,
+  setGroupImage,
+  removeGroupImage,
   clearChat,
   setChatMuted,
   setGroupAdmin,
@@ -29,6 +31,7 @@ import {
 import { searchServer, type FoundUser } from "@/lib/api/search";
 import { friendsApi } from "@/lib/api/social";
 import { useChat } from "@/lib/app/chat-store";
+import { clearChatWallpaper, getChatWallpaper, setChatWallpaperFromFile, squareJpegBlob } from "@/lib/app/chat-wallpaper";
 import { usePeople } from "@/lib/app/people";
 import { userPersonId, useServerRooms } from "@/lib/app/server-rooms";
 import { useApp } from "@/lib/app/store";
@@ -213,6 +216,8 @@ export function GroupInfoSheet({ open, onClose, conversationId, group, onChanged
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+  const photoInput = useRef<HTMLInputElement>(null);
+  const groupBgInput = useRef<HTMLInputElement>(null);
   if (!group) return null;
   const me = chat.myId;
   const mine = group.myRole;
@@ -242,6 +247,55 @@ export function GroupInfoSheet({ open, onClose, conversationId, group, onChanged
           Group · {group.members.length} members · {group.members.filter((m) => (chat.presence[m.userId] ?? m).online).length} online
         </p>
 
+        <div className="mb-4 flex items-center gap-3">
+          <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#7b5cff] to-[#f4515b] text-white">
+            {group.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={group.imageUrl} alt="Group photo" className="h-full w-full object-cover" />
+            ) : (
+              <Users className="h-7 w-7" aria-hidden />
+            )}
+          </span>
+          {canManage ? (
+            <span className="flex flex-wrap gap-2">
+              <button type="button" disabled={busy !== null} onClick={() => photoInput.current?.click()} className="rounded-full bg-cream/[0.08] px-3.5 py-1.5 text-[12.5px] font-semibold text-cream ring-1 ring-line disabled:opacity-60">
+                {group.imageUrl ? "Change group photo" : "Add group photo"}
+              </button>
+              {group.imageUrl ? (
+                <button type="button" disabled={busy !== null} onClick={() => void run("photo", () => removeGroupImage(conversationId), "Group photo removed")} className="rounded-full px-3 py-1.5 text-[12.5px] font-semibold text-coral disabled:opacity-60">
+                  Remove
+                </button>
+              ) : null}
+            </span>
+          ) : null}
+          <input
+            ref={photoInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+            aria-label="Choose group photo"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (!f) return;
+              void run("photo", async () => setGroupImage(conversationId, await squareJpegBlob(f, 512)), "Group photo updated");
+            }}
+          />
+          <input
+            ref={groupBgInput}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+            aria-label="Choose chat background"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              e.target.value = "";
+              if (!f) return;
+              void run("bg", () => setChatWallpaperFromFile(conversationId, f), "Background set");
+            }}
+          />
+        </div>
+
         <div className="mb-4 grid grid-cols-3 gap-2">
           <button
             type="button"
@@ -266,6 +320,36 @@ export function GroupInfoSheet({ open, onClose, conversationId, group, onChanged
           ) : (
             <span />
           )}
+        </div>
+
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          <button type="button" disabled={busy !== null} onClick={() => groupBgInput.current?.click()} className="flex flex-col items-center gap-1 rounded-2xl bg-surface py-3 text-[12px] font-semibold text-cream ring-1 ring-line disabled:opacity-60">
+            <ImageIcon className="h-5 w-5" /> Chat background
+          </button>
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={() => {
+              if (!window.confirm("Clear all messages in this group? Other members will still have them.")) return;
+              void run(
+                "clear",
+                async () => {
+                  await clearChat(conversationId);
+                  chat.clearedLocally(conversationId);
+                  onClose();
+                },
+                "Chat cleared",
+              );
+            }}
+            className="flex flex-col items-center gap-1 rounded-2xl bg-surface py-3 text-[12px] font-semibold text-coral ring-1 ring-line disabled:opacity-60"
+          >
+            <Eraser className="h-5 w-5" /> Clear chat
+          </button>
+          {getChatWallpaper(conversationId) ? (
+            <button type="button" onClick={() => (clearChatWallpaper(conversationId), toast("Background removed"))} className="col-span-2 rounded-2xl py-2 text-[12px] font-semibold text-muted">
+              Remove background
+            </button>
+          ) : null}
         </div>
 
         {renaming ? (
@@ -384,6 +468,8 @@ export function ChatMenuSheet({ open, onClose, c, name, personId }: { open: bool
   // Are they a friend? (the Remove friend row only shows for friends)
   const [friend, setFriend] = useState(false);
   const otherId = c?.otherUserId;
+  const bgInput = useRef<HTMLInputElement>(null);
+  const hasBg = Boolean(open && c && getChatWallpaper(c.id));
   useEffect(() => {
     if (!open || !otherId) return;
     let live = true;
@@ -452,6 +538,55 @@ export function ChatMenuSheet({ open, onClose, c, name, personId }: { open: bool
             }}
           />
         ) : null}
+        {c.otherUserId && friend ? (
+          <>
+            <Row icon={<ImageIcon className="h-4 w-4" />} label="Chat background" sub="Pick a picture from your gallery. Only you see it." onClick={() => bgInput.current?.click()} />
+            {hasBg ? (
+              <Row
+                icon={<X className="h-4 w-4" />}
+                label="Remove background"
+                onClick={() => {
+                  clearChatWallpaper(c.id);
+                  toast("Background removed");
+                  onClose();
+                }}
+              />
+            ) : null}
+            <input
+              ref={bgInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              aria-label="Choose chat background"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (!f) return;
+                setBusy(true);
+                setChatWallpaperFromFile(c.id, f)
+                  .then(() => {
+                    toast("Background set");
+                    onClose();
+                  })
+                  .catch((err) => toast(errText(err, "Couldn't set that background."), "error"))
+                  .finally(() => setBusy(false));
+              }}
+            />
+          </>
+        ) : null}
+        <Row
+          icon={<Eraser className="h-4 w-4" />}
+          label="Clear chat"
+          sub="Removes every message from your side. You stay in this chat."
+          danger
+          onClick={() => {
+            if (!window.confirm(`Clear all messages with ${name}? ${name} will still have them.`)) return;
+            void run(async () => {
+              await clearChat(c.id);
+              chat.clearedLocally(c.id);
+            }, "Chat cleared");
+          }}
+        />
         <Row
           icon={<Trash2 className="h-4 w-4" />}
           label="Delete chat"

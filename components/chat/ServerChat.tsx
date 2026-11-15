@@ -14,6 +14,7 @@ import { OfficialTick, SystemBubble } from "@/components/sarpanch/Sarpanch";
 import { AlertCircle, BellOff, ChevronLeft, Copy, ImagePlus, Loader2, MoreVertical, RotateCcw, Send, Smile, Trash2, Undo2, Users, X } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ChatMenuSheet, GroupInfoSheet, useGroupInfo } from "./ChatGroups";
+import { useChatWallpaper } from "@/lib/app/chat-wallpaper";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { IconButton } from "@/components/ui/kit";
 import { usePublicProfile } from "@/components/profile/usePublicProfile";
@@ -152,8 +153,13 @@ function InboxRow({ c, onOpen }: { c: ChatConversation; onOpen: (personId: strin
       <motion.button type="button" whileTap={{ scale: 0.985 }} onClick={() => onOpen(personId || `${SERVER_CONV_PREFIX}${c.id}`)} className={`flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-cream/[0.03] ${p?.vip ? "bg-gradient-to-r from-gold/[0.10] via-gold/[0.03] to-transparent" : ""}`} aria-label={`${group ? "Group" : "Chat with"} ${name}${unread ? `, ${unread} unread` : ""}`}>
         <span className="relative shrink-0">
           {group ? (
-            <span className="grid h-[52px] w-[52px] place-items-center rounded-full bg-gradient-to-br from-[#7b5cff] to-[#f4515b] text-white">
-              <Users className="h-6 w-6" aria-hidden />
+            <span className="grid h-[52px] w-[52px] place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#7b5cff] to-[#f4515b] text-white">
+              {c.otherAvatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={c.otherAvatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <Users className="h-6 w-6" aria-hidden />
+              )}
             </span>
           ) : p ? (
             <span className={`block rounded-full ${p.vip ? "p-[2px] bg-gradient-to-tr from-[#f2a516] via-[#ffe58a] to-[#f2a516]" : ""}`}>
@@ -581,6 +587,7 @@ export function ServerConversationView({ personId }: { personId: string }) {
   const [pickError, setPickError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const wallpaper = useChatWallpaper(convId);
   const keepFrom = useRef<{ height: number; top: number } | null>(null);
   const lastId = messages[messages.length - 1]?.id;
 
@@ -636,8 +643,13 @@ export function ServerConversationView({ personId }: { personId: string }) {
           </IconButton>
           <button type="button" disabled={!userId && !group} onClick={() => (official ? push({ kind: "sarpanch" }) : group ? setInfoOpen(true) : setSheet({ kind: "person", personId }))} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
             {group ? (
-              <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#7b5cff] to-[#f4515b] text-white">
-                <Users className="h-5 w-5" aria-hidden />
+              <span className="grid h-[38px] w-[38px] shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#7b5cff] to-[#f4515b] text-white">
+                {(groupInfo?.imageUrl ?? conv?.otherAvatarUrl) ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={groupInfo?.imageUrl ?? conv?.otherAvatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <Users className="h-5 w-5" aria-hidden />
+                )}
               </span>
             ) : p ? (
               <span className="relative shrink-0">
@@ -670,7 +682,13 @@ export function ServerConversationView({ personId }: { personId: string }) {
         </div>
       </header>
 
-      <div ref={scroller} className="app-scroll min-h-0 flex-1 space-y-2 px-3 py-4" aria-live="polite">
+      <div
+        ref={scroller}
+        className="app-scroll min-h-0 flex-1 space-y-2 px-3 py-4"
+        aria-live="polite"
+        data-chat-bg={wallpaper ? "on" : undefined}
+        style={wallpaper ? { backgroundImage: `linear-gradient(rgba(8,6,12,0.45), rgba(8,6,12,0.55)), url(${wallpaper})`, backgroundSize: "cover", backgroundPosition: "center" } : undefined}
+      >
         {openError ? (
           <div className="mx-auto flex max-w-[300px] flex-col items-center gap-2 pt-10 text-center text-[13px] text-cream/80" role="alert">
             {openError}
