@@ -199,6 +199,8 @@ export type TreasureTier = {
   enabled: boolean;
   target: number;
   unlockMinutes: number;
+  /** Coins per minute still left to open a locked chest at once (0 = not offered) */
+  skipCoinsPerMinute?: number;
   poolCoins: number;
   poolDiamonds: number;
   imageUrl?: string;
@@ -217,6 +219,8 @@ export type TreasureChest = {
   unlockAt?: string;
   secondsLeft: number;
   ready: boolean;
+  /** Coins to open it at once right now (0 = not offered) */
+  openNowCost?: number;
 };
 export type TreasureMember = { userId: string; name: string; role: string; avatarUrl?: string };
 export type TreasureHistory = { id: string; name: string; tier: string; mode: "ALL" | "TARGET" | "TAKE_ALL"; at: string; members: number; coins: number; diamonds: number; sentBy?: string; top?: string };
@@ -254,6 +258,7 @@ export const treasureApi = {
   state: (id: string) => api<TreasureInfo>(`${base}/${id}/treasure`, opts),
   mine: (id: string) => api<TreasureMine>(`${base}/${id}/treasure/me`, opts),
   claim: (id: string, chestId: string) => api<{ unlockAt: string }>(`${base}/${id}/treasure/chests/${chestId}/claim`, { ...opts, method: "POST" }),
+  openNow: (id: string, chestId: string, expectedCost: number) => api<{ cost: number }>(`${base}/${id}/treasure/chests/${chestId}/open-now`, { ...opts, method: "POST", body: { expectedCost } }),
   send: (id: string, chestId: string, mode: "ALL" | "TARGET" | "TAKE_ALL", targetUserId?: string) =>
     api<{ distributionId: string }>(`${base}/${id}/treasure/chests/${chestId}/send`, { ...opts, method: "POST", body: { mode, targetUserId: targetUserId ? Number(targetUserId) : undefined } }),
   opening: (id: string, did: string) => api<TreasureOpening>(`${base}/${id}/treasure/openings/${did}`, opts),

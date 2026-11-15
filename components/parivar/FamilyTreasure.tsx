@@ -487,7 +487,18 @@ export function TreasureSheet({ p, open, onClose, onChanged }: Props) {
                             ) : ready ? (
                               <span className="text-[12px] text-cream/70">Waiting for the Leader or a Deputy to send it</span>
                             ) : (
-                              <span className="rounded-full bg-black/30 px-3 py-1.5 text-[12px] font-bold text-cream/80">🔒 Locked</span>
+                              <span className="flex flex-wrap items-center justify-end gap-2">
+                                <span className="rounded-full bg-black/30 px-3 py-1.5 text-[12px] font-bold text-cream/80">🔒 Locked</span>
+                                {(() => {
+                                  const rate = d.tiers.find((t) => t.code === c.tier)?.skipCoinsPerMinute ?? 0;
+                                  const cost = rate > 0 ? Math.ceil(left / 60) * rate : 0;
+                                  return cost > 0 ? (
+                                    <Btn disabled={busy !== null} onClick={() => { if (window.confirm(`Open the ${c.name} now for ${n(cost)} coins from your wallet?`)) void run(c.id, async () => { await treasureApi.openNow(p.id, c.id, cost); toast("Chest opened \u26A1", "gold"); }); }}>
+                                      ⚡ Open now · {n(cost)} coins
+                                    </Btn>
+                                  ) : null;
+                                })()}
+                              </span>
                             )}
                           </div>
                         </li>
