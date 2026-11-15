@@ -642,7 +642,7 @@ export function ServerConversationView({ personId }: { personId: string }) {
           <IconButton label="Back" onClick={pop} className="!bg-transparent">
             <ChevronLeft className="h-6 w-6" />
           </IconButton>
-          <button type="button" disabled={!userId && !group} onClick={() => (official ? push({ kind: "sarpanch" }) : group ? setInfoOpen(true) : setSheet({ kind: "person", personId }))} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+          <button type="button" disabled={!userId && !group} onClick={() => (official ? (conv?.systemKind === "MUNSHI" ? setSheet({ kind: "ticket" }) : push({ kind: "sarpanch" })) : group ? setInfoOpen(true) : setSheet({ kind: "person", personId }))} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
             {group ? (
               <span className="grid h-[38px] w-[38px] shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-[#7b5cff] to-[#f4515b] text-white">
                 {(groupInfo?.imageUrl ?? conv?.otherAvatarUrl) ? (
@@ -797,7 +797,7 @@ export function ServerConversationView({ personId }: { personId: string }) {
           <span className="inline-flex items-center gap-1">
             <OfficialTick className="h-3.5 w-3.5" /> Official messages from Panchayat. You can&apos;t reply here.
           </span>
-          <TopupFromChat />
+          {conv?.systemKind === "MUNSHI" ? <MunshiDesk /> : null}
         </div>
       ) : (
       <form
@@ -857,23 +857,35 @@ export function ServerConversationView({ personId }: { personId: string }) {
   );
 }
 
-/** In the official chat: when Mukhiya ji's UPI top-up is on, a button to start one (the steps come back as automated messages here). */
-function TopupFromChat() {
+/** Munshi ji's chat (the payments desk): start a UPI top-up or a payment ticket; every step comes back here as an automated message. */
+function MunshiDesk() {
   const { setSheet } = useApp();
   const [on, setOn] = useState(false);
-  const [who, setWho] = useState("Mukhiya ji");
+  const [who, setWho] = useState("Munshi ji");
   useEffect(() => {
-    if (/PanchayatPlay/.test(navigator.userAgent)) return;
     let live = true;
-    manualTopupApi.info().then((i) => { if (live) { setOn(i.enabled); setWho(i.name); } }).catch(() => undefined);
+    manualTopupApi
+      .info()
+      .then((i) => {
+        if (!live) return;
+        setWho(i.name);
+        setOn(i.enabled && !/PanchayatPlay/.test(navigator.userAgent));
+      })
+      .catch(() => undefined);
     return () => {
       live = false;
     };
   }, []);
-  if (!on) return null;
   return (
-    <button type="button" onClick={() => setSheet({ kind: "topup" })} className="mt-2 block w-full rounded-full bg-emerald-500/15 py-2.5 text-[13px] font-bold text-emerald-200 ring-1 ring-emerald-400/30">
-      💰 Top up coins with {who} (UPI)
-    </button>
+    <div className="mt-2 grid gap-2">
+      {on ? (
+        <button type="button" onClick={() => setSheet({ kind: "topup" })} className="block w-full rounded-full bg-emerald-500/15 py-2.5 text-[13px] font-bold text-emerald-200 ring-1 ring-emerald-400/30">
+          💰 Top up coins with {who} (UPI)
+        </button>
+      ) : null}
+      <button type="button" onClick={() => setSheet({ kind: "ticket" })} className="block w-full rounded-full bg-cream/10 py-2.5 text-[13px] font-bold text-cream ring-1 ring-white/10">
+        🎫 Payment problem? Raise a ticket
+      </button>
+    </div>
   );
 }

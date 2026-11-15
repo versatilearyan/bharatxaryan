@@ -106,6 +106,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const convByUser = useRef<Record<string, Promise<string>>>({});
   const open = useRef<Set<string>>(new Set());
   const epoch = useRef(0);
+  /** The Chats list was asked for (even while the account wasn't known yet): load it again once it is. */
+  const inboxWanted = useRef(false);
   const inboxBusy = useRef(false);
   const readBusy = useRef<Set<string>>(new Set());
   const unreadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,6 +129,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       o.forEach((x) => x.previewUrl && URL.revokeObjectURL(x.previewUrl));
       return [];
     });
+    // The Chats screen may have asked for the list a moment before this reset (the answer was thrown away): ask again
+    if (enabled && inboxWanted.current) {
+      inboxBusy.current = false;
+      const t = window.setTimeout(() => loadInboxRef.current(true), 0);
+      return () => window.clearTimeout(t);
+    }
   }, [enabled, myId]);
 
   const patchThread = useCallback((id: string, f: (t: Thread) => Thread) => setThreads((all) => ({ ...all, [id]: f(all[id] ?? EMPTY_THREAD) })), []);
@@ -146,6 +154,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
   const loadInbox = useCallback(
     (force = false) => {
+      inboxWanted.current = true;
       if (!enabled || inboxBusy.current) return;
       if (!force && inbox.data) return;
       inboxBusy.current = true;

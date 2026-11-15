@@ -292,6 +292,9 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
                 <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-cream/45">
                   <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden /> Coins are added only after {name} verifies your payment.
                 </p>
+                <button type="button" onClick={() => setSheet({ kind: "ticket" })} className="h-10 w-full rounded-full text-[13px] font-semibold text-cream/60">
+                  Problem with a payment? Raise a ticket
+                </button>
                 <button type="button" onClick={() => setSheet({ kind: "coins" })} className="h-10 w-full rounded-full text-[13px] font-semibold text-cream/60">
                   Back to the normal payment
                 </button>

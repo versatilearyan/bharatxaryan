@@ -82,7 +82,8 @@ export function useOpenAction() {
       return;
     }
     const path = url.split("?")[0].toLowerCase();
-    if (path.startsWith("/topup")) setSheet({ kind: "topup", requestId: new URLSearchParams(url.split("?")[1] ?? "").get("id") ?? undefined });
+    if (path.startsWith("/ticket")) setSheet({ kind: "ticket", ticketId: new URLSearchParams(url.split("?")[1] ?? "").get("id") ?? undefined });
+    else if (path.startsWith("/topup")) setSheet({ kind: "topup", requestId: new URLSearchParams(url.split("?")[1] ?? "").get("id") ?? undefined });
     else if (path.startsWith("/wallet") || path.startsWith("/coins")) setSheet({ kind: "coins" });
     else if (path.startsWith("/bag")) push({ kind: "bag" });
     else if (path.startsWith("/vip")) push({ kind: "vip-benefits" });

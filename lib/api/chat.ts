@@ -76,6 +76,8 @@ export type ChatConversation = {
   theirRequestState?: "ACCEPTED" | "PENDING" | "DECLINED";
   /** The read-only Sarpanch chat, pinned on top. */
   systemConversation?: boolean;
+  /** Which official account a read-only chat is with: Sarpanch, or Munshi ji (the payments desk). */
+  systemKind?: "SARPANCH" | "MUNSHI";
   pinned?: boolean;
   /** The other person is the official account (verified badge). */
   official?: boolean;
@@ -215,6 +217,7 @@ export function readConversation(raw: unknown, myId?: string): ChatConversation 
     requestState: d.requestState === "PENDING" ? "PENDING" : "ACCEPTED",
     theirRequestState: d.theirRequestState === "PENDING" || d.theirRequestState === "DECLINED" ? d.theirRequestState : "ACCEPTED",
     systemConversation: d.systemConversation === true,
+    systemKind: d.systemKind === "MUNSHI" ? "MUNSHI" : d.systemKind === "SARPANCH" ? "SARPANCH" : undefined,
     pinned: d.pinned === true,
     official: d.official === true,
     otherRoom: (() => {

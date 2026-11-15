@@ -38,6 +38,7 @@ import { ServerTasks } from "./ServerTasks";
 import { looksLikeGameCode } from "@/lib/api/invites";
 import { lazySheet } from "@/components/ui/lazySheet";
 import { ManualTopupSheet } from "@/components/market/ManualTopupSheet";
+import { TicketSheet } from "@/components/market/TicketSheet";
 import { manualTopupApi } from "@/lib/api/manual-topup";
 
 /** App-level bottom sheets opened from Home, Discover, Profile and rooms. */
@@ -51,6 +52,7 @@ export function GlobalSheets() {
       <TasksSheet open={sheet?.kind === "tasks"} onClose={close} />
       <FriendsSheet open={sheet?.kind === "friends"} onClose={close} tab={sheet?.kind === "friends" ? sheet.tab : undefined} />
       <CoinsSheet open={sheet?.kind === "coins"} onClose={close} />
+      <Tickets open={sheet?.kind === "ticket"} onClose={close} ticketId={sheet?.kind === "ticket" ? sheet.ticketId : undefined} />
       <ManualTopup open={sheet?.kind === "topup"} onClose={close} packId={sheet?.kind === "topup" ? sheet.packId : undefined} requestId={sheet?.kind === "topup" ? sheet.requestId : undefined} />
       <GameSheet gameId={sheet?.kind === "game" ? sheet.gameId : null} onClose={close} />
       <EditProfileSheet open={sheet?.kind === "edit-profile"} onClose={close} />
@@ -342,6 +344,9 @@ function CoinsSheetImpl({ open, onClose }: { open: boolean; onClose: () => void 
           <p className="relative mt-1 text-[11.5px] text-cream/60">Send gifts, red packets and more in any room</p>
         </div>
         <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Recharge coins</p>
+        <button type="button" onClick={() => setSheet({ kind: "ticket" })} className="mt-2 w-full rounded-2xl bg-cream/[0.06] px-4 py-2.5 text-left text-[12.5px] font-semibold text-cream/80 ring-1 ring-white/10">
+          Payment problem? <span className="underline">Raise a ticket</span>
+        </button>
         {manualOn ? (
           <button type="button" onClick={() => setSheet({ kind: "topup" })} className="mt-2 w-full rounded-2xl bg-emerald-500/10 px-4 py-2.5 text-left text-[12.5px] font-semibold text-emerald-200 ring-1 ring-emerald-400/25">
             Problem paying with Google Pay / Paytm? <span className="underline">Pay {manualName} by UPI</span>
@@ -769,3 +774,4 @@ const TasksSheet = lazySheet(TasksSheetImpl);
 const FriendsSheet = lazySheet(FriendsSheetImpl);
 const JoinRoomSheet = lazySheet(JoinRoomSheetImpl);
 const ManualTopup = lazySheet(ManualTopupSheet);
+const Tickets = lazySheet(TicketSheet);
