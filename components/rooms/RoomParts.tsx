@@ -518,8 +518,10 @@ export function PkArena({ s, gold = false, scale = 1 }: { s: RoomSession; gold?:
     [[has(3), has(4)], [has(5), has(6)]],
     [[has(RED_SEAT), has(7)], [has(8), has(BLUE_SEAT)]],
   ];
+  // The arena is the host plus eight seats; any seat past those is only shown while someone is sitting on it
+  const extra = Array.from({ length: Math.max(0, n - 9) }, (_, k) => k + 9).filter((i) => Boolean(s.seats[i]));
   const rest: [number, number | undefined][] = [];
-  for (let i = 9; i < n; i += 2) rest.push([i, i + 1 < n ? i + 1 : undefined]);
+  for (let i = 0; i < extra.length; i += 2) rest.push([extra[i], extra[i + 1]]);
   const partner = s.settings.partnerSeat;
   const phase = usePkState()?.pk?.phase;
   const join = (side: "red" | "blue") => {
