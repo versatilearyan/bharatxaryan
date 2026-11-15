@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Power, Swords, Trophy, Users, Zap } from "lucide-react";
+import { Armchair, Power, Swords, Trophy, Users, Zap } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { usePeople } from "@/lib/app/people";
@@ -96,7 +96,7 @@ function Backers({ pk, side }: { pk: Pk; side: PkSide }) {
           </span>
         ) : (
           <span key={i} className="grid h-[23px] w-[23px] place-items-center rounded-full text-[9px] font-extrabold text-white/80" style={{ background: SIDE[side].soft, boxShadow: `inset 0 0 0 1.5px ${SIDE[side].solid}` }}>
-            {i + 1}
+            <Armchair className="h-3 w-3 text-white/85" aria-hidden />
           </span>
         ),
       )}
@@ -114,67 +114,71 @@ export function PkPanel({ s }: { s: RoomSession }) {
   const left = Math.max(0, Math.ceil((pk.endsAt - now) / 1000));
   const clock = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
   return (
-    <motion.section initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 mx-3 mt-2 rounded-2xl bg-black/45 p-2 ring-1 ring-white/10 backdrop-blur" aria-label="PK">
-      <div className="flex items-center gap-2">
-        <span className="text-[10.5px] font-extrabold uppercase tracking-wide text-cream/70">
-          {pk.mode === "1v1" ? "1v1 PK" : "Multiplayer PK"} · {pk.rule === "gifts" ? "Gifts" : "Votes"}
-        </span>
-        {s.canModerate ? (
-          <button type="button" onClick={close} aria-label="Close PK" className="ml-auto grid h-6 w-6 place-items-center rounded-full bg-white/10 text-cream/80">
-            <Power className="h-3.5 w-3.5" />
-          </button>
-        ) : null}
-      </div>
+    <motion.section initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 mx-3 mt-2" aria-label="PK">
       {/* Score bar */}
-      <div className="relative mt-1.5 flex h-6 overflow-hidden rounded-full bg-white/10">
-        <motion.span className="flex items-center pl-2 text-[12px] font-extrabold text-white" style={{ background: `linear-gradient(90deg, #ff2d6a, ${SIDE.red.solid})` }} animate={{ width: `${Math.min(92, Math.max(8, share * 100))}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }}>
+      <div className="relative z-[1] flex h-7 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
+        <motion.span className="flex items-center pl-2 text-[13px] font-extrabold text-white" style={{ background: `linear-gradient(90deg, #ff2d6a, ${SIDE.red.solid})` }} animate={{ width: `${Math.min(92, Math.max(8, share * 100))}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }}>
           {pk.red.toLocaleString("en-IN")}
         </motion.span>
-        <span className="flex flex-1 items-center justify-end pr-2 text-[12px] font-extrabold text-white" style={{ background: `linear-gradient(90deg, ${SIDE.blue.solid}, #1f6fe0)` }}>
+        <span className="flex flex-1 items-center justify-end pr-2 text-[13px] font-extrabold text-white" style={{ background: `linear-gradient(90deg, ${SIDE.blue.solid}, #1f6fe0)` }}>
           {pk.blue.toLocaleString("en-IN")}
         </span>
         <span className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2" style={{ left: `${Math.min(92, Math.max(8, share * 100))}%` }}>
           <Zap className="h-5 w-5 fill-[#ffd36e] text-[#ffd36e] drop-shadow" aria-hidden />
         </span>
       </div>
-      <div className="mt-1.5 flex items-center justify-between gap-2">
-        <Backers pk={pk} side="red" />
-        {pk.phase === "ready" ? (
-          s.canModerate ? (
-            <button type="button" onClick={start} className="h-7 rounded-full bg-gradient-to-r from-[#ff4f7b] to-[#3d9bff] px-5 text-[12.5px] font-extrabold text-white">
-              Start
-            </button>
-          ) : (
-            <span className="text-[11.5px] font-bold text-cream/70">Waiting for the host…</span>
-          )
-        ) : pk.phase === "live" ? (
-          <span className="rounded-full bg-black/40 px-3 py-0.5 font-display text-[14px] font-extrabold tabular-nums text-gold" aria-label={`Time left ${clock}`}>
-            {clock}
-          </span>
-        ) : (
-          <button type="button" onClick={dismiss} className="flex items-center gap-1 rounded-full bg-gold px-3 py-1 text-[12px] font-extrabold text-ink">
-            <Trophy className="h-3.5 w-3.5" aria-hidden /> {pk.winner === "draw" ? "Draw!" : `${SIDE[pk.winner ?? "red"].name} wins!`}
-          </button>
-        )}
-        <Backers pk={pk} side="blue" />
-      </div>
-      {/* PK support: one vote each */}
-      {pk.rule === "votes" && pk.phase === "live" ? (
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {(["red", "blue"] as const).map((side) => (
-            <button
-              key={side}
-              type="button"
-              disabled={Boolean(pk.myVote)}
-              onClick={() => vote(side)}
-              className="h-8 rounded-full text-[12.5px] font-extrabold text-white disabled:opacity-60"
-              style={{ background: SIDE[side].solid, boxShadow: pk.myVote === side ? "0 0 0 2px #fff inset" : undefined }}
-            >
-              {pk.myVote === side ? `✓ You support ${SIDE[side].name}` : `Support ${SIDE[side].name}`}
-            </button>
-          ))}
+      {/* The grey panel under the bar: top supporters on each side, the Start / clock tab in the middle */}
+      <div className="relative -mt-3.5 rounded-b-2xl bg-white/[0.13] px-3 pb-2.5 pt-5 ring-1 ring-white/5 backdrop-blur-sm">
+        <div className="flex items-center justify-between">
+          <Backers pk={pk} side="red" />
+          <Backers pk={pk} side="blue" />
         </div>
-      ) : null}
+        <div className="absolute left-1/2 top-0 z-[2] -translate-x-1/2" style={{ marginTop: 12 }}>
+          {pk.phase === "ready" ? (
+            s.canModerate ? (
+              <button type="button" onClick={start} className="h-8 min-w-[104px] px-6 text-[14px] font-extrabold text-white" style={{ clipPath: "polygon(0 0, 100% 0, 88% 100%, 12% 100%)", background: "linear-gradient(180deg, #3aa0c8, #1f6f96)" }}>
+                Start
+              </button>
+            ) : (
+              <span className="flex h-8 min-w-[104px] items-center justify-center px-4 text-[11px] font-bold text-white/80" style={{ clipPath: "polygon(0 0, 100% 0, 88% 100%, 12% 100%)", background: "#2a5a74" }}>
+                Waiting…
+              </span>
+            )
+          ) : pk.phase === "live" ? (
+            <span className="flex h-8 min-w-[104px] items-center justify-center px-5 font-display text-[14px] font-extrabold tabular-nums text-white" style={{ clipPath: "polygon(0 0, 100% 0, 88% 100%, 12% 100%)", background: "linear-gradient(180deg, #3aa0c8, #1f6f96)" }} aria-label={`Time left ${clock}`}>
+              {clock}
+            </span>
+          ) : (
+            <button type="button" onClick={dismiss} className="flex h-8 min-w-[120px] items-center justify-center gap-1 px-5 text-[12px] font-extrabold text-ink" style={{ clipPath: "polygon(0 0, 100% 0, 88% 100%, 12% 100%)", background: "#e7bc72" }}>
+              <Trophy className="h-3.5 w-3.5" aria-hidden /> {pk.winner === "draw" ? "Draw!" : `${SIDE[pk.winner ?? "red"].name} wins!`}
+            </button>
+          )}
+        </div>
+        {s.canModerate ? (
+          <div className="mt-1.5 flex justify-center">
+            <button type="button" onClick={close} aria-label="Close PK" className="grid h-6 w-8 place-items-center rounded-lg bg-white/10 text-cream/80">
+              <Power className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : null}
+        {/* PK support: one vote each */}
+        {pk.rule === "votes" && pk.phase === "live" ? (
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {(["red", "blue"] as const).map((side) => (
+              <button
+                key={side}
+                type="button"
+                disabled={Boolean(pk.myVote)}
+                onClick={() => vote(side)}
+                className="h-8 rounded-full text-[12.5px] font-extrabold text-white disabled:opacity-60"
+                style={{ background: SIDE[side].solid, boxShadow: pk.myVote === side ? "0 0 0 2px #fff inset" : undefined }}
+              >
+                {pk.myVote === side ? `\u2713 You support ${SIDE[side].name}` : `Support ${SIDE[side].name}`}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </motion.section>
   );
 }

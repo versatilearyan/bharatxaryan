@@ -5,7 +5,7 @@ import { useLiveCounts } from "@/lib/app/live-counts";
 import { NewbieBadge } from "@/components/newbie/NewbieBadge";
 import { useIsNewbie } from "@/lib/app/newbie";
 import { AnimatePresence, motion } from "framer-motion";
-import { Armchair, AudioLines, Bell, Check, ChevronDown, Copy, Gavel, Gift, Hand, Heart, ImagePlus, ListOrdered, Lock, LogOut, Megaphone, MicOff, MonitorPlay, MoreHorizontal, Music2, Plus, Power, Send, Share2, Smile, Swords, UserPlus, UsersRound, Volume2, X } from "lucide-react";
+import { Armchair, AudioLines, Bell, Check, ChevronDown, Copy, Gavel, Gift, Hand, Heart, ImagePlus, ListOrdered, Lock, LogOut, Megaphone, MicOff, MonitorPlay, MoreHorizontal, Music2, Plus, Power, Send, Share2, Smile, UserPlus, UsersRound, Volume2, X } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { RoomCover } from "./RoomCover";
@@ -508,49 +508,54 @@ export function SeatLayout({ s, gold = false, scale = 1, grid = false }: { s: Ro
 export function PkArena({ s, gold = false, scale = 1 }: { s: RoomSession; gold?: boolean; scale?: number }) {
   const [ref, width] = useWidth<HTMLDivElement>();
   const k = (Math.min(width, 430) / REF_WIDTH) * scale;
-  const big = Math.round(80 * k);
-  const small = Math.round(60 * k);
-  const others = s.seats.map((_, i) => i).filter((i) => i > BLUE_SEAT);
-  const top = others.slice(0, 2);
-  const mid = others.slice(2, 4);
-  const rest = others.slice(4);
+  const big = Math.round(85 * k);
+  const small = Math.round(62 * k);
+  const gap = Math.round(32 * k);
+  const n = s.seats.length;
+  const has = (i: number) => (i < n ? i : undefined);
+  // Two rows of two linked pairs; the PK seats are the outer ends of the bottom row
+  const rows: [number | undefined, number | undefined][][] = [
+    [[has(3), has(4)], [has(5), has(6)]],
+    [[has(RED_SEAT), has(7)], [has(8), has(BLUE_SEAT)]],
+  ];
+  const rest: [number, number | undefined][] = [];
+  for (let i = 9; i < n; i += 2) rest.push([i, i + 1 < n ? i + 1 : undefined]);
+  const partner = s.settings.partnerSeat;
   const phase = usePkState()?.pk?.phase;
-  const join = (side: "red" | "blue") => (
-    <button
-      type="button"
-      onClick={() => s.takeSeat(side === "red" ? RED_SEAT : BLUE_SEAT)}
-      disabled={phase === "live" || Boolean(s.seats[side === "red" ? RED_SEAT : BLUE_SEAT])}
-      aria-label={`Take the ${SIDE[side].name} PK seat`}
-      className="grid h-9 w-11 place-items-center rounded-full text-white shadow disabled:opacity-40"
-      style={{ background: SIDE[side].solid }}
-    >
-      <Swords className="h-4 w-4" aria-hidden />
-    </button>
-  );
+  const join = (side: "red" | "blue") => {
+    const seat = side === "red" ? RED_SEAT : BLUE_SEAT;
+    return (
+      <button
+        type="button"
+        onClick={() => s.takeSeat(seat)}
+        disabled={phase === "live" || Boolean(s.seats[seat])}
+        aria-label={`Take the ${SIDE[side].name} PK seat`}
+        className="grid h-8 w-[58px] place-items-center rounded-2xl text-white shadow disabled:opacity-45"
+        style={{ background: SIDE[side].solid }}
+      >
+        <Armchair className="h-4 w-4" aria-hidden />
+      </button>
+    );
+  };
   return (
-    <div ref={ref} className="w-full px-3" data-pk-arena>
-      <div className="relative flex justify-center">
-        <span className="absolute bottom-0 left-0">{join("red")}</span>
+    <div ref={ref} className="w-full" data-pk-arena>
+      <div className="relative flex justify-center px-3">
         <Seat s={s} index={0} size={big} gold={gold} />
-        <span className="absolute bottom-0 right-0">{join("blue")}</span>
+        <span className="absolute bottom-0 left-3">{join("red")}</span>
+        <span className="absolute bottom-0 right-3">{join("blue")}</span>
       </div>
       <PkPanel s={s} />
-      <div className="mt-3 flex justify-between">
-        {top.map((i) => (
-          <Seat key={i} s={s} index={i} size={small} gold={gold} />
-        ))}
-      </div>
-      <div className="mt-3 flex items-start justify-between">
-        <Seat s={s} index={RED_SEAT} size={small} gold={gold} />
-        {mid.map((i) => (
-          <Seat key={i} s={s} index={i} size={small} gold={gold} />
-        ))}
-        <Seat s={s} index={BLUE_SEAT} size={small} gold={gold} />
-      </div>
+      {rows.map((row, r) => (
+        <div key={r} className="relative flex flex-wrap justify-center" style={{ columnGap: gap, marginTop: Math.round(16 * k) }}>
+          {row.map(([a2, b2]) =>
+            a2 === undefined ? null : <Pair key={a2} s={s} a={a2} b={b2} size={small} gap={gap} gold={gold} linked={partner !== "off"} />,
+          )}
+        </div>
+      ))}
       {rest.length ? (
-        <div className="mt-3 flex flex-wrap justify-center" style={{ columnGap: Math.round(22 * k), rowGap: Math.round(12 * k) }}>
-          {rest.map((i) => (
-            <Seat key={i} s={s} index={i} size={small} gold={gold} />
+        <div className="relative flex flex-wrap justify-center" style={{ columnGap: gap, rowGap: Math.round(14 * k), marginTop: Math.round(14 * k) }}>
+          {rest.map(([a2, b2]) => (
+            <Pair key={a2} s={s} a={a2} b={b2} size={small} gap={gap} gold={gold} linked={partner !== "off"} />
           ))}
         </div>
       ) : null}
