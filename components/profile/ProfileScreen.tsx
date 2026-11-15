@@ -3,7 +3,8 @@
 import { BagIcon, RankingIcon, ShopIcon, VisitorsIcon } from "@/components/art/ProfileIcons";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, ChevronRight, Crown, Download, Eye, FileText, Info, MessageCircle, Pencil, RotateCw, LogOut, Shield, Smartphone, Volume2 } from "lucide-react";
+import { Bell, ChevronRight, Crown, Download, Eye, FileText, Info, MessageCircle, Pencil, RotateCw, LogOut, Shield, Smartphone, Trash2, Volume2 } from "lucide-react";
+import { DeleteAccountSheet } from "@/components/profile/DeleteAccountSheet";
 import { setNotifyPrefs, useNotifyPrefs, notify as ping } from "@/lib/app/notify";
 import { getPrivacy, setShowOnline } from "@/lib/api/chat";
 import { GameArt } from "@/components/art/GameArt";
@@ -23,6 +24,7 @@ export function ProfileScreen() {
   const { profile, coins, setSheet, push, toast, signOut, session, vip: appVip } = useApp();
   const myServerId = session ? myUserIdFromToken() : null;
   const native = useIsNativeApp();
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [notify, setNotify] = useState(true);
   const [sounds, setSounds] = useState(true);
   const alerts = useNotifyPrefs();
@@ -191,7 +193,9 @@ export function ProfileScreen() {
         <LinkRow href="/privacy" icon={<Shield className="h-4.5 w-4.5" />} label="Privacy Policy" />
         <LinkRow href="/terms" icon={<FileText className="h-4.5 w-4.5" />} label="Terms of Service" />
         <Row icon={<LogOut className="h-4.5 w-4.5" />} label="Log out" danger onClick={signOut} />
+        {session ? <Row icon={<Trash2 className="h-4.5 w-4.5" />} label="Delete my account" danger onClick={() => setDeleteOpen(true)} /> : null}
       </section>
+      <DeleteAccountSheet open={deleteOpen} onClose={() => setDeleteOpen(false)} />
       <p className="px-6 pt-4 text-center text-[11px] text-muted/70">{session ? `Signed in with ${{ google: "Google", apple: "Apple", email: "email" }[session.method]} as ${session.email}.` : ""}</p>
     </div>
   );
