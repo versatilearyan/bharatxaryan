@@ -568,6 +568,11 @@ export function ParivarHome({ id }: { id: string }) {
   useEffect(() => {
     loadExtras();
   }, [loadExtras, p?.funds, p?.exp]);
+  // Chests and Kavach won in Gacha / bought / used: refresh the stock whenever a sheet closes
+  const sheetOpen = sheet !== null;
+  useEffect(() => {
+    if (!sheetOpen) loadExtras();
+  }, [sheetOpen, loadExtras]);
 
   const run = async (f: () => Promise<unknown>, ok?: string) => {
     if (busy) return;
@@ -703,6 +708,24 @@ export function ParivarHome({ id }: { id: string }) {
                       : `Activeness complete ✓ · Fill the family fund to level up to Lv.${p.level + 1}`
                     : `Next level Lv.${p.level + 1}: ${n(p.nextLevelExp)} activeness`}
               </p>
+              {p.levelUp?.expOk && isMember ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    const lu = p.levelUp!;
+                    if (!lu.ready) {
+                      toast(`Family fund needs ${n(Math.max(0, lu.fundNeeded - p.funds))} more. Donate to the fund, then level up.`, "gold");
+                      setDonate(true);
+                    } else if (p.myRole === "LEADER") {
+                      if (window.confirm(`Level up to ${lu.level}? ${lu.spendAll ? `The whole family fund (${n(lu.fundUsed ?? p.funds)}) will be used and the fund starts again from 0.` : `${n(lu.fundNeeded)} will be taken from the family fund.`}`)) void run(() => parivarApi.levelUp(p.id), `Your Parivar is now level ${lu.level}`);
+                    } else toast("Ready! Only the Mukhiya can level the Parivar up.", "gold");
+                  }}
+                  className="mt-3 h-11 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c] disabled:opacity-50"
+                >
+                  {p.levelUp.ready ? `Update now · Level up to ${p.levelUp.level}` : "Update now"}
+                </button>
+              ) : null}
               {isMember ? (
                 <div className="mt-3">
                   <WeeklyActiveness p={p} info={wk} onOpenTreasure={() => setSheet("treasure")} />
@@ -737,9 +760,14 @@ export function ParivarHome({ id }: { id: string }) {
                       <p className="mt-2 text-[11.5px] text-gold">Ready! The Mukhiya can level the Parivar up now.</p>
                     )
                   ) : p.levelUp.expOk ? (
+                    <>
                     <p className="mt-2 text-[12px] font-bold leading-snug text-gold">
                       Activeness is complete. Add {n(Math.max(0, p.levelUp.fundNeeded - p.funds))} more to the family fund, then the Mukhiya can level up. Activeness stops here until you level up.
                     </p>
+                    <button type="button" onClick={() => setDonate(true)} className="mt-2 h-10 w-full rounded-full bg-white/10 text-[13px] font-extrabold text-gold ring-1 ring-gold/40">
+                      Donate to the fund
+                    </button>
+                    </>
                   ) : (
                     <p className="mt-2 text-[11.5px] leading-snug text-cream/45">The Parivar levels up only when the Mukhiya presses Level up, after both are complete. Levelling up uses the family fund.</p>
                   )}
@@ -781,8 +809,9 @@ export function ParivarHome({ id }: { id: string }) {
                     <span className={kv?.active || kavachStock ? "" : "opacity-50 grayscale"}>
                       <RewardArt kind="BARRIER" size={18} />
                     </span>
-                    Kavach: {kv?.active ? `${kv.active.name} · ${kv.active.strength}` : kavachStock ? "ready" : "0"}
-                    {kavachStock ? <span className="rounded-full bg-gold/20 px-1.5 text-[10.5px] text-gold">×{kavachStock} in stock</span> : null}
+                    <span className="shrink-0">Kavach</span>
+                    <span className={`shrink-0 rounded-full px-1.5 text-[11px] ${kavachStock ? "bg-gold/20 text-gold" : "bg-white/10 text-cream/50"}`} aria-label={`${kavachStock} Kavach in stock`}>×{kavachStock}</span>
+                    {kv?.active ? <span className="min-w-0 truncate text-[11px] font-bold text-cream/55">· on: {kv.active.name}</span> : null}
                   </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-white/[0.07] py-1 pr-1 pl-1.5 ring-1 ring-white/10">
@@ -910,8 +939,8 @@ export function ParivarHome({ id }: { id: string }) {
         <div className={tab === "profile" ? "hidden" : "mx-4 mt-4 pb-6"}>
           {tab === "members" ? <MembersPanel p={p} can={can} busy={busy} run={run} onGift={(uid) => { setGiftTo(uid); setSheet("gift"); }} /> : null}
 
-          {tab === "news" ? isMember ? <NewsPanel p={p} onChanged={() => void load()} /> : <div className="space-y-3"><Section title="Announcement">{p.announcement || <span className="text-muted">No announcement.</span>}</Section><WorldNews /></div> : null}
-          {tab === "tasks" && isMember ? <TasksTab p={p} onChanged={() => void load()} onGo={(m) => (m === "CHEERS" ? setSheet("cheer") : m === "GIFT_EXP" ? (setGiftTo(undefined), setSheet("gift")) : m === "DONATED_COINS" ? setDonate(true) : undefined)} /> : null}
+          {tab === "news" ? isMember ? <NewsPanel p={p} onChanged={() => { void load(); loadExtras(); }} /> : <div className="space-y-3"><Section title="Announcement">{p.announcement || <span className="text-muted">No announcement.</span>}</Section><WorldNews /></div> : null}
+          {tab === "tasks" && isMember ? <TasksTab p={p} onChanged={() => { void load(); loadExtras(); }} onGo={(m) => (m === "CHEERS" ? setSheet("cheer") : m === "GIFT_EXP" ? (setGiftTo(undefined), setSheet("gift")) : m === "DONATED_COINS" ? setDonate(true) : undefined)} /> : null}
 
           {tab === "manage" && isMember ? <ManageTab p={p} can={can} run={run} busy={busy} push={() => push({ kind: "parivar-list" })} /> : null}
         </div>
@@ -940,15 +969,15 @@ export function ParivarHome({ id }: { id: string }) {
       {isMember ? (
         <>
           <ParivarGiftSheet p={p} open={sheet === "gift" || giftOver} onClose={() => { setSheet((s) => (s === "gift" ? null : s)); setGiftOver(false); }} toId={giftTo} onSent={() => void load()} />
-          <CheerSheet p={p} open={sheet === "cheer"} onClose={() => setSheet(null)} onChanged={() => void load()} />
-          <GachaSheet p={p} open={sheet === "gacha"} onClose={() => setSheet(null)} onChanged={() => void load()} />
-          <TreasureSheet p={p} open={sheet === "treasure"} onClose={() => setSheet(null)} onChanged={() => void load()} />
+          <CheerSheet p={p} open={sheet === "cheer"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
+          <GachaSheet p={p} open={sheet === "gacha"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
+          <TreasureSheet p={p} open={sheet === "treasure"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
           <TreasureWatcher p={p} />
           <ParivarGuideSheet p={p} open={sheet === "guide"} onClose={() => setSheet(null)} />
-          <ChestsSheet p={p} open={sheet === "chests"} onClose={() => setSheet(null)} onChanged={() => void load()} />
-          <ShopSheet p={p} open={sheet === "shop"} onClose={() => setSheet(null)} onChanged={() => void load()} />
-          <KavachSheet p={p} open={sheet === "kavach"} onClose={() => setSheet(null)} onChanged={() => void load()} />
-          <ChoriSheet p={p} open={sheet === "chori"} onClose={() => setSheet(null)} onChanged={() => void load()} />
+          <ChestsSheet p={p} open={sheet === "chests"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
+          <ShopSheet p={p} open={sheet === "shop"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
+          <KavachSheet p={p} open={sheet === "kavach"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
+          <ChoriSheet p={p} open={sheet === "chori"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
           <ChatSheet p={p} open={sheet === "chat"} onClose={() => setSheet(null)} onGift={(to) => { setGiftTo(to); setGiftOver(true); }} />
         </>
       ) : null}
