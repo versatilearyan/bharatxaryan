@@ -243,6 +243,8 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
   const joinedRoom = useRef<string | null>(null);
   /** You had your mic on: a new connection after a drop turns it back on. */
   const wantMic = useRef(false);
+  /** A tap on the mic button is being carried out: the watchdog waits. */
+  const micChanging = useRef(false);
   const [error, setError] = useState("");
   const [micNotice, setMicNotice] = useState("");
   const statusRef = useRef<VoiceStatus>("idle");
@@ -489,8 +491,42 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       setStatus("reconnecting");
       void connectNow(disconnectText());
     };
+    /**
+     * Your mic stays on until YOU turn it off. With the screen off or the app in the background, Android can silence or end the
+     * microphone, and the SDK pauses sending after 5 seconds of that. While you want the mic on, put it right again: resume
+     * sending, or start the microphone again if the track ended. Not when the server took your permission to talk (seat lost,
+     * muted by the owner): then it stays off.
+     */
+    let micFixes = 0;
+    const keepMic = () => {
+      if (cancelled || !wantMic.current || micChanging.current || room.state !== ConnectionState.Connected) return;
+      const lp = room.localParticipant;
+      if (lp.permissions && !lp.permissions.canPublish) return;
+      const pub = lp.getTrackPublication(Track.Source.Microphone);
+      const track = pub?.audioTrack;
+      if (!pub || !track || track.mediaStreamTrack.readyState === "ended") {
+        if (micFixes >= 4) return;
+        micFixes++;
+        micChanging.current = true;
+        const restart = track ? lp.setMicrophoneEnabled(false).catch(() => {}) : Promise.resolve();
+        void restart
+          .then(() => lp.setMicrophoneEnabled(true))
+          .catch(() => {})
+          .finally(() => {
+            micChanging.current = false;
+            sync();
+          });
+        return;
+      }
+      micFixes = 0;
+      if (pub.isMuted) return; // muted on purpose (not by the OS)
+      if (track.isUpstreamPaused) void track.resumeUpstream().catch(() => {});
+    };
+    const micWatch = window.setInterval(keepMic, 2000);
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
+      micFixes = 0;
+      keepMic();
       if (!room.canPlaybackAudio) room.startAudio().catch(() => {});
       resume();
     };
@@ -527,6 +563,7 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       cancelled = true;
       clearTimeout(opening);
       if (recoveryTimer) clearTimeout(recoveryTimer);
+      window.clearInterval(micWatch);
       window.removeEventListener("online", resume);
       document.removeEventListener("visibilitychange", onVisible);
       document.removeEventListener("pointerdown", onTap);
@@ -555,6 +592,9 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       return true;
     }
     setMicBusy(true);
+    micChanging.current = true;
+    // You turned it off: the watchdog must not turn it back on
+    if (!on) wantMic.current = false;
     try {
       // Just took a seat: the server's permission to talk may land a moment after the tap
       if (on) await waitForPublishPermission(room);
@@ -570,6 +610,7 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       setMicNotice(micErrorText(e));
       return false;
     } finally {
+      micChanging.current = false;
       setMicOn(room.localParticipant.isMicrophoneEnabled);
       setPeople(snapshot(room));
       setMicBusy(false);
