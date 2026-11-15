@@ -678,7 +678,7 @@ export function ParivarHome({ id }: { id: string }) {
                 <span className="flex items-center gap-1.5">
                   <RewardArt kind="FLAME" size={18} />
                   <span className="text-[14px] font-extrabold text-cream/80">
-                    {n(p.exp)}
+                    {n(p.nextLevelExp ? Math.min(p.exp, p.nextLevelExp) : p.exp)}
                     {p.nextLevelExp ? `/${n(p.nextLevelExp)}` : ""}
                   </span>
                   <button type="button" onClick={() => setSheet("cheer")} className="ml-0.5 grid h-6 w-6 place-items-center rounded-full bg-gradient-to-b from-[#ffe08a] to-[#f2b52e] text-[#7a4a10] shadow-[0_2px_6px_rgba(242,181,46,0.45)]" aria-label="Cheer">
@@ -694,7 +694,15 @@ export function ParivarHome({ id }: { id: string }) {
                   <span key={t} aria-hidden className="absolute -bottom-1.5 h-1.5 w-px bg-cream/20" style={{ left: `${t}%` }} />
                 ))}
               </div>
-              <p className="mt-1.5 text-[11.5px] text-cream/45">{p.nextLevelExp ? `Next level Lv.${p.level + 1}: ${n(p.nextLevelExp)} activeness` : "Your Parivar is at the top level 🏆"}</p>
+              <p className="mt-1.5 text-[11.5px] text-cream/45">
+                {!p.nextLevelExp
+                  ? "Your Parivar is at the top level 🏆"
+                  : p.levelUp?.expOk
+                    ? p.levelUp.fundOk
+                      ? `Activeness complete ✓ · Level ${p.levelUp.level} is ready`
+                      : `Activeness complete ✓ · Fill the family fund to level up to Lv.${p.level + 1}`
+                    : `Next level Lv.${p.level + 1}: ${n(p.nextLevelExp)} activeness`}
+              </p>
               {isMember ? (
                 <div className="mt-3">
                   <WeeklyActiveness p={p} info={wk} onOpenTreasure={() => setSheet("treasure")} />
@@ -728,6 +736,10 @@ export function ParivarHome({ id }: { id: string }) {
                     ) : (
                       <p className="mt-2 text-[11.5px] text-gold">Ready! The Mukhiya can level the Parivar up now.</p>
                     )
+                  ) : p.levelUp.expOk ? (
+                    <p className="mt-2 text-[12px] font-bold leading-snug text-gold">
+                      Activeness is complete. Add {n(Math.max(0, p.levelUp.fundNeeded - p.funds))} more to the family fund, then the Mukhiya can level up. Activeness stops here until you level up.
+                    </p>
                   ) : (
                     <p className="mt-2 text-[11.5px] leading-snug text-cream/45">The Parivar levels up only when the Mukhiya presses Level up, after both are complete. Levelling up uses the family fund.</p>
                   )}
