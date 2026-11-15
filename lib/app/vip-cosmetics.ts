@@ -51,7 +51,7 @@ export function serverEffects(v: ServerVip): Effects {
   const entry = svga(v.entryAnimationUrl);
   if (entry) fx.entry = as({ entry });
   Object.assign(fx, rewardFx(v.rewardEffects));
-  if (v.badgeUrl) {
+  if (v.badgeUrl && !v.rewardEffects?.BADGE) {
     // An SVGA badge plays; a picture badge shows as an <img>. `level` is the person's real VIP level (0 when the server sent none), for the label.
     const level = v.vipLevel ?? 0;
     fx.badge = assetKind(v.badgeUrl) === "svga" ? { ...base, level, badge: v.badgeUrl, badgeStill: "" } : { ...base, level, badge: "", badgeStill: v.badgeUrl };
@@ -103,6 +103,8 @@ export function rewardFx(r: RewardEffects | undefined): Effects {
   if (r.FRAME) fx.frame = as({ frame: r.FRAME.url });
   if (r.BUBBLE) fx.bubble = as({ bubble: r.BUBBLE.url });
   if (r.ENTRY) fx.entry = as({ entry: r.ENTRY.url });
+  // A badge the person chose to wear (SVGA plays, a picture shows still); it takes the place of the VIP badge
+  if (r.BADGE) fx.badge = { ...base, level: 0, badge: assetKind(r.BADGE.url) === "svga" ? r.BADGE.url : "", badgeStill: assetKind(r.BADGE.url) === "svga" ? "" : r.BADGE.url };
   if (r.PROFILE) {
     const page: GiftSet = {
       ...as({}),

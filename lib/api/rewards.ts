@@ -12,7 +12,7 @@
  */
 import { api, API_BASE_URL } from "./client";
 
-export type RewardSlot = "FRAME" | "BUBBLE" | "ENTRY" | "PROFILE";
+export type RewardSlot = "FRAME" | "BUBBLE" | "ENTRY" | "PROFILE" | "BADGE";
 
 export type BagReward = {
   id: string;
@@ -57,7 +57,7 @@ export type ServerGift = {
 const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined);
 const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : typeof v === "number" && Number.isFinite(v) ? String(v) : null);
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : typeof v === "string" && v.trim() && Number.isFinite(Number(v)) ? Number(v) : null);
-const SLOTS: RewardSlot[] = ["FRAME", "BUBBLE", "ENTRY", "PROFILE"];
+const SLOTS: RewardSlot[] = ["FRAME", "BUBBLE", "ENTRY", "PROFILE", "BADGE"];
 
 /**
  * A link the app can load: https links as they are; our server's paths

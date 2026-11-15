@@ -118,6 +118,7 @@ export function BagScreen() {
     BUBBLE: "Your chat messages in rooms use this bubble.",
     ENTRY: "Plays with your name when you enter a room. Everyone in the room sees it.",
     PROFILE: "Plays across the top of your profile for everyone who visits.",
+    BADGE: "Shows next to your name on your profile and in rooms.",
   };
   const rewardEffects: Entry[] = rw.rewards
     .filter((r) => r.itemType !== "GIFT")
