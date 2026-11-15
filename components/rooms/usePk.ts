@@ -41,10 +41,13 @@ export type Pk = {
 };
 
 /** Which side a seat is on, or null. Seats 2+ come in pairs laid out two pairs per row. */
+export const RED_SEAT = 1;
+export const BLUE_SEAT = 2;
 export function sideOfSeat(mode: PkMode, index: number): PkSide | null {
+  // 1v1: the host (seat 0) only hosts; seat 1 fights for red, seat 2 for blue
+  if (mode === "1v1") return index === RED_SEAT ? "red" : index === BLUE_SEAT ? "blue" : null;
   if (index === 0) return "red";
   if (index === 1) return "blue";
-  if (mode === "1v1") return null;
   return Math.floor((index - 2) / 2) % 2 === 0 ? "red" : "blue";
 }
 
@@ -90,7 +93,7 @@ export function usePk(s: RoomSession) {
       if (!report || !m.event) return;
       const p = m.pk;
       const by = who(m.event.actorId);
-      if (m.event.type === "SETUP" && p) s.addSystem(`${by} set up a ${p.mode === "1v1" ? "1v1" : "Multiplayer"} PK for ${p.minutes} min. Take a PK seat: red or blue!`);
+      if (m.event.type === "SETUP" && p) s.addSystem(`${by} set up a ${p.mode === "1v1" ? "1v1" : "Multiplayer"} PK for ${p.minutes} min. Take a PK seat: red (left) or blue (right)!`);
       else if (m.event.type === "STARTED" && p) s.addSystem(`${by} has started a PK. The rule for this round is ${RULE_TEXT[p.rule]}.`);
       else if (m.event.type === "CLOSED") s.addSystem(`${by} closed the PK.`);
       else if (m.event.type === "ENDED" && p) s.addSystem(endText(p, p.winner));
@@ -156,7 +159,7 @@ export function usePk(s: RoomSession) {
     (mode: PkMode, rule: PkRule, minutes: number) => {
       if (serverId) return server((id) => pkApi.setup(id, mode, rule, minutes));
       setPk({ mode, rule, minutes, phase: "ready", endsAt: 0, red: 0, blue: 0, backers: { red: {}, blue: {} }, myVote: null, winner: null });
-      s.addSystem(`${name} set up a ${mode === "1v1" ? "1v1" : "Multiplayer"} PK for ${minutes} min. Take a PK seat: red or blue!`);
+      s.addSystem(`${name} set up a ${mode === "1v1" ? "1v1" : "Multiplayer"} PK for ${minutes} min. Take a PK seat: red (left) or blue (right)!`);
     },
     [s, name, serverId, server],
   );

@@ -12,7 +12,7 @@ import { usePkState } from "./usePk";
 import { useMusic } from "@/lib/app/music-store";
 import { IconButton } from "@/components/ui/kit";
 import { GiftPanel } from "@/components/gifts/LazyGiftPanel";
-import { ChatInput, ClosedRoomCard, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomTopBar, SeatLayout } from "./RoomParts";
+import { ChatInput, ClosedRoomCard, EmojiButton, EmojiSheet, GiftButton, InviteSheet, RoomChat, RoomMenuSheet, MicOrderBar, RoomTopBar, SeatLayout, PkArena } from "./RoomParts";
 import { LiveVoiceBar } from "./LiveVoiceBar";
 import { BACKGROUNDS } from "./RoomSettings";
 import { NewbieSeatLayout, NewbieWelcome } from "@/components/newbie/NewbieUi";
@@ -21,6 +21,7 @@ import type { RoomSession } from "./useRoomSession";
 export function VoiceRoom({ s }: { s: RoomSession }) {
   const [sheet, setSheet] = useState<null | "gift" | "emoji" | "menu" | "invite" | "pk" | "music">(null);
   const pkOn = Boolean(usePkState()?.pk);
+  const arena = usePkState()?.pk?.mode === "1v1";
   const { musicOff } = useMusic();
   const [draft, setDraft] = useState("");
   const vip = s.room.vip;
@@ -53,7 +54,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         </p>
       </div>
 
-      <PkPanel s={s} />
+      {arena ? null : <PkPanel s={s} />}
 
       {/* Seats: the owner's fixed seat + intimacy seat on top, then linked pairs */}
       <div className={`relative z-10 shrink-0 ${pkOn ? "mt-1.5" : "mt-2"}`}>
@@ -61,7 +62,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         {s.roomOpen ? (
           <>
             {/* Slightly smaller seats leave more room for the chat */}
-            {s.room.newbie ? <NewbieSeatLayout s={s} scale={seatScale} /> : <SeatLayout s={s} gold={vip} scale={seatScale} />}
+            {arena ? <PkArena s={s} gold={vip} scale={seatScale} /> : s.room.newbie ? <NewbieSeatLayout s={s} scale={seatScale} /> : <SeatLayout s={s} gold={vip} scale={seatScale} />}
             <MicOrderBar s={s} />
           </>
         ) : (

@@ -35,7 +35,7 @@ function CreatePkSheetImpl({ open, onClose }: { open: boolean; onClose: () => vo
             <span className="flex flex-col items-center gap-1 py-3.5">
               <Swords className="h-7 w-7 text-[#ff4f7b]" aria-hidden />
               <span className="text-[13.5px] font-extrabold">1v1</span>
-              <span className="text-[10.5px] text-muted">Top two seats face off</span>
+              <span className="text-[10.5px] text-muted">Host on top, two fighters on the PK seats</span>
             </span>
           </Option>
           <Option on={mode === "team"} onClick={() => setMode("team")} label="Multiplayer PK">

@@ -5,7 +5,7 @@ import { useLiveCounts } from "@/lib/app/live-counts";
 import { NewbieBadge } from "@/components/newbie/NewbieBadge";
 import { useIsNewbie } from "@/lib/app/newbie";
 import { AnimatePresence, motion } from "framer-motion";
-import { Armchair, AudioLines, Bell, Check, ChevronDown, Copy, Gavel, Gift, Hand, Heart, ImagePlus, ListOrdered, Lock, LogOut, Megaphone, MicOff, MonitorPlay, MoreHorizontal, Music2, Plus, Power, Send, Share2, Smile, UserPlus, UsersRound, Volume2, X } from "lucide-react";
+import { Armchair, AudioLines, Bell, Check, ChevronDown, Copy, Gavel, Gift, Hand, Heart, ImagePlus, ListOrdered, Lock, LogOut, Megaphone, MicOff, MonitorPlay, MoreHorizontal, Music2, Plus, Power, Send, Share2, Smile, Swords, UserPlus, UsersRound, Volume2, X } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { RoomCover } from "./RoomCover";
@@ -14,8 +14,8 @@ import { EmojiPicker } from "@/components/ui/EmojiPicker";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { VipBadge, VipBubbleArt, VipFrame, frameFit } from "@/components/effects/VipFx";
 import { useRoomFx } from "./useRoomFx";
-import { PkSeatTag, SIDE } from "./PkParts";
-import { sideOfSeat, usePkState } from "./usePk";
+import { PkPanel, PkSeatTag, SIDE } from "./PkParts";
+import { BLUE_SEAT, RED_SEAT, sideOfSeat, usePkState } from "./usePk";
 import { vipName } from "@/lib/app/levels";
 import { Coin, IconButton, Pill, formatCount } from "@/components/ui/kit";
 import { giftEarnings } from "@/lib/app/progress";
@@ -497,6 +497,63 @@ export function SeatLayout({ s, gold = false, scale = 1, grid = false }: { s: Ro
           <Pair key={a} s={s} a={a} b={b} size={small} gap={smallGap} gold={gold} linked={partner === "all"} />
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * 1v1 PK arena: the host on top, a join button for each side, the score bar, then the seats.
+ * Seat 1 (left, red) and seat 2 (right, blue) are the two fighters; everyone else sits in between.
+ */
+export function PkArena({ s, gold = false, scale = 1 }: { s: RoomSession; gold?: boolean; scale?: number }) {
+  const [ref, width] = useWidth<HTMLDivElement>();
+  const k = (Math.min(width, 430) / REF_WIDTH) * scale;
+  const big = Math.round(80 * k);
+  const small = Math.round(60 * k);
+  const others = s.seats.map((_, i) => i).filter((i) => i > BLUE_SEAT);
+  const top = others.slice(0, 2);
+  const mid = others.slice(2, 4);
+  const rest = others.slice(4);
+  const phase = usePkState()?.pk?.phase;
+  const join = (side: "red" | "blue") => (
+    <button
+      type="button"
+      onClick={() => s.takeSeat(side === "red" ? RED_SEAT : BLUE_SEAT)}
+      disabled={phase === "live" || Boolean(s.seats[side === "red" ? RED_SEAT : BLUE_SEAT])}
+      aria-label={`Take the ${SIDE[side].name} PK seat`}
+      className="grid h-9 w-11 place-items-center rounded-full text-white shadow disabled:opacity-40"
+      style={{ background: SIDE[side].solid }}
+    >
+      <Swords className="h-4 w-4" aria-hidden />
+    </button>
+  );
+  return (
+    <div ref={ref} className="w-full px-3" data-pk-arena>
+      <div className="relative flex justify-center">
+        <span className="absolute bottom-0 left-0">{join("red")}</span>
+        <Seat s={s} index={0} size={big} gold={gold} />
+        <span className="absolute bottom-0 right-0">{join("blue")}</span>
+      </div>
+      <PkPanel s={s} />
+      <div className="mt-3 flex justify-between">
+        {top.map((i) => (
+          <Seat key={i} s={s} index={i} size={small} gold={gold} />
+        ))}
+      </div>
+      <div className="mt-3 flex items-start justify-between">
+        <Seat s={s} index={RED_SEAT} size={small} gold={gold} />
+        {mid.map((i) => (
+          <Seat key={i} s={s} index={i} size={small} gold={gold} />
+        ))}
+        <Seat s={s} index={BLUE_SEAT} size={small} gold={gold} />
+      </div>
+      {rest.length ? (
+        <div className="mt-3 flex flex-wrap justify-center" style={{ columnGap: Math.round(22 * k), rowGap: Math.round(12 * k) }}>
+          {rest.map((i) => (
+            <Seat key={i} s={s} index={i} size={small} gold={gold} />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
