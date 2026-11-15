@@ -48,7 +48,7 @@ export function VersionGuard() {
   }, []);
   if (!stale) return null;
   return (
-    <div role="status" className="pt-safe fixed inset-x-0 top-0 z-[200] flex justify-center px-3 pt-2">
+    <div role="status" className="pt-safe-out fixed inset-x-0 top-0 z-[200] flex justify-center px-3 pt-2">
       <button type="button" onClick={() => window.location.reload()} className="flex items-center gap-2 rounded-full bg-gradient-to-r from-[#f6d899] to-[#d9a84f] px-4 py-2 text-[13px] font-extrabold text-[#2a1a0c] shadow-[0_10px_30px_-8px_rgba(0,0,0,0.7)]">
         ✨ A new version is ready · Update
       </button>

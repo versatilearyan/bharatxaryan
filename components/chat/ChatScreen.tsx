@@ -59,7 +59,7 @@ export function ChatScreen() {
   };
 
   return (
-    <div className="app-scroll h-full pb-[calc(84px+var(--mini,0px)+var(--sab))]">
+    <div className="app-scroll h-full pb-[calc(84px+var(--mini,0px)+var(--sb))]">
       <header className="pt-safe sticky top-0 z-20 bg-ink/90 backdrop-blur-xl">
         <div className="flex h-14 items-center justify-between px-4">
           <h1 className="font-display text-[24px] font-extrabold text-cream">Chats</h1>

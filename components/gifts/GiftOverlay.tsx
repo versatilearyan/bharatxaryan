@@ -89,7 +89,7 @@ function ComboButton({ combo, onExpire }: { combo: GiftCombo; onExpire: () => vo
   const C = 2 * Math.PI * R;
   return (
     <motion.div
-      className="absolute bottom-[calc(var(--sab)+150px)] right-4 z-[70]"
+      className="absolute bottom-[calc(var(--sb)+150px)] right-4 z-[70]"
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0, opacity: 0 }}
@@ -180,7 +180,7 @@ function Banner({ fx, legendary }: { fx: GiftFx; legendary?: boolean }) {
   const g = giftById(fx.giftId);
   return (
     <motion.div
-      className={`absolute left-3 right-3 top-[calc(var(--sat)+64px)] flex items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-4 shadow-xl ${
+      className={`absolute left-3 right-3 top-[calc(var(--st)+64px)] flex items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-4 shadow-xl ${
         legendary ? "bg-gradient-to-r from-[#5a1a28] via-[#3a1622] to-[#1a0b11] ring-1 ring-gold/60" : "bg-gradient-to-r from-coral/95 to-pink/80"
       }`}
       initial={{ x: "-110%" }}
@@ -362,7 +362,7 @@ function VideoGift({ fx, onDone }: { fx: GiftFx; onDone: () => void }) {
       </motion.div>
       {/* No banner here: the gift news ribbon (GiftBanner) announces big gifts */}
       <ComboTag fx={fx} />
-      <button type="button" onClick={onDone} className="absolute right-3 top-[calc(var(--sat)+16px)] rounded-full bg-black/45 px-3 py-1 text-[12px] font-bold text-white backdrop-blur">
+      <button type="button" onClick={onDone} className="absolute right-3 top-[calc(var(--st)+16px)] rounded-full bg-black/45 px-3 py-1 text-[12px] font-bold text-white backdrop-blur">
         Skip
       </button>
     </motion.div>
@@ -427,7 +427,7 @@ function SvgaGift({ fx, onDone }: { fx: GiftFx; onDone: () => void }) {
       )}
       {/* No banner here: the gift news ribbon (GiftBanner) announces big gifts */}
       <ComboTag fx={fx} />
-      <button type="button" onClick={onDone} className="absolute right-3 top-[calc(var(--sat)+16px)] rounded-full bg-black/45 px-3 py-1 text-[12px] font-bold text-white backdrop-blur">
+      <button type="button" onClick={onDone} className="absolute right-3 top-[calc(var(--st)+16px)] rounded-full bg-black/45 px-3 py-1 text-[12px] font-bold text-white backdrop-blur">
         Skip
       </button>
     </motion.div>

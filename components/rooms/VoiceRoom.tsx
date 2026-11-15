@@ -127,7 +127,7 @@ export function VipDecor() {
       <div className="absolute inset-2 rounded-[28px] border border-gold/25" />
       <div className="absolute inset-3.5 rounded-[24px] border border-gold/10" />
       <motion.div
-        className="absolute left-1/2 top-[calc(var(--sat)+5.35rem)] -translate-x-1/2"
+        className="absolute left-1/2 top-[calc(var(--st)+5.35rem)] -translate-x-1/2"
         animate={{ y: [0, -3, 0] }}
         transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
       >

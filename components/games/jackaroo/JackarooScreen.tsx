@@ -326,7 +326,7 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
 
           {/* Your cards */}
           {game.status === "PLAYING" && game.you ? (
-            <div className="mt-auto px-3 pb-[calc(var(--sab)+12px)]">
+            <div className="mt-auto px-3 pb-[calc(var(--sb)+12px)]">
               <p className="mb-1.5 text-center text-[12px] font-bold text-cream/80">
                 {myTurn ? (game.you.mustBurn ? "No move possible: tap a card to burn it" : card === null ? "Your turn: pick a card" : swapFrom !== null ? "Now tap the marble to swap with" : "Tap a glowing marble") : `${turnPlayer?.name ?? "…"}'s turn`}
                 {myTurn ? <span className="ml-1.5 tabular-nums text-gold">{turnLeft}s</span> : null}

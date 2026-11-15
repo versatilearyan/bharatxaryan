@@ -22,7 +22,7 @@ import { nameFace } from "@/lib/app/fonts";
 
 export function HomeScreen() {
   return (
-    <div className="app-scroll h-full pb-[calc(84px+var(--mini,0px)+var(--sab))]">
+    <div className="app-scroll h-full pb-[calc(84px+var(--mini,0px)+var(--sb))]">
       <TopBar />
       <HomeFestival />
       <NewbieRooms />

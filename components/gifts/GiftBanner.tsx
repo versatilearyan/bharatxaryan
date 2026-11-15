@@ -54,7 +54,7 @@ export function GiftBanner() {
   const locked = Boolean(room?.password) && room?.hostId !== ME_ID;
   const name = (pid: string) => (pid === ME_ID ? "You" : person(pid).name);
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--sat)+50px)] z-[66] h-[48px] overflow-hidden">
+    <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--st)+50px)] z-[66] h-[48px] overflow-hidden">
       <AnimatePresence>
         {n && known ? (
           <motion.div

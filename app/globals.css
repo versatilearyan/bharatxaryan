@@ -59,11 +59,26 @@
   }
 }
 
-/* Space taken by the status bar / notch (top) and the navigation bar / home indicator (bottom). The Android app sets
-   these two on the page itself with the real sizes, because a web view doesn't report the system bars through env(). */
+/* Space taken by the status bar / notch (--st, top) and the navigation bar / home indicator (--sb, bottom) that screens keep clear.
+   On the web they are the browser's safe areas. In the Android app the web view is drawn edge to edge and doesn't report the system
+   bars, so the app tells us their real sizes in --sat and --sab and the whole app frame leaves that room once (see .app-frame):
+   the screens inside then need nothing more, so --st and --sb are 0 there. */
 :root {
-  --sat: env(safe-area-inset-top, 0px);
-  --sab: env(safe-area-inset-bottom, 0px);
+  --st: env(safe-area-inset-top, 0px);
+  --sb: env(safe-area-inset-bottom, 0px);
+}
+html[data-native] {
+  --st: 0px;
+  --sb: 0px;
+}
+html[data-native] .app-frame {
+  /* An older app version doesn't report the bars: a typical status bar height keeps the header from sitting under it */
+  padding-top: var(--sat, max(env(safe-area-inset-top, 0px), 28px));
+  padding-bottom: var(--sab, 0px);
+}
+/* In the app, fixed pop-ups are placed inside the frame (below the status bar, above the navigation bar) */
+html[data-native] #main {
+  transform: translateZ(0);
 }
 
 @layer base {
@@ -144,8 +159,10 @@
     scrollbar-width: thin;
     scrollbar-color: rgb(255 241 213 / 0.12) transparent;
   }
-  .pt-safe { padding-top: max(var(--sat), 0px); }
-  .pb-safe { padding-bottom: max(var(--sab), 0px); }
+  .pt-safe { padding-top: max(var(--st), 0px); }
+  .pb-safe { padding-bottom: max(var(--sb), 0px); }
+  /* For things outside the app frame: the browser safe area, or in the Android app the status bar room it reported */
+  .pt-safe-out { padding-top: max(var(--st), var(--sat, 0px)); }
   /* Gold foil used for VIP text */
   .text-foil {
     background: linear-gradient(100deg, #b9853a 0%, #f6d899 30%, #fff4dc 45%, #e7bc72 60%, #a8742f 100%);

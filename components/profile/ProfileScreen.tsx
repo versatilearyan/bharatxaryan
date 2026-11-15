@@ -54,7 +54,7 @@ export function ProfileScreen() {
   const serverVip = me.stats.data ? vipLevel(me.stats.data.vipPoints, appVip.level > 0 || me.stats.data.vipPoints > 0) : null;
 
   return (
-    <div className="app-scroll h-full bg-[radial-gradient(130%_60%_at_50%_35%,#3a1424_0%,#221220_45%,#141018_100%)] pb-[calc(84px+var(--mini,0px)+var(--sab))]">
+    <div className="app-scroll h-full bg-[radial-gradient(130%_60%_at_50%_35%,#3a1424_0%,#221220_45%,#141018_100%)] pb-[calc(84px+var(--mini,0px)+var(--sb))]">
       <ProfileHero
         personId="me"
         topRight={

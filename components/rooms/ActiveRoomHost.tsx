@@ -192,7 +192,7 @@ function MiniRoom({ s, mode, a }: { s: RoomSession; mode: RoomMode; a: Auction }
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: 30, opacity: 0 }}
       transition={{ type: "spring", stiffness: 420, damping: 34 }}
-      className="absolute inset-x-2.5 bottom-[calc(70px+var(--sab))] z-[35] flex items-center gap-2.5 rounded-2xl bg-surface-2/95 p-1.5 pr-2 shadow-[0_12px_32px_-8px_rgb(0_0_0/0.8)] ring-1 ring-line-strong backdrop-blur-xl"
+      className="absolute inset-x-2.5 bottom-[calc(70px+var(--sb))] z-[35] flex items-center gap-2.5 rounded-2xl bg-surface-2/95 p-1.5 pr-2 shadow-[0_12px_32px_-8px_rgb(0_0_0/0.8)] ring-1 ring-line-strong backdrop-blur-xl"
     >
       <button type="button" onClick={expandRoom} className="flex min-w-0 flex-1 items-center gap-2.5 text-left" aria-label={`Back to ${s.room.name}`}>
         <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl">

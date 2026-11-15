@@ -425,7 +425,7 @@ function GameSheet({ gameId, onClose }: { gameId: GameId | null; onClose: () => 
             <span>{g.players}</span>
             <span className="flex items-center gap-1">
               <span className="h-1.5 w-1.5 rounded-full bg-speak" />
-              {g.soon ? "Coming soon" : `${formatCount(g.online)} playing`}
+              {g.soon ? "Coming soon" : g.players}
             </span>
           </p>
           {g.soon ? (

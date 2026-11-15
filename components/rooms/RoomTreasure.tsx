@@ -149,7 +149,7 @@ export function RoomTreasureButton({ s }: { s: RoomSession }) {
         onClick={() => setOpen(true)}
         aria-label="Daily Task"
         title="Daily Task"
-        className="absolute bottom-[calc(var(--sab)+126px)] right-3 z-20 grid h-10 w-10 place-items-center rounded-full bg-black/35 ring-1 ring-gold/40 backdrop-blur"
+        className="absolute bottom-[calc(var(--sb)+126px)] right-3 z-20 grid h-10 w-10 place-items-center rounded-full bg-black/35 ring-1 ring-gold/40 backdrop-blur"
       >
         <ChestArt tier="NORMAL" size={34} />
         {ready ? <span className="absolute right-0 top-0 h-3 w-3 rounded-full bg-coral ring-2 ring-ink" aria-label="A box is ready" /> : null}
