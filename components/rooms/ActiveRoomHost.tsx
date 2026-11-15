@@ -23,6 +23,7 @@ import { VoiceRoom } from "./VoiceRoom";
 import { WatchTogetherRoom } from "./WatchTogetherRoom";
 import { nameFace, nameTone } from "@/lib/app/fonts";
 import { RoomRedPacket } from "@/components/redpacket/RedPacket";
+import { RoomTreasureButton } from "./RoomTreasure";
 
 /**
  * Keeps the room you joined mounted for as long as you're in it.
@@ -79,6 +80,7 @@ function ActiveRoom({ room }: { room: Room }) {
       >
         <PkContext.Provider value={pk}>{mode === "youtube" ? <WatchTogetherRoom s={s} /> : mode === "kharidari" ? <KharidariRoom s={s} a={auction} /> : <VoiceRoom s={s} />}</PkContext.Provider>
         <RoomRedPacket s={s} />
+        <RoomTreasureButton s={s} />
         <RoomGamePill roomId={room.server?.id} inRoom={roomOpen} />
         <RoomOverlays s={s} />
         <EntryEffect s={s} />
