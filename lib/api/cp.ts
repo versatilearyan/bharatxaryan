@@ -156,6 +156,13 @@ export const cpApi = {
   endRequest: async () => readCouple(await api<unknown>("/api/v1/cp/me/end-request", { ...opts, method: "POST" })),
   cancelEnd: async () => readCouple(await api<unknown>("/api/v1/cp/me/end-request/cancel", { ...opts, method: "POST" })),
   declineEnd: async () => readCouple(await api<unknown>("/api/v1/cp/me/end-request/decline", { ...opts, method: "POST" })),
+  /** Is ending at once on, and for how many coins (set in the admin panel). */
+  forceEndInfo: async () => {
+    const o = obj(await api<unknown>("/api/v1/cp/me/force-end", opts));
+    return { enabled: o?.enabled === true, price: o ? num(o.price) : 0 };
+  },
+  /** End the CP right away for coins; the partner can't refuse. */
+  forceEnd: () => api<unknown>("/api/v1/cp/me/force-end", { ...opts, method: "POST" }),
   acceptEnd: () => api<unknown>("/api/v1/cp/me/end-request/accept", { ...opts, method: "POST" }),
 };
 

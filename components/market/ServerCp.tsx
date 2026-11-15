@@ -65,7 +65,7 @@ function Ring({ id, size = 48 }: { id: string; catalogue?: CpRingInfo[]; size?: 
  * the ring box, and ending (both must agree). Without a CP: proposals.
  */
 export function ServerLoveHome({ personId }: { personId: string }) {
-  const { pop, push, toast } = useApp();
+  const { pop, push, toast, refreshCoins } = useApp();
   const myId = myUserIdFromToken();
   const uid = personId === "me" ? myId : personId.startsWith("srv-user:") ? personId.slice(9) : null;
   const self = uid != null && uid === myId;
@@ -83,6 +83,7 @@ export function ServerLoveHome({ personId }: { personId: string }) {
   const [busy, setBusy] = useState(false);
   const [upload, setUpload] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [force, setForce] = useState<{ enabled: boolean; price: number } | null>(null);
 
   const load = useCallback(async () => {
     setError("");
@@ -98,7 +99,8 @@ export function ServerLoveHome({ personId }: { personId: string }) {
   useEffect(() => {
     void load();
     cpApi.rings().then(setCatalogue).catch(() => undefined);
-  }, [load]);
+    if (self) cpApi.forceEndInfo().then(setForce).catch(() => setForce(null));
+  }, [load, self]);
   useCpEvents(
     useCallback(
       (type: string) => {
@@ -397,6 +399,23 @@ export function ServerLoveHome({ personId }: { personId: string }) {
               <HeartCrack className="h-4 w-4" /> End CP
             </button>
           )}
+          {/* Not waiting for the partner: pay coins and end it now */}
+          {force?.enabled && !(c.endRequest && c.endRequest.by !== myId) ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                if (!window.confirm(`End this CP right now for ${force.price.toLocaleString("en-IN")} coins? Your partner can't refuse, and your ring collection is removed. This can't be undone.`)) return;
+                void run(async () => {
+                  await cpApi.forceEnd();
+                  refreshCoins();
+                }, "CP ended");
+              }}
+              className="mt-1 flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-coral/10 text-[12.5px] font-bold text-coral ring-1 ring-coral/30"
+            >
+              <HeartCrack className="h-4 w-4" /> End CP now · <Coin className="h-3.5 w-3.5" /> {force.price.toLocaleString("en-IN")}
+            </button>
+          ) : null}
         </div>
       ) : null}
 
