@@ -107,3 +107,27 @@ export async function squareJpegBlob(file: File, side = 512): Promise<Blob> {
     URL.revokeObjectURL(url);
   }
 }
+
+/** A picture (a payment screenshot, say) made small enough to send: the longest side at most `maxSide`, as a JPEG. */
+export async function shrinkToJpeg(file: File, maxSide = 1400, quality = 0.82): Promise<Blob> {
+  if (!/^image\/(jpeg|png|webp)$/i.test(file.type)) throw new Error("Pick a JPG, PNG or WebP picture.");
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("Couldn't read that picture."));
+      i.src = url;
+    });
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Couldn't read that picture.");
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    return await new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Couldn't read that picture."))), "image/jpeg", quality));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}

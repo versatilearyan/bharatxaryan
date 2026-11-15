@@ -15,6 +15,7 @@ import { AlertCircle, BellOff, ChevronLeft, Copy, ImagePlus, Loader2, MoreVertic
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ChatMenuSheet, GroupInfoSheet, useGroupInfo } from "./ChatGroups";
 import { useChatWallpaper } from "@/lib/app/chat-wallpaper";
+import { manualTopupApi } from "@/lib/api/manual-topup";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { IconButton } from "@/components/ui/kit";
 import { usePublicProfile } from "@/components/profile/usePublicProfile";
@@ -796,6 +797,7 @@ export function ServerConversationView({ personId }: { personId: string }) {
           <span className="inline-flex items-center gap-1">
             <OfficialTick className="h-3.5 w-3.5" /> Official messages from Panchayat. You can&apos;t reply here.
           </span>
+          <TopupFromChat />
         </div>
       ) : (
       <form
@@ -852,5 +854,25 @@ export function ServerConversationView({ personId }: { personId: string }) {
       </form>
       )}
     </div>
+  );
+}
+
+/** In the official chat: when Mukhiya ji's UPI top-up is on, a button to start one (the steps come back as automated messages here). */
+function TopupFromChat() {
+  const { setSheet } = useApp();
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (/PanchayatPlay/.test(navigator.userAgent)) return;
+    let live = true;
+    manualTopupApi.info().then((i) => live && setOn(i.enabled)).catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (!on) return null;
+  return (
+    <button type="button" onClick={() => setSheet({ kind: "topup" })} className="mt-2 block w-full rounded-full bg-emerald-500/15 py-2.5 text-[13px] font-bold text-emerald-200 ring-1 ring-emerald-400/30">
+      💰 Top up coins with Mukhiya ji (UPI)
+    </button>
   );
 }

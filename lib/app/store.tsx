@@ -68,6 +68,7 @@ export type Sheet =
   | { kind: "tasks" }
   | { kind: "friends"; tab?: "friends" | "following" | "followers" }
   | { kind: "coins" }
+  | { kind: "topup"; packId?: string; requestId?: string }
   | { kind: "game"; gameId: GameId }
   | { kind: "edit-profile" }
   | { kind: "find-user" }

@@ -34,6 +34,7 @@ import { savePending } from "@/lib/payments/pending";
 import { isNativeApp } from "@/lib/native/bridge";
 import { buyWithGooglePlay, playProductFor } from "@/lib/native/play";
 import { useMe } from "@/lib/app/me-store";
+import { manualTopupApi } from "@/lib/api/manual-topup";
 import { forgetCached } from "@/lib/app/use-wallet";
 
 export type CheckoutItem = {
@@ -60,6 +61,17 @@ export function CheckoutSheet({ item, onClose }: { item: CheckoutItem | null; on
   // The app downloaded from our website pays with PayU, just like the website.
   const [native, setNative] = useState(false);
   useEffect(() => setNative(isNativeApp() && /PanchayatPlay/.test(navigator.userAgent)), []);
+  // Manual UPI top-up for coin packs, when the admin switched it on (never in the Play Store build)
+  const { setSheet } = useApp();
+  const [manualOn, setManualOn] = useState(false);
+  useEffect(() => {
+    if (!item || item.purchase?.purpose !== "COIN_PACK" || /PanchayatPlay/.test(navigator.userAgent)) return;
+    let live = true;
+    manualTopupApi.info().then((i) => live && setManualOn(i.enabled)).catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [item]);
   const [playId, setPlayId] = useState<string | null | undefined>(undefined);
   const [stage, setStage] = useState<Stage>("form");
   const [billing, setBilling] = useState<BillingDetails>(EMPTY_BILLING);
@@ -283,6 +295,11 @@ export function CheckoutSheet({ item, onClose }: { item: CheckoutItem | null; on
                   <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-cream/45">
                     <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden /> You&apos;ll pay on {ACTIVE_GATEWAY.name}&apos;s secure page · UPI · Cards · Net banking
                   </p>
+                  {manualOn && purchase?.purpose === "COIN_PACK" ? (
+                    <button type="button" onClick={() => { onClose(); setSheet({ kind: "topup", packId: purchase.productId }); }} className="w-full rounded-2xl bg-emerald-500/10 px-4 py-2.5 text-center text-[12.5px] font-semibold text-emerald-200 ring-1 ring-emerald-400/25">
+                      Google Pay / Paytm says risky? <span className="underline">Pay Mukhiya ji by UPI</span>
+                    </button>
+                  ) : null}
                 </>
               )}
             </motion.div>
