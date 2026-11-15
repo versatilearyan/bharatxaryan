@@ -595,6 +595,17 @@ export function ParivarHome({ id }: { id: string }) {
     }
   };
 
+  const updateNow = () => {
+    const lu = p?.levelUp;
+    if (!p || !lu) return;
+    if (!lu.ready) {
+      toast(`Family fund needs ${n(Math.max(0, lu.fundNeeded - p.funds))} more. Donate to the fund, then level up.`, "gold");
+      setDonate(true);
+    } else if (p.myRole === "LEADER") {
+      if (window.confirm(`Level up to ${lu.level}? ${lu.spendAll ? `The whole family fund (${n(lu.fundUsed ?? p.funds)}) will be used and the fund starts again from 0.` : `${n(lu.fundNeeded)} will be taken from the family fund.`}`)) void run(() => parivarApi.levelUp(p.id), `Your Parivar is now level ${lu.level}`);
+    } else toast("Ready! Only the Mukhiya can level the Parivar up.", "gold");
+  };
+
   if (!p)
     return (
       <div className="h-full bg-ink">
@@ -693,6 +704,11 @@ export function ParivarHome({ id }: { id: string }) {
                     {n(p.nextLevelExp ? Math.min(p.exp, p.nextLevelExp) : p.exp)}
                     {p.nextLevelExp ? `/${n(p.nextLevelExp)}` : ""}
                   </span>
+                  {p.levelUp?.expOk && isMember ? (
+                    <button type="button" disabled={busy} onClick={updateNow} className="rounded-full bg-gradient-to-r from-[#f6d899] to-[#e7bc72] px-3 py-1 text-[12.5px] font-extrabold text-[#2a1a0c] disabled:opacity-50">
+                      Update
+                    </button>
+                  ) : null}
                   <button type="button" onClick={() => setSheet("cheer")} className="ml-0.5 grid h-6 w-6 place-items-center rounded-full bg-gradient-to-b from-[#ffe08a] to-[#f2b52e] text-[#7a4a10] shadow-[0_2px_6px_rgba(242,181,46,0.45)]" aria-label="Cheer">
                     <Plus className="h-4 w-4" strokeWidth={3} aria-hidden />
                   </button>
@@ -715,24 +731,6 @@ export function ParivarHome({ id }: { id: string }) {
                       : `Activeness complete ✓ · Fill the family fund to level up to Lv.${p.level + 1}`
                     : `Next level Lv.${p.level + 1}: ${n(p.nextLevelExp)} activeness`}
               </p>
-              {p.levelUp?.expOk && isMember ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => {
-                    const lu = p.levelUp!;
-                    if (!lu.ready) {
-                      toast(`Family fund needs ${n(Math.max(0, lu.fundNeeded - p.funds))} more. Donate to the fund, then level up.`, "gold");
-                      setDonate(true);
-                    } else if (p.myRole === "LEADER") {
-                      if (window.confirm(`Level up to ${lu.level}? ${lu.spendAll ? `The whole family fund (${n(lu.fundUsed ?? p.funds)}) will be used and the fund starts again from 0.` : `${n(lu.fundNeeded)} will be taken from the family fund.`}`)) void run(() => parivarApi.levelUp(p.id), `Your Parivar is now level ${lu.level}`);
-                    } else toast("Ready! Only the Mukhiya can level the Parivar up.", "gold");
-                  }}
-                  className="mt-3 h-11 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c] disabled:opacity-50"
-                >
-                  {p.levelUp.ready ? `Update now · Level up to ${p.levelUp.level}` : "Update now"}
-                </button>
-              ) : null}
               {isMember ? (
                 <div className="mt-3">
                   <WeeklyActiveness p={p} info={wk} onOpenTreasure={() => setSheet("treasure")} />
@@ -832,28 +830,40 @@ export function ParivarHome({ id }: { id: string }) {
                 </span>
               </div>
               <div className="mt-3 flex items-stretch">
-                <button type="button" onClick={() => isMember && setSheet(trCount > 0 ? "treasure" : "chests")} className="relative flex w-[92px] shrink-0 flex-col items-center gap-1.5 py-2" aria-label="Chests">
-                  <span className={ch && (ch.sent.some((c) => c.status === "OPEN") || chestStock > 0 || trCount > 0) ? "" : "opacity-45 grayscale"}>
-                    <RewardArt kind="CHEST" size={58} />
+                <button type="button" onClick={() => isMember && setSheet("chests")} className="relative flex w-[84px] shrink-0 flex-col items-center gap-1.5 py-2" aria-label="Chests">
+                  <span className="opacity-45 grayscale">
+                    <RewardArt kind="CHEST" size={54} />
                   </span>
-                  <span className="text-[12.5px] font-extrabold text-cream/50">
-                    {trReady > 0 ? "Ready" : trClaimed.length > 0 ? "Unlocking" : trToClaim > 0 ? "To claim" : ch && ch.sent.some((c) => c.status === "OPEN") ? "Open" : chestStock > 0 ? "In stock" : "To Unlock"}
-                  </span>
-                  {(ch ? ch.sent.filter((c) => c.status === "OPEN").length : 0) + chestStock + trCount ? <span className="absolute top-1 right-2 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{(ch ? ch.sent.filter((c) => c.status === "OPEN").length : 0) + chestStock + trCount}</span> : null}
+                  <span className="text-[12.5px] font-extrabold text-cream/50">To Unlock</span>
                 </button>
-                <span aria-hidden className="mx-2 w-0 border-l-2 border-dotted border-white/15" />
-                <div className="grid min-h-[110px] flex-1 place-items-center px-1 text-center text-[14px] font-extrabold text-cream/60">
-                  {trCount > 0 || chestStock > 0 || (ch && ch.sent.some((c) => c.status === "OPEN")) ? (
-                    <ul className="space-y-1">
-                      {trReady > 0 ? <li className="text-[#7fe0a0]">{trReady} Treasure chest{trReady === 1 ? "" : "s"} ready to open</li> : null}
-                      {trClaimed.length - trReady > 0 ? <li>{trClaimed.length - trReady} Treasure chest{trClaimed.length - trReady === 1 ? "" : "s"} unlocking</li> : null}
-                      {trToClaim > 0 ? <li className="text-gold">{trToClaim} chest{trToClaim === 1 ? "" : "s"} to claim</li> : null}
-                      {chestStock > 0 ? <li>{chestStock} chest{chestStock === 1 ? "" : "s"} in the Parivar store</li> : null}
-                      {ch && ch.sent.some((c) => c.status === "OPEN") ? <li>Open chests are waiting</li> : null}
-                    </ul>
-                  ) : (
-                    <p className="text-cream/40">No chest</p>
-                  )}
+                <span aria-hidden className="mx-1 w-0 shrink-0 border-l-2 border-dotted border-white/15" />
+                <div className="app-scroll flex min-h-[110px] flex-1 items-start gap-1 overflow-x-auto px-1 py-2" aria-label="Chests in the Treasury">
+                  {(trs?.chests ?? []).map((c) => {
+                    const done = c.status === "TREASURE";
+                    const ready = done && (c.ready || c.secondsLeft <= 0);
+                    return (
+                      <button key={`t${c.id}`} type="button" onClick={() => isMember && setSheet("treasure")} className="flex w-[74px] shrink-0 flex-col items-center gap-1.5" aria-label={`${c.name}: ${c.status === "AVAILABLE" ? "to claim" : ready ? "unlocked" : "unlocking"}`}>
+                        <span className={ready || c.status === "AVAILABLE" ? "" : "opacity-75"}>
+                          <ChestArt tier={c.tier} size={54} open={ready} />
+                        </span>
+                        <span className={`text-[12px] font-extrabold ${ready ? "text-[#7fe0a0]" : c.status === "AVAILABLE" ? "text-gold" : "text-cream/50"}`}>{c.status === "AVAILABLE" ? "To claim" : ready ? "Unlocked" : "Unlocking"}</span>
+                      </button>
+                    );
+                  })}
+                  {(ch?.types ?? []).filter((t) => (t.owned ?? 0) > 0).map((t) => (
+                    <button key={`s${t.id}`} type="button" onClick={() => isMember && setSheet("chests")} className="relative flex w-[74px] shrink-0 flex-col items-center gap-1.5" aria-label={`${t.name}: ${t.owned} in store`}>
+                      <RewardArt kind="CHEST" size={54} />
+                      <span className="absolute right-1 top-0 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{t.owned}</span>
+                      <span className="max-w-full truncate text-[12px] font-extrabold text-cream/60">{t.name}</span>
+                    </button>
+                  ))}
+                  {(ch?.sent ?? []).filter((c) => c.status === "OPEN").map((c) => (
+                    <button key={`o${c.id}`} type="button" onClick={() => isMember && setSheet("chests")} className="flex w-[74px] shrink-0 flex-col items-center gap-1.5" aria-label={`${c.name}: open`}>
+                      <RewardArt kind="CHEST" size={54} />
+                      <span className="text-[12px] font-extrabold text-[#7fe0a0]">Open</span>
+                    </button>
+                  ))}
+                  {!trCount && !chestStock && !(ch && ch.sent.some((c) => c.status === "OPEN")) ? <p className="grid min-h-[90px] flex-1 place-items-center text-center text-[14px] font-extrabold text-cream/40">No chest</p> : null}
                 </div>
               </div>
             </section>
