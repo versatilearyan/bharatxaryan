@@ -415,8 +415,8 @@ export function RoomRedPacket({ s }: { s: RoomSession }) {
   );
 }
 
-type Falling = { key: number; x: number; dur: number; size: number; rot: number; tier: RedPacketId };
-type Pop = { key: number; x: number; y: number; n: number };
+/** st: untouched packets can be tapped once; after that it stays on screen (pending, then the coins it gave) and can't be looted again. */
+type Falling = { key: number; x: number; dur: number; size: number; rot: number; tier: RedPacketId; st?: "pending" | "got" | "miss"; n?: number };
 
 function RainLayer({ d, now }: { d: Drop; now: number }) {
   const { grab } = useRedPackets();
@@ -428,7 +428,6 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
   const counting = now < d.rainAt;
   const over = !counting && !raining;
   const [falling, setFalling] = useState<Falling[]>([]);
-  const [pops, setPops] = useState<Pop[]>([]);
   const [closed, setClosed] = useState(false);
   const seq = useRef(0);
   const box = useRef<HTMLDivElement>(null);
@@ -437,31 +436,30 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
     if (!raining) return;
     const t = window.setInterval(() => {
       const key = ++seq.current;
-      setFalling((f) => [...f.slice(-18), { key, x: 3 + Math.random() * 78, dur: 2.4 + Math.random() * 1.0, size: 44 + Math.random() * 12, rot: -16 + Math.random() * 32, tier: d.packet }]);
-    }, 260);
+      setFalling((f) => [...f.slice(-30), { key, x: 3 + Math.random() * 78, dur: 4.4 + Math.random() * 1.2, size: 44 + Math.random() * 12, rot: -16 + Math.random() * 32, tier: d.packet }]);
+    }, 340);
     return () => window.clearInterval(t);
   }, [raining, d.packet]);
 
   const outOfGrabs = Boolean(d.maxGrabs && d.grabs >= d.maxGrabs);
   const inFlight = useRef(0);
+  const mark = (key: number, st: "pending" | "got" | "miss", n = 0) => setFalling((list) => list.map((x) => (x.key === key ? { ...x, st, n } : x)));
   const tap = (f: Falling, e: React.PointerEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // The envelope bursts at once (instant feedback); the coins show when the server answers
-    setFalling((list) => list.filter((x) => x.key !== f.key));
-    const r = box.current?.getBoundingClientRect();
-    const at = { x: e.clientX - (r?.left ?? 0), y: e.clientY - (r?.top ?? 0) };
+    // One tap per packet: it stays on screen showing what it gave, and can't be tapped again
+    if (f.st) return;
     if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(12);
     // Out of taps or nothing left: say so instead of doing nothing
     if (outOfGrabs || potEmpty || d.grabs + inFlight.current >= (d.maxGrabs || 40)) {
-      setPops((list) => [...list.slice(-8), { key: f.key, x: at.x, y: at.y, n: 0 }]);
+      mark(f.key, "miss");
       return;
     }
+    mark(f.key, "pending");
     inFlight.current++;
     void Promise.resolve(grab(d.id))
-      .then((got) => {
-        setPops((list) => [...list.slice(-8), { key: f.key, x: at.x, y: at.y, n: got || 0 }]);
-      })
+      .then((got) => mark(f.key, got ? "got" : "miss", got || 0))
+      .catch(() => mark(f.key, "miss"))
       .finally(() => {
         inFlight.current = Math.max(0, inFlight.current - 1);
       });
@@ -516,39 +514,38 @@ function RainLayer({ d, now }: { d: Drop; now: number }) {
             <motion.button
               key={f.key}
               type="button"
-              aria-label="Grab red packet"
+              aria-label={f.st ? "Opened red packet" : "Grab red packet"}
+              disabled={Boolean(f.st)}
               className="absolute top-0 touch-manipulation select-none p-2.5 will-change-transform"
-              style={{ left: `${f.x}%`, touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
+              style={{ left: `${f.x}%`, touchAction: "manipulation", WebkitTapHighlightColor: "transparent", pointerEvents: f.st ? "none" : "auto" }}
               initial={{ y: -90, rotate: f.rot }}
               animate={{ y: (box.current?.clientHeight ?? 800) + 40, rotate: -f.rot }}
               transition={{ duration: f.dur, ease: "linear" }}
               onAnimationComplete={() => setFalling((list) => list.filter((x) => x.key !== f.key))}
               onPointerDown={(e) => tap(f, e)}
             >
-              <RedPacketArt id={f.tier} cover={d.cover} size={f.size} label={false} />
+              {f.st ? (
+                <span className="flex flex-col items-center gap-1" style={{ width: f.size + 16 }}>
+                  <span className="relative" style={{ opacity: 0.55, filter: "saturate(0.7)" }}>
+                    <RedPacketArt id={f.tier} cover={d.cover} size={f.size * 0.8} label={false} />
+                  </span>
+                  <span className="flex items-center gap-1 whitespace-nowrap rounded-full bg-black/65 px-2 py-0.5 font-display text-[13px] font-extrabold text-gold">
+                    {f.st === "got" ? (
+                      <>
+                        <Coin className="h-3.5 w-3.5" /> +{(f.n ?? 0).toLocaleString("en-IN")}
+                      </>
+                    ) : f.st === "pending" ? (
+                      "…"
+                    ) : (
+                      <span className="text-[11.5px] text-cream">{potEmpty ? "All grabbed" : outOfGrabs ? "No taps left" : "Missed"}</span>
+                    )}
+                  </span>
+                </span>
+              ) : (
+                <RedPacketArt id={f.tier} cover={d.cover} size={f.size} label={false} />
+              )}
             </motion.button>
           ))}
-          <AnimatePresence>
-            {pops.map((q) => (
-              <motion.span
-                key={q.key}
-                className="pointer-events-none absolute flex items-center gap-1 font-display text-[18px] font-extrabold text-gold drop-shadow-[0_2px_4px_rgb(0_0_0/0.8)]"
-                style={{ left: q.x - 20, top: q.y - 20 }}
-                initial={{ opacity: 1, y: 0, scale: 0.7 }}
-                animate={{ opacity: 0, y: -60, scale: 1.15 }}
-                transition={{ duration: 0.9 }}
-                onAnimationComplete={() => setPops((list) => list.filter((x) => x.key !== q.key))}
-              >
-                {q.n > 0 ? (
-                  <>
-                    <Coin className="h-4 w-4" /> +{q.n.toLocaleString("en-IN")}
-                  </>
-                ) : (
-                  <span className="text-[13px] text-cream">{potEmpty ? "All grabbed" : outOfGrabs ? "No taps left" : "Missed"}</span>
-                )}
-              </motion.span>
-            ))}
-          </AnimatePresence>
         </>
       ) : null}
 
