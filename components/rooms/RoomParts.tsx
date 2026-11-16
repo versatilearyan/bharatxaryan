@@ -438,7 +438,22 @@ function Heartbeat({ gap, size, live, linked }: { gap: number; size: number; liv
   );
 }
 
-export function Pair({ s, a, b, size, gap, gold, linked, numbered = false }: { s: RoomSession; a: number; b?: number; size: number; gap: number; gold: boolean; linked: boolean; numbered?: boolean }) {
+/** CP level / tag between this pair's right seat and the first seat of the pair beside it, in the gap between the pairs. */
+function EdgeLink({ s, from, to, gap, size }: { s: RoomSession; from: number; to: number; gap: number; size: number }) {
+  const { tagBetween } = useApp();
+  const x = s.seats[from];
+  const y = s.seats[to];
+  const tag = x && y ? tagBetween(x, y) : null;
+  const cpLevel = useCpLevelBetween(x, y);
+  if (!cpLevel && !tag) return null;
+  return (
+    <span className="pointer-events-none absolute top-0 z-20" style={{ left: "100%", width: gap }}>
+      {cpLevel ? <CpLink gap={gap} size={size} level={cpLevel} /> : tag ? <TagLink tag={tag} gap={gap} size={size} /> : null}
+    </span>
+  );
+}
+
+export function Pair({ s, a, b, size, gap, gold, linked, numbered = false, next, edgeGap = 0 }: { s: RoomSession; a: number; b?: number; size: number; gap: number; gold: boolean; linked: boolean; numbered?: boolean; next?: number; edgeGap?: number }) {
   const { tagBetween } = useApp();
   const x = s.seats[a];
   const y = b !== undefined ? s.seats[b] : null;
@@ -447,7 +462,8 @@ export function Pair({ s, a, b, size, gap, gold, linked, numbered = false }: { s
   // CP partners sitting side by side get the winged heart between them
   const cpLevel = useCpLevelBetween(x, y);
   return (
-    <div className="flex items-start justify-center">
+    <div className="relative flex items-start justify-center">
+      {next !== undefined && b !== undefined && edgeGap > 0 ? <EdgeLink s={s} from={b} to={next} gap={edgeGap} size={size} /> : null}
       <div className="relative z-10">
         <Seat s={s} index={a} size={size} gold={gold} numbered={numbered} />
       </div>
@@ -493,8 +509,8 @@ export function SeatLayout({ s, gold = false, scale = 1, grid = false }: { s: Ro
             <span className="pointer-events-none absolute inset-y-[-6px] left-1/2 right-2 rounded-r-2xl" style={{ background: SIDE.blue.soft, boxShadow: `inset 0 0 0 1px ${SIDE.blue.solid}55` }} aria-hidden />
           </>
         ) : null}
-        {pairs.map(([a, b]) => (
-          <Pair key={a} s={s} a={a} b={b} size={small} gap={smallGap} gold={gold} linked={partner === "all"} />
+        {pairs.map(([a, b], i) => (
+          <Pair key={a} s={s} a={a} b={b} size={small} gap={smallGap} gold={gold} linked={partner === "all"} next={i % 2 === 0 ? pairs[i + 1]?.[0] : undefined} edgeGap={smallGap} />
         ))}
       </div>
     </div>
@@ -549,8 +565,8 @@ export function PkArena({ s, gold = false, scale = 1 }: { s: RoomSession; gold?:
       <PkPanel s={s} />
       {rows.map((row, r) => (
         <div key={r} className="relative flex flex-wrap justify-center" style={{ columnGap: gap, marginTop: Math.round(16 * k) }}>
-          {row.map(([a2, b2]) =>
-            a2 === undefined ? null : <Pair key={a2} s={s} a={a2} b={b2} size={small} gap={gap} gold={gold} linked={partner !== "off"} />,
+          {row.map(([a2, b2], i) =>
+            a2 === undefined ? null : <Pair key={a2} s={s} a={a2} b={b2} size={small} gap={gap} gold={gold} linked={partner !== "off"} next={i === 0 ? row[1]?.[0] : undefined} edgeGap={gap} />,
           )}
         </div>
       ))}
@@ -579,8 +595,8 @@ function SeatGrid({ s, gold, width, gridRef }: { s: RoomSession; gold: boolean; 
   const partner = s.settings.partnerSeat;
   return (
     <div ref={gridRef} className="flex w-full flex-wrap justify-center px-3" style={{ columnGap: Math.round(unit * 0.3), rowGap: Math.round(unit * 0.22) }}>
-      {pairs.map(([a, b]) => (
-        <Pair key={a} s={s} a={a} b={b} size={size} gap={gap} gold={gold} linked={a === 0 ? partner !== "off" : partner === "all"} />
+      {pairs.map(([a, b], i) => (
+        <Pair key={a} s={s} a={a} b={b} size={size} gap={gap} gold={gold} linked={a === 0 ? partner !== "off" : partner === "all"} next={i % 3 !== 2 ? pairs[i + 1]?.[0] : undefined} edgeGap={Math.round(unit * 0.3)} />
       ))}
     </div>
   );
