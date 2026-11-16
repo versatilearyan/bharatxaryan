@@ -87,7 +87,8 @@ export type Toast = { id: number; text: string; tone: "default" | "gold" | "erro
  * the Combo button (1 = a single send). earned / charm: coins and charm the
  * receiver got, shown in the gold coin burst when the animation ends.
  */
-export type GiftFx = { id: number; giftId: GiftId; fromName: string; toName: string; count: number; combo?: number; earned?: number; charm?: number };
+/** `room`: the gift was sent in a voice room, so its animation only plays while that room is open on screen. */
+export type GiftFx = { id: number; giftId: GiftId; fromName: string; toName: string; count: number; combo?: number; earned?: number; charm?: number; room?: boolean };
 
 /** The Combo button after you send a gift: tap within COMBO_MS to send the same gift again. */
 export type GiftCombo = { giftId: GiftId; n: number; key: number; send: () => boolean };

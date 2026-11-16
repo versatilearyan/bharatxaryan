@@ -1186,7 +1186,7 @@ export function useRoomSession(room: Room) {
       trackReceived(toId, giftId, ev.count);
       setGiftCounts((g) => ({ ...g, [toId]: (g[toId] ?? 0) + value }));
       // The owner / an admin can turn the gift animation off for this room: coins and charm still count, only the animation is skipped
-      if (!settings.banGiftAnimation) playGift({ giftId, fromName: nameOf(fromId), toName: nameOf(toId), count: ev.count, combo, charm, earned: ev.earned });
+      if (!settings.banGiftAnimation) playGift({ giftId, fromName: nameOf(fromId), toName: nameOf(toId), count: ev.count, combo, charm, earned: ev.earned, room: true });
       else if (fromId === ME_ID) toast(`Gift sent · animation is off in this room · +${charm} charm`, "gold");
       giftListener.current?.(fromId, toId, value);
       pkListener.current?.(fromId, toId, value);
@@ -1265,7 +1265,7 @@ export function useRoomSession(room: Room) {
       addCharm(toId, value);
       trackReceived(toId, giftId, count);
       setGiftCounts((g) => ({ ...g, [toId]: (g[toId] ?? 0) + value }));
-      if (!settings.banGiftAnimation) playGift({ giftId, fromName: profile.name, toName: person(toId).name, count, combo, charm, earned });
+      if (!settings.banGiftAnimation) playGift({ giftId, fromName: profile.name, toName: person(toId).name, count, combo, charm, earned, room: true });
       giftListener.current?.(ME_ID, toId, value);
       pkListener.current?.(ME_ID, toId, value);
       if (!free) armCombo({ giftId, n: combo, send: () => sendGiftRef.current(giftId, toId, count, false, combo + 1) });

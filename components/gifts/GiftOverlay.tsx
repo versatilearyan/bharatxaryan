@@ -14,7 +14,13 @@ import { COMBO_MS, useApp, type GiftCombo, type GiftFx } from "@/lib/app/store";
  * screen with golden rays, a burst of particles and a royal banner.
  */
 export function GiftOverlay() {
-  const { giftFx, clearGiftFx, giftCombo, clearCombo } = useApp();
+  const { giftFx: anyFx, clearGiftFx, giftCombo, clearCombo, roomOpen, activeRoomId } = useApp();
+  // A gift sent in a voice room plays only while that room is open on screen (not on the tabs, other screens or when the room is minimised)
+  const inRoom = roomOpen && !!activeRoomId;
+  const giftFx = anyFx && anyFx.room && !inRoom ? null : anyFx;
+  useEffect(() => {
+    if (anyFx && anyFx.room && !inRoom) clearGiftFx();
+  }, [anyFx, inRoom, clearGiftFx]);
   /** The gold coin burst shown when a gift's animation ends. */
   const [burst, setBurst] = useState<GiftFx | null>(null);
   const fxRef = useRef(giftFx);
@@ -52,7 +58,7 @@ export function GiftOverlay() {
         ) : null}
       </AnimatePresence>
       <AnimatePresence>{burst && !giftFx ? <CoinBurst key={burst.id} fx={burst} onDone={() => setBurst(null)} /> : null}</AnimatePresence>
-      <AnimatePresence>{giftCombo ? <ComboButton key="combo" combo={giftCombo} onExpire={clearCombo} /> : null}</AnimatePresence>
+      <AnimatePresence>{giftCombo && inRoom ? <ComboButton key="combo" combo={giftCombo} onExpire={clearCombo} /> : null}</AnimatePresence>
     </>
   );
 }
