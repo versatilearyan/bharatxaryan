@@ -19,9 +19,11 @@ import { ME_ID, useApp } from "@/lib/app/store";
 import { useVisitorStats } from "./ServerVisitors";
 import { useMe } from "@/lib/app/me-store";
 import { useIsNativeApp } from "@/components/system/AppDownloadBanner";
+import { coinText, useReferralRates } from "@/lib/api/referral-rates";
 
 export function ProfileScreen() {
   const { profile, coins, setSheet, push, toast, signOut, session, vip: appVip } = useApp();
+  const referral = useReferralRates(Boolean(session));
   const myServerId = session ? myUserIdFromToken() : null;
   const native = useIsNativeApp();
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -157,7 +159,7 @@ export function ProfileScreen() {
 
       {/* Settings */}
       <section className="mx-4 mt-6 overflow-hidden rounded-2xl bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 ring-1 ring-gold/15" aria-label="Settings">
-        {session ? <Row icon={<span className="text-[17px] leading-none">🧧</span>} label="Refer & earn 20,000 coins" onClick={() => push({ kind: "refer" })} /> : null}
+        {session && referral?.enabled !== false ? <Row icon={<span className="text-[17px] leading-none">🧧</span>} label={referral && referral.reward > 0 ? `Refer & earn ${coinText(referral.reward)} coins` : "Refer & earn"} onClick={() => push({ kind: "refer" })} /> : null}
         <Row icon={<Pencil className="h-4.5 w-4.5" />} label="Edit profile" onClick={() => setSheet({ kind: "edit-profile" })} />
         <Row icon={<Bell className="h-4.5 w-4.5" />} label="Notifications" right={<Toggle checked={notify} onChange={(v) => (setNotify(v), toast(v ? "Notifications on" : "Notifications off"))} label="Notifications" />} />
         <Row icon={<Volume2 className="h-4.5 w-4.5" />} label="Room sounds" right={<Toggle checked={sounds} onChange={setSounds} label="Room sounds" />} />

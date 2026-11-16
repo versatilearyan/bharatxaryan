@@ -2,8 +2,8 @@
 
 /**
  * Refer & earn: your invite link (with WhatsApp and share), how many friends
- * joined and what you earned. Each friend who joins with your link gives you
- * 20,000 coins (the server checks and pays).
+ * joined and what you earned. Each friend who joins with your link pays you
+ * the reward set in the admin panel (the server checks and pays).
  */
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
@@ -12,8 +12,9 @@ import { api } from "@/lib/api/client";
 import { useApp } from "@/lib/app/store";
 import { Coin, ScreenHeader } from "@/components/ui/kit";
 import { Toran } from "@/components/ui/Toran";
+import { coinText } from "@/lib/api/referral-rates";
 
-type Mine = { code: string; link: string; reward: number; count: number; earned: number; friends: { userId: string; name: string; avatarUrl?: string; joinedAt?: string }[] };
+type Mine = { code: string; link: string; enabled?: boolean; reward: number; welcomeGift?: number; count: number; earned: number; friends: { userId: string; name: string; avatarUrl?: string; joinedAt?: string; reward?: number }[] };
 
 export function ReferScreen() {
   const { pop, toast } = useApp();
@@ -24,7 +25,10 @@ export function ReferScreen() {
       .catch((e) => toast(e instanceof Error ? e.message : "Couldn't load your invite link.", "error"));
   }, [toast]);
 
-  const text = d ? `Namaste! 🙏 Join me on Panchayat: voice rooms, games, gifts and more. Use my link and get a 50,000-coin welcome red packet 🧧\n${d.link}` : "";
+  const reward = d?.reward ?? 0;
+  const gift = d?.welcomeGift ?? 0;
+  const on = d?.enabled !== false && reward > 0;
+  const text = d ? `Namaste! 🙏 Join me on Panchayat: voice rooms, games, gifts and more.${gift > 0 ? ` Use my link and get a ${coinText(gift)}-coin welcome red packet 🧧` : " Use my link to join."}\n${d.link}` : "";
   const copy = async () => {
     if (!d) return;
     try {
@@ -53,8 +57,8 @@ export function ReferScreen() {
         <motion.div animate={{ rotate: [0, -6, 6, 0] }} transition={{ duration: 2.2, repeat: Infinity }} className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-b from-[#ff3b3b] to-[#b3001b] text-[30px] shadow-[0_10px_30px_-8px_rgba(255,59,59,0.7)]">
           🧧
         </motion.div>
-        <p className="mt-3 bg-gradient-to-r from-[#fff1c9] via-gold to-[#ffb37a] bg-clip-text font-display text-[24px] font-extrabold text-transparent">Get 20,000 coins</p>
-        <p className="mt-1 text-[13px] text-cream/80">for every friend who joins Panchayat with your link. No limit!</p>
+        <p className="mt-3 bg-gradient-to-r from-[#fff1c9] via-gold to-[#ffb37a] bg-clip-text font-display text-[24px] font-extrabold text-transparent">{d ? (on ? `Get ${coinText(reward)} coins` : "Invite your friends") : "Refer & earn"}</p>
+        <p className="mt-1 text-[13px] text-cream/80">{on ? "for every friend who joins Panchayat with your link. No limit!" : d ? "Share Panchayat with your friends. Rewards for invites are paused right now." : ""}</p>
         <div className="mt-4 flex items-center gap-2 rounded-2xl bg-black/35 p-2 ring-1 ring-gold/20">
           <span className="min-w-0 flex-1 truncate px-2 text-left font-mono text-[12.5px] text-cream/90">{d?.link ?? "Loading…"}</span>
           <button type="button" onClick={() => void copy()} disabled={!d} className="flex h-9 items-center gap-1 rounded-xl bg-white/10 px-3 text-[12.5px] font-bold text-cream">
@@ -96,7 +100,7 @@ export function ReferScreen() {
 
       <h2 className="mx-5 mt-6 font-display text-[17px] font-bold text-cream">How it works</h2>
       <ol className="mx-4 mt-2 space-y-2">
-        {["Share your link on WhatsApp or anywhere", "Your friend signs up and sets up their profile", "You get 20,000 coins, and they get a 50,000-coin welcome red packet 🧧"].map((t, i) => (
+        {["Share your link on WhatsApp or anywhere", "Your friend signs up and sets up their profile", (on ? `You get ${coinText(reward)} coins${gift > 0 ? `, and they get a ${coinText(gift)}-coin welcome red packet 🧧` : ""}` : gift > 0 ? `They get a ${coinText(gift)}-coin welcome red packet 🧧` : "They join the fun")].map((t, i) => (
           <li key={t} className="flex items-center gap-3 rounded-2xl bg-black/25 px-3 py-2.5 ring-1 ring-gold/10">
             <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gold font-display text-[13px] font-extrabold text-ink">{i + 1}</span>
             <span className="text-[13px] text-cream/85">{t}</span>
@@ -118,7 +122,7 @@ export function ReferScreen() {
                 )}
                 <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-cream">{f.name ?? "A friend"}</span>
                 <span className="flex items-center gap-1 text-[12.5px] font-bold text-gold">
-                  +<Coin className="h-3.5 w-3.5" /> {d.reward.toLocaleString("en-IN")}
+                  +<Coin className="h-3.5 w-3.5" /> {(f.reward ?? d.reward).toLocaleString("en-IN")}
                 </span>
               </li>
             ))}

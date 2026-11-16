@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Camera, Check, ChevronLeft, Crown, Ellipsis, Flame, Gift, MessageCircle, Pencil, Plus, Quote, RefreshCw, Search, Shield, Trophy, UsersRound } from "lucide-react";
 import { Glyph, RewardArt } from "./ParivarUi";
 import { ParivarGiftSheet } from "./ParivarGift";
-import { useServerRooms } from "@/lib/app/server-rooms";
+import { useServerRooms, userPersonId } from "@/lib/app/server-rooms";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin, ScreenHeader } from "@/components/ui/kit";
 import { parivarApi, parivarExtra, type ParivarApplication, type ParivarCard, type ParivarConfig, type ParivarProfile, type ParivarRole, type RankRow, type TasksInfo, type KavachInfo, type ChestsInfo, treasureApi, type TreasureInfo } from "@/lib/api/parivar";
@@ -1351,6 +1351,7 @@ function RolePill({ role }: { role: ParivarRole }) {
 function MembersPanel({ p, can, busy, run, onGift }: { p: ParivarProfile; can: (perm: string) => boolean; busy: boolean; run: (f: () => Promise<unknown>, ok?: string) => Promise<void>; onGift: (userId: string) => void }) {
   const [q, setQ] = useState("");
   const { myId } = useServerRooms();
+  const { openProfile } = useApp();
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return [...p.members].filter((m) => !needle || m.name.toLowerCase().includes(needle)).sort((a, b) => b.contribution - a.contribution);
@@ -1373,14 +1374,16 @@ function MembersPanel({ p, can, busy, run, onGift }: { p: ParivarProfile; can: (
       <ul className="mt-1">
         {rows.map((m, i) => (
           <li key={m.userId} className={`flex items-center gap-3 border-b border-white/[0.06] px-4 py-3 ${q ? "" : (ROW_TINT[i] ?? "")}`}>
-            <Avatar name={m.name} url={m.avatarUrl} size={46} />
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center gap-1.5 text-[15px] font-bold text-cream">
-                <span className="truncate">{m.name}</span>
-                {m.role === "LEADER" ? <Crown className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden /> : null}
+            <button type="button" onClick={() => openProfile(m.userId === myId ? "me" : userPersonId(m.userId))} className="flex min-w-0 flex-1 items-center gap-3 text-left" aria-label={`Open ${m.name}'s profile`}>
+              <Avatar name={m.name} url={m.avatarUrl} size={46} />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center gap-1.5 text-[15px] font-bold text-cream">
+                  <span className="truncate">{m.name}</span>
+                  {m.role === "LEADER" ? <Crown className="h-3.5 w-3.5 shrink-0 text-gold" aria-hidden /> : null}
+                </span>
+                <RolePill role={m.role} />
               </span>
-              <RolePill role={m.role} />
-            </span>
+            </button>
             <span className="text-[14px] font-semibold text-cream/70">{n(m.contribution)}</span>
             {true ? (
               <button type="button" onClick={() => onGift(m.userId)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gold/15 text-gold ring-1 ring-gold/30" aria-label={`Send ${m.name} a gift`}>

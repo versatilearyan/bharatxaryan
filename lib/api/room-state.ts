@@ -29,6 +29,8 @@ export type RoomEventType =
   | "SEAT_OPENED"
   | "SEAT_MUTED"
   | "SEAT_UNMUTED"
+  | "USER_MUTED"
+  | "USER_UNMUTED"
   | "SEAT_INVITED"
   | "SEAT_INVITE_ACCEPTED"
   | "SEAT_INVITE_DECLINED"
@@ -52,6 +54,8 @@ export type RoomState = {
   seats: (string | null)[];
   closedSeats: number[];
   mutedSeats: number[];
+  /** People the owner or an admin muted: they can't unmute themselves. */
+  mutedUsers: string[];
   micOrder: boolean;
   /** Waiting for a seat, oldest first. seat -1 = any seat. */
   queue: { userId: string; seat: number }[];
@@ -89,6 +93,7 @@ export function readRoomState(raw: unknown): RoomState | RoomClosedNotice | null
     seats: d.seats.map((s) => id(s) ?? null),
     closedSeats: ints(d.closedSeats),
     mutedSeats: ints(d.mutedSeats),
+    mutedUsers: Array.isArray(d.mutedUsers) ? d.mutedUsers.map(id).filter((x): x is string => Boolean(x)) : [],
     micOrder: d.micOrder === true,
     queue: Array.isArray(d.queue)
       ? d.queue.flatMap((q) => {
@@ -150,6 +155,7 @@ export const roomStateApi = {
   setMicOrder: (roomId: string, on: boolean) => call(roomId, "/mic-order", "PUT", { on }),
   setSeatClosed: (roomId: string, seat: number, on: boolean) => call(roomId, `/seats/${seat}/closed`, "PUT", { on }),
   setSeatMuted: (roomId: string, seat: number, on: boolean) => call(roomId, `/seats/${seat}/muted`, "PUT", { on }),
+  setUserMuted: (roomId: string, userId: string, on: boolean) => call(roomId, `/members/${encodeURIComponent(userId)}/muted`, "PUT", { on }),
   inviteToSeat: (roomId: string, userId: string, seat?: number) => call(roomId, "/seats/invite", "POST", { userId: n(userId), seat }),
   acceptSeatInvite: (roomId: string) => call(roomId, "/seats/invite/accept"),
   declineSeatInvite: (roomId: string) => call(roomId, "/seats/invite/decline"),

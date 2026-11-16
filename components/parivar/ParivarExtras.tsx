@@ -12,7 +12,7 @@ import { giftById } from "@/lib/app/data";
 import { parseGiftCard } from "@/lib/api/parivar";
 import { parivarExtra, type WorldNewsItem, type ChatMsg, type ChatPrefs, type ChestsInfo, type ChoriInfo, type CheerTier, type GachaInfo, type GachaResult, type KavachInfo, type NewsPost, type ParivarProfile, type ShopItem, type TasksInfo } from "@/lib/api/parivar";
 import { getRoomById } from "@/lib/api/voice-rooms";
-import { serverRoomAppId, useServerRooms } from "@/lib/app/server-rooms";
+import { serverRoomAppId, useServerRooms, userPersonId } from "@/lib/app/server-rooms";
 import { useApp } from "@/lib/app/store";
 
 const n = (v: number) => v.toLocaleString("en-IN");
@@ -1084,7 +1084,9 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
   const last = useRef(0);
   const box = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
-  const { toast } = useApp();
+  const { toast, openProfile } = useApp();
+  /** A member's full profile page (yours opens the Profile tab). */
+  const seeProfile = (uid: string) => openProfile(uid === me ? "me" : userPersonId(uid));
 
   const toBottom = useCallback((smooth = true) => {
     const el = box.current;
@@ -1288,7 +1290,7 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
                     </div>
                   ) : (
                     <div className={`flex items-end gap-2 ${first ? "mt-2.5" : "mt-0.5"} ${onGift && m.userId ? "cursor-pointer" : ""}`} onClick={() => onGift && m.userId && setPick(m)} role={onGift && m.userId ? "button" : undefined} aria-label={onGift && m.userId ? `Options for ${m.name ?? "this member"}` : undefined}>
-                      <div className="w-8 shrink-0">
+                      <div className="w-8 shrink-0" onClick={(e) => { if (m.userId) { e.stopPropagation(); seeProfile(m.userId); } }}>
                         {lastOfRun ? (
                           m.avatarUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -1374,6 +1376,17 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
 
           <BottomSheet open={Boolean(pick)} onClose={() => setPick(null)} title={pick?.name ?? "Member"}>
             <div className="px-4 pb-4">
+              <button
+                type="button"
+                onClick={() => {
+                  const uid = pick?.userId;
+                  setPick(null);
+                  if (uid) seeProfile(uid);
+                }}
+                className="mb-2 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-white/10 font-display text-[15px] font-extrabold text-cream"
+              >
+                View profile
+              </button>
               <button
                 type="button"
                 onClick={() => {

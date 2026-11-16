@@ -209,6 +209,11 @@ export function useRoomSession(room: Room) {
           addSystem(`${a} ${e.type === "SEAT_MUTED" ? "muted" : "unmuted"} seat No.${seatNo}${e.targetId ? ` (${t})` : ""}`);
           if (toMe && e.type === "SEAT_MUTED") toast("The owner or an admin muted your seat", "error");
           break;
+        case "USER_MUTED":
+        case "USER_UNMUTED":
+          addSystem(`${a} ${e.type === "USER_MUTED" ? "muted" : "unmuted"} ${t}`);
+          if (toMe) toast(e.type === "USER_MUTED" ? "The owner or an admin muted you. Only they can unmute you." : "The owner or an admin unmuted you", e.type === "USER_MUTED" ? "error" : "gold");
+          break;
         case "SEAT_INVITED":
           // The invited person answers in the invite prompt (RoomOverlays)
           addSystem(`${a} invited ${t} ${e.on ? "to move to" : "to"} seat No.${seatNo}`);
@@ -665,7 +670,7 @@ export function useRoomSession(room: Room) {
   }, [seated]);
 
   /** Muted by the owner or an admin: you, or the seat you're on. */
-  const adminMutedMe = forceMuted.includes(ME_ID) || (mySeat >= 0 && mutedSeats.includes(mySeat));
+  const adminMutedMe = forceMuted.includes(ME_ID) || (srv?.mutedUsers.includes(ME_ID) ?? false) || (mySeat >= 0 && mutedSeats.includes(mySeat));
   const toggleMute = useCallback(() => {
     // A closed room: you can still turn your mic off, but not on
     const turningOn = voice ? !voice.micOn : muted;
@@ -678,7 +683,7 @@ export function useRoomSession(room: Room) {
       return;
     }
     if (adminMutedMe && muted) {
-      toast("The owner or an admin muted your seat", "error");
+      toast(srv?.mutedUsers.includes(ME_ID) ? "The owner or an admin muted you. Only they can unmute you." : "The owner or an admin muted your seat", "error");
       return;
     }
     if (voice) {
@@ -853,6 +858,12 @@ export function useRoomSession(room: Room) {
   const toggleForceMute = useCallback(
     (id: string) => {
       if (!canManage(id)) return;
+      if (srv && live) {
+        // Live rooms: the server mutes the person (not only their mic track), so they can't unmute themselves
+        const uid = rs.userIdOf(id);
+        if (uid) void rs.run((rid) => roomStateApi.setUserMuted(rid, uid, !srv.mutedUsers.includes(id)));
+        return;
+      }
       if (participants && room.server) {
         // Live rooms: the backend mutes their published mic track (it checks you're allowed to)
         const m = participants.members.find((x) => x.personId === id);
@@ -873,7 +884,7 @@ export function useRoomSession(room: Room) {
       setForceMuted((m) => (on ? [...m, id] : m.filter((x) => x !== id)));
       addSystem(`${actor} ${on ? "muted" : "unmuted"} ${person(id).name}`);
     },
-    [canManage, forceMuted, actor, addSystem, person, participants, room.server, toast],
+    [canManage, forceMuted, actor, addSystem, person, participants, room.server, toast, srv, live, rs],
   );
 
   const inviteToSeat = useCallback(
@@ -1387,6 +1398,8 @@ export function useRoomSession(room: Room) {
     musicOnlyMe,
     setSeatClosed,
     forceMuted: liveMuted ?? forceMuted,
+    /** People the owner or an admin muted (live rooms: the server's list, they can't unmute themselves). */
+    adminMuted: srv ? srv.mutedUsers : forceMuted,
     toggleForceMute,
     removeFromMic,
     inviteToSeat,

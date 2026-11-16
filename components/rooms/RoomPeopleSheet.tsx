@@ -108,7 +108,7 @@ function OnlineList({ s, ids }: { s: RoomSession; ids: string[] }) {
                 ? "Mic on"
                 : "Mic off"
           : onMic
-            ? s.forceMuted.includes(id)
+            ? s.adminMuted.includes(id)
               ? "Muted by admin"
               : s.speakingIds.includes(id)
                 ? "Talking now"

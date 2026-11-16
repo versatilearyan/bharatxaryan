@@ -24,6 +24,8 @@ export type LiveRoomState = {
   seats: (string | null)[];
   closedSeats: number[];
   mutedSeats: number[];
+  /** People muted by the owner or an admin (person ids). */
+  mutedUsers: string[];
   micOrder: boolean;
   queue: { id: string; seat: number }[];
   open: boolean;
@@ -145,6 +147,7 @@ export function useRoomState(
       seats: raw.seats.map((u) => (u ? toPerson(u) : null)),
       closedSeats: raw.closedSeats,
       mutedSeats: raw.mutedSeats,
+      mutedUsers: raw.mutedUsers.map(toPerson),
       micOrder: raw.micOrder,
       queue: raw.queue.map((q) => ({ id: toPerson(q.userId), seat: q.seat })),
       open: raw.open,
