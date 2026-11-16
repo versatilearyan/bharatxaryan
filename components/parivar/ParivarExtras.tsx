@@ -475,7 +475,7 @@ function RollButton({ label, sub, tone, badge, disabled, onClick }: { label: str
   );
 }
 
-export function GachaSheet({ p, open, onClose, onChanged }: Props) {
+export function GachaSheet({ p, open, onClose, onChanged, onGo }: Props & { onGo?: (s: Exclude<SheetName, null>) => void }) {
   const { toast, refreshCoins } = useApp();
   const d = useLoad<GachaInfo>(() => parivarExtra.gacha(p.id), [p.id, open]);
   const [sel, setSel] = useState(0);
@@ -712,6 +712,11 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
                   <button type="button" onClick={() => setWon(null)} className="relative mt-4 h-12 w-full rounded-full bg-gradient-to-b from-[#f6dc9c] to-[#c08f43] font-display text-[15px] font-extrabold text-[#2a1a0c] shadow-[0_10px_24px_-8px_rgba(240,205,130,0.6)] active:scale-[0.98]">
                     Collect
                   </button>
+                  {onGo && won.some((r) => r.kind === "CHEST") ? (
+                    <button type="button" onClick={() => { setWon(null); onGo("chests"); }} className="relative mt-2 h-11 w-full rounded-full bg-white/10 font-display text-[13.5px] font-extrabold text-cream ring-1 ring-gold/30">
+                      🧰 Chest Treasury me dekho
+                    </button>
+                  ) : null}
                 </motion.div>
               </motion.div>
             ) : null}

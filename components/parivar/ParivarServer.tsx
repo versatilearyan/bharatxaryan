@@ -621,7 +621,10 @@ export function ParivarHome({ id }: { id: string }) {
   const member = Boolean(p?.myRole);
   /** What the Parivar owns from chests, Gacha and the shop: Kavach and chests waiting to be used or sent. */
   const kavachStock = (kv?.types ?? []).reduce((a, t) => a + (t.owned ?? 0), 0);
-  const chestStock = (ch?.types ?? []).reduce((a, t) => a + (t.owned ?? 0), 0);
+  // Every chest the Parivar owns (bought, or won in Gacha), whatever its type's level
+  const [store, setStore] = useState<{ kind: string; ref: string | number; qty: number; name?: string }[]>([]);
+  const storeChests = store.filter((r) => r.kind === "CHEST" && r.qty > 0);
+  const chestStock = storeChests.reduce((a, r) => a + r.qty, 0);
   /** Family Treasure chests: claimed ones wait in the Treasury (unlocking, then ready to send); the rest wait to be claimed. */
   const trClaimed = (trs?.chests ?? []).filter((c) => c.status === "TREASURE");
   const trReady = trClaimed.filter((c) => c.ready || c.secondsLeft <= 0).length;
@@ -632,6 +635,7 @@ export function ParivarHome({ id }: { id: string }) {
     parivarExtra.tasks(id).then(setWk).catch(() => undefined);
     parivarExtra.kavach(id).then(setKv).catch(() => undefined);
     parivarExtra.chests(id).then(setCh).catch(() => undefined);
+    parivarExtra.inventory(id).then(setStore).catch(() => undefined);
     treasureApi.state(id).then(setTrs).catch(() => undefined);
   }, [id, member]);
   useEffect(() => {
@@ -924,11 +928,11 @@ export function ParivarHome({ id }: { id: string }) {
                       </button>
                     );
                   })}
-                  {(ch?.types ?? []).filter((t) => (t.owned ?? 0) > 0).map((t) => (
-                    <button key={`s${t.id}`} type="button" onClick={() => isMember && setSheet("chests")} className="relative flex w-[74px] shrink-0 flex-col items-center gap-1.5" aria-label={`${t.name}: ${t.owned} in store`}>
+                  {storeChests.map((t) => (
+                    <button key={`s${t.ref}`} type="button" onClick={() => isMember && setSheet("chests")} className="relative flex w-[74px] shrink-0 flex-col items-center gap-1.5" aria-label={`${t.name ?? "Chest"}: ${t.qty} in store`}>
                       <RewardArt kind="CHEST" size={54} />
-                      <span className="absolute right-1 top-0 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{t.owned}</span>
-                      <span className="max-w-full truncate text-[12px] font-extrabold text-cream/60">{t.name}</span>
+                      <span className="absolute right-1 top-0 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white">×{t.qty}</span>
+                      <span className="max-w-full truncate text-[12px] font-extrabold text-cream/60">{t.name ?? "Chest"}</span>
                     </button>
                   ))}
                   {(ch?.sent ?? []).filter((c) => c.status === "OPEN").map((c) => (
@@ -1075,7 +1079,7 @@ export function ParivarHome({ id }: { id: string }) {
         <>
           <ParivarGiftSheet p={p} open={sheet === "gift" || giftOver} onClose={() => { setSheet((s) => (s === "gift" ? null : s)); setGiftOver(false); }} toId={giftTo} onSent={() => void load()} />
           <CheerSheet p={p} open={sheet === "cheer"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
-          <GachaSheet p={p} open={sheet === "gacha"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
+          <GachaSheet p={p} open={sheet === "gacha"} onClose={() => setSheet(null)} onGo={(k) => setSheet(k)} onChanged={() => { void load(); loadExtras(); }} />
           <TreasureSheet p={p} open={sheet === "treasure"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
           <TreasureWatcher p={p} />
           <ParivarGuideSheet p={p} open={sheet === "guide"} onClose={() => setSheet(null)} />
