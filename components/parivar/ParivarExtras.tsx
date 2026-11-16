@@ -234,20 +234,28 @@ type Props = { p: ParivarProfile; open: boolean; onClose: () => void; onChanged:
 
 /* ------------------------------ Shop ------------------------------ */
 
-export function ShopSheet({ p, open, onClose, onChanged }: Props) {
+/** Where a bought thing lives: a chest in the Chests (Treasury), a Gacha card in Gacha, a barrier in Kavach, stealing attempts in Chori. */
+const HOME_OF: Record<string, { sheet: Exclude<SheetName, null>; label: string; where: string }> = {
+  CHEST: { sheet: "chests", label: "Chests kholo", where: "Treasury ke Chests me" },
+  GACHA_CARD: { sheet: "gacha", label: "Gacha kholo", where: "Gacha me" },
+  BARRIER: { sheet: "kavach", label: "Kavach kholo", where: "Kavach me" },
+  ATTEMPT: { sheet: "chori", label: "Chori kholo", where: "Chori me" },
+};
+
+export function ShopSheet({ p, open, onClose, onChanged, onGo }: Props & { onGo?: (s: Exclude<SheetName, null>) => void }) {
   const { toast, refreshCoins } = useApp();
   const d = useLoad<ShopItem[]>(() => parivarExtra.shop(p.id), [p.id, open]);
-  const inv = useLoad(() => parivarExtra.inventory(p.id), [p.id, open]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [got, setGot] = useState<{ name: string; kind: string } | null>(null);
   const canFunds = p.myPerms.includes("MANAGE_TREASURY") || p.myRole === "LEADER";
   const buy = async (i: ShopItem, pay: "FUNDS" | "COINS") => {
     setBusy(i.id + pay);
     try {
       await parivarExtra.buy(p.id, i.id, pay);
-      toast(`${i.name} added to the Parivar`, "gold");
+      setGot({ name: i.name, kind: i.kind });
+      toast(`${i.name} kharid liya`, "gold");
       void refreshCoins();
       void d.reload();
-      void inv.reload();
       onChanged();
     } catch (e) {
       toast(errText(e), "error");
@@ -259,15 +267,18 @@ export function ShopSheet({ p, open, onClose, onChanged }: Props) {
     <BottomSheet open={open} onClose={onClose} title="🛒 Parivar shop" tall>
       <div className="px-4 pb-6">
         <p className="text-[12.5px] text-muted">
-          Treasury: <b className="text-gold">{n(p.funds)}</b> funds. Things you buy go to the Parivar&apos;s inventory.
+          Treasury: <b className="text-gold">{n(p.funds)}</b> funds. Kharidne ke baad har cheez apni jagah chali jati hai: chest Treasury me, Gacha card Gacha me, Kavach Kavach me.
         </p>
-        {inv.data?.length ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {inv.data.map((r) => (
-              <span key={`${r.kind}${r.ref}`} className="rounded-full bg-cream/10 px-2.5 py-1 text-[11.5px] text-cream">
-                {r.name ?? r.kind} ×{n(r.qty)}
-              </span>
-            ))}
+        {got ? (
+          <div className="mt-2 flex items-center gap-2 rounded-2xl bg-[#3ddc97]/12 p-2.5 ring-1 ring-[#3ddc97]/35">
+            <span className="min-w-0 flex-1 text-[12.5px] font-bold text-cream">
+              ✅ {got.name} ab {HOME_OF[got.kind]?.where ?? "Parivar ke saaman me"} hai.
+            </span>
+            {HOME_OF[got.kind] && onGo ? (
+              <button type="button" onClick={() => onGo(HOME_OF[got.kind].sheet)} className="shrink-0 rounded-full bg-gold px-3 py-1.5 text-[11.5px] font-extrabold text-ink">
+                {HOME_OF[got.kind].label}
+              </button>
+            ) : null}
           </div>
         ) : null}
         {!d.data ? (

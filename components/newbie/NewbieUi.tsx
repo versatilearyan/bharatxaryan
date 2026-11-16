@@ -43,12 +43,15 @@ function RoomCard({ r, mine }: { r: NewbieRoom; mine: boolean }) {
       whileTap={{ scale: 0.97 }}
       onClick={() => openRoom(serverRoomAppId(String(r.roomId)))}
       aria-label={`${r.name}, hosted by ${r.host.name ?? "a host"}`}
-      className="relative w-[262px] shrink-0 overflow-hidden rounded-[26px] bg-gradient-to-br from-[#f6d899] via-[#e7bc72] to-[#9a6f2c] p-[1.5px] text-left shadow-[0_14px_34px_-14px_rgba(231,188,114,0.6)]"
+      className="pn-glow-gold relative w-[262px] shrink-0 overflow-hidden rounded-[26px] bg-gradient-to-br from-[#fff0c2] via-[#e7bc72] to-[#9a6f2c] p-[1.5px] text-left"
     >
       <span className="relative block overflow-hidden rounded-[25px] bg-gradient-to-br from-[#2a1a10] via-[#1b1109] to-[#120a06] p-3.5">
         <span aria-hidden className="pointer-events-none absolute -top-12 -right-10 h-36 w-36 rounded-full bg-gold/25 blur-3xl" />
         <span className="relative flex items-center justify-between">
-          <NewbieBadge className="!text-[10px] !px-2 !py-0.5" />
+          <span className="flex items-center gap-1.5">
+            <NewbieBadge className="!text-[10px] !px-2 !py-0.5" />
+            <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider text-gold ring-1 ring-gold/40">Sarpanch</span>
+          </span>
           <span className="text-[11px] font-bold text-cream/45">#{r.number}</span>
         </span>
         <span className="relative mt-3 flex items-center gap-3">

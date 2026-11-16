@@ -4,13 +4,15 @@
  * "Play together": the games hub, like a game centre with three tabs (Games, Shop, How to play), in the Panchayat style.
  * The big banner is Gaon ka Gaddaar, which needs no voice room: it has its own lobby with a code.
  */
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { ChevronLeft, Play } from "lucide-react";
-import { GameArt } from "@/components/art/GameArt";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronLeft } from "lucide-react";
 import { GaddarGuide } from "@/components/games/gaddar/GaddarGuide";
-import { GaddarHeroArt } from "@/components/art/GaddarHero";
 import { PLAYABLE } from "@/lib/app/data";
+import { GameHeroCard, GameTile } from "@/components/games/GameCards";
+import { PremiumIconButton, SectionHeader, Skeleton } from "@/components/ui/premium";
+import { ScreenBackdrop } from "@/components/ui/PanchayatBackground";
+import { readRecent, rememberPlayed, useGameLive } from "@/lib/games/live";
+import type { Game, GameId } from "@/lib/app/types";
 import { useApp } from "@/lib/app/store";
 
 const TABS = ["Games", "Shop", "How to play"] as const;
@@ -20,15 +22,39 @@ export function GamesHub() {
   const { pop, push, setSheet } = useApp();
   const [tab, setTab] = useState<Tab>("Games");
   const [guide, setGuide] = useState(false);
-  const others = PLAYABLE.filter((g) => g.id !== "gaddar");
+  const live = useGameLive();
+  const [recent, setRecent] = useState<GameId[]>([]);
+  useEffect(() => setRecent(readRecent()), []);
+  const open = (g: Game) => {
+    rememberPlayed(g.id);
+    setSheet({ kind: "game", gameId: g.id });
+  };
+  const byId = (id: GameId) => PLAYABLE.find((g) => g.id === id);
+  // The groups. "Trending now" is only what people are really playing this minute.
+  const trending = useMemo(() => PLAYABLE.filter((g) => (live?.[g.id] ?? 0) > 0).sort((a, b) => (live?.[b.id] ?? 0) - (live?.[a.id] ?? 0)), [live]);
+  const fresh = PLAYABLE.filter((g) => g.tag === "NEW");
+  const multi = PLAYABLE.filter((g) => ["gaddar", "rmcs", "ludo", "jackaroo"].includes(g.id));
+  const quick = PLAYABLE.filter((g) => ["chess", "ludo"].includes(g.id));
+  const played = recent.map(byId).filter((g): g is Game => !!g);
+  const rows: { key: string; title: string; sub: string; list: Game[] }[] = [
+    { key: "trending", title: "Trending now", sub: "Abhi sabse zyada khele ja rahe", list: trending },
+    { key: "recent", title: "Recently played", sub: "Jo aapne pichli baar khele", list: played },
+    { key: "new", title: "New games", sub: "Naye aaye hain", list: fresh },
+    { key: "multi", title: "Multiplayer", sub: "Dosto ke saath khelo", list: multi },
+    { key: "quick", title: "Quick games", sub: "Jaldi shuru, jaldi khatam", list: quick },
+  ].filter((r) => r.list.length > 0);
 
   return (
-    <div className="app-scroll relative h-full bg-[radial-gradient(130%_60%_at_50%_0%,#3a1d2c_0%,#1a1220_45%,#100d14_100%)] pb-10">
+    <ScreenBackdrop variant="games">
+    <div className="app-scroll relative h-full pb-10">
       <header className="pt-safe flex items-center gap-2 px-3 pt-2">
-        <button type="button" onClick={pop} aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full bg-black/40 text-cream">
+        <PremiumIconButton label="Back" onClick={pop}>
           <ChevronLeft className="h-6 w-6" />
-        </button>
-        <h1 className="font-display text-[20px] font-extrabold text-cream">Play together</h1>
+        </PremiumIconButton>
+        <div className="min-w-0">
+          <h1 className="font-display text-[22px] font-black leading-tight tracking-tight text-cream">Play together</h1>
+          <p className="text-[11.5px] text-cream/60">Games jo Panchayat ko zinda rakhte hain</p>
+        </div>
       </header>
 
       <nav className="mt-2 flex gap-5 border-b border-white/10 px-5" role="tablist" aria-label="Games">
@@ -49,44 +75,28 @@ export function GamesHub() {
 
       {tab === "Games" ? (
         <>
-
-          <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="relative mx-4 mt-4 overflow-hidden rounded-3xl ring-1 ring-gold/25">
-            <div className="relative aspect-[16/8.2]">
-              <GaddarHeroArt />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-              <div className="absolute bottom-3 left-4 right-3 flex items-end gap-3">
-                <div className="min-w-0 flex-1">
-                  <span className="inline-block rounded-full bg-[#b45cff] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white">New</span>
-                  <h2 className="mt-1 font-display text-[22px] font-extrabold leading-tight text-white drop-shadow">Gaon ka Gaddaar</h2>
-                  <p className="text-[12px] text-white/80">Gaddaar ko pehchano · 4 se 10</p>
-                </div>
-                <button type="button" onClick={() => push({ kind: "gaddar" })} className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-white px-5 font-display text-[15px] font-extrabold text-ink shadow-lg active:scale-95">
-                  <Play className="h-4 w-4 fill-current" aria-hidden /> Play
-                </button>
-              </div>
+          <div className="mt-4 space-y-3">
+            {byId("gaddar") ? <GameHeroCard g={byId("gaddar")!} live={live?.gaddar} onOpen={() => open(byId("gaddar")!)} /> : null}
+            {byId("rmcs") ? <GameHeroCard g={byId("rmcs")!} live={live?.rmcs} hero="rmcs" onOpen={() => open(byId("rmcs")!)} /> : null}
+          </div>
+          {live === null && rows.length === 0 ? (
+            <div className="mt-6 grid grid-cols-2 gap-3 px-4">
+              <Skeleton className="h-[180px]" />
+              <Skeleton className="h-[180px]" />
             </div>
-          </motion.section>
-
-          <ul className="mt-3 grid grid-cols-2 gap-3 px-4">
-            {others.map((g) => (
-              <li key={g.id}>
-                <button type="button" onClick={() => setSheet({ kind: "game", gameId: g.id })} className="relative block aspect-[1.2] w-full overflow-hidden rounded-3xl text-left ring-1 ring-white/10" aria-label={`${g.name}, ${g.players}`}>
-                  <span className={g.soon ? "block h-full w-full opacity-60 grayscale-[60%]" : "block h-full w-full"}>
-                    <GameArt id={g.id} />
-                  </span>
-                  <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/5 to-transparent" />
-                  {g.soon ? <span className="absolute right-2 top-2 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-gold ring-1 ring-gold/40">Soon</span> : null}
-                  {g.tag && !g.soon ? (
-                    <span className="absolute left-2 top-2 flex gap-1">
-                      {g.tag === "NEW" ? <span className="rounded-full bg-[#3fbf7f] px-2 py-0.5 text-[9px] font-extrabold uppercase text-white">NEW</span> : null}
-                      <span className="rounded-full bg-coral px-2 py-0.5 text-[9px] font-extrabold uppercase text-white">🔥 HOT</span>
-                    </span>
-                  ) : null}
-                  <span className="absolute bottom-2 left-2.5 right-1 font-display text-[14px] font-extrabold leading-tight text-white drop-shadow">{g.name}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          ) : null}
+          {rows.map((r) => (
+            <section key={r.key} className="mt-6" aria-label={r.title}>
+              <SectionHeader title={r.title} sub={r.sub} />
+              <ul className="no-scrollbar flex snap-x gap-3 overflow-x-auto px-4 pb-1">
+                {r.list.map((g, i) => (
+                  <li key={g.id} className="w-[168px] shrink-0 snap-start">
+                    <GameTile g={g} live={live?.[g.id]} index={i} onOpen={() => open(g)} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
         </>
       ) : null}
 
@@ -131,5 +141,6 @@ export function GamesHub() {
       ) : null}
       {guide ? <GaddarGuide onClose={() => setGuide(false)} /> : null}
     </div>
+    </ScreenBackdrop>
   );
 }

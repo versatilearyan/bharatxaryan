@@ -51,7 +51,7 @@ export function RoomsScreen() {
 
   return (
     <div className="app-scroll aurora h-full pb-[calc(100px+var(--mini,0px)+var(--sb))]">
-      <header className="pt-safe sticky top-0 z-20 bg-ink/90 backdrop-blur-xl">
+      <header className="pt-safe sticky top-0 z-20 bg-gradient-to-b from-[#0a0712]/80 to-[#0a0712]/40 backdrop-blur-xl">
         <div className="flex h-14 items-center justify-between px-4">
           <h1 className="sr-only">Rooms</h1>
           <div role="tablist" aria-label="Rooms" className="flex items-baseline gap-4">

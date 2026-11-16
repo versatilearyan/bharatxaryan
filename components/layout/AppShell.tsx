@@ -23,7 +23,7 @@ import { ChatProvider } from "@/lib/app/chat-store";
 import { GiftBanner } from "@/components/gifts/GiftBanner";
 import { RedPacketBanner } from "@/components/redpacket/RedPacket";
 import { BottomNav } from "@/components/navigation/BottomNav";
-import { TabBackdrop } from "@/components/layout/TabBackdrop";
+import { PanchayatBackground } from "@/components/ui/PanchayatBackground";
 import { HomeScreen } from "@/components/home/HomeScreen";
 import { RoomsScreen } from "@/components/rooms/RoomsScreen";
 import { ChatScreen } from "@/components/chat/ChatScreen";
@@ -156,7 +156,7 @@ function Tabs() {
   const { tab } = useApp();
   return (
     <>
-    <TabBackdrop />
+    <PanchayatBackground variant={tab} />
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={tab}

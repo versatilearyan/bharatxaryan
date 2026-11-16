@@ -10,11 +10,13 @@ import { NewbieRooms } from "@/components/newbie/NewbieUi";
 import { ShortcutIcon } from "@/components/art/ShortcutIcon";
 import { Logo } from "@/components/brand/Logo";
 import { FestivalBanner } from "@/components/festival/FestivalBanner";
-import { GameArt } from "@/components/art/GameArt";
+import { GameHeroCard, GameTile } from "@/components/games/GameCards";
+import { CoinBalance, SectionHeader } from "@/components/ui/premium";
+import { rememberPlayed, useGameLive } from "@/lib/games/live";
+import type { Game } from "@/lib/app/types";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, Pill, SectionTitle, formatCoins, formatCount } from "@/components/ui/kit";
 import { RoomCard, RoomRow } from "@/components/rooms/RoomCards";
-import { GaddarHeroArt } from "@/components/art/GaddarHero";
 import { PLAYABLE, PEOPLE } from "@/lib/app/data";
 import { AppDownloadBanner } from "@/components/system/AppDownloadBanner";
 import { usePeople } from "@/lib/app/people";
@@ -47,12 +49,12 @@ function Greeting() {
   const when = hour < 12 ? "Suprabhat" : hour < 17 ? "Namaste" : hour < 21 ? "Shubh sandhya" : "Shubh ratri";
   return (
     <section className="px-4 pt-1" aria-label="Welcome">
-      <h1 className="font-display text-[24px] font-extrabold leading-tight text-cream">
+      <h1 className="font-display text-[26px] font-black leading-tight tracking-tight text-cream">
         {when}, <span className="bg-gradient-to-r from-[#ffd86b] via-[#ff9ad5] to-[#b9a3ff] bg-clip-text text-transparent">{first}</span> 🙏
       </h1>
-      <p className="mt-0.5 text-[13px] text-cream/65">Aaj kya karein? Gaddaar pakdo ya kisi room me baat karo.</p>
+      <p className="mt-1 text-[13px] text-cream/65">Aaj kya karein? Gaddaar pakdo ya kisi room me baat karo.</p>
       <div className="mt-3 grid grid-cols-2 gap-2.5">
-        <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={() => push({ kind: "gaddar" })} className="flex items-center gap-2.5 rounded-2xl bg-gradient-to-br from-[#7c4dff] to-[#ff3d8b] p-3 text-left shadow-[0_10px_24px_-10px_rgba(255,61,139,0.7)] ring-1 ring-white/25">
+        <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={() => push({ kind: "gaddar" })} className="flex items-center gap-2.5 rounded-[20px] bg-gradient-to-br from-[#7c4dff] to-[#ff3d8b] p-3.5 text-left shadow-[0_10px_24px_-10px_rgba(255,61,139,0.7),inset_0_1px_0_rgba(255,255,255,0.35)] ring-1 ring-white/25">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/20 text-[22px]" aria-hidden>
             🛖
           </span>
@@ -61,7 +63,7 @@ function Greeting() {
             <span className="block text-[11px] text-white/80">Bina room, seedha game</span>
           </span>
         </motion.button>
-        <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={() => setTab("rooms")} className="flex items-center gap-2.5 rounded-2xl bg-gradient-to-br from-[#14b8a6] to-[#2563eb] p-3 text-left shadow-[0_10px_24px_-10px_rgba(20,184,166,0.7)] ring-1 ring-white/25">
+        <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={() => setTab("rooms")} className="flex items-center gap-2.5 rounded-[20px] bg-gradient-to-br from-[#14b8a6] to-[#2563eb] p-3.5 text-left shadow-[0_10px_24px_-10px_rgba(20,184,166,0.7),inset_0_1px_0_rgba(255,255,255,0.35)] ring-1 ring-white/25">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/20 text-[22px]" aria-hidden>
             🎙️
           </span>
@@ -82,26 +84,14 @@ function HomeFestival() {
 
 export function CoinPill() {
   const { coins, setSheet } = useApp();
-  return (
-    <motion.button
-      type="button"
-      whileTap={{ scale: 0.95 }}
-      onClick={() => setSheet({ kind: "coins" })}
-      className="flex h-9 items-center gap-1.5 rounded-full border border-line-strong bg-surface/80 pl-1.5 pr-2.5"
-      aria-label={`${coins} demo coins. Open wallet`}
-    >
-      <Coin className="h-5 w-5" />
-      <span className="text-[13.5px] font-bold text-cream">{formatCoins(coins)}</span>
-      <Plus className="h-3.5 w-3.5 text-muted" aria-hidden />
-    </motion.button>
-  );
+  return <CoinBalance coins={coins} onClick={() => setSheet({ kind: "coins" })} />;
 }
 
 function TopBar() {
   const { profile, notices, setSheet, setTab } = useApp();
   const unread = notices.filter((n) => !n.read).length;
   return (
-    <header className="pt-safe sticky top-0 z-20 bg-gradient-to-b from-ink via-ink/95 to-ink/80 backdrop-blur-xl">
+    <header className="pt-safe sticky top-0 z-20 bg-gradient-to-b from-[#160b1e]/95 via-[#160b1e]/85 to-[#160b1e]/40 backdrop-blur-xl">
       <div className="flex h-[60px] items-center gap-2 px-4">
         <span className="-ml-1 pt-1.5">
           <Logo size="1.2rem" sizes="160px" />
@@ -111,7 +101,7 @@ function TopBar() {
         <button
           type="button"
           onClick={() => setSheet({ kind: "notifications" })}
-          className="relative grid h-9 w-9 place-items-center rounded-full text-cream hover:bg-cream/5"
+          className="pn-glass relative grid h-10 w-10 place-items-center rounded-full text-cream active:scale-90"
           aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
         >
           <Bell className="h-[21px] w-[21px]" />
@@ -173,60 +163,25 @@ function Shortcuts() {
 }
 
 function GameModes() {
-  const { setSheet, push } = useApp();
+  const { setSheet } = useApp();
+  const live = useGameLive();
+  const gaddar = PLAYABLE.find((g) => g.id === "gaddar");
   const others = PLAYABLE.filter((g) => g.id !== "gaddar");
+  const open = (g: Game) => {
+    rememberPlayed(g.id);
+    setSheet({ kind: "game", gameId: g.id });
+  };
   return (
     <section className="mt-7" aria-labelledby="games-h">
-      <div className="mb-3 flex items-center gap-1.5 px-4">
-        <h2 id="games-h" className="flex items-center gap-2 font-display text-[19px] font-bold text-cream">
-          <span aria-hidden className="h-5 w-1.5 rounded-full bg-gradient-to-b from-[#ff7ab8] to-[#ffb347]" />
-          Game Modes
-        </h2>
-        <Flame className="h-4.5 w-4.5 text-gold" aria-hidden />
-      </div>
-
-      <motion.button
-        type="button"
-        whileTap={{ scale: 0.98 }}
-        onClick={() => setSheet({ kind: "game", gameId: "gaddar" })}
-        className="relative mx-4 block w-[calc(100%-2rem)] overflow-hidden rounded-3xl text-left ring-1 ring-white/20"
-        aria-label="Gaddaar, 4 to 10 players"
-      >
-        <span className="relative block aspect-[16/8.2]">
-          <GaddarHeroArt />
-          <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-          <span className="absolute bottom-3 left-4 right-3 flex items-end gap-3">
-            <span className="min-w-0 flex-1">
-              <span className="inline-block rounded-full bg-[#fff35c] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-[#1a0b2e]">New</span>
-              <span className="mt-1 block font-display text-[22px] font-extrabold leading-tight text-white drop-shadow">Gaon ka Gaddaar</span>
-              <span className="block text-[12px] text-white/85">Gaddaar ko pehchano · 4 se 10</span>
-            </span>
-            <span className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-white px-5 font-display text-[15px] font-extrabold text-ink shadow-lg">
-              <Play className="h-4 w-4 fill-current" aria-hidden /> Play
-            </span>
-          </span>
-        </span>
-      </motion.button>
-
-      <motion.ul className="mt-3 grid grid-cols-2 gap-3 px-4">
-        {others.map((g) => (
-          <motion.li key={g.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
-            <motion.button type="button" whileTap={{ scale: 0.95 }} onClick={() => setSheet({ kind: "game", gameId: g.id })} className="relative block aspect-[1.2] w-full overflow-hidden rounded-3xl text-left ring-1 ring-white/10" aria-label={`${g.name}, ${g.players}`}>
-              <span className="block h-full w-full">
-                <GameArt id={g.id} />
-              </span>
-              <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent" />
-              {g.tag ? (
-                <span className="absolute left-2 top-2 flex gap-1">
-                  {g.tag === "NEW" ? <Pill tone="new" className="!text-[9px]">NEW</Pill> : null}
-                  <Pill tone="live" className="!text-[9px]">🔥 HOT</Pill>
-                </span>
-              ) : null}
-              <span className={`absolute bottom-2 left-2.5 right-1 font-display font-extrabold uppercase leading-tight tracking-wide text-white drop-shadow ${g.name.length > 8 ? "text-[13px]" : "text-[15px]"}`}>{g.name}</span>
-            </motion.button>
-          </motion.li>
+      <SectionHeader title={<span id="games-h">Game Modes</span>} sub="Ek tap me khelo" icon={<Flame className="h-4.5 w-4.5 text-gold" aria-hidden />} />
+      {gaddar ? <GameHeroCard g={gaddar} live={live?.gaddar} onOpen={() => open(gaddar)} /> : null}
+      <ul className="mt-3 grid grid-cols-2 gap-3 px-4">
+        {others.map((g, i) => (
+          <li key={g.id}>
+            <GameTile g={g} live={live?.[g.id]} index={i} onOpen={() => open(g)} />
+          </li>
         ))}
-      </motion.ul>
+      </ul>
     </section>
   );
 }

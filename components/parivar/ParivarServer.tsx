@@ -8,6 +8,7 @@ import { ParivarGiftSheet } from "./ParivarGift";
 import { useServerRooms, userPersonId } from "@/lib/app/server-rooms";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin, ScreenHeader } from "@/components/ui/kit";
+import { backdropStyle } from "@/components/ui/PanchayatBackground";
 import { parivarApi, parivarExtra, type ParivarApplication, type ParivarCard, type ParivarConfig, type ParivarProfile, type ParivarRole, type RankRow, type TasksInfo, type KavachInfo, type ChestsInfo, treasureApi, type TreasureInfo } from "@/lib/api/parivar";
 import { useApp } from "@/lib/app/store";
 import { FRAME_ORDER, FramedPicture, SignBadge, frameName } from "./ParivarFrames";
@@ -74,7 +75,15 @@ export function ParivarListScreen() {
   const [cards, setCards] = useState<ParivarCard[] | null>(null);
   const [me, setMe] = useState<{ parivarId: string | null; role: ParivarRole | null; appliedTo: string | null; enabled: boolean } | null>(null);
   const [tick, setTick] = useState(0);
+  const [sort, setSort] = useState<"popular" | "top" | "new" | "weekly">("popular");
+  const [featured, setFeatured] = useState<ParivarCard[] | null>(null);
 
+  useEffect(() => {
+    parivarApi
+      .list("", "top")
+      .then((r) => setFeatured(r.content.slice(0, 5)))
+      .catch(() => setFeatured([]));
+  }, [tick]);
   useEffect(() => {
     parivarApi
       .mine()
@@ -86,7 +95,7 @@ export function ParivarListScreen() {
     let live = true;
     const t = window.setTimeout(() => {
       parivarApi
-        .list(q.trim(), "popular")
+        .list(q.trim(), sort)
         .then((r) => live && setCards(r.content))
         .catch(() => live && setCards([]));
     }, q ? 250 : 0);
@@ -94,11 +103,11 @@ export function ParivarListScreen() {
       live = false;
       window.clearTimeout(t);
     };
-  }, [view, q, tick]);
+  }, [view, q, tick, sort]);
 
   if (me && !me.enabled) {
     return (
-      <div className="app-scroll h-full bg-ink pb-8">
+      <div className="app-scroll h-full pb-8" style={backdropStyle("parivar")}>
         <ScreenHeader title="Parivar" onBack={pop} />
         <div className="px-8 pt-24 text-center">
           <Glyph icon={UsersRound} size={72} className="mx-auto" />
@@ -118,7 +127,7 @@ export function ParivarListScreen() {
   ];
 
   return (
-    <div className="app-scroll h-full bg-ink pb-8">
+    <div className="app-scroll h-full pb-8" style={backdropStyle("parivar")}>
       <ScreenHeader title="Parivar" onBack={pop} />
       <div className="mx-4 grid grid-cols-4 gap-2.5 pb-4">
         {actions.map((a) => (
@@ -151,8 +160,46 @@ export function ParivarListScreen() {
         </>
       ) : (
         <>
+          {!q && featured && featured.length ? (
+            <section className="mb-4" aria-label="Featured Parivars">
+              <p className="mx-4 mb-2 flex items-center gap-2 font-display text-[19px] font-black text-cream">
+                <span aria-hidden className="h-5 w-1.5 rounded-full bg-gradient-to-b from-[#f6d899] to-[#c2417a]" /> Featured
+              </p>
+              <ul className="no-scrollbar flex snap-x gap-3 overflow-x-auto px-4 pb-1">
+                {featured.map((c, i) => (
+                  <li key={c.id} className="w-[210px] shrink-0 snap-start">
+                    <motion.button type="button" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} onClick={() => push(c.id === mine ? { kind: "parivar-chat", id: c.id } : { kind: "parivar", id: c.id })} className="relative block w-full overflow-hidden rounded-[24px] p-3.5 text-left ring-1 ring-[#e7bc72]/40 active:scale-[0.98]" style={{ background: `linear-gradient(155deg, ${c.color || "#7a2a6a"}55, rgba(30,10,36,0.95) 70%)` }}>
+                      <span aria-hidden className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-30 blur-2xl" style={{ background: c.color || "#e7bc72" }} />
+                      <span className="relative flex items-center gap-2.5">
+                        <Emblem p={c} size={52} />
+                        <span className="min-w-0">
+                          <span className="block truncate font-display text-[15px] font-black text-cream">{c.name}</span>
+                          <span className="mt-0.5 inline-flex items-center gap-0.5 rounded-md bg-gradient-to-r from-[#2d6f9e] to-[#3fa7ff] px-1.5 py-0.5 text-[10px] font-extrabold text-white">
+                            <Shield className="h-3 w-3" aria-hidden /> Lv {c.level}
+                          </span>
+                        </span>
+                      </span>
+                      <span className="relative mt-2.5 flex items-center justify-between text-[11.5px] font-bold text-cream/70">
+                        <span className="flex items-center gap-1">
+                          <UsersRound className="h-3.5 w-3.5 text-gold" aria-hidden /> {n(c.members)}/{n(c.capacity)}
+                        </span>
+                        <span className="text-gold">#{i + 1}</span>
+                      </span>
+                    </motion.button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+          <div className="no-scrollbar mx-4 mb-3 flex gap-2 overflow-x-auto" role="tablist" aria-label="Sort Parivars">
+            {([["popular", "Popular"], ["top", "Top"], ["new", "New"], ["weekly", "This week"]] as const).map(([k, label]) => (
+              <button key={k} type="button" role="tab" aria-selected={sort === k} onClick={() => { setCards(null); setSort(k); }} className={`h-9 shrink-0 rounded-full px-4 text-[13px] font-extrabold ${sort === k ? "bg-gradient-to-b from-[#f6d899] to-[#d9a84f] text-[#2a1a0c]" : "pn-glass text-cream/75"}`}>
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="mx-4 mb-2 flex items-end justify-between">
-            <p className="font-display text-[17px] font-extrabold text-cream">{q ? "Results" : "Popular Parivars"}</p>
+            <p className="font-display text-[17px] font-extrabold text-cream">{q ? "Results" : sort === "new" ? "Newly created" : sort === "top" ? "Top Parivars" : sort === "weekly" ? "Most active this week" : "Popular Parivars"}</p>
             {cards ? <p className="text-[11.5px] font-semibold text-cream/45">{n(cards.length)} found</p> : null}
           </div>
           <ul className="space-y-2.5 px-4">
@@ -383,7 +430,7 @@ export function ParivarCreateScreen() {
   };
 
   return (
-    <div className="app-scroll h-full bg-ink pb-10">
+    <div className="app-scroll h-full pb-10" style={backdropStyle("parivar")}>
       <ScreenHeader title="Create New Parivar" onBack={pop} />
       <div className="space-y-4 px-4">
         <div className="flex items-center gap-4 rounded-3xl p-4 ring-1 ring-gold/25" style={{ backgroundImage: "radial-gradient(circle at 100% 0%, rgb(231 188 114 / 0.18), transparent 55%), linear-gradient(135deg, #3a1622, #1c1019 75%)" }}>
@@ -633,7 +680,7 @@ export function ParivarHome({ id }: { id: string }) {
   const nextPct = p.nextLevelExp ? Math.min(100, (p.exp / p.nextLevelExp) * 100) : 100;
 
   return (
-    <div className="app-scroll flex h-full flex-col bg-gradient-to-b from-[#2e1019] via-[#1a0f17] to-ink">
+    <div className="app-scroll flex h-full flex-col" style={backdropStyle("parivar")}>
       <div className="sticky top-0 z-20 bg-[#2a0f18]/90 backdrop-blur-md">
         <header className="pt-safe relative flex h-14 items-center px-2">
           <button type="button" onClick={pop} className="grid h-10 w-10 place-items-center rounded-full text-cream active:bg-white/10" aria-label="Back">
@@ -1006,7 +1053,7 @@ export function ParivarHome({ id }: { id: string }) {
           <TreasureWatcher p={p} />
           <ParivarGuideSheet p={p} open={sheet === "guide"} onClose={() => setSheet(null)} />
           <ChestsSheet p={p} open={sheet === "chests"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
-          <ShopSheet p={p} open={sheet === "shop"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
+          <ShopSheet p={p} open={sheet === "shop"} onClose={() => setSheet(null)} onGo={(k) => setSheet(k)} onChanged={() => { void load(); loadExtras(); }} />
           <KavachSheet p={p} open={sheet === "kavach"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
           <ChoriSheet p={p} open={sheet === "chori"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
           <ChatSheet p={p} open={sheet === "chat"} onClose={() => setSheet(null)} onGift={(to) => { setGiftTo(to); setGiftOver(true); }} />
