@@ -103,7 +103,12 @@ export function RedPacketBanner() {
             animate={{ x: 0 }}
             exit={{ x: "-105%" }}
             transition={{ type: "spring", stiffness: 160, damping: 24 }}
-            className="pointer-events-auto absolute inset-x-3 top-1.5 flex h-[38px] items-center"
+            // Tap anywhere on the banner: you go to the room where the packet was dropped (also from another room)
+            onClick={() => {
+              dismissBanner(d.id);
+              if (!here) openRoom(d.roomId);
+            }}
+            className="pointer-events-auto absolute inset-x-3 top-1.5 flex h-[38px] cursor-pointer items-center"
           >
             <motion.span
               className="relative z-10 -mr-4 flex shrink-0 drop-shadow-[0_3px_8px_rgb(0_0_0/0.5)]"
@@ -134,16 +139,7 @@ export function RedPacketBanner() {
                   <Lock className="h-2.5 w-2.5" aria-hidden /> Locked
                 </span>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    dismissBanner(d.id);
-                    openRoom(d.roomId);
-                  }}
-                  className="relative shrink-0 rounded-full bg-gradient-to-b from-[#fff3c4] to-[#f0c66a] px-2.5 py-[3px] text-[11px] font-extrabold text-[#a3101f] shadow-[0_1px_4px_rgb(0_0_0/0.25)]"
-                >
-                  Join
-                </button>
+                <span className="relative shrink-0 rounded-full bg-gradient-to-b from-[#fff3c4] to-[#f0c66a] px-2.5 py-[3px] text-[11px] font-extrabold text-[#a3101f] shadow-[0_1px_4px_rgb(0_0_0/0.25)]">Join</span>
               )}
             </div>
           </motion.div>

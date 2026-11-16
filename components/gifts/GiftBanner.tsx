@@ -65,7 +65,9 @@ export function GiftBanner() {
             animate={{ x: 0 }}
             exit={{ x: "-105%" }}
             transition={{ type: "spring", stiffness: 160, damping: 24 }}
-            className="pointer-events-auto absolute inset-x-3 top-1.5 flex h-[38px] items-center"
+            // Tap anywhere on the banner: you go to the room where it happened (also from another room)
+            onClick={here ? () => dismiss(n.id) : () => void go()}
+            className="pointer-events-auto absolute inset-x-3 top-1.5 flex h-[38px] cursor-pointer items-center"
           >
             <motion.span className="relative z-10 -mr-5 h-[40px] w-[40px] shrink-0 drop-shadow-[0_3px_8px_rgb(0_0_0/0.5)]" animate={{ rotate: [-6, 6, -6], scale: [1, 1.06, 1] }} transition={{ duration: 1.8, repeat: Infinity }}>
               <GiftArt id={n.giftId} />
@@ -93,13 +95,7 @@ export function GiftBanner() {
                   <Lock className="h-2.5 w-2.5" aria-hidden /> Locked
                 </span>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => void go()}
-                  className="relative shrink-0 rounded-full bg-gradient-to-b from-[#fff3c4] to-[#f0c66a] px-2.5 py-[3px] text-[11px] font-extrabold text-[#5b1fa8] shadow-[0_1px_4px_rgb(0_0_0/0.25)]"
-                >
-                  Join
-                </button>
+                <span className="relative shrink-0 rounded-full bg-gradient-to-b from-[#fff3c4] to-[#f0c66a] px-2.5 py-[3px] text-[11px] font-extrabold text-[#5b1fa8] shadow-[0_1px_4px_rgb(0_0_0/0.25)]">Join</span>
               )}
             </div>
           </motion.div>
