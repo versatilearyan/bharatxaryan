@@ -173,12 +173,12 @@ function TasksSheetImpl({ open, onClose }: { open: boolean; onClose: () => void 
   const { claimed, claimTask, session } = useApp();
   if (session)
     return (
-      <BottomSheet open={open} onClose={onClose} title="Daily tasks">
+      <BottomSheet open={open} onClose={onClose} title="Daily tasks" className="!bg-[radial-gradient(70%_30%_at_50%_0%,rgba(61,220,151,0.16),transparent_70%),linear-gradient(180deg,#101a1a_0%,#0a0d12_60%)]">
         <ServerTasks open={open} />
       </BottomSheet>
     );
   return (
-    <BottomSheet open={open} onClose={onClose} title="Daily tasks">
+    <BottomSheet open={open} onClose={onClose} title="Daily tasks" className="!bg-[radial-gradient(70%_30%_at_50%_0%,rgba(61,220,151,0.16),transparent_70%),linear-gradient(180deg,#101a1a_0%,#0a0d12_60%)]">
       <ul className="space-y-2 px-5 pb-4">
         {TASKS.map((t) => {
           const done = t.progress >= t.goal;

@@ -1,5 +1,6 @@
 "use client";
 
+import { backdropStyle } from "@/components/ui/PanchayatBackground";
 import { useEffect, useMemo, useState } from "react";
 import { getRanking, type Ranking, type RankingType } from "@/lib/api/rankings";
 import type { VoiceRoom } from "@/lib/api/voice-rooms";
@@ -138,7 +139,7 @@ export function RankingScreen() {
           : { label: myPermanentRoom ? "Open room" : "Create room", go: () => (myPermanentRoom ? openRoom(myPermanentRoom.id) : push({ kind: "create-room" })) };
 
   return (
-    <div className="relative flex h-full flex-col" style={{ background: "radial-gradient(120% 60% at 50% 0%, #5a1a28 0%, #2a1018 45%, #111114 100%)" }}>
+    <div className="relative flex h-full flex-col" style={backdropStyle("ranking")}>
       <div className="app-scroll min-h-0 flex-1 pb-4">
         <header className="pt-safe sticky top-0 z-10 bg-[#2a1018]/80 backdrop-blur-xl">
           <div className="flex h-12 items-center px-2">

@@ -149,7 +149,7 @@ function Shortcuts() {
   return (
     <div className="mt-3 grid grid-cols-3 gap-2.5 px-4">
       {items.map((it, i) => (
-        <motion.button key={it.label} type="button" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i, type: "spring", stiffness: 260, damping: 24 }} whileTap={{ scale: 0.95 }} onClick={it.onClick} className="relative flex flex-col items-center gap-1.5 overflow-hidden rounded-[22px] bg-gradient-to-b glass3d lift py-3">
+        <motion.button key={it.label} type="button" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i, type: "spring", stiffness: 260, damping: 24 }} whileTap={{ scale: 0.95 }} onClick={it.onClick} className="relative flex flex-col items-center gap-1.5 overflow-hidden rounded-[22px] bg-gradient-to-b pn-card lift rounded-[22px] py-3.5">
           <span aria-hidden className="pointer-events-none absolute -top-8 left-1/2 h-16 w-16 -translate-x-1/2 rounded-full bg-gold/15 blur-2xl" />
           <span className="relative h-[54px] w-[54px]">
             <span className="block origin-top-left scale-[0.82]">{it.art}</span>

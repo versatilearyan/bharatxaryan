@@ -379,6 +379,7 @@ export function ParivarCreateScreen() {
   const [color, setColor] = useState(COLORS[0]);
   const [joinMode, setJoinMode] = useState<"OPEN" | "APPROVAL">("OPEN");
   const [confirm, setConfirm] = useState(false);
+  const [created, setCreated] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
   const [logoPath, setLogoPath] = useState("");
@@ -418,6 +419,8 @@ export function ParivarCreateScreen() {
       const p = await parivarApi.create({ name: name.trim(), sign: sign.trim().toUpperCase(), emblem, color, intro: intro.trim(), joinMode, logo: logoPath || undefined }, idem.current);
       void refreshCoins();
       toast(`${p.name} is ready`, "gold");
+      setCreated(p.name);
+      await new Promise((r) => window.setTimeout(r, 1600));
       pop();
       push({ kind: "parivar", id: p.id });
     } catch (e) {
@@ -431,6 +434,18 @@ export function ParivarCreateScreen() {
 
   return (
     <div className="app-scroll h-full pb-10" style={backdropStyle("parivar")}>
+      {created ? (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[90] grid place-items-center bg-black/80 px-8 text-center" role="status">
+          <div>
+            <motion.p initial={{ scale: 0.3, rotate: -20 }} animate={{ scale: [0.3, 1.25, 1], rotate: 0 }} transition={{ duration: 0.7 }} className="text-[84px] leading-none" aria-hidden>
+              {emblem}
+            </motion.p>
+            <p className="mt-4 font-display text-[26px] font-black text-[#f6d899]">Parivar ban gaya! 🎉</p>
+            <p className="mt-1 text-[15px] font-bold text-cream">{created}</p>
+            <p className="mt-1 text-[12.5px] text-cream/60">Ab apne logon ko bulao.</p>
+          </div>
+        </motion.div>
+      ) : null}
       <ScreenHeader title="Create New Parivar" onBack={pop} />
       <div className="space-y-4 px-4">
         <div className="flex items-center gap-4 rounded-3xl p-4 ring-1 ring-gold/25" style={{ backgroundImage: "radial-gradient(circle at 100% 0%, rgb(231 188 114 / 0.18), transparent 55%), linear-gradient(135deg, #3a1622, #1c1019 75%)" }}>
@@ -722,8 +737,11 @@ export function ParivarHome({ id }: { id: string }) {
       <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }} className="flex-1">
         {tab === "profile" ? (
           <div className="pb-4">
-            <section className="flex items-center gap-4 px-4 pt-5">
-              <Emblem p={p} size={84} />
+            <div aria-hidden className="mx-4 mt-3 h-[84px] rounded-[26px] ring-1 ring-[#e7bc72]/35" style={{ background: `radial-gradient(60% 120% at 85% 0%, ${p.color || "#e7bc72"}66, transparent 70%), linear-gradient(135deg, #3a1450, #5a1230 70%, #2a0d1c)` }} />
+            <section className="-mt-9 flex items-center gap-4 px-6">
+              <span className="rounded-[28px] bg-[#12081a] p-1 ring-2 ring-[#e7bc72]/70 shadow-[0_0_28px_-6px_rgba(231,188,114,0.55)]">
+                <Emblem p={p} size={80} />
+              </span>
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="truncate font-display text-[21px] leading-tight font-extrabold text-cream">{p.name}</span>
@@ -741,6 +759,15 @@ export function ParivarHome({ id }: { id: string }) {
                 </p>
               </div>
             </section>
+
+            <ul className="mx-4 mt-4 grid grid-cols-4 gap-2" aria-label="Parivar numbers">
+              {([["Members", `${n(p.memberCount)}`], ["Level", `${p.level}`], ["Week rank", p.weekRank ? `#${p.weekRank}` : "–"], ["Total rank", p.totalRank ? `#${p.totalRank}` : "–"]] as const).map(([k, v]) => (
+                <li key={k} className="pn-card rounded-2xl py-2.5 text-center">
+                  <span className="block font-display text-[17px] font-black text-cream">{v}</span>
+                  <span className="text-[10.5px] font-bold text-cream/55">{k}</span>
+                </li>
+              ))}
+            </ul>
 
             <section className="mt-5 px-4">
               <div className="flex items-center justify-between">
