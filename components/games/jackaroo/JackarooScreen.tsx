@@ -317,6 +317,7 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
                   <button type="button" disabled={busy || (game.players.length !== 2 && game.players.length !== 4)} onClick={() => act(() => jackarooApi.start(game.id))} className="h-11 rounded-full bg-gold text-[14px] font-extrabold text-ink disabled:opacity-50">
                     Start
                   </button>
+
                 </div>
               ) : (
                 <p className="mt-2 text-[12px] text-cream/60">Waiting for the host to start…</p>

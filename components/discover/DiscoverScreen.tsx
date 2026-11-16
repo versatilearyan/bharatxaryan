@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CalendarDays, Coffee, Film, Flame, Gamepad2, Laugh, Music2, BookOpen, Feather, Trophy, Sparkles, SearchX, type LucideIcon } from "lucide-react";
 import { GameArt } from "@/components/art/GameArt";
@@ -8,7 +8,8 @@ import { SunsetScene } from "@/components/art/SunsetScene";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { SearchField, SectionTitle, formatCount } from "@/components/ui/kit";
 import { RoomCard, RoomRow } from "@/components/rooms/RoomCards";
-import { CATEGORIES, EVENTS, GAMES, PEOPLE } from "@/lib/app/data";
+import { CATEGORIES, PLAYABLE, PEOPLE } from "@/lib/app/data";
+import { fetchEvents, type SpecialEvent } from "@/lib/api/events";
 import { useApp } from "@/lib/app/store";
 import { useParivar } from "@/lib/app/parivar-store";
 import { PARIVAR_ENABLED } from "@/lib/app/parivar";
@@ -38,6 +39,14 @@ export function DiscoverScreen() {
   const [q, setQ] = useState("");
   const [cat, setCat] = useState<string | null>(null);
   const [reminders, setReminders] = useState<string[]>([]);
+  const [events, setEvents] = useState<SpecialEvent[]>([]);
+  useEffect(() => {
+    let off = false;
+    fetchEvents().then((e) => !off && setEvents(e)).catch(() => undefined);
+    return () => {
+      off = true;
+    };
+  }, []);
 
   const needle = q.trim().toLowerCase();
   const filtering = Boolean(needle || cat);
@@ -59,7 +68,7 @@ export function DiscoverScreen() {
   const hosts = [...PEOPLE].sort((a, b) => b.followers - a.followers).slice(0, 6);
 
   return (
-    <div className="app-scroll h-full pb-[calc(84px+var(--mini,0px)+var(--sb))]">
+    <div className="app-scroll aurora h-full pb-[calc(100px+var(--mini,0px)+var(--sb))]">
       <header className="pt-safe sticky top-0 z-20 bg-ink/90 backdrop-blur-xl">
         <div className="flex h-14 items-center px-4">
           <h1 className="font-display text-[24px] font-extrabold text-cream">Discover</h1>
@@ -128,13 +137,13 @@ export function DiscoverScreen() {
           <SarpanchAnnouncement />
           <DiscoverMoments />
 
-          {/* Special events */}
-          <section className="mt-6" aria-labelledby="events-h">
+          {/* Special events (from the admin panel) */}
+          {events.length ? <section className="mt-6" aria-labelledby="events-h">
             <SectionTitle>
               <span id="events-h">Special events</span>
             </SectionTitle>
             <div className="no-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto px-4">
-              {EVENTS.map((e) => {
+              {events.map((e) => {
                 const on = reminders.includes(e.id);
                 return (
                   <div key={e.id} className="relative w-[86%] shrink-0 snap-center overflow-hidden rounded-3xl ring-1 ring-line">
@@ -162,7 +171,7 @@ export function DiscoverScreen() {
                 );
               })}
             </div>
-          </section>
+          </section> : null}
 
           {/* Trending rooms */}
           <section className="mt-8" aria-labelledby="trend-h">
@@ -205,7 +214,7 @@ export function DiscoverScreen() {
               <span id="fgames-h">Featured games</span>
             </SectionTitle>
             <div className="grid grid-cols-2 gap-3 px-4">
-              {GAMES.slice(0, 4).map((g) => (
+              {PLAYABLE.slice(0, 4).map((g) => (
                 <motion.button
                   key={g.id}
                   type="button"

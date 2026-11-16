@@ -193,7 +193,7 @@ export function ClosedRoomCard({ s }: { s: RoomSession }) {
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       role="status"
-      className="relative z-10 mx-4 rounded-[26px] bg-black/55 px-4 pb-5 pt-6 text-center ring-1 ring-cream/10 backdrop-blur-md"
+      className="glass3d relative z-10 mx-4 rounded-[26px] px-4 pb-5 pt-6 text-center backdrop-blur-md"
     >
       <span className="mx-auto mb-3 grid h-11 w-11 place-items-center rounded-full bg-gold/15 text-gold ring-1 ring-gold/30">
         <Lock className="h-5 w-5" aria-hidden />
@@ -363,7 +363,7 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
           type="button"
           whileTap={{ scale: 0.9 }}
           onClick={onEmpty}
-          className={`grid place-items-center rounded-full ${closed ? "border-cream/10 bg-black/40 text-cream/30" : gold ? "border-gold/60 bg-[#241018] text-gold/70" : "border-[#7d6a4f] bg-[#232329] text-[#a6a3ad]"} hover:text-cream`}
+          className={`grid place-items-center rounded-full ${closed ? "border-cream/10 bg-black/40 text-cream/30" : gold ? "border-gold/60 bg-[#241018] text-gold/70" : "border-dashed border-[#b9a3ff]/60 bg-white/[0.07] text-[#d8cfff] shadow-[0_8px_18px_-8px_rgba(124,77,255,0.7),inset_0_2px_0_rgba(255,255,255,0.18)] backdrop-blur-sm"} hover:text-cream`}
           style={{ width: size, height: size, borderWidth: Math.max(1.5, size / 42) }}
           aria-label={closed ? `Seat ${index + 1}, closed` : isOwnerSeat ? "Owner's seat" : `Empty seat ${index + 1}${s.canModerate ? ", seat options" : ". Take this seat"}`}
         >
@@ -1131,6 +1131,26 @@ function RoomMenuSheetImpl({ open, onClose, s, extra, onInvite }: { open: boolea
               onClick={() => {
                 onClose();
                 push({ kind: "ludo", roomId: s.room.server!.id });
+              }}
+            />
+          ) : null}
+          {s.room.server ? (
+            <Item
+              icon={<span className="text-[19px] leading-none">🛖</span>}
+              label="Gaddaar"
+              onClick={() => {
+                onClose();
+                push({ kind: "gaddar", roomId: s.room.server!.id });
+              }}
+            />
+          ) : null}
+          {s.room.server ? (
+            <Item
+              icon={<span className="text-[19px] leading-none">👑</span>}
+              label="Raja Mantri"
+              onClick={() => {
+                onClose();
+                push({ kind: "rmcs", roomId: s.room.server!.id });
               }}
             />
           ) : null}

@@ -96,6 +96,7 @@ export function useOpenAction() {
     else if (path.startsWith("/refer")) push({ kind: "refer" });
     else if (path.startsWith("/guard")) push({ kind: "guard", personId: "me" });
     else if (path.startsWith("/welcome-gift")) window.dispatchEvent(new Event("panchayat:welcome-gift"));
+    else if (path.startsWith("/daily-gift")) window.dispatchEvent(new Event("panchayat:daily-gift"));
   };
 }
 

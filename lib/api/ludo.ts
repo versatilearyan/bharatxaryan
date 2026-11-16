@@ -97,6 +97,7 @@ export const ludoApi = {
   leave: (id: string) => post(`/api/v1/ludo/${encodeURIComponent(id)}/leave`),
   start: (id: string) => post(`/api/v1/ludo/${encodeURIComponent(id)}/start`),
   cancel: (id: string) => post(`/api/v1/ludo/${encodeURIComponent(id)}/cancel`),
+  bots: (id: string) => post(`/api/v1/ludo/${encodeURIComponent(id)}/bots`),
   roll: (id: string) => post(`/api/v1/ludo/${encodeURIComponent(id)}/roll`),
   move: (id: string, token: number) => post(`/api/v1/ludo/${encodeURIComponent(id)}/move`, { token }),
   chat: (id: string, text?: string, emote?: string) => api<unknown>(`/api/v1/ludo/${encodeURIComponent(id)}/chat`, { ...opts, method: "POST", body: { text, emote } }),

@@ -1,5 +1,7 @@
 import { useId } from "react";
 import type { GameId } from "@/lib/app/types";
+import { GaddarTileArt } from "./GaddarHero";
+import { ChessTileArt, JackarooTileArt, LudoTileArt, RmcsTileArt } from "./GameCovers";
 
 /** Original illustrations for each game card. Square, full-bleed SVG. */
 export function GameArt({ id, className = "" }: { id: GameId; className?: string }) {
@@ -17,97 +19,9 @@ export function GameArt({ id, className = "" }: { id: GameId; className?: string
 function renderArt(id: GameId, g: (n: string) => string, u: (n: string) => string) {
   switch (id) {
     case "chess":
-      return (
-        <>
-          <defs>
-            <radialGradient id={g("bg")} cx="0.7" cy="0.25" r="0.9">
-              <stop offset="0" stopColor="#f2a65a" />
-              <stop offset="0.35" stopColor="#7a3a22" />
-              <stop offset="1" stopColor="#140c0a" />
-            </radialGradient>
-            <linearGradient id={g("pc")} x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="#fff6e2" />
-              <stop offset="0.6" stopColor="#e9cfa2" />
-              <stop offset="1" stopColor="#9c7a52" />
-            </linearGradient>
-          </defs>
-          <rect width="120" height="120" fill={u("bg")} />
-          {/* Arches */}
-          <g fill="#140c0a" opacity="0.55">
-            <path d="M0 0 H22 V60 Q11 40 0 60 Z" />
-            <path d="M98 0 H120 V60 Q109 40 98 60 Z" />
-          </g>
-          {/* Perspective board */}
-          <path d="M-10 120 L30 78 H90 L130 120 Z" fill="#2a1a12" />
-          {Array.from({ length: 4 }).map((_, row) =>
-            Array.from({ length: 6 }).map((__, col) => {
-              if ((row + col) % 2) return null;
-              const y0 = 78 + row * 10.5;
-              const y1 = y0 + 10.5;
-              const w0 = 60 + row * 35;
-              const w1 = w0 + 35;
-              const x0 = 60 - w0 / 2 + (col * w0) / 6;
-              const x1 = 60 - w1 / 2 + (col * w1) / 6;
-              return <path key={`${row}${col}`} d={`M${x0} ${y0} H${x0 + w0 / 6} L${x1 + w1 / 6} ${y1} H${x1} Z`} fill="#e9cfa2" opacity="0.85" />;
-            }),
-          )}
-          {/* King */}
-          <g>
-            <ellipse cx="66" cy="98" rx="17" ry="4" fill="#000" opacity="0.4" />
-            <path d="M52 97 Q52 90 56 88 L60 62 Q54 60 56 54 H76 Q78 60 72 62 L76 88 Q80 90 80 97 Z" fill={u("pc")} />
-            <rect x="55" y="48" width="22" height="6" rx="2" fill={u("pc")} />
-            <path d="M58 48 Q66 34 74 48 Z" fill={u("pc")} />
-            <path d="M64.5 26 h3 v5 h5 v3 h-5 v6 h-3 v-6 h-5 v-3 h5 Z" fill={u("pc")} />
-          </g>
-          {/* Pawn */}
-          <g>
-            <ellipse cx="36" cy="102" rx="10" ry="2.6" fill="#000" opacity="0.4" />
-            <path d="M28 102 Q28 96 32 95 L34 84 Q30 82 32 79 H40 Q42 82 38 84 L40 95 Q44 96 44 102 Z" fill="#2a1d18" stroke="#e9cfa2" strokeOpacity="0.25" />
-            <circle cx="36" cy="75" r="6" fill="#2a1d18" stroke="#e9cfa2" strokeOpacity="0.25" />
-          </g>
-        </>
-      );
+      return <ChessTileArt />;
     case "ludo":
-      return (
-        <>
-          <defs>
-            <radialGradient id={g("bg")} cx="0.5" cy="0.4" r="0.8">
-              <stop offset="0" stopColor="#3b2350" />
-              <stop offset="1" stopColor="#140f1e" />
-            </radialGradient>
-          </defs>
-          <rect width="120" height="120" fill={u("bg")} />
-          <g transform="rotate(-10 60 56)">
-            <rect x="22" y="18" width="76" height="76" rx="8" fill="#fff1d5" />
-            <rect x="26" y="22" width="30" height="30" rx="5" fill="#f4515b" />
-            <rect x="64" y="22" width="30" height="30" rx="5" fill="#6fe0a6" />
-            <rect x="26" y="60" width="30" height="30" rx="5" fill="#8fa8ff" />
-            <rect x="64" y="60" width="30" height="30" rx="5" fill="#e7bc72" />
-            {[[41, 37], [79, 37], [41, 75], [79, 75]].map(([x, y]) => (
-              <circle key={`${x}${y}`} cx={x} cy={y} r="8" fill="#fff1d5" opacity="0.9" />
-            ))}
-            <path d="M56 52 L60 56 L64 52 Z" fill="#f4515b" />
-            <path d="M64 52 L60 56 L64 60 Z" fill="#6fe0a6" />
-            <path d="M56 60 L60 56 L64 60 Z" fill="#e7bc72" />
-            <path d="M56 52 L60 56 L56 60 Z" fill="#8fa8ff" />
-          </g>
-          {/* Dice */}
-          <g transform="rotate(14 88 92)">
-            <rect x="74" y="78" width="28" height="28" rx="7" fill="#fff" />
-            <rect x="74" y="78" width="28" height="28" rx="7" fill="none" stroke="#000" strokeOpacity="0.12" />
-            {[[81, 85], [95, 85], [88, 92], [81, 99], [95, 99]].map(([x, y]) => (
-              <circle key={`${x}${y}`} cx={x} cy={y} r="2.6" fill="#1c1b22" />
-            ))}
-          </g>
-          {/* Token */}
-          <g>
-            <ellipse cx="32" cy="104" rx="9" ry="2.6" fill="#000" opacity="0.35" />
-            <path d="M24 103 Q24 92 32 88 Q40 92 40 103 Z" fill="#f4515b" />
-            <circle cx="32" cy="84" r="6" fill="#f4515b" />
-            <circle cx="30" cy="82" r="2" fill="#fff" opacity="0.6" />
-          </g>
-        </>
-      );
+      return <LudoTileArt />;
     case "micgrab":
       return (
         <>
@@ -270,35 +184,12 @@ function renderArt(id: GameId, g: (n: string) => string, u: (n: string) => strin
           <text x="14" y="36" fontFamily="serif" fontWeight="700" fontSize="18" fill="#e7bc72">अ</text>
         </>
       );
+    case "gaddar":
+      return <GaddarTileArt />;
+    case "rmcs":
+      return <RmcsTileArt />;
     case "jackaroo":
-      return (
-        <>
-          <defs>
-            <radialGradient id={g("jk")} cx="50%" cy="40%" r="70%">
-              <stop offset="0" stopColor="#4a2a7a" />
-              <stop offset="1" stopColor="#1a1030" />
-            </radialGradient>
-          </defs>
-          <rect width="120" height="120" fill={u("jk")} />
-          <circle cx="60" cy="62" r="44" fill="none" stroke="#e7bc72" strokeOpacity=".5" strokeWidth="2" strokeDasharray="3 5" />
-          {[
-            [60, 18, "#ff4d6d"],
-            [104, 62, "#2ee59d"],
-            [60, 106, "#ffd23f"],
-            [16, 62, "#4cc9f0"],
-          ].map(([x, y, c]) => (
-            <circle key={String(c)} cx={Number(x)} cy={Number(y)} r="7" fill={String(c)} stroke="#fff" strokeWidth="1.5" />
-          ))}
-          {[-14, 0, 14].map((r, i) => (
-            <g key={r} transform={`rotate(${r} 60 88)`}>
-              <rect x="46" y="38" width="28" height="40" rx="4" fill="#fff6e6" stroke="#e7bc72" strokeWidth="1" />
-              <text x="50" y="50" fontFamily="sans-serif" fontWeight="800" fontSize="9" fill={i === 1 ? "#1c1b22" : "#d8283a"}>
-                {["J", "A", "K"][i]}
-              </text>
-            </g>
-          ))}
-        </>
-      );
+      return <JackarooTileArt />;
     case "cards":
       return (
         <>

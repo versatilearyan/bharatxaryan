@@ -3,7 +3,7 @@
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Bell, ChevronDown, Crown, Flame, MonitorPlay, Plus, Radio, UsersRound } from "lucide-react";
+import { Bell, ChevronRight, Crown, Flame, MonitorPlay, Play, Plus, Radio, UsersRound } from "lucide-react";
 import { activeRooms } from "@/lib/app/active-rooms";
 import { useLiveCounts } from "@/lib/app/live-counts";
 import { NewbieRooms } from "@/components/newbie/NewbieUi";
@@ -14,7 +14,8 @@ import { GameArt } from "@/components/art/GameArt";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, Pill, SectionTitle, formatCoins, formatCount } from "@/components/ui/kit";
 import { RoomCard, RoomRow } from "@/components/rooms/RoomCards";
-import { GAMES, PEOPLE } from "@/lib/app/data";
+import { GaddarHeroArt } from "@/components/art/GaddarHero";
+import { PLAYABLE, PEOPLE } from "@/lib/app/data";
 import { AppDownloadBanner } from "@/components/system/AppDownloadBanner";
 import { usePeople } from "@/lib/app/people";
 import { useApp } from "@/lib/app/store";
@@ -22,8 +23,9 @@ import { nameFace } from "@/lib/app/fonts";
 
 export function HomeScreen() {
   return (
-    <div className="app-scroll h-full pb-[calc(84px+var(--mini,0px)+var(--sb))]">
+    <div className="app-scroll aurora h-full pb-[calc(100px+var(--mini,0px)+var(--sb))]">
       <TopBar />
+      <Greeting />
       <HomeFestival />
       <NewbieRooms />
       <Shortcuts />
@@ -33,10 +35,43 @@ export function HomeScreen() {
       <WatchTogether />
       <Trending />
       <RecommendedFriends />
-      <p className="px-6 pt-8 text-center text-[11px] leading-relaxed text-muted/70">
-        Panchayat web preview. Rooms, coins, gifts and chats are demo data that stay on this device.
-      </p>
     </div>
+  );
+}
+
+/** A warm hello and the two things most people come for. */
+function Greeting() {
+  const { profile, push, setTab } = useApp();
+  const first = (profile.name || "").trim().split(/\s+/)[0] || "dost";
+  const hour = new Date().getHours();
+  const when = hour < 12 ? "Suprabhat" : hour < 17 ? "Namaste" : hour < 21 ? "Shubh sandhya" : "Shubh ratri";
+  return (
+    <section className="px-4 pt-1" aria-label="Welcome">
+      <h1 className="font-display text-[24px] font-extrabold leading-tight text-cream">
+        {when}, <span className="bg-gradient-to-r from-[#ffd86b] via-[#ff9ad5] to-[#b9a3ff] bg-clip-text text-transparent">{first}</span> 🙏
+      </h1>
+      <p className="mt-0.5 text-[13px] text-cream/65">Aaj kya karein? Gaddaar pakdo ya kisi room me baat karo.</p>
+      <div className="mt-3 grid grid-cols-2 gap-2.5">
+        <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={() => push({ kind: "gaddar" })} className="flex items-center gap-2.5 rounded-2xl bg-gradient-to-br from-[#7c4dff] to-[#ff3d8b] p-3 text-left shadow-[0_10px_24px_-10px_rgba(255,61,139,0.7)] ring-1 ring-white/25">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/20 text-[22px]" aria-hidden>
+            🛖
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[13.5px] font-extrabold text-white">Gaddaar khelo</span>
+            <span className="block text-[11px] text-white/80">Bina room, seedha game</span>
+          </span>
+        </motion.button>
+        <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={() => setTab("rooms")} className="flex items-center gap-2.5 rounded-2xl bg-gradient-to-br from-[#14b8a6] to-[#2563eb] p-3 text-left shadow-[0_10px_24px_-10px_rgba(20,184,166,0.7)] ring-1 ring-white/25">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/20 text-[22px]" aria-hidden>
+            🎙️
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[13.5px] font-extrabold text-white">Rooms me jao</span>
+            <span className="block text-[11px] text-white/80">Live baat-cheet</span>
+          </span>
+        </motion.button>
+      </div>
+    </section>
   );
 }
 
@@ -124,7 +159,7 @@ function Shortcuts() {
   return (
     <div className="mt-3 grid grid-cols-3 gap-2.5 px-4">
       {items.map((it, i) => (
-        <motion.button key={it.label} type="button" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i, type: "spring", stiffness: 260, damping: 24 }} whileTap={{ scale: 0.95 }} onClick={it.onClick} className="relative flex flex-col items-center gap-1.5 overflow-hidden rounded-[22px] bg-gradient-to-b from-white/[0.07] to-white/[0.02] py-3 ring-1 ring-white/10 backdrop-blur-sm">
+        <motion.button key={it.label} type="button" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i, type: "spring", stiffness: 260, damping: 24 }} whileTap={{ scale: 0.95 }} onClick={it.onClick} className="relative flex flex-col items-center gap-1.5 overflow-hidden rounded-[22px] bg-gradient-to-b glass3d lift py-3">
           <span aria-hidden className="pointer-events-none absolute -top-8 left-1/2 h-16 w-16 -translate-x-1/2 rounded-full bg-gold/15 blur-2xl" />
           <span className="relative h-[54px] w-[54px]">
             <span className="block origin-top-left scale-[0.82]">{it.art}</span>
@@ -138,48 +173,60 @@ function Shortcuts() {
 }
 
 function GameModes() {
-  const { setSheet } = useApp();
-  const [all, setAll] = useState(false);
-  const games = all ? GAMES : GAMES.slice(0, 6);
+  const { setSheet, push } = useApp();
+  const others = PLAYABLE.filter((g) => g.id !== "gaddar");
   return (
-    <section className="mt-8" aria-labelledby="games-h">
+    <section className="mt-7" aria-labelledby="games-h">
       <div className="mb-3 flex items-center gap-1.5 px-4">
-        <h2 id="games-h" className="font-display text-[19px] font-bold text-cream">
+        <h2 id="games-h" className="flex items-center gap-2 font-display text-[19px] font-bold text-cream">
+          <span aria-hidden className="h-5 w-1.5 rounded-full bg-gradient-to-b from-[#ff7ab8] to-[#ffb347]" />
           Game Modes
         </h2>
         <Flame className="h-4.5 w-4.5 text-gold" aria-hidden />
       </div>
-      <motion.ul className="grid grid-cols-3 gap-2.5 px-4">
-        {games.map((g) => (
+
+      <motion.button
+        type="button"
+        whileTap={{ scale: 0.98 }}
+        onClick={() => setSheet({ kind: "game", gameId: "gaddar" })}
+        className="relative mx-4 block w-[calc(100%-2rem)] overflow-hidden rounded-3xl text-left ring-1 ring-white/20"
+        aria-label="Gaddaar, 4 to 10 players"
+      >
+        <span className="relative block aspect-[16/8.2]">
+          <GaddarHeroArt />
+          <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+          <span className="absolute bottom-3 left-4 right-3 flex items-end gap-3">
+            <span className="min-w-0 flex-1">
+              <span className="inline-block rounded-full bg-[#fff35c] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-[#1a0b2e]">New</span>
+              <span className="mt-1 block font-display text-[22px] font-extrabold leading-tight text-white drop-shadow">Gaon ka Gaddaar</span>
+              <span className="block text-[12px] text-white/85">Gaddaar ko pehchano · 4 se 10</span>
+            </span>
+            <span className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-white px-5 font-display text-[15px] font-extrabold text-ink shadow-lg">
+              <Play className="h-4 w-4 fill-current" aria-hidden /> Play
+            </span>
+          </span>
+        </span>
+      </motion.button>
+
+      <motion.ul className="mt-3 grid grid-cols-2 gap-3 px-4">
+        {others.map((g) => (
           <motion.li key={g.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
-            <motion.button
-              type="button"
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setSheet({ kind: "game", gameId: g.id })}
-              className="relative block aspect-square w-full overflow-hidden rounded-2xl text-left ring-1 ring-line"
-              aria-label={`${g.name}, ${g.players}`}
-            >
-              <span className={g.soon ? "block h-full w-full opacity-60 grayscale-[60%]" : "block h-full w-full"}>
+            <motion.button type="button" whileTap={{ scale: 0.95 }} onClick={() => setSheet({ kind: "game", gameId: g.id })} className="relative block aspect-[1.2] w-full overflow-hidden rounded-3xl text-left ring-1 ring-white/10" aria-label={`${g.name}, ${g.players}`}>
+              <span className="block h-full w-full">
                 <GameArt id={g.id} />
               </span>
               <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent" />
-              {g.soon ? (
-                <span className="absolute right-2 top-2 rounded-full bg-black/60 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-gold ring-1 ring-gold/40">Soon</span>
+              {g.tag ? (
+                <span className="absolute left-2 top-2 flex gap-1">
+                  {g.tag === "NEW" ? <Pill tone="new" className="!text-[9px]">NEW</Pill> : null}
+                  <Pill tone="live" className="!text-[9px]">🔥 HOT</Pill>
+                </span>
               ) : null}
-              {g.tag && !g.soon ? (
-                <Pill tone={g.tag === "NEW" ? "new" : "live"} className="absolute left-2 top-2 !text-[9px]">
-                  {g.tag}
-                </Pill>
-              ) : null}
-              <span className={`absolute bottom-2 left-2.5 right-1 font-display font-extrabold uppercase leading-tight tracking-wide text-white drop-shadow ${g.name.length > 8 ? "text-[11px]" : "text-[13px]"}`}>{g.name}</span>
+              <span className={`absolute bottom-2 left-2.5 right-1 font-display font-extrabold uppercase leading-tight tracking-wide text-white drop-shadow ${g.name.length > 8 ? "text-[13px]" : "text-[15px]"}`}>{g.name}</span>
             </motion.button>
           </motion.li>
         ))}
       </motion.ul>
-      <button type="button" onClick={() => setAll((v) => !v)} className="mx-auto mt-3 flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold text-muted hover:text-cream">
-        {all ? "Show fewer games" : `All ${GAMES.length} games`}
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${all ? "rotate-180" : ""}`} aria-hidden />
-      </button>
     </section>
   );
 }
@@ -314,6 +361,7 @@ function Trending() {
 function RecommendedFriends() {
   const { profile, toggleFollow, setSheet } = useApp();
   const people = PEOPLE.slice(2, 10);
+  if (!people.length) return null;
   return (
     <section className="mt-8" aria-labelledby="friends-h">
       <SectionTitle>

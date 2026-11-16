@@ -308,6 +308,7 @@ function LudoTable({ roomId }: { roomId: string }) {
               <p className="text-[13px] font-semibold text-cream">
                 {g.players.length}/4 at the table{g.stake > 0 ? ` · stake ${g.stake.toLocaleString("en-IN")} coins each` : " · free game"}
               </p>
+              {g.stake === 0 && g.players.length === 1 ? <p className="mt-1 text-[11.5px] font-bold text-cream/60">Players dhoondh rahe hain…</p> : null}
               <div className="mt-2 flex gap-2">
                 {!me ? (
                   <button type="button" disabled={busy || g.players.length >= 4} onClick={() => void act(() => ludoApi.sit(g.id))} className="h-11 flex-1 rounded-xl bg-gradient-to-r from-coral to-gold text-[14px] font-extrabold text-white disabled:opacity-50">
@@ -317,9 +318,8 @@ function LudoTable({ roomId }: { roomId: string }) {
                   <button type="button" disabled={busy || g.players.length < 2} onClick={() => void act(() => ludoApi.start(g.id))} className="h-11 flex-1 rounded-xl bg-gradient-to-r from-coral to-gold text-[14px] font-extrabold text-white disabled:opacity-50">
                     {g.players.length < 2 ? "Waiting for players…" : "Start game"}
                   </button>
-                ) : (
-                  <p className="flex-1 py-2.5 text-[12.5px] text-cream/70">Waiting for the host to start…</p>
-                )}
+                ) : null}
+                {me && !opener ? <p className="flex-1 py-2.5 text-[12.5px] text-cream/70">Waiting for the host to start…</p> : null}
                 <button type="button" onClick={() => setInviting(true)} className="flex h-11 items-center gap-1 rounded-xl bg-white/10 px-3 text-[13px] font-bold text-cream">
                   <Users className="h-4 w-4" /> Invite
                 </button>

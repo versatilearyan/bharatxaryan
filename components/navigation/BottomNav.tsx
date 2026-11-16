@@ -24,8 +24,8 @@ export function BottomNav() {
   const { newVisitors } = useMarket();
 
   return (
-    <nav aria-label="Main" className="pb-safe absolute inset-x-0 bottom-0 z-30 border-t border-line bg-ink/90 backdrop-blur-xl">
-      <ul className="grid h-16 grid-cols-5">
+    <nav aria-label="Main" className="pb-safe pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pb-2">
+      <ul className="pointer-events-auto grid h-[66px] grid-cols-5 rounded-[26px] bg-[#1a1030]/90 px-1 ring-1 ring-white/15 backdrop-blur-xl shadow-[0_18px_40px_-10px_rgba(124,77,255,0.6)]">
         {TABS.map(({ id, label, icon: Icon }) => {
           const active = tab === id;
           return (
@@ -36,16 +36,16 @@ export function BottomNav() {
                 aria-current={active ? "page" : undefined}
                 className="relative flex h-full w-full flex-col items-center justify-center gap-1"
               >
-                <span className="relative grid h-8 w-12 place-items-center">
+                <span className="relative grid h-9 w-12 place-items-center">
                   {active ? (
                     <motion.span
                       layoutId="nav-pill"
-                      className="absolute inset-0 rounded-full bg-coral/15 ring-1 ring-coral/30"
+                      className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#7c4dff] to-[#ff3d8b] shadow-[0_5px_0_#4a1f9e,0_12px_20px_-6px_rgba(255,61,139,0.7)]"
                       transition={{ type: "spring", stiffness: 500, damping: 36 }}
                     />
                   ) : null}
                   <motion.span animate={{ scale: active ? 1.08 : 1 }} className="relative">
-                    <Icon className={`h-[22px] w-[22px] ${active ? "text-coral" : "text-muted"}`} strokeWidth={active ? 2.3 : 1.9} aria-hidden />
+                    <Icon className={`h-[22px] w-[22px] ${active ? "text-white" : "text-white/55"}`} strokeWidth={active ? 2.6 : 2} aria-hidden />
                   </motion.span>
                   {id === "profile" && newVisitors > 0 ? <span className="absolute right-2.5 top-0.5 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-ink" aria-label={`${newVisitors} new visitors`} /> : null}
                   {id === "chat" && unread > 0 ? (
@@ -54,7 +54,7 @@ export function BottomNav() {
                     </span>
                   ) : null}
                 </span>
-                <span className={`text-[10.5px] font-semibold ${active ? "text-cream" : "text-muted"}`}>{label}</span>
+                <span className={`text-[10.5px] font-extrabold ${active ? "text-white" : "text-white/55"}`}>{label}</span>
               </button>
             </li>
           );

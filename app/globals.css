@@ -233,3 +233,74 @@ html[data-native] #main {
 @media (prefers-reduced-motion: reduce) { .apk-marquee { animation: none; } }
 @keyframes festival-twinkle { 0%, 100% { opacity: 0.45; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1.1); } }
 @keyframes festival-flame { 0%, 100% { transform: scaleY(1) scaleX(1); opacity: 0.95; } 50% { transform: scaleY(1.2) scaleX(0.85); opacity: 0.75; } }
+
+/* ------------------------------------------------------------------
+   Gen-Z look: aurora backgrounds, glassy 3D cards, chunky buttons
+   ------------------------------------------------------------------ */
+@layer components {
+  .aurora {
+    background:
+      radial-gradient(85% 34% at 8% 0%, rgba(124, 77, 255, 0.34), transparent 62%),
+      radial-gradient(80% 32% at 100% 6%, rgba(255, 61, 139, 0.26), transparent 62%),
+      radial-gradient(90% 30% at 50% 100%, rgba(20, 184, 166, 0.16), transparent 70%),
+      linear-gradient(180deg, #120b22 0%, #0b0814 55%, #07050d 100%);
+  }
+  .glass3d {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035));
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 14px 30px -14px rgba(0, 0, 0, 0.85), 0 2px 0 rgba(255, 255, 255, 0.05) inset, 0 -3px 0 rgba(0, 0, 0, 0.25) inset;
+  }
+  .lift {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .lift:active {
+    transform: translateY(2px) scale(0.985);
+  }
+  .neon-text {
+    background: linear-gradient(90deg, #ffd86b, #ff7ab8 50%, #b9a3ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .chunky-pink {
+    background: linear-gradient(135deg, #ff3d8b, #ff9a3d);
+    box-shadow: 0 5px 0 #a3204f, 0 14px 24px -10px rgba(255, 61, 139, 0.7);
+  }
+  .chunky-pink:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 #a3204f;
+  }
+  @keyframes bob3d {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  .bob3d {
+    animation: bob3d 3.4s ease-in-out infinite;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bob3d { animation: none; }
+}
+
+/* The moving Panchayat backdrop (components/layout/TabBackdrop.tsx): flat 2D, a village at dusk with kites, diyas, petals and stars */
+.tb-star { position: absolute; width: 3px; height: 3px; border-radius: 9999px; background: #fff3d0; animation: tb-twinkle 3.4s ease-in-out infinite; }
+@keyframes tb-twinkle { 0%, 100% { opacity: 0.15; transform: scale(0.7); } 50% { opacity: 0.95; transform: scale(1.5); } }
+.tb-kite { position: absolute; left: -60px; will-change: transform; }
+@keyframes tb-fly { 0% { transform: translate3d(-80px, 0, 0) rotate(-8deg); } 25% { transform: translate3d(120px, -26px, 0) rotate(6deg); } 50% { transform: translate3d(260px, 10px, 0) rotate(-6deg); } 75% { transform: translate3d(400px, -20px, 0) rotate(7deg); } 100% { transform: translate3d(560px, 0, 0) rotate(-8deg); } }
+.tb-diya { position: absolute; bottom: -30px; will-change: transform, opacity; animation: tb-rise 16s linear infinite; }
+@keyframes tb-rise { 0% { transform: translate3d(0, 0, 0); opacity: 0; } 10% { opacity: 0.95; } 50% { transform: translate3d(14px, -45vh, 0); } 90% { opacity: 0.8; } 100% { transform: translate3d(-10px, -95vh, 0); opacity: 0; } }
+.tb-petal { position: absolute; top: -20px; width: 9px; height: 13px; border-radius: 80% 0 80% 0; will-change: transform; animation: tb-fall 14s linear infinite; }
+@keyframes tb-fall { 0% { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; } 8% { opacity: 0.9; } 100% { transform: translate3d(40px, 105vh, 0) rotate(420deg); opacity: 0.8; } }
+.tb-flame { animation: tb-flick 1.1s ease-in-out infinite alternate; transform-origin: 50% 100%; }
+@keyframes tb-flick { from { transform: scale(1, 0.9); } to { transform: scale(0.9, 1.15); } }
+.tb-cloud { position: absolute; will-change: transform; animation: tb-drift 60s linear infinite; }
+@keyframes tb-drift { from { transform: translate3d(-140px, 0, 0); } to { transform: translate3d(520px, 0, 0); } }
+@media (prefers-reduced-motion: reduce) {
+  .tb-star, .tb-kite, .tb-diya, .tb-petal, .tb-flame, .tb-cloud { animation: none !important; }
+}
+html[data-lite] .tb-star, html[data-lite] .tb-kite, html[data-lite] .tb-diya, html[data-lite] .tb-petal, html[data-lite] .tb-flame, html[data-lite] .tb-cloud { animation: none !important; }
+
+/* screens that sit on the backdrop let it show through */
+.aurora {
+  background: transparent !important;
+}

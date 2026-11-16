@@ -100,6 +100,7 @@ export const jackarooApi = {
   leave: (id: string) => g(id, "leave"),
   start: (id: string) => g(id, "start"),
   cancel: (id: string) => g(id, "cancel"),
+  bots: (id: string) => g(id, "bots"),
   play: (id: string, move: number) => g(id, "play", { move }),
   burn: (id: string, card: number) => g(id, "burn", { card }),
 };

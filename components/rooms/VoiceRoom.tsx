@@ -44,6 +44,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         <div className="absolute inset-0" style={{ background: BACKGROUNDS.find((b) => b.id === s.settings.background)?.css }} aria-hidden />
       )}
       {vip ? <VipDecor /> : null}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_28%_at_12%_0%,rgba(124,77,255,0.30),transparent),radial-gradient(60%_26%_at_100%_8%,rgba(255,61,139,0.24),transparent),radial-gradient(80%_24%_at_50%_100%,rgba(20,184,166,0.14),transparent)]" aria-hidden />
 
       <RoomTopBar s={s} onMenu={() => s.setPanel("online")} />
 

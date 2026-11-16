@@ -74,7 +74,7 @@ export function RoomRow({ room }: { room: Room }) {
       type="button"
       whileTap={{ scale: 0.98 }}
       onClick={() => openRoom(room.id)}
-      className="cv-auto mx-4 my-1.5 flex w-[calc(100%-2rem)] items-center gap-3 rounded-[22px] bg-gradient-to-b from-white/[0.06] to-white/[0.02] p-2.5 pr-3.5 text-left ring-1 ring-white/10 backdrop-blur-sm transition-colors hover:bg-white/[0.05]"
+      className="glass3d lift cv-auto mx-4 my-2 flex w-[calc(100%-2rem)] items-center gap-3 rounded-[24px] p-3 pr-3.5 text-left"
     >
       <span className="relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-2xl ring-1 ring-white/15 shadow-[0_8px_20px_-8px_rgba(0,0,0,0.8)]">
         <RoomCover room={room} />
@@ -89,7 +89,7 @@ export function RoomRow({ room }: { room: Room }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className={`truncate font-display text-[16px] font-bold ${room.vip ? "gold-shine pr-1" : "text-cream"}`} style={nameFace(room.settings?.nameFont)}>{room.name}</span>
+          <span className={`truncate font-display text-[17px] font-black ${room.vip ? "gold-shine pr-1" : "text-cream"}`} style={nameFace(room.settings?.nameFont)}>{room.name}</span>
           {room.official ? <OfficialBadge /> : null}
           {room.isPrivate || room.password ? <Lock className="h-3.5 w-3.5 shrink-0 text-muted" aria-label={room.password ? "Password" : "Private"} /> : null}
         </span>

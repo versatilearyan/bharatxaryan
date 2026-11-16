@@ -10,7 +10,8 @@ import { api } from "./client";
 export const INVITE_MARK = "::invite::";
 
 export type ChatInvite = {
-  kind: "ROOM" | "GAME";
+  /** TABLE: a game with no voice room (Gaon ka Gaddaar, Raja Mantri Chor Sipahi), joined by its code. */
+  kind: "ROOM" | "GAME" | "TABLE";
   roomId: string;
   roomName: string;
   roomCode?: string;
@@ -33,10 +34,10 @@ export function parseInvite(text?: string): ChatInvite | null {
   try {
     const d = JSON.parse(text.slice(INVITE_MARK.length)) as Record<string, unknown>;
     const s = (v: unknown) => (v == null ? undefined : String(v));
-    if ((d.kind !== "ROOM" && d.kind !== "GAME") || !d.roomId) return null;
+    if ((d.kind !== "ROOM" && d.kind !== "GAME" && d.kind !== "TABLE") || (d.kind !== "TABLE" && !d.roomId)) return null;
     return {
       kind: d.kind,
-      roomId: String(d.roomId),
+      roomId: d.roomId ? String(d.roomId) : "",
       roomName: s(d.roomName) ?? "A room",
       roomCode: s(d.roomCode),
       coverUrl: s(d.coverUrl),
@@ -58,7 +59,7 @@ export function parseInvite(text?: string): ChatInvite | null {
 /** A chat line for an invite (inbox previews). */
 export const invitePreview = (text?: string) => {
   const i = parseInvite(text);
-  return i ? (i.kind === "GAME" ? "🎮 Game invite" : "🎙 Room invite") : text;
+  return i ? (i.kind === "TABLE" ? "🎮 Game invite" : i.kind === "GAME" ? "🎮 Game invite" : "🎙 Room invite") : text;
 };
 
 const opts = { auth: true, forbiddenIsAccess: true } as const;
@@ -69,6 +70,11 @@ export async function sendInvite(conversationId: string, kind: "ROOM" | "GAME", 
     method: "POST",
     body: { kind, roomId: ids.roomId ? Number(ids.roomId) : undefined, gameId: ids.gameId ? Number(ids.gameId) : undefined },
   });
+}
+
+/** Invite to a table that has no voice room: it arrives in the chat as a card with the code and Join. */
+export async function sendTableInvite(conversationId: string, game: "GADDAR" | "RMCS", code: string) {
+  await api<unknown>(`/api/v1/chat/conversations/${encodeURIComponent(conversationId)}/invites`, { ...opts, method: "POST", body: { kind: "TABLE", game, code } });
 }
 
 export async function gameByCode(code: string) {

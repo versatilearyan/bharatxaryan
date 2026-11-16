@@ -5,7 +5,9 @@ import { motion } from "framer-motion";
 import { Check, Copy, Lock, Send, Users } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { friendsApi, type FriendCard } from "@/lib/api/social";
-import { gameByCode, sendInvite, type ChatInvite } from "@/lib/api/invites";
+import { gameByCode, sendInvite, sendTableInvite, type ChatInvite } from "@/lib/api/invites";
+import { gaddarTables } from "@/lib/api/gaddar";
+import { rmcsTables } from "@/lib/api/rmcs";
 import { getRoomById, rememberRoomPassword } from "@/lib/api/voice-rooms";
 import { useChat } from "@/lib/app/chat-store";
 import { serverRoomAppId, useServerRooms } from "@/lib/app/server-rooms";
@@ -54,12 +56,70 @@ export function useJoinGameByCode() {
   };
 }
 
+/** Join a table that has no voice room, from an invite card's code. */
+function useJoinTable() {
+  const { push, toast } = useApp();
+  return async (game: string | undefined, code: string) => {
+    try {
+      if (game === "RMCS") {
+        const t = await rmcsTables.join(code);
+        push({ kind: "rmcs", table: t.roomId });
+      } else {
+        const b = await gaddarTables.join(code);
+        if (b.state.table?.id) push({ kind: "gaddar", table: b.state.table.id });
+      }
+    } catch (e) {
+      toast(errText(e, "That table is closed."), "error");
+    }
+  };
+}
+
+/** The invite card for a table game, in the Panchayat colours: maroon, marigold and gold. */
+function TableInviteCard({ inv, mine }: { inv: ChatInvite; mine: boolean }) {
+  const joinTable = useJoinTable();
+  const [busy, setBusy] = useState(false);
+  const expired = inv.expiresAt !== undefined && inv.expiresAt < Date.now();
+  const rm = inv.game === "RMCS";
+  return (
+    <div className="w-[250px] overflow-hidden rounded-2xl bg-gradient-to-b from-[#4a1626] to-[#240c14] ring-1 ring-[#e7bc72]/40">
+      <div className={`relative h-[90px] overflow-hidden ${rm ? "bg-gradient-to-br from-[#7a1f3d] via-[#c2417a] to-[#ffb347]" : "bg-gradient-to-br from-[#5a1a3a] via-[#c2417a] to-[#ff8a3d]"}`}>
+        <span className="absolute -right-3 -top-4 text-[74px] opacity-90" aria-hidden>
+          {rm ? "👑" : "🛖"}
+        </span>
+        <span className="absolute left-2 top-2 rounded-full bg-black/50 px-2 py-0.5 text-[10.5px] font-extrabold text-[#ffe9a8] backdrop-blur">🎮 GAME INVITE</span>
+        <span className="absolute bottom-1.5 left-2.5 right-2.5 truncate font-display text-[16px] font-black text-white drop-shadow">{inv.roomName}</span>
+      </div>
+      <div className="px-3 pb-3 pt-2 text-[12px] text-cream/80">
+        <p>
+          Table code <b className="font-mono text-[15px] tracking-[0.2em] text-[#ffe27a]">{inv.gameCode}</b>
+        </p>
+        {mine ? (
+          <p className="mt-1.5 text-center text-[11px] text-cream/55">You sent this invite</p>
+        ) : (
+          <button
+            type="button"
+            disabled={busy || expired || !inv.gameCode}
+            onClick={() => {
+              setBusy(true);
+              void joinTable(inv.game, inv.gameCode ?? "").finally(() => setBusy(false));
+            }}
+            className="mt-2 h-10 w-full rounded-full bg-gradient-to-b from-[#ffe9a8] to-[#e0a93a] text-[13.5px] font-black uppercase text-[#4a2600] shadow-[0_3px_0_#8a5a12] disabled:opacity-50"
+          >
+            {expired ? "Invite expired" : busy ? "Joining…" : "Table me judo"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** An invite in a chat: the room (or game) with a Join button. */
 export function InviteCard({ inv, mine }: { inv: ChatInvite; mine: boolean }) {
   const join = useJoinFromInvite();
   const [busy, setBusy] = useState(false);
   const expired = inv.expiresAt !== undefined && inv.expiresAt < Date.now();
   const game = inv.kind === "GAME";
+  if (inv.kind === "TABLE") return <TableInviteCard inv={inv} mine={mine} />;
   return (
     <div className={`w-[240px] overflow-hidden rounded-2xl ring-1 ${mine ? "bg-white/15 ring-white/25" : "bg-gradient-to-b from-[#2a2238] to-[#1a1624] ring-white/10"}`}>
       <div className="relative h-[86px] overflow-hidden">
@@ -116,7 +176,7 @@ export function InviteCard({ inv, mine }: { inv: ChatInvite; mine: boolean }) {
  * Invite people to a room or a game table: your chats (people and groups)
  * and your friends. The invite arrives in their chat as a card with Join.
  */
-function ChatInviteSheetImpl({ open, onClose, kind, roomId, gameId, code, title }: { open: boolean; onClose: () => void; kind: "ROOM" | "GAME"; roomId: string; gameId?: string; code?: string; title: string }) {
+function ChatInviteSheetImpl({ open, onClose, kind, roomId, gameId, code, title, table }: { open: boolean; onClose: () => void; kind: "ROOM" | "GAME"; roomId: string; gameId?: string; code?: string; title: string; table?: "GADDAR" | "RMCS" }) {
   const { toast } = useApp();
   const chat = useChat();
   const [friends, setFriends] = useState<FriendCard[]>([]);
@@ -138,7 +198,10 @@ function ChatInviteSheetImpl({ open, onClose, kind, roomId, gameId, code, title 
     if (sent[key]) return;
     setSent((s) => ({ ...s, [key]: "sending" }));
     try {
-      await sendInvite(await conversation(), kind, { roomId, gameId });
+      const conv = await conversation();
+      // A table with no voice room: the card carries its code
+      if (table && code) await sendTableInvite(conv, table, code);
+      else await sendInvite(conv, kind, { roomId, gameId });
       setSent((s) => ({ ...s, [key]: "sent" }));
     } catch (e) {
       setSent((s) => {

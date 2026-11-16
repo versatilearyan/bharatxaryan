@@ -2,6 +2,7 @@
 
 import { ReferralCapture } from "@/components/rewards/ReferralCapture";
 import { WelcomeGift } from "@/components/rewards/WelcomeGift";
+import { DailyGift } from "@/components/rewards/DailyGift";
 import dynamic from "next/dynamic";
 import { Activity } from "react";
 import { SarpanchBanner } from "@/components/sarpanch/SarpanchBanner";
@@ -22,6 +23,7 @@ import { ChatProvider } from "@/lib/app/chat-store";
 import { GiftBanner } from "@/components/gifts/GiftBanner";
 import { RedPacketBanner } from "@/components/redpacket/RedPacket";
 import { BottomNav } from "@/components/navigation/BottomNav";
+import { TabBackdrop } from "@/components/layout/TabBackdrop";
 import { HomeScreen } from "@/components/home/HomeScreen";
 import { RoomsScreen } from "@/components/rooms/RoomsScreen";
 import { ChatScreen } from "@/components/chat/ChatScreen";
@@ -43,6 +45,9 @@ import { FestivalPopup } from "@/components/festival/FestivalPopup";
 
 const ReferScreen = dynamic(() => import("@/components/rewards/ReferScreen").then((m) => m.ReferScreen), { ssr: false });
 const LudoScreen = dynamic(() => import("@/components/games/ludo/LudoScreen").then((m) => m.LudoScreen), { ssr: false });
+const GamesHub = dynamic(() => import("@/components/games/GamesHub").then((m) => m.GamesHub), { ssr: false });
+const RmcsScreen = dynamic(() => import("@/components/games/rmcs/RmcsScreen").then((m) => m.RmcsScreen), { ssr: false });
+const GaddarScreen = dynamic(() => import("@/components/games/gaddar/GaddarScreen").then((m) => m.GaddarScreen), { ssr: false });
 const NearbyScreen = dynamic(() => import("@/components/discover/NearbyScreen").then((m) => m.NearbyScreen), { ssr: false });
 const ChessHub = dynamic(() => import("@/components/games/ChessHub").then((m) => m.ChessHub), { ssr: false });
 const SarpanchScreen = dynamic(() => import("@/components/sarpanch/Sarpanch").then((m) => m.SarpanchScreen), { ssr: false });
@@ -128,6 +133,7 @@ function Frame() {
               <VipRenewPrompt />
               <SarpanchBanner />
               <WelcomeGift />
+              <DailyGift />
               <ReferralCapture />
               <PaymentReturn />
               <GiftOverlay />
@@ -149,10 +155,12 @@ function Frame() {
 function Tabs() {
   const { tab } = useApp();
   return (
+    <>
+    <TabBackdrop />
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={tab}
-        className="absolute inset-0"
+        className="absolute inset-0 z-[1]"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -4 }}
@@ -161,6 +169,7 @@ function Tabs() {
         {tab === "home" ? <HomeScreen /> : tab === "rooms" ? <RoomsScreen /> : tab === "chat" ? <ChatScreen /> : tab === "discover" ? <DiscoverScreen /> : <ProfileScreen />}
       </motion.div>
     </AnimatePresence>
+    </>
   );
 }
 
@@ -240,6 +249,12 @@ function ScreenView({ screen }: { screen: Screen }) {
       return <NearbyScreen />;
     case "ludo":
       return <LudoScreen roomId={screen.roomId} />;
+    case "games":
+      return <GamesHub />;
+    case "rmcs":
+      return <RmcsScreen roomId={screen.roomId} table={screen.table} />;
+    case "gaddar":
+      return <GaddarScreen roomId={screen.roomId} table={screen.table} />;
     case "refer":
       return <ReferScreen />;
   }

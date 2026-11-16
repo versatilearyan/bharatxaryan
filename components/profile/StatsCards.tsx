@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { ChevronRight } from "lucide-react";
 import { CharmIconArt, CharmLevelArt } from "@/components/ui/CharmBadge";
 import { formatPoints } from "@/lib/app/levels";
-import { CHARM_TIERS, EXP_SOURCES, expToNext, isDoubleCharmDay, type ExpSource } from "@/lib/app/progress";
+import { CHARM_TIERS, EXP_SOURCES, charmInfo, expToNext, isDoubleCharmDay, type ExpSource } from "@/lib/app/progress";
 import { useApp } from "@/lib/app/store";
 
 /** Your Active Level: EXP bar and what each source gave you today. */
@@ -63,9 +63,10 @@ export function ActiveLevelCard() {
 }
 
 /** Charm: points from gifts received and the Star / Diamond / Crown ladder. */
-export function CharmCard({ personId = "me" }: { personId?: string }) {
+export function CharmCard({ personId = "me", points }: { personId?: string; points?: number }) {
   const { charmOf } = useApp();
-  const charm = charmOf(personId);
+  // The server's own number when we have it, else this device's estimate
+  const charm = points !== undefined ? charmInfo(points) : charmOf(personId);
   const doubleDay = isDoubleCharmDay();
   return (
     <>

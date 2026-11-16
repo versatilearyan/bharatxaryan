@@ -104,6 +104,8 @@ export type VoiceRoomParticipant = {
    * only when they are https; anything else counts as missing.
    */
   vipLevel: number | null;
+  /** Their Active Level (from their EXP). */
+  level?: number;
   badgeUrl: string | null;
   frameUrl: string | null;
   bubbleUrl: string | null;
@@ -216,6 +218,7 @@ export function readParticipant(raw: unknown): VoiceRoomParticipant | null {
   const avatar = str(pick(PARTICIPANT_FIELDS.avatarUrl));
   return {
     vipLevel: vipLevelOf(r.vipLevel),
+    level: typeof r.level === "number" && r.level >= 0 ? r.level : undefined,
     badgeUrl: httpsUrl(r.badgeUrl),
     frameUrl: httpsUrl(r.frameUrl),
     bubbleUrl: httpsUrl(r.bubbleUrl),

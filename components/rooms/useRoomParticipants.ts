@@ -48,6 +48,8 @@ export type RoomMember = {
   /** Muted by a moderator, as stored by the backend. */
   modMuted?: boolean;
   joinedAt?: string;
+  /** Their Active Level, from the server. */
+  level?: number;
   /** This person's own VIP level and cosmetics from their participants record (absent until it loads). */
   vip?: Pick<VoiceRoomParticipant, "vipLevel" | "badgeUrl" | "frameUrl" | "bubbleUrl" | "entryAnimationUrl" | "rewardEffects">;
 };
@@ -204,6 +206,7 @@ export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoic
         speaking: false,
         modMuted: r.muted,
         joinedAt: r.joinedAt,
+        level: r.level,
         vip: { vipLevel: r.vipLevel, badgeUrl: r.badgeUrl, frameUrl: r.frameUrl, bubbleUrl: r.bubbleUrl, entryAnimationUrl: r.entryAnimationUrl, rewardEffects: r.rewardEffects },
       });
     }
@@ -222,7 +225,7 @@ export function useRoomParticipants(serverRoomId: string | null, voice: LiveVoic
   // Share names and pictures with the rest of the app (seats, profile card, chat)
   useEffect(() => {
     const add: Record<string, ServerPerson> = {};
-    for (const m of members) if (m.personId !== ME_ID && (m.name || m.avatarUrl)) add[m.personId] = { name: m.name, avatarUrl: m.avatarUrl };
+    for (const m of members) if (m.personId !== ME_ID && (m.name || m.avatarUrl || m.level !== undefined)) add[m.personId] = { name: m.name, avatarUrl: m.avatarUrl, level: m.level };
     if (Object.keys(add).length) rememberPeople(add);
   }, [members, rememberPeople]);
 

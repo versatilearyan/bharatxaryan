@@ -56,7 +56,7 @@ export function ProfileScreen() {
   const serverVip = me.stats.data ? vipLevel(me.stats.data.vipPoints, appVip.level > 0 || me.stats.data.vipPoints > 0) : null;
 
   return (
-    <div className="app-scroll h-full bg-[radial-gradient(130%_60%_at_50%_35%,#3a1424_0%,#221220_45%,#141018_100%)] pb-[calc(84px+var(--mini,0px)+var(--sb))]">
+    <div className="app-scroll aurora h-full pb-[calc(96px+var(--mini,0px)+var(--sb))]">
       <ProfileHero
         personId="me"
         topRight={
@@ -90,11 +90,11 @@ export function ProfileScreen() {
             ["Ranking", <RankingIcon key="r" />, { kind: "ranking" }],
           ] as const
         ).map(([label, icon, screen]) => (
-          <button key={label} type="button" onClick={() => push(screen)} className="relative flex flex-col items-center gap-1 rounded-2xl bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 py-3 ring-1 ring-gold/15">
+          <button key={label} type="button" onClick={() => push(screen)} className="glass3d lift relative flex flex-col items-center gap-1 rounded-2xl py-3.5">
             <span className="grid h-9 place-items-center" aria-hidden>
               {icon}
             </span>
-            <span className="text-[12.5px] font-bold text-cream">{label === "Visitors" && visitors.length ? `${label} ${visitors.length}` : label}</span>
+            <span className="text-[12.5px] font-black text-cream">{label === "Visitors" && visitors.length ? `${label} ${visitors.length}` : label}</span>
             {label === "Visitors" && newVisitors > 0 ? (
               <span className="absolute -right-1 -top-1.5 rounded-full bg-coral px-1.5 py-0.5 text-[10px] font-extrabold text-white ring-2 ring-ink">+{newVisitors} new</span>
             ) : null}
@@ -107,11 +107,11 @@ export function ProfileScreen() {
 
       {/* Wallet + VIP */}
       <div className="mx-4 mt-3 grid grid-cols-2 gap-3">
-        <button type="button" onClick={() => setSheet({ kind: "coins" })} className="rounded-2xl bg-gradient-to-br from-[#2c1622]/95 to-[#1b1622]/95 p-4 text-left ring-1 ring-gold/15">
+        <button type="button" onClick={() => setSheet({ kind: "coins" })} className="glass3d lift rounded-2xl p-4 text-left">
           <span className="flex items-center gap-1.5 text-[11.5px] text-muted">
             <Coin className="h-4 w-4" /> Coins
           </span>
-          <span className="mt-1 block font-display text-[22px] font-extrabold text-cream">{formatCoins(coins)}</span>
+          <span className="mt-1 block font-display text-[26px] font-black text-cream">{formatCoins(coins)}</span>
           <span className="text-[11px] font-semibold text-gold">Open wallet</span>
         </button>
         <button type="button" onClick={() => push({ kind: "vip-benefits" })} className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#5a1a28] to-[#1a0b11] p-4 text-left ring-1 ring-gold/40">

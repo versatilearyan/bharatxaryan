@@ -30,10 +30,10 @@ export function Coin({ className = "h-4 w-4" }: { className?: string }) {
 
 type BtnVariant = "primary" | "gold" | "ghost" | "soft" | "danger";
 const BTN: Record<BtnVariant, string> = {
-  primary: "bg-coral text-white shadow-[0_8px_24px_-8px_rgb(244_81_91/0.7)] hover:bg-[#f7606a]",
-  gold: "bg-gradient-to-b from-[#f6d899] to-[#c9954a] text-[#2a1a0c] shadow-[0_8px_24px_-10px_rgb(231_188_114/0.7)]",
+  primary: "bg-gradient-to-r from-[#ff3d8b] to-[#ff7a45] text-white font-extrabold shadow-[0_4px_0_#a3204f,0_12px_22px_-10px_rgb(255_61_139/0.7)] active:translate-y-[2px] active:shadow-[0_2px_0_#a3204f]",
+  gold: "bg-gradient-to-b from-[#ffe9a8] to-[#e0a93a] text-[#2a1a0c] font-extrabold shadow-[0_4px_0_#8a5a12,0_12px_22px_-10px_rgb(231_188_114/0.7)] active:translate-y-[2px] active:shadow-[0_2px_0_#8a5a12]",
   ghost: "border border-line-strong text-cream hover:bg-cream/5",
-  soft: "bg-cream/[0.07] text-cream hover:bg-cream/[0.11]",
+  soft: "glass3d text-cream font-bold hover:bg-cream/[0.11]",
   danger: "bg-[#3a1418] text-[#ff8a8f] hover:bg-[#4a1a20]",
 };
 
@@ -70,7 +70,7 @@ export function IconButton({
       whileTap={{ scale: 0.9 }}
       aria-label={label}
       title={label}
-      className={`relative grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors ${active ? "bg-coral text-white" : "bg-cream/[0.07] text-cream hover:bg-cream/[0.12]"} ${className}`}
+      className={`relative grid h-10 w-10 shrink-0 place-items-center rounded-full transition-colors ${active ? "bg-gradient-to-br from-[#ff3d8b] to-[#ff7a45] text-white shadow-[0_3px_0_#a3204f]" : "glass3d text-cream hover:bg-cream/[0.12]"} ${className}`}
       {...rest}
     >
       {children}
@@ -80,7 +80,7 @@ export function IconButton({
 
 export function ScreenHeader({ title, onBack, right, sub }: { title: ReactNode; onBack?: () => void; right?: ReactNode; sub?: ReactNode }) {
   return (
-    <header className="pt-safe sticky top-0 z-20 bg-ink/85 backdrop-blur-xl">
+    <header className="pt-safe sticky top-0 z-20 bg-[#0d0818]/80 backdrop-blur-xl">
       <div className="flex h-14 items-center gap-2 px-3">
         {onBack ? (
           <IconButton label="Back" onClick={onBack} className="!bg-transparent">
@@ -90,7 +90,7 @@ export function ScreenHeader({ title, onBack, right, sub }: { title: ReactNode; 
           <span className="w-1" />
         )}
         <div className="min-w-0 flex-1">
-          <h1 className="truncate font-display text-[19px] font-bold text-cream">{title}</h1>
+          <h1 className="truncate font-display text-[21px] font-black tracking-tight text-cream">{title}</h1>
           {sub ? <p className="truncate text-[11px] text-muted">{sub}</p> : null}
         </div>
         {right}
@@ -102,9 +102,12 @@ export function ScreenHeader({ title, onBack, right, sub }: { title: ReactNode; 
 export function SectionTitle({ children, action, onAction }: { children: ReactNode; action?: string; onAction?: () => void }) {
   return (
     <div className="mb-3 flex items-end justify-between px-4">
-      <h2 className="font-display text-[19px] font-bold text-cream">{children}</h2>
+      <h2 className="flex items-center gap-2 font-display text-[21px] font-black tracking-tight text-cream">
+        <span aria-hidden className="h-5 w-1.5 rounded-full bg-gradient-to-b from-[#ff7ab8] to-[#ffb347]" />
+        {children}
+      </h2>
       {action && onAction ? (
-        <button type="button" onClick={onAction} className="flex items-center gap-0.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted hover:text-cream">
+        <button type="button" onClick={onAction} className="flex items-center gap-0.5 rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.12em] text-cream/80 hover:text-cream">
           {action}
           <ChevronRight className="h-3.5 w-3.5" />
         </button>
@@ -115,14 +118,14 @@ export function SectionTitle({ children, action, onAction }: { children: ReactNo
 
 export function SearchField({ value, onChange, placeholder, autoFocus }: { value: string; onChange: (v: string) => void; placeholder: string; autoFocus?: boolean }) {
   return (
-    <label className="flex h-11 items-center gap-2 rounded-2xl border border-line bg-surface px-3.5 focus-within:border-gold/50">
+    <label className="glass3d flex h-12 items-center gap-2 rounded-2xl px-4 focus-within:ring-2 focus-within:ring-[#ff7ab8]/60">
       <Search className="h-4.5 w-4.5 text-muted" aria-hidden />
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        className="min-w-0 flex-1 bg-transparent text-sm text-cream placeholder:text-muted/70 focus:outline-none"
+        className="min-w-0 flex-1 bg-transparent text-[14px] font-semibold text-cream placeholder:text-muted/70 focus:outline-none"
         aria-label={placeholder}
         type="text"
         inputMode="search"
@@ -149,9 +152,9 @@ export function Chips<T extends string>({ items, value, onChange, label }: { ite
             aria-selected={on}
             type="button"
             onClick={() => onChange(it)}
-            className={`relative h-9 shrink-0 rounded-full px-4 text-[13px] font-semibold transition-colors ${on ? "text-ink" : "bg-surface text-cream/75 hover:text-cream"}`}
+            className={`relative h-10 shrink-0 rounded-full px-4 text-[13.5px] font-extrabold transition-colors ${on ? "text-white" : "glass3d text-cream/75 hover:text-cream"}`}
           >
-            {on ? <motion.span layoutId={`chip-${label}`} className="absolute inset-0 rounded-full bg-cream" transition={{ type: "spring", stiffness: 500, damping: 38 }} /> : null}
+            {on ? <motion.span layoutId={`chip-${label}`} className="absolute inset-0 rounded-full bg-gradient-to-r from-[#7c4dff] to-[#ff3d8b] shadow-[0_4px_0_#4a1f9e,0_10px_18px_-8px_rgba(255,61,139,0.7)]" transition={{ type: "spring", stiffness: 500, damping: 38 }} /> : null}
             <span className="relative">{it}</span>
           </button>
         );
@@ -183,7 +186,7 @@ export function Pill({ children, tone = "default", className = "" }: { children:
     new: "bg-[#3fbf7f] text-white",
     muted: "bg-black/45 text-cream backdrop-blur",
   }[tone];
-  return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${t} ${className}`}>{children}</span>;
+  return <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ring-1 ring-white/20 ${t} ${className}`}>{children}</span>;
 }
 
 export function LiveDot() {
