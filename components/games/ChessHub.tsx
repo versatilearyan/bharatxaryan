@@ -59,7 +59,8 @@ function Avatar({ seat, size = 36 }: { seat: Seat; size?: number }) {
 export function ChessHub() {
   const { pop, profile, toast } = useApp();
   const [mode, setMode] = useState<"hub" | "quick">("hub");
-  const { socket, failedAttempts } = useChessSocket(0);
+  const [gen, setGen] = useState(0);
+  const { socket, failedAttempts } = useChessSocket(gen);
   const [rooms, setRooms] = useState<RoomCard[] | null>(null);
   const [room, setRoom] = useState<RoomState | null>(null);
   const [code, setCode] = useState("");
@@ -142,7 +143,12 @@ export function ChessHub() {
       {!socket ? (
         <div className="mx-4 mt-3 flex items-center gap-3 rounded-2xl bg-black/30 p-4 ring-1 ring-gold/15">
           <WifiOff className="h-5 w-5 text-muted" />
-          <p className="text-[13px] text-cream/80">{failedAttempts > 2 ? "The chess server isn't answering. Trying again…" : "Connecting to the chess server…"}</p>
+          <p className="min-w-0 flex-1 text-[13px] text-cream/80">{failedAttempts > 1 ? "Chess server abhi jawab nahi de raha. Hum dobara try kar rahe hain…" : "Chess server se jud rahe hain…"}</p>
+          {failedAttempts > 1 ? (
+            <button type="button" onClick={() => setGen((n) => n + 1)} className="shrink-0 rounded-full bg-gold px-3 py-1.5 text-[12px] font-extrabold text-ink">
+              Dobara try
+            </button>
+          ) : null}
         </div>
       ) : null}
 

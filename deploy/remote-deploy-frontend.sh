@@ -71,6 +71,27 @@ if [ "$UP" != 1 ]; then
   fail "The new app didn't answer on port $APP_PORT, so the old one is back. The failed build is in ${APP_DIR}.failed-${STAMP}."
 fi
 
+# The chess game server (chess-server/, port 8090, nginx sends /chess-ws to it). It lives in the app folder and is only (re)built and
+# restarted here; a problem with it must never fail an app deploy that worked.
+say "Chess server"
+if [ -f "$APP_DIR/chess-server/package.json" ]; then
+  (
+    set -e
+    cd "$APP_DIR/chess-server"
+    nice -n 10 npm ci --no-audit --no-fund
+    nice -n 10 npm run build
+    if pm2 describe panchayat-chess >/dev/null 2>&1; then
+      pm2 restart panchayat-chess --update-env >/dev/null
+    else
+      PORT=8090 pm2 start dist/index.js --name panchayat-chess --cwd "$APP_DIR/chess-server" --max-memory-restart 300M >/dev/null
+    fi
+    sleep 2
+    echo "chess server: $(pm2 jlist 2>/dev/null | grep -o '"name":"panchayat-chess"[^}]*"status":"[a-z]*"' | head -1)"
+  ) || echo "WARNING: the chess server could not be built or started (the app itself is fine)."
+else
+  echo "No chess-server folder in the app: skipped."
+fi
+
 pm2 save >/dev/null 2>&1 || true
 # Tidying up must never fail a deploy that worked (ls exits 2 when nothing matches)
 { ls -1dt "${APP_DIR}".before-* 2>/dev/null || true; } | tail -n +$((KEEP + 1)) | xargs -r rm -rf || true
