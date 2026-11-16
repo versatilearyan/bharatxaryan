@@ -10,6 +10,7 @@
  *
  * Every call goes through lib/api/client.ts.
  */
+import { deviceHeaders } from "./device";
 import { api } from "@/lib/api/client";
 import { clearToken, readToken, saveToken } from "./token";
 import { GOOGLE_CLIENT_ID_SETTING } from "@/lib/config";
@@ -62,14 +63,14 @@ export async function requestEmailCode(email: string): Promise<{ email: string; 
   const err = emailError(email);
   if (err) throw new Error(err);
   const clean = cleanEmail(email);
-  const r = await api<{ message?: string } | null>("/api/v1/auth/send-otp", { method: "POST", body: { email: clean } });
+  const r = await api<{ message?: string } | null>("/api/v1/auth/send-otp", { method: "POST", body: { email: clean }, headers: deviceHeaders() });
   return { email: clean, resendIn: RESEND_SECONDS, message: typeof r?.message === "string" ? r.message : "" };
 }
 
 export async function verifyEmailCode(email: string, code: string): Promise<AuthUser> {
   if (!new RegExp(`^\\d{${OTP_LENGTH}}$`).test(code)) throw new Error(`Enter all ${OTP_LENGTH} digits`);
   const clean = cleanEmail(email);
-  const r = await api<TokenResponse>("/api/v1/auth/verify-otp", { method: "POST", body: { email: clean, otp: code } });
+  const r = await api<TokenResponse>("/api/v1/auth/verify-otp", { method: "POST", body: { email: clean, otp: code }, headers: deviceHeaders() });
   return accept(r, "email", clean);
 }
 
@@ -88,7 +89,7 @@ function googleClaims(idToken: string): { email: string; name?: string } {
 /** Swap a Google ID token (from Google Identity Services) for a Panchayat session. */
 export async function signInWithGoogle(idToken: string): Promise<AuthUser> {
   const claims = googleClaims(idToken);
-  const r = await api<TokenResponse>("/api/v1/auth/google", { method: "POST", body: { idToken } });
+  const r = await api<TokenResponse>("/api/v1/auth/google", { method: "POST", body: { idToken }, headers: deviceHeaders() });
   return accept(r, "google", claims.email, claims.name);
 }
 
@@ -96,6 +97,7 @@ export async function completeProfileRequest(details: { name: string; gender: Ge
   return api<{ message?: string } | null>("/api/v1/auth/complete-profile", {
     method: "POST",
     auth: true,
+    headers: deviceHeaders(),
     body: { fullName: details.name.trim(), gender: details.gender === "male" ? "Male" : "Female", dateOfBirth: details.dob },
   });
 }
