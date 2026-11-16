@@ -9,11 +9,10 @@ import { CpRing } from "@/components/market/CpRing";
 import { ProfileCpPill } from "@/components/rooms/RoomSocial";
 import { myUserIdFromToken } from "@/lib/auth/token";
 import { CpBannerPill } from "@/components/market/CpParts";
-import { SvgaAnim, preloadSvga, warnSvga } from "@/components/effects/SvgaAnim";
-import { VipAvatar, VipBadge, VipEntryBanner } from "@/components/effects/VipFx";
-import type { EffectSet } from "@/lib/app/effects";
+import { SvgaAnim, preloadSvga } from "@/components/effects/SvgaAnim";
+import { VipAvatar, VipBadge } from "@/components/effects/VipFx";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { Check, ChevronLeft, ChevronRight, Copy, Gift, Lock, MessageCircle, Shield, ShieldCheck, UserPlus } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
 import { RingArt } from "@/components/art/RingArt";
@@ -67,54 +66,6 @@ function Panel({ title, meta, onOpen, children }: { title: string; meta?: ReactN
   );
 }
 
-/**
- * The VIP entry animation (SVGA, through VipEntryBanner and SvgaAnim), played
- * once each time a profile is opened: it waits for the file, slides in over the
- * banner, and goes after about 5 s. Re-renders and data reloads don't replay it
- * (the parent keys it by person). A file that can't be loaded is skipped.
- */
-function ProfileEntry({ src, name, avatar }: { src: EffectSet; name: string; avatar: ReactNode }) {
-  const [show, setShow] = useState(false);
-  const played = useRef(false);
-  useEffect(() => {
-    if (played.current) return;
-    played.current = true;
-    let cancelled = false;
-    preloadSvga(src.entry)
-      .then(() => !cancelled && setShow(true))
-      .catch((e) => warnSvga(src.entry, e));
-    return () => {
-      cancelled = true;
-      played.current = false;
-    };
-    // Once per opening, for the entry this profile had when it first had one
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  useEffect(() => {
-    if (!show) return;
-    const t = window.setTimeout(() => setShow(false), 4800);
-    return () => window.clearTimeout(t);
-  }, [show]);
-  return (
-    <AnimatePresence>
-      {show ? (
-        <motion.div
-          className="pointer-events-none absolute right-2 top-[104px] z-20 w-[60%] max-w-[240px]"
-          initial={{ x: "110%" }}
-          animate={{ x: 0 }}
-          exit={{ opacity: 0 }}
-          transition={{ type: "spring", stiffness: 200, damping: 28 }}
-          role="status"
-        >
-          <VipEntryBanner set={src} avatar={avatar}>
-            <span className="text-[#ffe08a]">{name}</span> entered
-          </VipEntryBanner>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
-  );
-}
-
 /** Banner, avatar, name, level, VIP, charm, ID and bio. */
 export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, charmPoints, backendProfile = false }: { personId: string; topLeft?: ReactNode; topRight?: ReactNode; vipFresh?: boolean; charmPoints?: number; backendProfile?: boolean }) {
   const { profile, toast, push, session } = useApp();
@@ -139,7 +90,6 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, char
         // Taps go through it; the top buttons stay above it.
         <SvgaAnim src={fx.page.page} className="pointer-events-none absolute inset-x-0 top-0 z-[5] w-full" style={{ aspectRatio: fx.page.pageRatio }} />
       ) : null}
-      {fx.entry ? <ProfileEntry key={personId} src={fx.entry} name={mine ? profile.name : p.name} avatar={<PersonAvatar person={{ ...p, frame: "none" }} size={64} className="!h-full !w-full" />} /> : null}
       <div className="relative h-[168px]">
         {bannerSrc ? (
           <img src={bannerSrc} alt={mine ? "Your banner" : `${p.name}'s banner`} className="h-full w-full object-cover" onError={() => setBrokenBanner(bannerSrc)} />
