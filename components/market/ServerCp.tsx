@@ -38,6 +38,25 @@ export function useCpEvents(on: (type: string, body: Record<string, unknown>) =>
   );
 }
 
+/** The couple's heartbeat line (like the one between two seats in a room), beating between a face and the ring. */
+function HeartLine() {
+  return (
+    <svg viewBox="0 0 48 20" className="h-5 w-11 shrink-0 text-pink" style={{ filter: "drop-shadow(0 0 4px rgb(255 104 124 / 0.9))" }} aria-hidden>
+      <motion.path
+        d="M0 10 H13 L16 6 L19.5 17 L23.5 2 L27 15 L30 9 L33 12 H48"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        initial={false}
+        animate={{ pathLength: [0.15, 1, 1], opacity: [0.7, 1, 0.7] }}
+        transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+      />
+    </svg>
+  );
+}
+
 function Face({ p, size = 64 }: { p?: CpPerson; size?: number }) {
   const name = p?.name ?? "?";
   return (
@@ -238,13 +257,15 @@ export function ServerLoveHome({ personId }: { personId: string }) {
       </div>
 
       {/* The couple */}
-      <div className="relative flex items-center justify-center gap-3 px-6">
+      <div className="relative flex items-center justify-center gap-1 px-4">
         <button type="button" onClick={() => push({ kind: "user-profile", personId: c.a === myId ? "me" : `srv-user:${c.a}` })}>
           <Face p={A} size={78} />
         </button>
+        <HeartLine />
         <motion.div animate={{ y: [0, -5, 0], rotate: [0, -6, 6, 0] }} transition={{ duration: 3, repeat: Infinity }}>
           <Ring id={c.ring} catalogue={catalogue} size={58} />
         </motion.div>
+        <HeartLine />
         <button type="button" onClick={() => push({ kind: "user-profile", personId: c.b === myId ? "me" : `srv-user:${c.b}` })}>
           <Face p={B} size={78} />
         </button>
@@ -254,6 +275,9 @@ export function ServerLoveHome({ personId }: { personId: string }) {
       </p>
       <p className="relative mt-1 flex items-center justify-center gap-1.5 text-[12px] font-bold text-[#f6d899]">
         <BadgeImg level={c.level} size={26} /> {badgeOf(c.level).name}
+      </p>
+      <p className="relative mt-1 text-center text-[12px] font-semibold text-cream/70">
+        💞 Together since {new Date(c.since).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
       </p>
       {c.message ? <p className="relative mx-8 mt-1 text-center text-[13px] italic text-cream/75">“{c.message}”</p> : null}
 

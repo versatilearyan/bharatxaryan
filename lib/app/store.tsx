@@ -21,7 +21,7 @@ import { GOLD_NAME_VIP, POINTS_PER_COIN, growthFor, roomExpLevel, roomLevel, vip
 import { EXP_SOURCES, FRIEND_EXP, TASK_EXP, charmFromCoins, charmInfo, giftEarnings, dayKey, expToNext, sampleCharm, type ExpSource } from "./progress";
 import { GUARD_PER_DAY, MY_SAMPLE_RECEIVED, sampleGuardians, sampleReceived } from "./social";
 import { friendsApi } from "@/lib/api/social";
-import { RELATIONSHIPS, SAMPLE_TAGS, TAG_SLOTS, TAG_THEME_IDS, pairKey, relationshipById, tagLevel, tokenFor, type RelationshipId, type Tag } from "./tags";
+import { RELATIONSHIPS, SAMPLE_TAGS, TAG_THEME_IDS, pairKey, relationshipById, tagLevel, tokenFor, type RelationshipId, type Tag } from "./tags";
 /** Relationship ids the app knows, for checking tags from the server. */
 const RELATIONSHIP_IDS: string[] = RELATIONSHIPS.map((r) => r.id);
 import type { RedPacketId } from "./redpacket";
@@ -1091,7 +1091,7 @@ function useAppState() {
     (winner: string, item: string, relation: RelationshipId, giftVolume: number, roomName: string, declaration?: string): "new" | "existing" | "full" => {
       const existing = tagBetween(winner, item);
       if (existing) return "existing";
-      if (tagsOf(winner).length >= TAG_SLOTS || tagsOf(item).length >= TAG_SLOTS) return "full";
+      // BFF tags have no limit (the server decides the same way)
       // The winning bid picks the token and counts as the first intimacy (same as the server)
       const tag: Tag = { id: `t-${uid()}`, a: winner, b: item, relation, token: tokenFor(giftVolume), intimacy: Math.max(0, giftVolume), createdAt: Date.now(), roomName, declaration };
       setTags((list) => [tag, ...list]);

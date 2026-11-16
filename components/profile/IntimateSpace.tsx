@@ -21,7 +21,7 @@ const QUICK_GIFTS: GiftId[] = GIFTS.filter((g) => !g.packageOnly).slice(0, 4).ma
 
 /**
  * BFF (the intimate space): someone's tags won in BFF Kharidari, each with its
- * level, intimacy, token and perks. Everyone has 5 slots; each VIP level adds one, up to 12.
+ * level, intimacy, token and perks. There is no limit on tags (the admin panel can bring the slot limits back).
  */
 export function IntimateSpace({ personId }: { personId: string }) {
   const { pop, tagsOf, profile, openRoom, push, vip, toast, refreshCoins } = useApp();
@@ -37,7 +37,7 @@ export function IntimateSpace({ personId }: { personId: string }) {
   const tags = [...tagsOf(personId)].sort((x, y) => y.intimacy - x.intimacy);
   // 5 slots for everyone, one more per VIP level, up to 12 (the server's count wins for backend users)
   const [serverSlots, setServerSlots] = useState<number | null>(null);
-  const [slotInfo, setSlotInfo] = useState<{ max: number; price: number; canBuy: boolean } | null>(null);
+  const [slotInfo, setSlotInfo] = useState<{ max: number; price: number; canBuy: boolean; unlimited: boolean } | null>(null);
   const [buying, setBuying] = useState(false);
   useEffect(() => {
     const uid = personId === "me" ? undefined : personId.startsWith("srv-user:") ? personId.slice(9) : null;
@@ -48,7 +48,7 @@ export function IntimateSpace({ personId }: { personId: string }) {
       .then((x) => {
         if (off) return;
         setServerSlots(x.slots);
-        setSlotInfo({ max: x.max, price: x.price, canBuy: x.canBuy });
+        setSlotInfo({ max: x.max, price: x.price, canBuy: x.canBuy, unlimited: x.unlimited });
       })
       .catch(() => undefined);
     return () => {
@@ -56,14 +56,16 @@ export function IntimateSpace({ personId }: { personId: string }) {
     };
   }, [personId, tags.length]);
   const maxSlots = slotInfo?.max ?? TAG_SLOTS;
-  const slots = Math.min(maxSlots, Math.max(serverSlots ?? tagSlotsFor(mine ? vip.level : 0), tags.length));
+  // No limit: the number of tags is the number of slots, and there is nothing to open or buy
+  const unlimited = slotInfo?.unlimited ?? true;
+  const slots = unlimited ? tags.length : Math.min(maxSlots, Math.max(serverSlots ?? tagSlotsFor(mine ? vip.level : 0), tags.length));
   const buySlot = async () => {
     if (buying) return;
     setBuying(true);
     try {
       const x = await tagsApi.buySlot();
       setServerSlots(x.slots);
-      setSlotInfo({ max: x.max, price: x.price, canBuy: x.canBuy });
+      setSlotInfo({ max: x.max, price: x.price, canBuy: x.canBuy, unlimited: x.unlimited });
       void refreshCoins();
       toast("A new BFF slot is open", "gold");
     } catch (e) {
@@ -72,7 +74,7 @@ export function IntimateSpace({ personId }: { personId: string }) {
       setBuying(false);
     }
   };
-  const empty = mine ? slots - tags.length : 0;
+  const empty = mine && !unlimited ? slots - tags.length : 0;
   const invite = () => {
     pop();
     openRoom("r-kharidari");
@@ -85,7 +87,7 @@ export function IntimateSpace({ personId }: { personId: string }) {
       <div className="flex flex-col items-center px-4 text-center">
         <PersonAvatar person={owner} size={72} />
         <p className="mt-2 text-[12px] text-cream/65">
-          {tags.length} of {slots} BFF slots
+          {unlimited ? `${tags.length} BFF ${tags.length === 1 ? "tag" : "tags"}` : `${tags.length} of ${slots} BFF slots`}
         </p>
         <div className="mt-2 flex gap-1.5" aria-hidden>
           {Array.from({ length: slots }, (_, i) => (
@@ -109,7 +111,18 @@ export function IntimateSpace({ personId }: { personId: string }) {
             </span>
           </button>
         ))}
-        {mine && slotInfo?.canBuy ? (
+        {mine && unlimited ? (
+          <button type="button" onClick={invite} className="flex w-full items-center gap-3 rounded-3xl border border-dashed border-white/20 px-4 py-3.5 text-left">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-white/[0.07] text-cream/70">
+              <Plus className="h-5 w-5" aria-hidden />
+            </span>
+            <span>
+              <span className="block text-[14px] font-semibold text-cream">Find another BFF</span>
+              <span className="text-[11.5px] text-cream/55">No limit on BFF tags. Win more in Kharidari Bazaar</span>
+            </span>
+          </button>
+        ) : null}
+        {mine && !unlimited && slotInfo?.canBuy ? (
           <button type="button" disabled={buying} onClick={() => void buySlot()} className="flex w-full items-center gap-3 rounded-3xl bg-black/25 px-4 py-3.5 text-left disabled:opacity-60">
             <span className="grid h-10 w-10 place-items-center rounded-full bg-gold/15 text-gold">
               <Lock className="h-4.5 w-4.5" aria-hidden />
@@ -154,7 +167,7 @@ export function IntimateSpace({ personId }: { personId: string }) {
           <li>Every coin of gifts between you adds 1 intimacy. Intimacy raises the BFF level up to Lv 10.</li>
           <li>Sit beside your BFF in a room and your token shows between your seats.</li>
           <li>Give your BFF a pet name and a colour theme with Customize. Either of you can change it.</li>
-          <li>You can have many BFFs of the same type (for example several Confidants), each with a different person. Every BFF uses one slot; open more slots with coins, up to {maxSlots}.</li>
+          <li>{unlimited ? "You can have as many BFFs as you like, even several of the same type (for example several Confidants), each with a different person." : `You can have many BFFs of the same type (for example several Confidants), each with a different person. Every BFF uses one slot; open more slots with coins, up to ${maxSlots}.`}</li>
         </ol>
       </section>
       <div className="h-8" />
