@@ -8,10 +8,12 @@ import { musicApi } from "@/lib/api/music";
 import { MAX_SONG_MB, mmss, spotifyTrackId, type Song } from "@/lib/app/music";
 import { useMusic } from "@/lib/app/music-store";
 import { useApp } from "@/lib/app/store";
+import { useServerRooms } from "@/lib/app/server-rooms";
+import type { SongRequestsState } from "./useSongRequests";
 import { lazySheet } from "@/components/ui/lazySheet";
 
 /** The spinning-disc pill beside the top seats: what's playing in the room. Tap for the songs. */
-export function MusicPill({ className = "", onOpen, onlyMe = false }: { className?: string; onOpen: () => void; onlyMe?: boolean }) {
+export function MusicPill({ className = "", onOpen, onlyMe = false, requestCount = 0 }: { className?: string; onOpen: () => void; onlyMe?: boolean; requestCount?: number }) {
   const { current, playing, queue } = useMusic();
   return (
     <>
@@ -30,6 +32,7 @@ export function MusicPill({ className = "", onOpen, onlyMe = false }: { classNam
             "No songs"
           )}
         </span>
+        {requestCount > 0 ? <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#e2242f] px-1 text-[9.5px] font-extrabold text-white" aria-label={`${requestCount} song requests`}>{requestCount}</span> : null}
         {onlyMe ? <span className="absolute -bottom-2 right-1 rounded-full bg-[#e2242f] px-1.5 text-[9px] font-extrabold text-white">Only you</span> : null}
       </button>
     </>
@@ -63,18 +66,26 @@ function SongRow({ song, right, active, onClick }: { song: Song; right: React.Re
   );
 }
 
-const OrderButton = ({ song, onOrder }: { song: Song; onOrder: () => void }) => (
-  <button type="button" onClick={onOrder} aria-label={`Order ${song.title}`} className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-[#3d9bff] px-3 text-[12px] font-bold text-white">
-    <Plus className="h-3.5 w-3.5" aria-hidden /> Order
+const OrderButton = ({ song, onOrder, label = "Order" }: { song: Song; onOrder: () => void; label?: string }) => (
+  <button type="button" onClick={onOrder} aria-label={`${label} ${song.title}`} className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-[#3d9bff] px-3 text-[12px] font-bold text-white">
+    <Plus className="h-3.5 w-3.5" aria-hidden /> {label}
   </button>
 );
 
 /** Songs ordered in the room, the library to order from, and uploading your own. */
-function MusicSheetImpl({ open, onClose, canControl = true }: { open: boolean; onClose: () => void; canControl?: boolean }) {
+function MusicSheetImpl({ open, onClose, canControl = true, requests }: { open: boolean; onClose: () => void; canControl?: boolean; requests?: SongRequestsState }) {
   const m = useMusic();
-  const [tabPicked, setTab] = useState<"ordered" | "library" | "contribute">("ordered");
-  // Only the room owner and admins can order and play songs; everyone else just sees what is ordered
-  const tab = canControl ? tabPicked : "ordered";
+  const { myId } = useServerRooms();
+  const [tabPicked, setTab] = useState<"ordered" | "requests" | "library" | "contribute">("ordered");
+  // Backend rooms: everyone adds songs to the list; only the room owner and admins order and play them
+  const asking = Boolean(requests?.enabled);
+  const tab = canControl ? tabPicked : asking ? (tabPicked === "library" ? "library" : "requests") : "ordered";
+  const waiting = requests?.requests ?? [];
+  /** The owner / an admin puts a requested song in the queue and takes it off the list. */
+  const orderRequest = (id: string, song: Song) => {
+    m.order(m.songById(song.id) ? song.id : song);
+    requests?.remove(id);
+  };
   useEffect(() => {
     if (open) void m.refreshSongs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,15 +93,21 @@ function MusicSheetImpl({ open, onClose, canControl = true }: { open: boolean; o
   return (
     <BottomSheet open={open} onClose={onClose} title={`🎵 ${m.queue.length} ${m.queue.length === 1 ? "song" : "songs"} ordered`} tall className="h-[84%]">
       <div className="flex h-full min-h-0 flex-col">
-        {canControl ? null : <p className="mx-4 mb-1 rounded-xl bg-gold/10 px-3 py-2 text-center text-[12px] font-semibold text-gold">Only the room owner and admins can play songs here.</p>}
-        {canControl ? (
+        {canControl ? null : <p className="mx-4 mb-1 rounded-xl bg-gold/10 px-3 py-2 text-center text-[12px] font-semibold text-gold">{asking ? "Add songs you like. The room owner and admins order and play them." : "Only the room owner and admins can play songs here."}</p>}
+        {canControl || asking ? (
         <div className="mx-4 flex rounded-full bg-surface p-1 ring-1 ring-line" role="tablist">
           {(
-            [
-              ["ordered", "Ordered"],
-              ["library", "Library"],
-              ["contribute", "Upload"],
-            ] as const
+            (canControl
+              ? [
+                  ["ordered", "Ordered"],
+                  ...(asking ? ([["requests", waiting.length ? `Requests ${waiting.length}` : "Requests"]] as const) : []),
+                  ["library", "Library"],
+                  ["contribute", "Upload"],
+                ]
+              : [
+                  ["requests", waiting.length ? `Requested ${waiting.length}` : "Requested"],
+                  ["library", "Add songs"],
+                ]) as readonly (readonly ["ordered" | "requests" | "library" | "contribute", string])[]
           ).map(([id, label]) => (
             <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className={`h-9 flex-1 rounded-full text-[13px] font-bold ${tab === id ? "bg-[#3d9bff] text-white" : "text-cream/65"}`}>
               {label}
@@ -139,8 +156,35 @@ function MusicSheetImpl({ open, onClose, canControl = true }: { open: boolean; o
                 ) : null}
               </div>
             )
+          ) : tab === "requests" ? (
+            waiting.length ? (
+              <ul>
+                {waiting.map((r) => (
+                  <SongRow
+                    key={r.id}
+                    song={r.song}
+                    right={
+                      <span className="flex shrink-0 items-center gap-1">
+                        <span className="max-w-[72px] truncate text-[10.5px] text-muted">{r.userId === myId ? "You" : r.userName}</span>
+                        {canControl ? <OrderButton song={r.song} onOrder={() => orderRequest(r.id, r.song)} label="Order" /> : null}
+                        {canControl || r.userId === myId ? (
+                          <button type="button" onClick={() => requests?.remove(r.id)} aria-label={`Remove ${r.song.title}`} className="grid h-8 w-8 place-items-center rounded-full text-cream/60">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        ) : null}
+                      </span>
+                    }
+                  />
+                ))}
+              </ul>
+            ) : (
+              <div className="px-6 pt-10 text-center">
+                <Disc3 className="mx-auto h-10 w-10 text-cream/30" aria-hidden />
+                <p className="mt-2 text-[13px] text-muted">{canControl ? "No one has asked for a song yet." : "No songs added yet. Pick one from Add songs."}</p>
+              </div>
+            )
           ) : tab === "library" ? (
-            <Library />
+            <Library onPick={asking && !canControl ? requests?.add : undefined} />
           ) : (
             <UploadTab />
           )}
@@ -154,18 +198,20 @@ function MusicSheetImpl({ open, onClose, canControl = true }: { open: boolean; o
 }
 
 /** The library: our songs and uploads, songs from Audius (and Jamendo when it is on), and a Spotify link. */
-function Library() {
+function Library({ onPick }: { onPick?: (s: Song) => void }) {
   const m = useMusic();
   const [source, setSource] = useState<"ours" | "audius" | "jamendo" | "spotify">("ours");
   const [jamendo, setJamendo] = useState(false);
   useEffect(() => {
     musicApi.sources().then((s) => setJamendo(s.jamendo)).catch(() => undefined);
   }, []);
-  const chips: [typeof source, string][] = [["ours", "Panchayat"], ["audius", "Audius"], ...(jamendo ? ([["jamendo", "Jamendo"]] as [typeof source, string][]) : []), ["spotify", "Spotify"]];
+  const chips: [typeof source, string][] = [["ours", "Panchayat"], ["audius", "Audius"], ...(jamendo ? ([["jamendo", "Jamendo"]] as [typeof source, string][]) : []), ["spotify", "Spotify"]]
+  // A Spotify link plays for the owner only, so members who are asking for songs pick from the others
+  const shownChips = onPick ? chips.filter(([id]) => id !== "spotify") : chips;
   return (
     <div>
       <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-2" role="tablist" aria-label="Where to find songs">
-        {chips.map(([id, label]) => (
+        {shownChips.map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={source === id} onClick={() => setSource(id)} className={`h-8 shrink-0 rounded-full px-3.5 text-[12.5px] font-bold ring-1 ${source === id ? "bg-[#3d9bff]/20 text-[#7fb6ff] ring-[#3d9bff]/60" : "text-cream/65 ring-white/15"}`}>
             {label}
           </button>
@@ -174,20 +220,20 @@ function Library() {
       {source === "ours" ? (
         <ul>
           {m.library.map((s) => (
-            <SongRow key={s.id} song={s} right={<OrderButton song={s} onOrder={() => m.order(s.id)} />} />
+            <SongRow key={s.id} song={s} right={<OrderButton song={s} label={onPick ? "Add" : "Order"} onOrder={() => (onPick ? onPick(s) : m.order(s.id))} />} />
           ))}
         </ul>
       ) : source === "spotify" ? (
         <SpotifyBox />
       ) : (
-        <Catalogue key={source} source={source} />
+        <Catalogue key={source} source={source} onPick={onPick} />
       )}
     </div>
   );
 }
 
 /** Search a free music catalogue (Audius / Jamendo) and order a result. */
-function Catalogue({ source }: { source: "audius" | "jamendo" }) {
+function Catalogue({ source, onPick }: { source: "audius" | "jamendo"; onPick?: (s: Song) => void }) {
   const m = useMusic();
   const { toast } = useApp();
   const [q, setQ] = useState("");
@@ -224,7 +270,7 @@ function Catalogue({ source }: { source: "audius" | "jamendo" }) {
       ) : (
         <ul className="mt-1">
           {rows.map((s) => (
-            <SongRow key={s.id} song={s} right={<OrderButton song={s} onOrder={() => m.order(s)} />} />
+            <SongRow key={s.id} song={s} right={<OrderButton song={s} label={onPick ? "Add" : "Order"} onOrder={() => (onPick ? onPick(s) : m.order(s))} />} />
           ))}
         </ul>
       )}

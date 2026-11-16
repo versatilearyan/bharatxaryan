@@ -9,6 +9,7 @@ import { Crown, Hand, Mic, MicOff, Swords, Volume2, VolumeX } from "lucide-react
 import { CreatePkSheet, PkPanel } from "./PkParts";
 import { MusicPill, MusicSheet } from "./RoomMusic";
 import { usePkState } from "./usePk";
+import { useSongRequests } from "./useSongRequests";
 import { useMusic } from "@/lib/app/music-store";
 import { IconButton } from "@/components/ui/kit";
 import { GiftPanel } from "@/components/gifts/LazyGiftPanel";
@@ -21,6 +22,7 @@ import type { RoomSession } from "./useRoomSession";
 export function VoiceRoom({ s }: { s: RoomSession }) {
   const [sheet, setSheet] = useState<null | "gift" | "emoji" | "menu" | "invite" | "pk" | "music">(null);
   const pkOn = Boolean(usePkState()?.pk);
+  const songs = useSongRequests(s.room.server?.id ?? null);
   const arena = usePkState()?.pk?.mode === "1v1";
   const { musicOff } = useMusic();
   const [draft, setDraft] = useState("");
@@ -58,7 +60,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
 
       {/* Seats: the owner's fixed seat + intimacy seat on top, then linked pairs */}
       <div className={`relative z-10 shrink-0 ${pkOn ? "mt-1.5" : "mt-2"}`}>
-        {musicOff ? null : <MusicPill className="absolute right-2 top-6 z-20" onlyMe={s.musicOnlyMe} onOpen={() => setSheet("music")} />}
+        {musicOff ? null : <MusicPill className="absolute right-2 top-6 z-20" onlyMe={s.musicOnlyMe} requestCount={s.canModerate ? songs.requests.length : 0} onOpen={() => setSheet("music")} />}
         {s.roomOpen ? (
           <>
             {/* Slightly smaller seats leave more room for the chat */}
@@ -98,7 +100,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
       <NewbieWelcome s={s} />
       <GiftPanel open={sheet === "gift"} onClose={close} s={s} />
       <CreatePkSheet open={sheet === "pk"} onClose={close} />
-      <MusicSheet open={sheet === "music"} onClose={close} canControl={s.canModerate} />
+      <MusicSheet open={sheet === "music"} onClose={close} canControl={s.canModerate} requests={songs} />
       <EmojiSheet open={sheet === "emoji"} onClose={close} s={s} onInsert={(e) => setDraft((d) => d + e)} />
       <InviteSheet open={sheet === "invite"} onClose={close} roomName={s.room.name} roomId={s.room.server?.id} roomCode={s.room.code} />
       <RoomMenuSheet
