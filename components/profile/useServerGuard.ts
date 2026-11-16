@@ -73,5 +73,7 @@ export function useServerGuard(personId: string) {
       setBusy(false);
     }
   }, [who, busy, load]);
-  return { enabled: who !== null, data, protect, busy, error };
+  /** The server id of the person whose Guard this is (null for yours: it's "me"). */
+  const userId = who && who !== "me" ? who : null;
+  return { enabled: who !== null, data, protect, busy, error, reload: load, userId };
 }

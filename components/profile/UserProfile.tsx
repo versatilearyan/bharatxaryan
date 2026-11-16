@@ -13,7 +13,9 @@ import { SvgaAnim, preloadSvga } from "@/components/effects/SvgaAnim";
 import { VipAvatar, VipBadge } from "@/components/effects/VipFx";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Check, ChevronLeft, ChevronRight, Copy, Gift, Lock, MessageCircle, Shield, ShieldCheck, UserPlus } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Copy, Gift, Lock, MessageCircle, Shield, ShieldCheck, ShieldOff, UserPlus } from "lucide-react";
+import { RemovalRequests, RemoveGuardSheet, useGuardRemoval } from "@/components/profile/GuardRemoval";
+import { readToken } from "@/lib/auth/token";
 import { GiftArt } from "@/components/art/GiftArt";
 import { RingArt } from "@/components/art/RingArt";
 import { RelationIcon } from "@/components/art/RelationIcon";
@@ -817,9 +819,13 @@ export function GuardScreen({ personId }: { personId: string }) {
   const myGuard = list.find((g) => g.id === ME_ID)?.value ?? 0;
   const done = sg.enabled ? Boolean(sg.data?.protectedToday) : protectedToday(personId);
   const perDay = sg.data?.protectGuard ?? GUARD_PER_DAY;
+  // Removing the Guard between two people (ask them, or pay to remove it right away)
+  const rm = useGuardRemoval(sg.enabled && Boolean(readToken()), sg.reload);
+  const [removing, setRemoving] = useState<{ userId: string; name: string } | null>(null);
   return (
     <div className="app-scroll h-full bg-[radial-gradient(130%_60%_at_50%_0%,#3a1424_0%,#221220_45%,#141018_100%)] pb-8">
       <ScreenHeader title="Guard" onBack={pop} />
+      {mine ? <RemovalRequests rm={rm} /> : null}
       <section className="mx-4 mt-1 rounded-3xl bg-gradient-to-br from-[#3a2a14] to-[#1c1b22] p-4 ring-1 ring-gold/25">
         <div className="flex items-center gap-3">
           <PersonAvatar person={p} size={56} />
@@ -874,11 +880,24 @@ export function GuardScreen({ personId }: { personId: string }) {
               <span className="flex items-center gap-1 text-[13px] font-bold text-gold">
                 <Shield className="h-3.5 w-3.5" aria-hidden /> {g.value.toLocaleString("en-IN")}
               </span>
+              {(() => {
+                // Your own screen: remove the Guard of someone who guards you. Someone else's: remove your own Guard of them.
+                const other = mine ? (g.id !== ME_ID ? server?.[i]?.userId : undefined) : g.id === ME_ID ? sg.userId : undefined;
+                const name = mine ? (server?.[i]?.name ?? gp.name) : p.name;
+                if (!other || !server) return null;
+                const asked = rm.state?.outgoing.some((o) => o.userId === other && o.status === "PENDING");
+                return (
+                  <button type="button" onClick={() => setRemoving({ userId: other, name })} aria-label={`Remove the Guard with ${name}`} className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${asked ? "bg-gold/20 text-gold" : "bg-cream/[0.07] text-cream/60"}`}>
+                    <ShieldOff className="h-4 w-4" aria-hidden />
+                  </button>
+                );
+              })()}
             </li>
           );
         })}
         {list.length === 0 ? <li className="px-4 py-6 text-center text-[13px] text-muted">No guardians yet.</li> : null}
       </ol>
+      <RemoveGuardSheet rm={rm} target={removing} onClose={() => setRemoving(null)} />
     </div>
   );
 }
