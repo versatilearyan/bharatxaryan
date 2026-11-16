@@ -727,6 +727,9 @@ export function GachaSheet({ p, open, onClose, onChanged }: Props) {
 export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
   const { toast, refreshCoins } = useApp();
   const d = useLoad<ChestsInfo>(() => parivarExtra.chests(p.id), [p.id, open], 15_000);
+  // Everything the Parivar has bought or won and not used yet (it shows even when the chest type can't be sent at this level)
+  const store = useLoad(() => parivarExtra.inventory(p.id), [p.id, open], 15_000);
+  const myChests = (store.data ?? []).filter((r) => r.kind === "CHEST" && r.qty > 0);
   const now = useNow();
   const [busy, setBusy] = useState<string | null>(null);
   const [got, setGot] = useState<{ label: string } | null>(null);
@@ -751,7 +754,21 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
           <Loading error={d.error} retry={d.reload} />
         ) : (
           <>
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Open for you</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">In your Parivar&apos;s store</p>
+            <ul className="mt-2 space-y-2">
+              {myChests.length === 0 ? <li className="rounded-2xl bg-surface p-4 text-center text-[12.5px] text-muted ring-1 ring-line">No chest bought yet. Buy one in the Parivar shop and it appears here.</li> : null}
+              {myChests.map((r) => (
+                <li key={`${r.kind}${r.ref}`} className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-gold/12 to-surface p-3 ring-1 ring-gold/25">
+                  <Glyph icon={Gift} size={42} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[13.5px] font-bold text-cream">{r.name ?? "Chest"}</span>
+                    <span className="text-[11.5px] text-muted">{d.data?.canSend ? "Send it below to the whole Parivar." : "The Mukhiya (or whoever they allow) sends it to everyone."}</span>
+                  </span>
+                  <span className="rounded-full bg-gold px-2.5 py-1 text-[12px] font-extrabold text-ink">×{n(r.qty)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Open for you</p>
             <ul className="mt-2 space-y-2">
               {!d.data.sent.some((c) => c.status === "OPEN") ? <li className="rounded-2xl bg-surface p-4 text-center text-[12.5px] text-muted ring-1 ring-line">No chest is open right now.</li> : null}
               {d.data.sent
