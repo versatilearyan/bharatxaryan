@@ -10,6 +10,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin } from "@/components/ui/kit";
 import { giftById } from "@/lib/app/data";
 import { parseGiftCard } from "@/lib/api/parivar";
+import { RedPacketChatCard, parseRedPacket } from "./ParivarFamilyExtras";
 import { parivarExtra, type WorldNewsItem, type ChatMsg, type ChatPrefs, type ChestsInfo, type ChoriInfo, type CheerTier, type GachaInfo, type GachaResult, type KavachInfo, type NewsPost, type ParivarProfile, type ShopItem, type TasksInfo } from "@/lib/api/parivar";
 import { getRoomById } from "@/lib/api/voice-rooms";
 import { serverRoomAppId, useServerRooms, userPersonId } from "@/lib/app/server-rooms";
@@ -1317,7 +1318,9 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
                       <span className="rounded-full bg-black/40 px-3 py-1 text-[11px] font-semibold text-cream/70">{dayLabel(m.at)}</span>
                     </div>
                   ) : null}
-                  {m.kind === "SYSTEM" && parseGiftCard(m.text) ? (
+                  {m.kind === "SYSTEM" && parseRedPacket(m.text) ? (
+                    <RedPacketChatCard p={p} packetId={parseRedPacket(m.text)!.id} from={parseRedPacket(m.text)!.from} total={parseRedPacket(m.text)!.total} pieces={parseRedPacket(m.text)!.pieces} message={parseRedPacket(m.text)!.message} />
+                  ) : m.kind === "SYSTEM" && parseGiftCard(m.text) ? (
                     <GiftCardLine c={parseGiftCard(m.text)!} />
                   ) : m.kind === "SYSTEM" ? (
                     <p className={`mx-auto my-1.5 w-fit max-w-[88%] rounded-2xl px-3 py-1.5 text-center text-[11.5px] leading-snug ${/won|gift|sent|🎁|🎰/.test(m.text) ? "bg-gold/10 text-gold/90 ring-1 ring-gold/20" : "bg-black/35 text-cream/65"}`}>{m.text}</p>

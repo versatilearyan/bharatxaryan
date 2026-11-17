@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { FramedPicture, SignBadge } from "./ParivarFrames";
 import { parivarApi, parivarExtra, parseGiftCard } from "@/lib/api/parivar";
 import { useApp } from "@/lib/app/store";
+import { parseRedPacket } from "./ParivarFamilyExtras";
 
 type Row = { id: string; name: string; sign: string; frame?: string; logoUrl?: string; emblem: string; color: string; last?: string; at?: string };
 
@@ -32,7 +33,8 @@ export function ParivarChatRow() {
           const m = c.messages[c.messages.length - 1];
           if (m) {
             const gc = m.kind === "SYSTEM" ? parseGiftCard(m.text) : null;
-            last = gc ? `🎁 ${gc.from} sent ${gc.everyone ? "everyone" : gc.self ? "themselves" : gc.to} a gift` : m.kind === "SYSTEM" ? m.text : `${m.name ? `${m.name}: ` : ""}${m.text}`;
+            const rp = m.kind === "SYSTEM" ? parseRedPacket(m.text) : null;
+            last = rp ? `🧧 ${rp.from} ne red packet bheja (${rp.total.toLocaleString("en-IN")} coins)` : gc ? `🎁 ${gc.from} sent ${gc.everyone ? "everyone" : gc.self ? "themselves" : gc.to} a gift` : m.kind === "SYSTEM" ? m.text : `${m.name ? `${m.name}: ` : ""}${m.text}`;
             at = m.at;
           }
         } catch {

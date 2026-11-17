@@ -3,6 +3,7 @@
 import { ReferralCapture } from "@/components/rewards/ReferralCapture";
 import { WelcomeGift } from "@/components/rewards/WelcomeGift";
 import { DailyGift } from "@/components/rewards/DailyGift";
+import { ParivarRedPacketPrompt } from "@/components/parivar/ParivarFamilyExtras";
 import dynamic from "next/dynamic";
 import { Activity } from "react";
 import { SarpanchBanner } from "@/components/sarpanch/SarpanchBanner";
@@ -135,6 +136,7 @@ function Frame() {
               <SarpanchBanner />
               <WelcomeGift />
               <DailyGift />
+              <ParivarRedPacketPrompt />
               <ReferralCapture />
               <PaymentReturn />
               <GiftOverlay />

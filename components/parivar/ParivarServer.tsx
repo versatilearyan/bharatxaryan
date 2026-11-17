@@ -1085,7 +1085,7 @@ export function ParivarHome({ id }: { id: string }) {
           <TreasureWatcher p={p} />
           <ParivarGuideSheet p={p} open={sheet === "guide"} onClose={() => setSheet(null)} />
           <ChestsSheet p={p} open={sheet === "chests"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
-          <RedPacketSheet p={p} open={sheet === "redpacket"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
+          <RedPacketSheet p={p} open={sheet === "redpacket"} onClose={() => setSheet(null)} onGo={(k) => setSheet(k)} onChanged={() => { void load(); loadExtras(); }} />
           <HelpSheet p={p} open={sheet === "help"} onClose={() => setSheet(null)} onChanged={() => { void load(); }} />
           <ShopSheet p={p} open={sheet === "shop"} onClose={() => setSheet(null)} onGo={(k) => setSheet(k)} onChanged={() => { void load(); loadExtras(); }} />
           <KavachSheet p={p} open={sheet === "kavach"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
