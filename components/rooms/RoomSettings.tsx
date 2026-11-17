@@ -20,7 +20,8 @@ import { NAME_FONTS, nameFace } from "@/lib/app/fonts";
 import { ME_ID, useApp } from "@/lib/app/store";
 import type { Cover, RoomBackground, RoomSettings } from "@/lib/app/types";
 import { RoomCover } from "./RoomCover";
-import { MODE_LABEL, type RoomMode, type RoomSession } from "./useRoomSession";
+import { MODE_LABEL, type RoomMode } from "./roomMode";
+import type { RoomSession } from "./useRoomSession";
 import { useKeepMounted } from "@/components/ui/lazySheet";
 
 /** What each role can do. Shown in the room profile sheet. */

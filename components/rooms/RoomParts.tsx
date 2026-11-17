@@ -24,7 +24,7 @@ import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
 import { useServerRooms } from "@/lib/app/server-rooms";
 import type { RoomMessage } from "@/lib/app/types";
-import { MODE_LABEL, type RoomMode } from "./useRoomSession";
+import { MODE_LABEL, type RoomMode } from "./roomMode";
 import { RoomLevelCard } from "./RoomLevel";
 import { relationshipById, tagLevel } from "@/lib/app/tags";
 import { TagLink } from "./TagParts";

@@ -34,10 +34,10 @@ const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
 export type FloatingReaction = { id: string; personId: string; emoji: string; result?: string };
 export type VideoState = { id: string; title: string } | null;
 /** The room's mode is set by the owner: a voice room, YouTube Watch Together, or a Kharidari auction. */
-export type RoomMode = "voice" | "youtube" | "kharidari";
+import { MODE_LABEL, type RoomMode } from "./roomMode";
+export { MODE_LABEL, type RoomMode };
 /** Room-wide panels opened from the top bar or the info sheet. */
 export type RoomPanel = null | "info" | "settings" | "online" | "members" | "contribution";
-export const MODE_LABEL: Record<RoomMode, string> = { voice: "Normal", youtube: "YouTube", kharidari: "Kharidari" };
 
 const HQ_TEXT = "This room applies high quality mode. The tone quality will be improved and more traffic will be consumed.";
 

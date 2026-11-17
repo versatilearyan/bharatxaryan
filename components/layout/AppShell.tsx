@@ -5,7 +5,7 @@ import { WelcomeGift } from "@/components/rewards/WelcomeGift";
 import { DailyGift } from "@/components/rewards/DailyGift";
 import { ParivarRedPacketPrompt } from "@/components/parivar/ParivarFamilyExtras";
 import dynamic from "next/dynamic";
-import { Activity } from "react";
+import { Activity, useEffect } from "react";
 import { SarpanchBanner } from "@/components/sarpanch/SarpanchBanner";
 import { RewardWon } from "@/components/market/RewardWon";
 import { PaymentReturn } from "@/components/market/PaymentReturn";
@@ -35,7 +35,6 @@ import { MomentsScreen } from "@/components/social/MomentsScreen";
 import { CpProposalPrompt } from "@/components/market/ServerCp";
 import { VipLevelUpPrompt } from "@/components/vip/VipLevelUp";
 import { VipRenewPrompt } from "@/components/vip/VipRenewPrompt";
-import { ActiveRoomHost } from "@/components/rooms/ActiveRoomHost";
 import { GlobalSheets } from "@/components/sheets/GlobalSheets";
 import { GiftOverlay } from "@/components/gifts/GiftOverlay";
 import { AppUpdatePrompt } from "@/components/system/AppUpdatePrompt";
@@ -44,6 +43,18 @@ import { AuthFlow } from "@/components/auth/AuthFlow";
 import { FestivalBackground } from "@/components/festival/FestivalBackground";
 import { FestivalPopup } from "@/components/festival/FestivalPopup";
 
+/** The voice room (and the LiveKit voice library, about 560 KB) only downloads once someone joins a room, and is fetched quietly in the background a few seconds after the app opens. */
+const loadRoomHost = () => import("@/components/rooms/ActiveRoomHost").then((m) => m.ActiveRoomHost);
+const ActiveRoomHostLazy = dynamic(loadRoomHost, { ssr: false });
+function ActiveRoomGate() {
+  const { activeRoomId } = useApp();
+  useEffect(() => {
+    const idle = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback;
+    const t = window.setTimeout(() => (idle ? idle(() => void loadRoomHost(), { timeout: 8000 }) : void loadRoomHost()), 6000);
+    return () => window.clearTimeout(t);
+  }, []);
+  return activeRoomId ? <ActiveRoomHostLazy /> : null;
+}
 const ReferScreen = dynamic(() => import("@/components/rewards/ReferScreen").then((m) => m.ReferScreen), { ssr: false });
 const LudoScreen = dynamic(() => import("@/components/games/ludo/LudoScreen").then((m) => m.LudoScreen), { ssr: false });
 const GamesHub = dynamic(() => import("@/components/games/GamesHub").then((m) => m.GamesHub), { ssr: false });
@@ -128,7 +139,7 @@ function Frame() {
               <Activity mode={roomOpen && activeRoomId ? "hidden" : "visible"}>
                 <Stack />
               </Activity>
-              <ActiveRoomHost />
+              <ActiveRoomGate />
               <GlobalSheets />
               <CpProposalPrompt />
               <VipLevelUpPrompt />
