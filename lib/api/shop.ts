@@ -14,6 +14,8 @@ export type ShopCategory = {
   id: string;
   name: string;
   displayOrder?: number;
+  /** Days a bought item lasts (0 = forever). */
+  validDays?: number;
   active?: boolean;
 };
 
@@ -28,6 +30,8 @@ export type ShopProduct = {
   assetUrl?: string;
   assetType?: ShopAssetType;
   displayOrder?: number;
+  /** Days a bought item lasts (0 = forever). */
+  validDays?: number;
   active?: boolean;
 };
 
@@ -85,6 +89,7 @@ function readProduct(raw: unknown): ShopProduct | null {
     assetUrl: str(r.assetUrl),
     assetType: readAssetType(r.assetType),
     displayOrder: num(r.displayOrder),
+    validDays: num(r.validDays),
     active: bool(r.active),
   };
 }

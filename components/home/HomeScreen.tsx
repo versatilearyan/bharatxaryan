@@ -1,5 +1,6 @@
 "use client";
 
+import { Hut3D, Mic3D } from "@/components/art/Icons3D";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -55,8 +56,8 @@ function Greeting() {
       <p className="mt-1 text-[13px] text-cream/65">Aaj kya karein? Gaddaar pakdo ya kisi room me baat karo.</p>
       <div className="mt-3 grid grid-cols-2 gap-2.5">
         <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={() => push({ kind: "gaddar" })} className="flex items-center gap-2.5 rounded-[20px] bg-gradient-to-br from-[#7c4dff] to-[#ff3d8b] p-3.5 text-left shadow-[0_10px_24px_-10px_rgba(255,61,139,0.7),inset_0_1px_0_rgba(255,255,255,0.35)] ring-1 ring-white/25">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/20 text-[22px]" aria-hidden>
-            🛖
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]" aria-hidden>
+            <Hut3D size={38} />
           </span>
           <span className="min-w-0">
             <span className="block text-[13.5px] font-extrabold text-white">Gaddaar khelo</span>
@@ -64,8 +65,8 @@ function Greeting() {
           </span>
         </motion.button>
         <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={() => setTab("rooms")} className="flex items-center gap-2.5 rounded-[20px] bg-gradient-to-br from-[#14b8a6] to-[#2563eb] p-3.5 text-left shadow-[0_10px_24px_-10px_rgba(20,184,166,0.7),inset_0_1px_0_rgba(255,255,255,0.35)] ring-1 ring-white/25">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/20 text-[22px]" aria-hidden>
-            🎙️
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]" aria-hidden>
+            <Mic3D size={38} />
           </span>
           <span className="min-w-0">
             <span className="block text-[13.5px] font-extrabold text-white">Rooms me jao</span>

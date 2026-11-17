@@ -188,6 +188,7 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
                 {p.rarity ? (
                   <span className="text-[10.5px] font-extrabold uppercase tracking-[0.14em]" style={{ color: rarityTint(p.rarity) }}>
                     {p.rarity}
+                    {p.validDays ? ` · ${p.validDays} days` : ""}
                   </span>
                 ) : (
                   <span className="h-[15px]" />

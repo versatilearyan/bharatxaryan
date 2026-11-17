@@ -488,10 +488,11 @@ export function Pair({ s, a, b, size, gap, gold, linked, numbered = false, next,
 export function SeatLayout({ s, gold = false, scale = 1, grid = false }: { s: RoomSession; gold?: boolean; scale?: number; grid?: boolean }) {
   const [ref, width] = useWidth<HTMLDivElement>();
   const k = (Math.min(width, 430) / REF_WIDTH) * scale;
-  const big = Math.round(85 * k);
-  const small = Math.round(62 * k);
-  const bigGap = Math.round(47 * k);
-  const smallGap = Math.round(32 * k);
+  // A little smaller seats with more room between people, so the row doesn't look crowded
+  const big = Math.round(80 * k);
+  const small = Math.round(56 * k);
+  const bigGap = Math.round(54 * k);
+  const smallGap = Math.round(38 * k);
   const rest = s.seats.map((_, i) => i).slice(2);
   const pairs: [number, number | undefined][] = [];
   for (let i = 0; i < rest.length; i += 2) pairs.push([rest[i], rest[i + 1]]);
@@ -501,7 +502,7 @@ export function SeatLayout({ s, gold = false, scale = 1, grid = false }: { s: Ro
   return (
     <div ref={ref} className="w-full">
       <Pair s={s} a={0} b={s.seats.length > 1 ? 1 : undefined} size={big} gap={bigGap} gold={gold} linked={partner !== "off"} />
-      <div className="relative flex flex-wrap justify-center" style={{ columnGap: Math.round(32 * k), rowGap: Math.round(14 * k), marginTop: Math.round(14 * k) }}>
+      <div className="relative flex flex-wrap justify-center" style={{ columnGap: Math.round(38 * k), rowGap: Math.round(26 * k), marginTop: Math.round(20 * k) }}>
         {/* Multiplayer PK: the left pairs are red, the right pairs blue */}
         {team ? (
           <>
@@ -524,9 +525,9 @@ export function SeatLayout({ s, gold = false, scale = 1, grid = false }: { s: Ro
 export function PkArena({ s, gold = false, scale = 1 }: { s: RoomSession; gold?: boolean; scale?: number }) {
   const [ref, width] = useWidth<HTMLDivElement>();
   const k = (Math.min(width, 430) / REF_WIDTH) * scale;
-  const big = Math.round(85 * k);
-  const small = Math.round(62 * k);
-  const gap = Math.round(32 * k);
+  const big = Math.round(80 * k);
+  const small = Math.round(56 * k);
+  const gap = Math.round(38 * k);
   const n = s.seats.length;
   const has = (i: number) => (i < n ? i : undefined);
   // Two rows of two linked pairs; the PK seats are the outer ends of the bottom row
@@ -564,14 +565,14 @@ export function PkArena({ s, gold = false, scale = 1 }: { s: RoomSession; gold?:
       </div>
       <PkPanel s={s} />
       {rows.map((row, r) => (
-        <div key={r} className="relative flex flex-wrap justify-center" style={{ columnGap: gap, marginTop: Math.round(16 * k) }}>
+        <div key={r} className="relative flex flex-wrap justify-center" style={{ columnGap: gap, marginTop: Math.round(22 * k) }}>
           {row.map(([a2, b2], i) =>
             a2 === undefined ? null : <Pair key={a2} s={s} a={a2} b={b2} size={small} gap={gap} gold={gold} linked={partner !== "off"} next={i === 0 ? row[1]?.[0] : undefined} edgeGap={gap} />,
           )}
         </div>
       ))}
       {rest.length ? (
-        <div className="relative flex flex-wrap justify-center" style={{ columnGap: gap, rowGap: Math.round(14 * k), marginTop: Math.round(14 * k) }}>
+        <div className="relative flex flex-wrap justify-center" style={{ columnGap: gap, rowGap: Math.round(26 * k), marginTop: Math.round(20 * k) }}>
           {rest.map(([a2, b2]) => (
             <Pair key={a2} s={s} a={a2} b={b2} size={small} gap={gap} gold={gold} linked={partner !== "off"} />
           ))}
