@@ -463,13 +463,15 @@ function GameSheet({ gameId, onClose }: { gameId: GameId | null; onClose: () => 
                 className="mt-5 w-full"
                 onClick={() => {
                   onClose();
-                  push(g.id === "jackaroo" ? { kind: "jackaroo" } : g.id === "gaddar" ? { kind: "gaddar" } : g.id === "rmcs" ? { kind: "rmcs" } : { kind: "ludo" });
+                  push(g.id === "jackaroo" ? { kind: "jackaroo" } : g.id === "gaddar" ? { kind: "gaddar" } : g.id === "rmcs" ? { kind: "rmcs" } : g.id === "hill" ? { kind: "hill" } : { kind: "ludo" });
                 }}
               >
-                {g.id === "gaddar" || g.id === "rmcs" ? "Khelo" : "Play with friends"}
+                {g.id === "gaddar" || g.id === "rmcs" || g.id === "hill" ? "Khelo" : "Play with friends"}
               </Button>
               <p className="mt-1.5 text-center text-[11px] text-muted">
-                {g.id === "rmcs"
+                {g.id === "hill"
+                  ? "Akele khelo. Jo coins uthaoge wo wallet me jayenge."
+                  : g.id === "rmcs"
                   ? "Voice room ke table par chalta hai: mic, chat aur emotes ke saath."
                   : g.id === "gaddar"
                   ? "Koi voice room nahi chahiye. Apna game kholo aur code dost ko do, ya khule game me jud jao."

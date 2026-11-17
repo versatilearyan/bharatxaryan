@@ -62,6 +62,7 @@ export type Screen =
   | { kind: "ludo"; roomId?: string }
   | { kind: "gaddar"; roomId?: string; table?: string }
   | { kind: "rmcs"; roomId?: string; table?: string }
+  | { kind: "hill" }
   | { kind: "games" }
   | { kind: "refer" };
 

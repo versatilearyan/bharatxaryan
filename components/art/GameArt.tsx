@@ -1,7 +1,7 @@
 import { useId } from "react";
 import type { GameId } from "@/lib/app/types";
 import { GaddarTileArt } from "./GaddarHero";
-import { ChessTileArt, JackarooTileArt, LudoTileArt, RmcsTileArt } from "./GameCovers";
+import { HillTileArt, ChessTileArt, JackarooTileArt, LudoTileArt, RmcsTileArt } from "./GameCovers";
 
 /** Original illustrations for each game card. Square, full-bleed SVG. */
 export function GameArt({ id, className = "" }: { id: GameId; className?: string }) {
@@ -186,6 +186,8 @@ function renderArt(id: GameId, g: (n: string) => string, u: (n: string) => strin
       );
     case "gaddar":
       return <GaddarTileArt />;
+    case "hill":
+      return <HillTileArt />;
     case "rmcs":
       return <RmcsTileArt />;
     case "jackaroo":

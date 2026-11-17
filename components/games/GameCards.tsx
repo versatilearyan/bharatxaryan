@@ -12,6 +12,7 @@ import type { Game } from "@/lib/app/types";
 export const TAGLINE: Record<string, string> = {
   gaddar: "Gaddaar ko pehchano · 4 se 10",
   rmcs: "Chor ko pakdo · 4 ya 5",
+  hill: "Akele · coins wallet me",
   jackaroo: "Patte aur goti · teams",
   ludo: "Paansa phenko, ghar pahucho",
   chess: "Shatranj · 2 players",

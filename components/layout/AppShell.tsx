@@ -46,6 +46,7 @@ import { FestivalPopup } from "@/components/festival/FestivalPopup";
 const ReferScreen = dynamic(() => import("@/components/rewards/ReferScreen").then((m) => m.ReferScreen), { ssr: false });
 const LudoScreen = dynamic(() => import("@/components/games/ludo/LudoScreen").then((m) => m.LudoScreen), { ssr: false });
 const GamesHub = dynamic(() => import("@/components/games/GamesHub").then((m) => m.GamesHub), { ssr: false });
+const HillScreen = dynamic(() => import("@/components/games/hill/HillScreen").then((m) => m.HillScreen), { ssr: false });
 const RmcsScreen = dynamic(() => import("@/components/games/rmcs/RmcsScreen").then((m) => m.RmcsScreen), { ssr: false });
 const GaddarScreen = dynamic(() => import("@/components/games/gaddar/GaddarScreen").then((m) => m.GaddarScreen), { ssr: false });
 const NearbyScreen = dynamic(() => import("@/components/discover/NearbyScreen").then((m) => m.NearbyScreen), { ssr: false });
@@ -251,6 +252,8 @@ function ScreenView({ screen }: { screen: Screen }) {
       return <LudoScreen roomId={screen.roomId} />;
     case "games":
       return <GamesHub />;
+    case "hill":
+      return <HillScreen />;
     case "rmcs":
       return <RmcsScreen roomId={screen.roomId} table={screen.table} />;
     case "gaddar":

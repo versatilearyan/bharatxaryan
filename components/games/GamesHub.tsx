@@ -34,7 +34,7 @@ export function GamesHub() {
   const trending = useMemo(() => PLAYABLE.filter((g) => (live?.[g.id] ?? 0) > 0).sort((a, b) => (live?.[b.id] ?? 0) - (live?.[a.id] ?? 0)), [live]);
   const fresh = PLAYABLE.filter((g) => g.tag === "NEW");
   const multi = PLAYABLE.filter((g) => ["gaddar", "rmcs", "ludo", "jackaroo"].includes(g.id));
-  const quick = PLAYABLE.filter((g) => ["chess", "ludo"].includes(g.id));
+  const quick = PLAYABLE.filter((g) => ["chess", "ludo", "hill"].includes(g.id));
   const played = recent.map(byId).filter((g): g is Game => !!g);
   const rows: { key: string; title: string; sub: string; list: Game[] }[] = [
     { key: "trending", title: "Trending now", sub: "Abhi sabse zyada khele ja rahe", list: trending },

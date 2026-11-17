@@ -37,6 +37,7 @@ export const ROOMS: Room[] = [];
 
 export const GAMES: Game[] = [
   { id: "gaddar", name: "Gaddaar", players: "4 to 10 players", online: 3120, tag: "NEW", blurb: "Gaon ka Gaddaar: ek gaddaar gaon me chhupa hai. Kaam poore karo, sabotage aur surang se bacho, aur Sarpanch ki baithak me gaddaar ko pehchano. Sirf text, bina mic. Bina room ke seedha khelo." },
+  { id: "hill", name: "Pahadi Daud", players: "Solo", online: 0, tag: "NEW", blurb: "Akele khelo: jeep ko pahadi par chadhao, sadak ke coins (10, 5, 10, 5) uthao aur ulat mat jana. Jitne coins uthaoge sab seedha aapke wallet me jayenge." },
   { id: "rmcs", name: "Raja Mantri Chor Sipahi", players: "4 ya 5 players", online: 2640, tag: "NEW", blurb: "Raja, Mantri, Sipahi, Chor: chhupe patte, bluff aur point. 4-5 chair ki 3D table par khelo, chat aur emotes ke saath. Code se dost ko bulao." },
   { id: "jackaroo", name: "Jackaroo", players: "2 or 4 players", online: 6150, tag: "NEW", blurb: "Ludo with cards instead of dice. Play in teams of two, swap marbles with a Jack and race home together." },
   { id: "ludo", name: "Ludo", players: "2–4 players", online: 18930, tag: "HOT", blurb: "Roll, race and cut your friends' pieces while you chat." },

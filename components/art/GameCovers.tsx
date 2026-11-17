@@ -232,3 +232,32 @@ export function RmcsHeroArt() {
     </svg>
   );
 }
+
+export function HillTileArt() {
+  return (
+    <>
+      <Bg id="hl" a="#ff8a3d" b="#ff3d8b" c="#7c4dff" />
+      <circle cx="92" cy="30" r="14" fill="#fff6c8" stroke={OUT} strokeWidth="3" />
+      {/* the hills */}
+      <path d="M0 96 Q24 60 52 74 T120 40 V120 H0 Z" fill="#2a8a4a" stroke={OUT} strokeWidth="3" strokeLinejoin="round" />
+      <path d="M0 108 Q30 84 60 94 T120 70 V120 H0 Z" fill="#8a5a2b" stroke={OUT} strokeWidth="3" strokeLinejoin="round" />
+      {/* coins on the road */}
+      {[[40, 56, "10"], [66, 52, "5"], [92, 36, "10"]].map(([x, y, v]) => (
+        <g key={String(x)}>
+          <circle cx={Number(x)} cy={Number(y)} r="8" fill="#ffd24a" stroke={OUT} strokeWidth="2.4" />
+          <text x={Number(x)} y={Number(y) + 3.5} textAnchor="middle" fontFamily="sans-serif" fontWeight="900" fontSize="8" fill="#6a3d00" stroke="none">{v}</text>
+        </g>
+      ))}
+      {/* the jeep, tilted up the hill */}
+      <g transform="translate(34 70) rotate(-22)" stroke={OUT} strokeWidth="3" strokeLinejoin="round">
+        <rect x="-22" y="-8" width="44" height="14" rx="5" fill="#ff8a3d" />
+        <circle cx="-6" cy="-14" r="6" fill="#f2c9a0" />
+        <path d="M-12 -17 Q-6 -26 0 -17 Z" fill="#c2417a" />
+        <circle cx="-14" cy="9" r="7" fill="#241621" />
+        <circle cx="14" cy="9" r="7" fill="#241621" />
+      </g>
+      <Shout x={88} y={16} text="CLIMB!" s={0.9} />
+      <Spark x={12} y={16} s={1} c="#fff35c" />
+    </>
+  );
+}
