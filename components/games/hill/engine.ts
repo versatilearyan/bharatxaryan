@@ -18,7 +18,11 @@ export function ground(x: number): number {
   const small = 10 + 22 * ramp;
   const flat = Math.min(1, d / 700); // the first stretch is flat so you can start calmly
   const h = big * Math.sin(d / 330 + 0.6) + mid * Math.sin(d / 150 + 1.7) + small * Math.sin(d / 61 + 0.3) - big * Math.sin(0.6);
-  return -(flat * h) - d * 0.045; // a slow climb: it is a hill climb
+  // ramps: a steep climb, then the ground falls away, so you fly (and can do a stunt) before landing
+  const rp = (d % 1250) / 1250;
+  const jh = rp < 0.16 ? 115 * (rp / 0.16) ** 2 : rp < 0.25 ? 57.5 * (1 + Math.cos((Math.PI * (rp - 0.16)) / 0.09)) : 0;
+  const jump = d > 1000 ? Math.min(1, (d - 1000) / 3000) * jh : 0;
+  return -(flat * h) - jump - d * 0.045; // a slow climb: it is a hill climb
 }
 
 const slopeAt = (x: number) => (ground(x + 1.5) - ground(x - 1.5)) / 3;
@@ -37,6 +41,12 @@ export class HillWorld {
   omega = 0;
   wheelSpin = 0;
   grounded = false;
+  airTime = 0;
+  airRot = 0;
+  /** The last stunt, for the screen to cheer: flips done and seconds in the air. */
+  stunt: { id: number; flips: number; air: number } | null = null;
+  flipsTotal = 0;
+  private stuntId = 0;
   // the run
   fuel = 1;
   coins = 0;
@@ -147,8 +157,11 @@ export class HillWorld {
       const vt = wvx * tx + wvy * ty;
       const fn = Math.max(0, 1250 * p - 78 * vn);
       let ft = 0;
-      if (gas && i === 0) ft += 1050; // the rear wheel pulls
-      if (gas && i === 1) ft += 350;
+      // a wheelie is allowed, but the engine eases off when the nose is far up so you don't flip over backwards at once
+      const rel = this.angle - Math.atan(slopeAt(this.x));
+      const ease = rel < -0.4 ? Math.max(0.15, 1 + (rel + 0.4) * 1.8) : 1;
+      if (gas && i === 0) ft += 1750 * ease; // the rear wheel pulls
+      if (gas && i === 1) ft += 600 * ease;
       if (brake) ft -= Math.sign(vt) * Math.min(Math.abs(vt) * 12, 1500);
       ft -= vt * 1.4; // rolling resistance
       const fx = fn * nx + ft * tx;
@@ -156,11 +169,32 @@ export class HillWorld {
       ax += fx;
       ay += fy;
       // the push from the ground tilts the jeep, the push of the engine only a little (so it does not flip backwards at once)
-      const tq = rx * (fn * ny) - ry * (fn * nx) + 0.3 * (rx * (ft * ty) - ry * (ft * tx));
+      const tq = rx * (fn * ny) - ry * (fn * nx) + 0.14 * (rx * (ft * ty) - ry * (ft * tx));
       alpha += tq / 1500;
       if (i === 0) this.wheelSpin += (vt / 16) * h;
     }
+    const wasGrounded = this.grounded;
     this.grounded = contacts > 0;
+    if (!this.grounded) {
+      this.airTime += h;
+      this.airRot += this.omega * h;
+    } else if (!wasGrounded) {
+      // landing: on the roof or nose-first is the end; a clean landing after a full turn is a stunt
+      const slope = Math.atan(slopeAt(this.x));
+      let diff = this.angle - slope;
+      while (diff > Math.PI) diff -= 2 * Math.PI;
+      while (diff < -Math.PI) diff += 2 * Math.PI;
+      if (this.airTime > 0.5 && Math.abs(diff) > 1.35) this.crashed = true;
+      else {
+        const flips = Math.floor(Math.abs(this.airRot) / (Math.PI * 1.7));
+        if (flips >= 1) {
+          this.flipsTotal += flips;
+          this.stunt = { id: ++this.stuntId, flips, air: this.airTime };
+        } else if (this.airTime > 1.1) this.stunt = { id: ++this.stuntId, flips: 0, air: this.airTime };
+      }
+      this.airTime = 0;
+      this.airRot = 0;
+    }
     // tilting in the air
     if (!this.grounded) {
       if (gas) alpha -= 7.5;
@@ -171,8 +205,8 @@ export class HillWorld {
       alpha -= this.omega * 3.2; // the ground damps wobbling
     }
     // air drag keeps the top speed sensible
-    ax -= this.vx * Math.abs(this.vx) * 0.0072;
-    ay -= this.vy * Math.abs(this.vy) * 0.0016;
+    ax -= this.vx * Math.abs(this.vx) * 0.0030;
+    ay -= this.vy * Math.abs(this.vy) * 0.0010;
     this.vx += ax * h;
     this.vy += ay * h;
     this.omega += alpha * h;

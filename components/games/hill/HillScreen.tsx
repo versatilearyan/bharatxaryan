@@ -33,6 +33,7 @@ export function HillScreen() {
   const [result, setResult] = useState<Result | null>(null);
   const [final, setFinal] = useState({ m: 0, coins: 0 });
   const [paying, setPaying] = useState(false);
+  const [stunt, setStunt] = useState<{ id: number; text: string } | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const world = useRef<HillWorld | null>(null);
@@ -135,6 +136,7 @@ export function HillScreen() {
     let H = 0;
     let dpr = 1;
     let prevCoins = 0;
+    let stuntId = 0;
     const resize = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1);
       W = box.clientWidth;
@@ -161,6 +163,13 @@ export function HillScreen() {
         if (w.coins !== prevCoins) {
           prevCoins = w.coins;
           sfx("tick");
+        }
+        if (w.stunt && w.stunt.id !== stuntId) {
+          stuntId = w.stunt.id;
+          const st = w.stunt;
+          setStunt({ id: st.id, text: st.flips > 0 ? (st.flips > 1 ? `${st.flips}x FLIP!` : "FLIP!") : `HAWA ME ${st.air.toFixed(1)}s!` });
+          sfx("fixed");
+          window.setTimeout(() => setStunt((c) => (c && c.id === st.id ? null : c)), 1300);
         }
         if (now - hudAt > 100) {
           hudAt = now;
@@ -254,6 +263,12 @@ export function HillScreen() {
         </span>
       </div>
 
+      {stunt ? (
+        <motion.p key={stunt.id} initial={{ scale: 0.4, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} className="pointer-events-none absolute inset-x-0 top-[24%] z-10 text-center font-display text-[34px] font-black uppercase text-[#ffe27a] drop-shadow-[0_3px_0_rgba(120,30,60,0.9)]">
+          {stunt.text}
+        </motion.p>
+      ) : null}
+
       {/* the two pedals */}
       {phase === "playing" ? (
         <>
@@ -298,7 +313,7 @@ export function HillScreen() {
             ) : (
               <p className="mt-4 rounded-2xl bg-white/10 p-3 text-[13px] font-bold">Ye game abhi band hai. Thodi der baad aana.</p>
             )}
-            <p className="mt-3 text-[11px] text-white/45">Gas: aage chalao, hawa me peeche jhukao · Brake: rokna, hawa me aage jhukao</p>
+            <p className="mt-3 text-[11px] text-white/45">Gas: aage chalao, hawa me peeche ghumao (flip!) · Brake: rokna, hawa me aage ghumao · Ulta utarne par game khatam</p>
           </motion.div>
         </div>
       ) : null}
