@@ -14,6 +14,14 @@ const errText = (e: unknown) => (e instanceof Error && e.message ? e.message : "
 
 export function TitlePill({ t, size = "md" }: { t: ProfileTitle; size?: "sm" | "md" }) {
   const sm = size === "sm";
+  // A title is its uploaded artwork (WEBP, SVGA or MP4), shown as it is
+  if (t.iconUrl) {
+    return (
+      <span className={`inline-block shrink-0 ${sm ? "h-7 w-[84px]" : "h-10 w-[120px]"}`} role="img" aria-label={t.name}>
+        <SvgaAnim src={t.iconUrl} className="h-full w-full object-contain" />
+      </span>
+    );
+  }
   return (
     <span
       className={`inline-flex max-w-full items-center gap-1.5 rounded-full font-bold leading-none shadow-[0_2px_8px_rgba(0,0,0,0.35)] ring-1 ring-white/25 ${sm ? "py-[3px] pl-1 pr-2 text-[10.5px]" : "py-1 pl-1.5 pr-3 text-[12.5px]"}`}

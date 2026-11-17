@@ -31,6 +31,25 @@ export function VipFrame({ set, size, children, className = "", onError }: { set
     <span className={`relative grid place-items-center ${className}`} style={{ width: size, height: size }}>
       {children}
       <SvgaAnim src={set.frame} className="pointer-events-none absolute left-1/2 top-1/2 z-[1] max-w-none" style={{ width: w, height: w, transform: `translate(-50%, -${set.frameY * 100}%)` }} onError={onError} />
+      {set.plate ? <NamePlate plate={set.plate} frameWidth={w} frameY={set.frameY} /> : null}
+    </span>
+  );
+}
+
+/** The wearer's account name on a name frame's plate. The text shrinks for long names so it always fits the plate. */
+function NamePlate({ plate, frameWidth, frameY }: { plate: NonNullable<EffectSet["plate"]>; frameWidth: number; frameY: number }) {
+  const pw = (frameWidth * plate.w) / 100;
+  const ph = (frameWidth * plate.h) / 100;
+  const name = plate.name.trim() || " ";
+  const fs = Math.max(6, Math.min(ph * 0.62, (pw / Math.max(3, name.length)) * 1.7));
+  return (
+    <span className="pointer-events-none absolute left-1/2 top-1/2 z-[2] max-w-none" style={{ width: frameWidth, height: frameWidth, transform: `translate(-50%, -${frameY * 100}%)` }} aria-hidden>
+      <span
+        className="absolute grid place-items-center overflow-hidden text-center font-display font-black leading-none"
+        style={{ left: `${plate.x}%`, top: `${plate.y}%`, width: `${plate.w}%`, height: `${plate.h}%`, color: plate.color, fontSize: fs, WebkitTextStroke: `${Math.max(0.5, fs * 0.08)}px ${plate.stroke}`, paintOrder: "stroke fill", textShadow: `0 ${Math.max(1, fs * 0.06)}px 0 ${plate.stroke}`, whiteSpace: "nowrap" }}
+      >
+        {name}
+      </span>
     </span>
   );
 }

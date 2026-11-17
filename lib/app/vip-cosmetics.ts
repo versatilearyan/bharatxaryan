@@ -100,7 +100,13 @@ export function rewardFx(r: RewardEffects | undefined): Effects {
   if (!r) return fx;
   const base = layoutFor(1);
   const as = (patch: Partial<EffectSet>): EffectSet => ({ ...base, frame: "", bubble: "", entry: "", ...patch });
-  if (r.FRAME) fx.frame = as({ frame: r.FRAME.url });
+  if (r.FRAME) {
+    const nf = r.FRAME.nameFrame;
+    // A name frame brings its own fit and a plate for the wearer's name
+    fx.frame = nf
+      ? as({ frame: r.FRAME.url, frameScale: nf.scale, frameY: nf.y, plate: { name: nf.name, x: nf.plateX, y: nf.plateY, w: nf.plateW, h: nf.plateH, color: nf.color, stroke: nf.stroke } })
+      : as({ frame: r.FRAME.url });
+  }
   if (r.BUBBLE) fx.bubble = as({ bubble: r.BUBBLE.url });
   if (r.ENTRY) fx.entry = as({ entry: r.ENTRY.url });
   // A badge the person chose to wear (SVGA plays, a picture shows still); it takes the place of the VIP badge

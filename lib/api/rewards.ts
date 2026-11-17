@@ -36,7 +36,9 @@ export type BagReward = {
 export type RewardGoal = { ruleId: string; name: string; kind: "RANDOM" | "GUARANTEED"; coinThreshold: number; spent: number; remaining: number };
 
 /** One worn reward effect, as rooms and profiles send it. */
-export type WornEffect = { url: string; format: string | null; soundUrl: string | null; name: string | null };
+/** A name frame: a frame with a plate that shows the wearer's account name. */
+export type NameFrameFx = { name: string; scale: number; y: number; plateX: number; plateY: number; plateW: number; plateH: number; color: string; stroke: string };
+export type WornEffect = { url: string; format: string | null; soundUrl: string | null; name: string | null; nameFrame?: NameFrameFx };
 export type RewardEffects = Partial<Record<RewardSlot, WornEffect>>;
 
 export type ServerGift = {
@@ -69,6 +71,8 @@ export function mediaSrc(url: unknown): string | null {
   if (/^https:\/\//i.test(u)) return u;
   if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(u)) return u;
   if (u.startsWith("/uploads/")) return `${API_BASE_URL}${u}`;
+  // A picture the website itself ships (the name frames)
+  if (/^\/frames\/[\w.-]+$/.test(u)) return u;
   return null;
 }
 
@@ -79,7 +83,17 @@ export function readRewardEffects(raw: unknown): RewardEffects {
   for (const slot of SLOTS) {
     const e = obj(o[slot]);
     const url = mediaSrc(e?.url);
-    if (e && url) out[slot] = { url, format: str(e.format)?.toUpperCase() ?? null, soundUrl: mediaSrc(e.soundUrl), name: str(e.name) };
+    if (e && url) {
+      const nf = obj(e.nameFrame);
+      const n = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
+      out[slot] = {
+        url,
+        format: str(e.format)?.toUpperCase() ?? null,
+        soundUrl: mediaSrc(e.soundUrl),
+        name: str(e.name),
+        nameFrame: nf ? { name: str(nf.name) ?? "", scale: n(nf.scale, 1.4), y: n(nf.y, 0.56), plateX: n(nf.plateX, 21), plateY: n(nf.plateY, 74), plateW: n(nf.plateW, 58), plateH: n(nf.plateH, 17), color: str(nf.color) ?? "#ffe9a8", stroke: str(nf.stroke) ?? "#0a2a80" } : undefined,
+      };
+    }
   }
   return out;
 }
