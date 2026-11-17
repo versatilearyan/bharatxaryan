@@ -129,7 +129,7 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, char
           {isNewbie ? <NewbieBadge className="!px-2 !py-0.5 !text-[10px]" /> : null}
           <ParivarTag personId={personId} className="!text-[11px]" />
         </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <div className="mt-2 flex flex-col items-start gap-1.5">
           <WornTitles personId={personId} />
           {mine ? <MyTitlesButton /> : null}
         </div>

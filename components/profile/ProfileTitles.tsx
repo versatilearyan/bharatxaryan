@@ -12,12 +12,12 @@ import { ME_ID, useApp } from "@/lib/app/store";
 const n = (v: number) => v.toLocaleString("en-IN");
 const errText = (e: unknown) => (e instanceof Error && e.message ? e.message : "That didn't work. Try again.");
 
-export function TitlePill({ t, size = "md" }: { t: ProfileTitle; size?: "sm" | "md" }) {
+export function TitlePill({ t, size = "md", fill = false }: { t: ProfileTitle; size?: "sm" | "md"; fill?: boolean }) {
   const sm = size === "sm";
   // A title is its uploaded artwork (WEBP, SVGA or MP4), shown as it is
   if (t.iconUrl) {
     return (
-      <span className={`inline-block shrink-0 ${sm ? "h-7 w-[84px]" : "h-10 w-[120px]"}`} role="img" aria-label={t.name}>
+      <span className={fill ? "block aspect-[3.1/1] w-full" : `inline-block shrink-0 ${sm ? "h-7 w-[84px]" : "h-9 w-[112px]"}`} role="img" aria-label={t.name}>
         <SvgaAnim src={t.iconUrl} className="h-full w-full object-contain" />
       </span>
     );
@@ -88,9 +88,10 @@ export function WornTitles({ personId, className = "" }: { personId: string; cla
   }, [personId, session, v]);
   if (!list.length) return null;
   return (
-    <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
+    // Three to a row, each one filling its share, so a long list stays tidy and every title is easy to read
+    <div className={`grid w-full grid-cols-3 gap-x-1 gap-y-0.5 ${className}`}>
       {list.map((t) => (
-        <TitlePill key={t.id} t={t} />
+        <TitlePill key={t.id} t={t} fill />
       ))}
     </div>
   );
