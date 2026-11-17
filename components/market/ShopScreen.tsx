@@ -11,6 +11,7 @@ import { RedPacketArt, RedPacketShop, WalletImage } from "@/components/redpacket
 import { useWalletCatalog } from "@/lib/app/use-wallet";
 import { walletImageSrc, type WalletRedPacket } from "@/lib/api/wallet";
 import { ShopProductAsset } from "./ShopProductAsset";
+import { MyTitlesSheet } from "@/components/profile/ProfileTitles";
 import { useApp, type ShopTab } from "@/lib/app/store";
 import { ApiError } from "@/lib/api/client";
 import { buyShopProduct, getShopCategories, getShopProduct, getShopProducts, type ShopCategory, type ShopProduct } from "@/lib/api/shop";
@@ -22,6 +23,8 @@ const rarityTint = (r?: string) => (r ? RARITY_TINT[r.toLowerCase()] : undefined
 type TabKey = string;
 const ALL = "all";
 const PACKETS = "packets";
+/** Not a real tab: opens the titles you can buy with coins. */
+const TITLES = "titles";
 const catKey = (id: string) => `cat:${id}`;
 
 const errorText = (e: unknown) => (e instanceof ApiError ? e.message : "Something went wrong. Try again.");
@@ -37,6 +40,7 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
   const { pop, push, coins, setSheet, toast, refreshCoins } = useApp();
   /** The item waiting for "Buy X for N coins?" */
   const [confirm, setConfirm] = useState<ShopProduct | null>(null);
+  const [titlesOpen, setTitlesOpen] = useState(false);
   const [buying, setBuying] = useState(false);
   const [categories, setCategories] = useState<Load<ShopCategory[]>>({ status: "loading" });
   const [tab, setTab] = useState<TabKey | null>(initialTab === "packets" ? PACKETS : null);
@@ -95,7 +99,7 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
   }, [tab, products, loadProducts]);
 
   const tabs: { key: TabKey; label: string }[] =
-    categories.status === "ok" ? [{ key: ALL, label: "All" }, ...categories.data.map((c) => ({ key: catKey(c.id), label: c.name })), { key: PACKETS, label: "Red packets" }] : [];
+    categories.status === "ok" ? [{ key: ALL, label: "All" }, ...categories.data.map((c) => ({ key: catKey(c.id), label: c.name })), { key: PACKETS, label: "Red packets" }, { key: TITLES, label: "Titles" }] : [];
   const current = tab && tab !== PACKETS ? products[tab] : undefined;
   const buy = (p: ShopProduct) => {
     if (p.price === undefined) return toast("This item doesn't have a price yet.");
@@ -123,6 +127,7 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
 
   return (
     <div className="app-scroll h-full bg-ink pb-8">
+      <MyTitlesSheet open={titlesOpen} onClose={() => setTitlesOpen(false)} />
       <ScreenHeader
         title="Shop"
         onBack={pop}
@@ -147,7 +152,7 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
       ) : (
         <div className="no-scrollbar mx-4 mt-3 flex gap-0.5 overflow-x-auto rounded-full bg-surface p-1 ring-1 ring-line" role="tablist">
           {(tabs.length ? tabs : [{ key: PACKETS, label: "Red packets" }]).map((t) => (
-            <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => setTab(t.key)} className={`h-9 min-w-fit flex-1 shrink-0 whitespace-nowrap rounded-full px-3.5 text-[12.5px] font-bold ${tab === t.key ? "bg-coral text-white" : "text-cream/65"}`}>
+            <button key={t.key} type="button" role="tab" aria-selected={tab === t.key} onClick={() => (t.key === TITLES ? setTitlesOpen(true) : setTab(t.key))} className={`h-9 min-w-fit flex-1 shrink-0 whitespace-nowrap rounded-full px-3.5 text-[12.5px] font-bold ${tab === t.key ? "bg-coral text-white" : "text-cream/65"}`}>
               {t.label}
             </button>
           ))}
