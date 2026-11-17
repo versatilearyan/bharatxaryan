@@ -795,8 +795,8 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
                       </span>
                     </span>
                     {c.claimedByMe ? (
-                      <span className="flex items-center gap-1 text-[12px] font-bold text-speak">
-                        <Check className="h-4 w-4" /> Claimed
+                      <span className="flex max-w-[44%] items-center gap-1 text-right text-[12px] font-bold leading-tight text-speak">
+                        <Check className="h-4 w-4 shrink-0" /> {c.myLabel ? `Mila: ${c.myLabel}` : "Claimed"}
                       </span>
                     ) : (
                       <Btn
