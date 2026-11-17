@@ -18,6 +18,7 @@ export default function PrivacyPage() {
         <li>Profile and activity: your bio, level, charm, wallet balance, gifts sent and received, rooms you join or create, and your Parivar.</li>
         <li>Messages and media you send in chats and rooms, including photos you upload.</li>
         <li>Voice: audio in a room is streamed live to the people in it. We do not record room audio.</li>
+        <li>Approximate location, only if you turn on Nearby: your position is rounded to about 1 km and used to show other people a rough distance such as &ldquo;3 km&rdquo;. We never show your exact location, and turning Nearby off erases it.</li>
         <li>Device and usage data: app version, device type, and basic logs we need to keep the service secure and working.</li>
         <li>In the Android app: a push notification token for your phone (so we can notify you of messages, gifts and follows), and your Google Play purchase records when you buy coins or VIP.</li>
       </ul>
