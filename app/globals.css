@@ -389,3 +389,14 @@ html[data-lite] .tb-star, html[data-lite] .tb-kite, html[data-lite] .tb-diya, ht
   .pn-skeleton, .pn-glow-gold { animation: none; }
 }
 html[data-lite] .pn-skeleton, html[data-lite] .pn-glow-gold { animation: none; }
+
+/* Smoothness on phones: no 300 ms tap delay, no grey flash on tap, scrolling stays inside its own box */
+@layer base {
+  button, a, [role="button"], input, select, textarea, summary {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  img, svg, video, canvas {
+    max-width: 100%;
+  }
+}

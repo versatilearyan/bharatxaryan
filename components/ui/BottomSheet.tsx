@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { X } from "lucide-react";
 import { useBackClose } from "@/lib/app/back";
@@ -25,6 +26,9 @@ export function BottomSheet({ open, onClose, title, children, className = "", ta
   const titleId = useId();
   const drag = useDragControls();
   useBackClose(open, onClose);
+  // The sheet is drawn in the app frame itself, so it always sits above the bottom navigation, whichever screen opened it
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useEffect(() => setHost(document.getElementById("main")), []);
 
   useEffect(() => {
     if (!open) return;
@@ -33,10 +37,10 @@ export function BottomSheet({ open, onClose, title, children, className = "", ta
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  return (
+  const sheet = (
     <AnimatePresence>
       {open ? (
-        <div className="absolute inset-0 z-50 flex flex-col justify-end" role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined}>
+        <div className="absolute inset-0 z-[60] flex flex-col justify-end" role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined}>
           <motion.button
             type="button"
             aria-label="Close"
@@ -85,4 +89,5 @@ export function BottomSheet({ open, onClose, title, children, className = "", ta
       ) : null}
     </AnimatePresence>
   );
+  return host ? createPortal(sheet, host) : sheet;
 }
