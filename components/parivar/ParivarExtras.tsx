@@ -767,9 +767,14 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
                   <Glyph icon={Gift} size={42} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13.5px] font-bold text-cream">{r.name ?? "Chest"}</span>
-                    <span className="text-[11.5px] text-muted">{d.data?.canSend ? "Send it below to the whole Parivar." : "The Mukhiya (or whoever they allow) sends it to everyone."}</span>
+                    <span className="text-[11.5px] text-muted">{d.data?.canSend ? "Kholo: poora Parivar apna hissa claim karega." : "Mukhiya ya Munshi (treasury sambhalne wala) ise kholega."}</span>
                   </span>
-                  <span className="rounded-full bg-gold px-2.5 py-1 text-[12px] font-extrabold text-ink">×{n(r.qty)}</span>
+                  <span className="rounded-full bg-gold/20 px-2 py-1 text-[11.5px] font-extrabold text-gold">×{n(r.qty)}</span>
+                  {d.data?.canSend ? (
+                    <Btn disabled={busy !== null} onClick={() => void act(`o${r.ref}`, () => parivarExtra.sendChest(p.id, String(r.ref)), `${r.name ?? "Chest"} khul gaya: sabko claim karne ko mila 🎁`)}>
+                      Open
+                    </Btn>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -828,7 +833,7 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
                 </ul>
               </>
             ) : (
-              <p className="mt-4 text-[12px] text-muted">Only the Mukhiya, or people they allow, can send chests.</p>
+              <p className="mt-4 text-[12px] text-muted">Sirf Mukhiya ya Munshi (jise Mukhiya treasury sambhalne de) chest khol sakta hai.</p>
             )}
           </>
         )}
