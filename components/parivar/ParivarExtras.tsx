@@ -767,7 +767,7 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
                   <Glyph icon={Gift} size={42} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13.5px] font-bold text-cream">{r.name ?? "Chest"}</span>
-                    <span className="text-[11.5px] text-muted">{d.data?.canSend ? "Kholo: poora Parivar apna hissa claim karega." : "Mukhiya ya Munshi (treasury sambhalne wala) ise kholega."}</span>
+                    <span className="text-[11.5px] text-muted">{d.data?.canSend ? "Kholo: poora Parivar apna hissa claim karega." : "Sirf Mukhiya ise kholega."}</span>
                   </span>
                   <span className="rounded-full bg-gold/20 px-2 py-1 text-[11.5px] font-extrabold text-gold">×{n(r.qty)}</span>
                   {d.data?.canSend ? (
@@ -833,7 +833,7 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
                 </ul>
               </>
             ) : (
-              <p className="mt-4 text-[12px] text-muted">Sirf Mukhiya ya Munshi (jise Mukhiya treasury sambhalne de) chest khol sakta hai.</p>
+              <p className="mt-4 text-[12px] text-muted">Sirf Mukhiya chest khol sakta hai.</p>
             )}
           </>
         )}
