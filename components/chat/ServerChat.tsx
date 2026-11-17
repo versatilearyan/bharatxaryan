@@ -5,13 +5,14 @@
  * conversation view, in the same look as the demo chat screens. Data and
  * actions come from lib/app/chat-store.tsx.
  */
+import { openReport } from "@/components/safety/Safety";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { getRoomById } from "@/lib/api/voice-rooms";
 import { invitePreview, parseInvite } from "@/lib/api/invites";
 import { InviteCard } from "@/components/social/Invites";
 import { OfficialTick, SystemBubble } from "@/components/sarpanch/Sarpanch";
-import { AlertCircle, BellOff, ChevronLeft, Copy, ImagePlus, Loader2, MoreVertical, RotateCcw, Send, Smile, Trash2, Undo2, Users, X } from "lucide-react";
+import { AlertCircle, BellOff, ChevronLeft, Copy, Flag, ImagePlus, Loader2, MoreVertical, RotateCcw, Send, Smile, Trash2, Undo2, Users, X } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ChatMenuSheet, GroupInfoSheet, useGroupInfo } from "./ChatGroups";
 import { useChatWallpaper } from "@/lib/app/chat-wallpaper";
@@ -473,6 +474,18 @@ function MessageSheet({ m, mine, onClose }: { m: ChatMessage | null; mine: boole
             onClick={() => {
               void navigator.clipboard?.writeText(msg.text ?? "").catch(() => undefined);
               toast("Copied");
+              onClose();
+            }}
+          />
+        ) : null}
+        {!mine && msg.senderId ? (
+          <Row
+            icon={<Flag className="h-4 w-4" />}
+            label="Report"
+            sub="Tell us if this message breaks the rules"
+            danger
+            onClick={() => {
+              openReport({ type: "MESSAGE", userId: msg.senderId, ref: msg.id, name: "this message", snippet: msg.type === "TEXT" ? msg.text : "[photo]" });
               onClose();
             }}
           />

@@ -110,7 +110,7 @@ export type GachaReward = { giftId?: string; kind: string; amount: number; rarit
 export type GachaMachine = { freeFundCost: number; rollPriceCoins: number; id: string; name: string; tier: string; imageUrl?: string; animationUrl?: string; priceFunds: number; serviceFeeCoins: number; freePerDay: number; freeLeft: number; minLevel: number; locked: boolean; cards: number; rewards: GachaReward[] };
 export type GachaInfo = { machines: GachaMachine[]; funds: number; canRoll: boolean; tickets: number; ticketPrice: number };
 export type GachaResult = { kind: string; amount: number; label: string; rarity: string; paidWith: string };
-export type ChestType = { id: string; name: string; imageUrl?: string; priceFunds: number; pieces: number; owned: number };
+export type ChestType = { id: string; name: string; imageUrl?: string; priceFunds: number; pieces: number; owned: number; rewards?: { label: string; kind: string; chance: number }[] };
 export type ChestSent = { id: string; name: string; pieces: number; claimed: number; status: string; expiresAt: string; sentBy?: string; claimedByMe: boolean; myLabel?: string | null };
 export type ChestsInfo = { types: ChestType[]; sent: ChestSent[]; canSend: boolean; funds: number };
 export type KavachType = { id: string; name: string; imageUrl?: string; strength: number; durationMinutes: number; priceFunds: number; cooldownMinutes: number; dailyLimit: number; minLevel: number; locked: boolean; owned: number; usedToday: number; cooldownLeftSeconds: number };
@@ -205,7 +205,7 @@ export type TreasureTier = {
   poolDiamonds: number;
   imageUrl?: string;
   earnedThisWeek: boolean;
-  rewards: { kind: string; rarity: TreasureRarity; label: string; imageUrl?: string }[];
+  rewards: { kind: string; rarity: TreasureRarity; label: string; imageUrl?: string; chance?: number }[];
 };
 export type TreasureChest = {
   id: string;

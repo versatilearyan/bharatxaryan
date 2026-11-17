@@ -534,12 +534,16 @@ export function TreasureSheet({ p, open, onClose, onChanged }: Props) {
                               </span>
                             </div>
                             {t.rewards.length ? (
-                              <div className="mt-2 flex flex-wrap gap-1">
-                                {t.rewards.slice(0, 6).map((r, i) => (
-                                  <span key={i} className="rounded-full px-2 py-0.5 text-[10.5px] font-bold" style={{ background: `${RARITY_COLOR[r.rarity]}22`, color: RARITY_COLOR[r.rarity] }}>
-                                    {KIND_EMOJI[r.kind] ?? "🎁"} {r.label}
-                                  </span>
-                                ))}
+                              <div className="mt-2">
+                                <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Chances of what you can get</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {t.rewards.slice(0, 16).map((r, i) => (
+                                    <span key={i} className="rounded-full px-2 py-0.5 text-[10.5px] font-bold" style={{ background: `${RARITY_COLOR[r.rarity]}22`, color: RARITY_COLOR[r.rarity] }}>
+                                      {KIND_EMOJI[r.kind] ?? "🎁"} {r.label}
+                                      {typeof r.chance === "number" ? ` · ${r.chance}%` : ""}
+                                    </span>
+                                  ))}
+                                </div>
                               </div>
                             ) : null}
                           </li>

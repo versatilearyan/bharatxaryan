@@ -1,5 +1,6 @@
 "use client";
 
+import { openReport } from "@/components/safety/Safety";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLiveCounts } from "@/lib/app/live-counts";
 import { NewbieBadge } from "@/components/newbie/NewbieBadge";
@@ -1190,7 +1191,9 @@ function RoomMenuSheetImpl({ open, onClose, s, extra, onInvite }: { open: boolea
             icon={<Megaphone className="h-5 w-5" />}
             label="Report"
             onClick={() => {
-              toast("Thanks. Reporting is a demo in this preview");
+              // A real report about this room: the team reads it in the admin panel
+              const hostId = s.room.hostId?.startsWith("srv-user:") ? s.room.hostId.slice(9) : undefined;
+              openReport({ type: "ROOM", ref: s.room.server?.id, userId: hostId, name: s.room.name });
               onClose();
             }}
           />

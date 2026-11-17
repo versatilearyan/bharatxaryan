@@ -6,6 +6,7 @@ import { DailyGift } from "@/components/rewards/DailyGift";
 import { ParivarRedPacketPrompt } from "@/components/parivar/ParivarFamilyExtras";
 import dynamic from "next/dynamic";
 import { Activity, useEffect } from "react";
+import { ReportHost } from "@/components/safety/Safety";
 import { SarpanchBanner } from "@/components/sarpanch/SarpanchBanner";
 import { RewardWon } from "@/components/market/RewardWon";
 import { PaymentReturn } from "@/components/market/PaymentReturn";
@@ -148,6 +149,7 @@ function Frame() {
               <WelcomeGift />
               <DailyGift />
               <ParivarRedPacketPrompt />
+              <ReportHost />
               <ReferralCapture />
               <PaymentReturn />
               <GiftOverlay />

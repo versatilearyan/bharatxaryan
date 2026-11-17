@@ -44,6 +44,7 @@ import { NewbieBadge } from "@/components/newbie/NewbieBadge";
 import { useIsNewbie, useNewbieMe } from "@/lib/app/newbie";
 import { LevelPill } from "@/components/profile/IdTags";
 import { MyTitlesButton, WornTitles } from "@/components/profile/ProfileTitles";
+import { ProfileSafetyButton } from "@/components/safety/Safety";
 import { usePublicProfile } from "@/components/profile/usePublicProfile";
 import { useProfileFx } from "@/components/profile/useProfileFx";
 import { BadgeImg } from "@/components/market/CpCharm";
@@ -688,6 +689,7 @@ export function FollowCounts({ personId, following, onPick }: { personId: string
 export function UserProfileScreen({ personId }: { personId: string }) {
   const { pop, profile, toggleFollow, openConversation, push } = useApp();
   const { recordVisit } = useMarket();
+  const person = usePeople();
   const following = profile.following.includes(personId);
   // Leave one footprint per opening
   const visitedRef = useRef<string | null>(null);
@@ -711,6 +713,7 @@ export function UserProfileScreen({ personId }: { personId: string }) {
               <ChevronLeft className="h-6 w-6" />
             </button>
           }
+          topRight={personId === ME_ID ? undefined : <ProfileSafetyButton personId={personId} name={person(personId).name} />}
         />
         {pub.isBackendUser && pub.status !== "ready" ? (
           <div role={pub.status === "loading" ? "status" : "alert"} className={`mx-4 mt-3 flex items-center gap-3 rounded-2xl px-4 py-3 ring-1 ${pub.status === "loading" ? "bg-surface ring-line" : "bg-[#ff8a8f]/10 ring-[#ff8a8f]/30"}`}>

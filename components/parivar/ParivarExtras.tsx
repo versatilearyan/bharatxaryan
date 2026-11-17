@@ -732,6 +732,24 @@ export function GachaSheet({ p, open, onClose, onChanged, onGo }: Props & { onGo
 
 /* ------------------------------ Chests ------------------------------ */
 
+/** The chances of what a chest can give, shown before it is opened (a Play Store rule for chance-based items). */
+function ChestOdds({ odds }: { odds?: { label: string; chance: number }[] }) {
+  if (!odds || !odds.length) return null;
+  return (
+    <details className="basis-full text-[11.5px] text-cream/80">
+      <summary className="cursor-pointer select-none font-bold text-gold">Chances: what can come out</summary>
+      <ul className="mt-1.5 space-y-0.5">
+        {odds.map((o, i) => (
+          <li key={i} className="flex justify-between gap-3">
+            <span className="min-w-0 truncate">{o.label}</span>
+            <span className="shrink-0 font-extrabold text-gold">{o.chance}%</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
   const { toast, refreshCoins } = useApp();
   const d = useLoad<ChestsInfo>(() => parivarExtra.chests(p.id), [p.id, open], 15_000);
@@ -766,7 +784,7 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
             <ul className="mt-2 space-y-2">
               {myChests.length === 0 ? <li className="rounded-2xl bg-surface p-4 text-center text-[12.5px] text-muted ring-1 ring-line">No chest bought yet. Buy one in the Parivar shop and it appears here.</li> : null}
               {myChests.map((r) => (
-                <li key={`${r.kind}${r.ref}`} className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-gold/12 to-surface p-3 ring-1 ring-gold/25">
+                <li key={`${r.kind}${r.ref}`} className="flex flex-wrap items-center gap-3 rounded-2xl bg-gradient-to-r from-gold/12 to-surface p-3 ring-1 ring-gold/25">
                   <Glyph icon={Gift} size={42} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13.5px] font-bold text-cream">{r.name ?? "Chest"}</span>
@@ -778,6 +796,7 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
                       Open
                     </Btn>
                   ) : null}
+                  <ChestOdds odds={d.data?.types.find((t) => t.id === String(r.ref))?.rewards} />
                 </li>
               ))}
             </ul>

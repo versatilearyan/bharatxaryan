@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { api } from "@/lib/api/client";
 import { motion } from "framer-motion";
 import { Megaphone, Sparkles } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
@@ -23,6 +24,24 @@ import { lazySheet } from "@/components/ui/lazySheet";
 const QTY = [1, 5, 10, 99];
 
 /** Gift store bottom sheet. All coins and costs are demo values. While GIFTS_LIVE is off, gifts can be browsed but not sent. */
+type LuckyInfo = { enabled: boolean; chancePercent: number; min: number; max: number; bigWinPercent: number; minGiftCoins: number };
+
+/** Lucky coins are a chance-based extra, so people are told how it works before they send (a Play Store rule). */
+function LuckyNote({ open }: { open: boolean }) {
+  const [info, setInfo] = useState<LuckyInfo | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    api<LuckyInfo>("/api/v1/gifts/lucky-info", { auth: true }).then(setInfo).catch(() => undefined);
+  }, [open]);
+  if (!info || !info.enabled) return null;
+  return (
+    <p className="mx-5 mb-2 rounded-xl bg-gold/10 px-3 py-2 text-[11px] leading-snug text-cream/80 ring-1 ring-gold/25">
+      <span className="font-bold text-gold">Lucky coins:</span> a gift can give the person who gets it random extra coins ({info.min.toLocaleString("en-IN")} to {info.max.toLocaleString("en-IN")}).
+      Each gift has about a {info.chancePercent}% chance, and a big win is about {info.bigWinPercent}%. It is a chance, not a promise.
+    </p>
+  );
+}
+
 function GiftPanelImpl({ open, onClose, s, initialTo }: { open: boolean; onClose: () => void; s: RoomSession; initialTo?: string }) {
   const { coins, setSheet, toast } = useApp();
   const { pkg: localPkg, takePackage } = useMarket();
@@ -96,6 +115,7 @@ function GiftPanelImpl({ open, onClose, s, initialTo }: { open: boolean; onClose
 
   return (
     <BottomSheet open={open} onClose={onClose} title="Send a gift" className="!bg-[#17141b]" tall>
+      <LuckyNote open={open} />
       {/* Recipients */}
       <div className="no-scrollbar flex gap-3 overflow-x-auto px-5 pb-3 pt-1" role="radiogroup" aria-label="Send to">
         {[ME_ID, ...(recipients.length ? recipients : s.room.hostId === ME_ID ? [] : [s.room.hostId])].map((id) => {
