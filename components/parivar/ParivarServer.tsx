@@ -14,6 +14,7 @@ import { useApp } from "@/lib/app/store";
 import { FRAME_ORDER, FramedPicture, SignBadge, frameName } from "./ParivarFrames";
 import { ChestArt, TreasureSheet, TreasureWatcher, themeOf } from "./FamilyTreasure";
 import { ParivarGuideSheet } from "./ParivarGuide";
+import { HelpSheet, RedPacketSheet, parivarRedApi } from "./ParivarFamilyExtras";
 import { ChatSheet, CheerSheet, ChestsSheet, ChoriSheet, FeatureTiles, GachaSheet, KavachSheet, NewsTab as NewsPanel, WorldNews, ShopSheet, TasksTab, type SheetName } from "./ParivarExtras";
 
 const n = (v: number) => v.toLocaleString("en-IN");
@@ -1084,6 +1085,8 @@ export function ParivarHome({ id }: { id: string }) {
           <TreasureWatcher p={p} />
           <ParivarGuideSheet p={p} open={sheet === "guide"} onClose={() => setSheet(null)} />
           <ChestsSheet p={p} open={sheet === "chests"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
+          <RedPacketSheet p={p} open={sheet === "redpacket"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
+          <HelpSheet p={p} open={sheet === "help"} onClose={() => setSheet(null)} onChanged={() => { void load(); }} />
           <ShopSheet p={p} open={sheet === "shop"} onClose={() => setSheet(null)} onGo={(k) => setSheet(k)} onChanged={() => { void load(); loadExtras(); }} />
           <KavachSheet p={p} open={sheet === "kavach"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
           <ChoriSheet p={p} open={sheet === "chori"} onClose={() => setSheet(null)} onChanged={() => { void load(); loadExtras(); }} />
@@ -1469,9 +1472,14 @@ function MembersPanel({ p, can, busy, run, onGift }: { p: ParivarProfile; can: (
               </button>
             ) : null}
             {can("REMOVE_MEMBERS") && m.role !== "LEADER" && p.myRole !== m.role ? (
-              <button type="button" disabled={busy} onClick={() => window.confirm(`Remove ${m.name}?`) && void run(() => parivarApi.removeMember(p.id, m.userId), `${m.name} was removed`)} className="rounded-full bg-coral/15 px-3 py-1 text-[11.5px] font-bold text-coral">
-                Remove
-              </button>
+              <span className="flex shrink-0 flex-col gap-1">
+                <button type="button" disabled={busy} onClick={() => window.confirm(`Remove ${m.name}?`) && void run(() => parivarApi.removeMember(p.id, m.userId), `${m.name} was removed`)} className="rounded-full bg-coral/15 px-3 py-1 text-[11.5px] font-bold text-coral">
+                  Remove
+                </button>
+                <button type="button" disabled={busy} onClick={() => window.confirm(`${m.name} ko ban karein? Wo dobara jud nahi payega.`) && void run(() => parivarRedApi.ban(p.id, m.userId), `${m.name} ko ban kiya`)} className="rounded-full bg-[#7a1226] px-3 py-1 text-[11.5px] font-extrabold text-white">
+                  🚫 Ban
+                </button>
+              </span>
             ) : null}
           </li>
         ))}

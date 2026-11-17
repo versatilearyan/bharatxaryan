@@ -21,7 +21,7 @@ const errText = (e: unknown, fallback = "That didn't work. Try again.") => (e in
 const RARITY: Record<string, string> = { COMMON: "#b9c0cc", RARE: "#5fb7ff", EPIC: "#c58bff", LEGENDARY: "#ffd36e" };
 const KIND_ICON: Record<string, string> = {};
 
-export type SheetName = "gift" | "cheer" | "gacha" | "chests" | "treasure" | "guide" | "shop" | "kavach" | "chori" | "chat" | null;
+export type SheetName = "redpacket" | "help" | "gift" | "cheer" | "gacha" | "chests" | "treasure" | "guide" | "shop" | "kavach" | "chori" | "chat" | null;
 
 function useLoad<T>(fn: () => Promise<T>, deps: unknown[], every = 0) {
   const [data, setData] = useState<T | null>(null);
@@ -87,6 +87,8 @@ function useNow(ms = 1000) {
 
 const TILES: { key: Exclude<SheetName, null>; icon?: string; label: string; sub: string }[] = [
   { key: "chat", icon: "💬", label: "Family chat", sub: "Talk together" },
+  { key: "redpacket", icon: "🧧", label: "Red packet", sub: "Mukhiya bhejta hai" },
+  { key: "help", icon: "🆘", label: "Help and support", sub: "Ban, unban, rules" },
   { key: "gift", icon: "🎁", label: "Send gift", sub: "To a member" },
   { key: "gacha", icon: "🎰", label: "Gacha", sub: "Win rewards" },
   { key: "cheer", icon: "📣", label: "Cheer", sub: "Boost activity" },
