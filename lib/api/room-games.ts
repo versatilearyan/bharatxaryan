@@ -176,6 +176,15 @@ function readTags(raw: unknown): ServerTag[] {
 }
 
 export const tagsApi = {
+  /** The tag catalog the admin edits. */
+  types: async () => {
+    const list = await api<unknown>("/api/v1/tags/types", opts);
+    return (Array.isArray(list) ? list : []).flatMap((x) => {
+      const d = obj(x);
+      if (!d || typeof d.id !== "string") return [];
+      return [{ id: d.id, label: String(d.label ?? d.id), one: String(d.one ?? d.label ?? d.id), emoji: String(d.emoji ?? "🏷️"), tint: String(d.tint ?? "#ffb3cf"), deep: String(d.deep ?? "#b0245a"), imageUrl: typeof d.imageUrl === "string" ? d.imageUrl : null, animationUrl: typeof d.animationUrl === "string" ? d.animationUrl : null, active: d.active !== false }];
+    });
+  },
   mine: async () => readTags(await api<unknown>("/api/v1/tags/me", opts)),
   of: async (userId: string) => readTags(await api<unknown>(`/api/v1/tags/user/${encodeURIComponent(userId)}`, opts)),
   remove: (tagId: string) => api<unknown>(`/api/v1/tags/${encodeURIComponent(tagId)}`, { ...opts, method: "DELETE" }),

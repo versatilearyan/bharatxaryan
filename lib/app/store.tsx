@@ -21,9 +21,7 @@ import { GOLD_NAME_VIP, POINTS_PER_COIN, growthFor, roomExpLevel, roomLevel, vip
 import { EXP_SOURCES, FRIEND_EXP, TASK_EXP, charmFromCoins, charmInfo, giftEarnings, dayKey, expToNext, sampleCharm, type ExpSource } from "./progress";
 import { GUARD_PER_DAY, MY_SAMPLE_RECEIVED, sampleGuardians, sampleReceived } from "./social";
 import { friendsApi } from "@/lib/api/social";
-import { RELATIONSHIPS, SAMPLE_TAGS, TAG_THEME_IDS, pairKey, relationshipById, tagLevel, tokenFor, type RelationshipId, type Tag } from "./tags";
-/** Relationship ids the app knows, for checking tags from the server. */
-const RELATIONSHIP_IDS: string[] = RELATIONSHIPS.map((r) => r.id);
+import { SAMPLE_TAGS, TAG_THEME_IDS, applyTagTypes, isRelationship, pairKey, relationshipById, useTagTypes, tagLevel, tokenFor, type RelationshipId, type Tag } from "./tags";
 import type { RedPacketId } from "./redpacket";
 import type { Conversation, Cover, GameId, GiftId, Notice, Profile, Room, RoomRole, RoomSettings, RoomType } from "./types";
 
@@ -1119,7 +1117,7 @@ function useAppState() {
         id: `srv-tag:${t.id}`,
         a: pid(t.a),
         b: pid(t.b),
-        relation: (RELATIONSHIP_IDS.includes(t.relation) ? t.relation : "besties") as RelationshipId,
+        relation: (isRelationship(t.relation) ? t.relation : "besties") as RelationshipId,
         token: (["bicycle", "scooter", "cottage"].includes(t.token) ? t.token : "bicycle") as Tag["token"],
         intimacy: t.intimacy,
         createdAt: t.createdAt ? Date.parse(t.createdAt) || Date.now() : Date.now(),
@@ -1148,7 +1146,7 @@ function useAppState() {
           t.id === id
             ? {
                 ...t,
-                relation: (saved && RELATIONSHIP_IDS.includes(saved.relation) ? saved.relation : t.relation) as RelationshipId,
+                relation: (saved && isRelationship(saved.relation) ? saved.relation : t.relation) as RelationshipId,
                 nickname: saved?.nickname,
                 theme: saved?.theme && TAG_THEME_IDS.includes(saved.theme) ? (saved.theme as Tag["theme"]) : undefined,
               }
@@ -1208,6 +1206,11 @@ const Ctx = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const state = useAppState();
+  useTagTypes(); // the tag catalog is edited in the admin panel: re-render everyone when it loads
+  useEffect(() => {
+    if (!state.signedIn) return;
+    tagsApi.types().then(applyTagTypes).catch(() => undefined);
+  }, [state.signedIn]);
   return <Ctx.Provider value={state}>{children}</Ctx.Provider>;
 }
 

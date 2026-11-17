@@ -14,7 +14,7 @@ import { GIFTS, GIFTS_LIVE, GIFTS_SOON_TEXT, giftById } from "@/lib/app/data";
 import { SoonTag } from "@/components/ui/ComingSoonBadge";
 import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
-import { NICKNAME_MAX, RELATIONSHIPS, TAG_PERKS, TAG_SLOTS, TAG_THEMES, TOKENS, partnerOf, relationshipById, tagColors, tagLevel, tagSlotsFor, tokenById, type RelationshipId, type Tag } from "@/lib/app/tags";
+import { NICKNAME_MAX, choosableRelationships, TAG_PERKS, TAG_SLOTS, TAG_THEMES, TOKENS, partnerOf, relationshipById, tagColors, tagLevel, tagSlotsFor, tokenById, type RelationshipId, type Tag } from "@/lib/app/tags";
 import type { GiftId } from "@/lib/app/types";
 
 const QUICK_GIFTS: GiftId[] = GIFTS.filter((g) => !g.packageOnly).slice(0, 4).map((g) => g.id);
@@ -367,7 +367,7 @@ function TagCustomizeSheet({ tag, open, onClose }: { tag: Tag; open: boolean; on
         <div>
           <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Tag type</p>
           <div className="grid grid-cols-3 gap-2">
-            {RELATIONSHIPS.map((r) => (
+            {choosableRelationships().map((r) => (
               <button key={r.id} type="button" onClick={() => setRelation(r.id)} className={`rounded-xl px-2 py-2 text-[12.5px] font-bold ring-1 transition ${relation === r.id ? "text-white ring-transparent" : "text-cream/80 ring-white/10"}`} style={relation === r.id ? { background: `linear-gradient(135deg, ${r.tint}, ${r.deep})` } : undefined}>
                 {r.emoji} {r.label}
               </button>

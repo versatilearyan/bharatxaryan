@@ -11,7 +11,7 @@ import { Coin, IconButton } from "@/components/ui/kit";
 import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
 import { GIFTS, GIFTS_LIVE, GIFTS_SOON_TEXT, giftById } from "@/lib/app/data";
-import { DECLARATIONS, DECLARATION_MAX, ORDINARY_OFFERS, RELATIONSHIPS, TOKENS, relationshipById, tagLevel, type RelationshipId } from "@/lib/app/tags";
+import { DECLARATIONS, DECLARATION_MAX, ORDINARY_OFFERS, TOKENS, choosableRelationships, relationshipById, tagLevel, type RelationshipId } from "@/lib/app/tags";
 import { RelationIcon } from "@/components/art/RelationIcon";
 import type { GiftId } from "@/lib/app/types";
 import { ChatInput, EmojiButton, EmojiSheet, GiftButton, InviteSheet, Pair, RoomChat, RoomMenuSheet, RoomTopBar, Seat } from "./RoomParts";
@@ -351,7 +351,7 @@ function DeclarationSheet({ open, onClose, a }: { open: boolean; onClose: () => 
           <>
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">The tag you want</p>
             <div className="mt-2 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Tag">
-              {RELATIONSHIPS.map((r) => (
+              {choosableRelationships().map((r) => (
                 <button
                   key={r.id}
                   type="button"

@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { SvgaAnim } from "@/components/effects/SvgaAnim";
 import { relationshipById, type RelationshipId } from "@/lib/app/tags";
 
 /**
@@ -12,6 +13,7 @@ import { relationshipById, type RelationshipId } from "@/lib/app/tags";
 export function RelationIcon({ id, size = 24, className = "" }: { id: RelationshipId; size?: number; className?: string }) {
   const uid = useId().replace(/:/g, "");
   const rel = relationshipById(id);
+  const media = rel.id === id ? rel.imageUrl || rel.animationUrl : null;
   const g = (n: string) => `${n}-${uid}`;
   const petals = Array.from({ length: 12 }, (_, i) => {
     const a = (i / 12) * Math.PI * 2;
@@ -21,6 +23,7 @@ export function RelationIcon({ id, size = 24, className = "" }: { id: Relationsh
     const a = (i / 16) * Math.PI * 2 + Math.PI / 16;
     return { x: 24 + Math.cos(a) * 15.6, y: 24 + Math.sin(a) * 15.6 };
   });
+  if (media) return <SvgaAnim src={media} className={`shrink-0 object-contain ${className}`} style={{ width: size, height: size }} />;
   return (
     <svg viewBox="0 0 48 48" width={size} height={size} className={`shrink-0 overflow-visible ${className}`} aria-hidden>
       <defs>
@@ -52,7 +55,11 @@ export function RelationIcon({ id, size = 24, className = "" }: { id: Relationsh
         ))}
       </g>
       <g fill="#fffaf0" stroke="none" style={{ filter: `drop-shadow(0 1px 1.2px ${rel.deep})` }}>
-        {glyph(id, rel.deep)}
+        {["brosis", "besties", "bro", "confidant", "apprentice", "sibling"].includes(id) ? glyph(id, rel.deep) : (
+          <text x="24" y="30" textAnchor="middle" fontSize="18" fill="#000">
+            {rel.emoji}
+          </text>
+        )}
       </g>
       {/* Gloss */}
       <path d="M11 19 Q13.5 10.5 23 8.6 Q16.5 12.5 14 20 Z" fill="#fff" opacity="0.4" />

@@ -6,6 +6,7 @@ import { RelationIcon } from "@/components/art/RelationIcon";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { usePeople } from "@/lib/app/people";
 import { ME_ID, useApp } from "@/lib/app/store";
+import { SvgaAnim } from "@/components/effects/SvgaAnim";
 import { relationshipById, tagColors, tagLevel, tokenById, type Tag } from "@/lib/app/tags";
 
 /** "Kabir's Bestie": the nameplate for someone's tag partner. */
@@ -58,9 +59,12 @@ export function TagLink({ tag, gap, size }: { tag: Tag; gap: number; size: numbe
  */
 export function BffBadge({ id, size = 24, still = false }: { id: Tag["relation"]; size?: number; still?: boolean }) {
   const uid = useId().replace(/:/g, "");
+  const custom = relationshipById(id);
+  const media = custom.id === id ? custom.animationUrl || custom.imageUrl : null;
+  if (media) return <SvgaAnim src={media} className="shrink-0 object-contain" style={{ width: size, height: size }} />;
   const gold = `url(#bg-${uid})`;
   const shine = `url(#bs-${uid})`;
-  const gemTint: Record<Tag["relation"], [string, string]> = {
+  const gemTint: Record<string, [string, string]> = {
     besties: ["#ffb3cf", "#e0306f"],
     brosis: ["#ff9a8a", "#c8231b"],
     bro: ["#a9d2ff", "#1f5fd1"],
@@ -68,7 +72,7 @@ export function BffBadge({ id, size = 24, still = false }: { id: Tag["relation"]
     apprentice: ["#ffe08a", "#e2621b"],
     sibling: ["#aef0c6", "#159a52"],
   };
-  const [g1, g2] = gemTint[id];
+  const [g1, g2] = gemTint[id] ?? [custom.tint, custom.deep];
   // The gold body as plain shapes, drawn twice: once in gold, once as the moving shine
   const body = (paint: string, outline: boolean) => {
     const o = outline ? { stroke: "#6e420e", strokeWidth: 1.1, strokeLinejoin: "round" as const } : {};
@@ -130,7 +134,7 @@ export function BffBadge({ id, size = 24, still = false }: { id: Tag["relation"]
     }
   };
   // Where the gem sits on each badge
-  const gem: Record<Tag["relation"], [number, number, number]> = {
+  const gem: Record<string, [number, number, number]> = {
     besties: [12, 11, 2.6],
     brosis: [12, 12, 2.6],
     bro: [15.6, 8.4, 2.2],
@@ -138,7 +142,7 @@ export function BffBadge({ id, size = 24, still = false }: { id: Tag["relation"]
     apprentice: [12, 15.6, 1.9],
     sibling: [12, 11.4, 2],
   };
-  const [gx, gy, gr] = gem[id];
+  const [gx, gy, gr] = gem[id] ?? [12, 12, 2.6];
   return (
     <svg viewBox="0 0 24 24" width={size} height={size} className="shrink-0 overflow-visible" aria-hidden>
       <defs>

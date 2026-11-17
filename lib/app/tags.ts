@@ -6,18 +6,57 @@
  * one intimacy point, and intimacy slowly raises the tag level (1–10), which unlocks
  * perks in the intimate space.
  */
+import { useSyncExternalStore } from "react";
 import { levelFor } from "./levels";
 
-export const RELATIONSHIPS = [
+export type Relationship = {
+  id: string;
+  label: string;
+  one: string;
+  emoji: string;
+  tint: string;
+  deep: string;
+  /** A picture or animation the admin uploaded; the drawn badge is used when both are empty. */
+  imageUrl?: string | null;
+  animationUrl?: string | null;
+  /** Switched-off types still draw on old tags but can't be picked for new ones. */
+  active?: boolean;
+};
+const DEFAULT_RELATIONSHIPS: Relationship[] = [
   { id: "brosis", label: "Bro and sis", one: "Bro/Sis", emoji: "🍀", tint: "#5fe0c6", deep: "#127a6b" },
   { id: "besties", label: "Besties", one: "Bestie", emoji: "🎀", tint: "#ff7fa8", deep: "#b0245a" },
   { id: "bro", label: "Brothers", one: "Bro", emoji: "✊🏻", tint: "#7fb6ff", deep: "#2251b5" },
   { id: "confidant", label: "Confidant", one: "Confidant", emoji: "🧩", tint: "#b48bff", deep: "#5b2bb5" },
   { id: "apprentice", label: "Apprentice", one: "Apprentice", emoji: "🛡️", tint: "#f2c063", deep: "#a3651a" },
   { id: "sibling", label: "Sibling", one: "Sibling", emoji: "☘️", tint: "#6fe3a2", deep: "#1d8a52" },
-] as const;
-export type RelationshipId = (typeof RELATIONSHIPS)[number]["id"];
-export const relationshipById = (id: RelationshipId) => RELATIONSHIPS.find((r) => r.id === id)!;
+];
+/** The tag catalog. The admin edits it; the app fills it from the server (applyTagTypes) and these defaults cover the time before that. */
+export const RELATIONSHIPS: Relationship[] = [...DEFAULT_RELATIONSHIPS];
+export type RelationshipId = string;
+export const relationshipById = (id: RelationshipId): Relationship => RELATIONSHIPS.find((r) => r.id === id) ?? RELATIONSHIPS.find((r) => r.id === "besties") ?? DEFAULT_RELATIONSHIPS[1];
+export const isRelationship = (id: string) => RELATIONSHIPS.some((r) => r.id === id);
+/** The types a new tag can use. */
+export const choosableRelationships = () => RELATIONSHIPS.filter((r) => r.active !== false);
+
+let tagTypesVersion = 0;
+const tagTypeListeners = new Set<() => void>();
+export function applyTagTypes(list: Relationship[]) {
+  if (!list.length) return;
+  RELATIONSHIPS.splice(0, RELATIONSHIPS.length, ...list);
+  tagTypesVersion++;
+  tagTypeListeners.forEach((l) => l());
+}
+/** React hook: re-renders when the catalog loads or changes. */
+export function useTagTypes() {
+  return useSyncExternalStore(
+    (cb) => {
+      tagTypeListeners.add(cb);
+      return () => tagTypeListeners.delete(cb);
+    },
+    () => tagTypesVersion,
+    () => 0,
+  );
+}
 
 /** Ready-made tag declarations the person on the auction seat can pick or edit. */
 export const DECLARATIONS = [
