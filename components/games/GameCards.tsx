@@ -85,3 +85,19 @@ export function PlayersHint({ n }: { n: number }) {
     </span>
   );
 }
+
+/** The small card for the Home screen: just the picture, the name and a status, one tap to open. */
+export function GameMini({ g, live, onOpen, index = 0 }: { g: Game; live?: number; onOpen: () => void; index?: number }) {
+  return (
+    <motion.button type="button" whileTap={{ scale: 0.95 }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 6) * 0.04 }} onClick={onOpen} aria-label={`${g.name}, ${g.players}`} className="relative block h-[132px] w-[116px] shrink-0 snap-start overflow-hidden rounded-[20px] text-left ring-1 ring-white/20 shadow-[0_10px_22px_-12px_rgba(0,0,0,0.9)]">
+      <GameArt id={g.id} />
+      <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+      <span className="absolute left-1.5 top-1.5 flex gap-1">
+        {g.tag === "NEW" ? <span className="rounded-full bg-[#3fbf7f] px-1.5 py-0.5 text-[8.5px] font-black uppercase text-white">New</span> : null}
+        {g.tag === "HOT" ? <span className="rounded-full bg-coral px-1.5 py-0.5 text-[8.5px] font-black uppercase text-white">🔥</span> : null}
+        {live ? <span className="rounded-full bg-black/65 px-1.5 py-0.5 text-[8.5px] font-black text-[#7dff9a]">● {live}</span> : null}
+      </span>
+      <span className="absolute inset-x-2 bottom-1.5 block truncate font-display text-[13px] font-black leading-tight text-white drop-shadow">{g.name}</span>
+    </motion.button>
+  );
+}

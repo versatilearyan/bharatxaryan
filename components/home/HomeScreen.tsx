@@ -10,7 +10,7 @@ import { NewbieRooms } from "@/components/newbie/NewbieUi";
 import { ShortcutIcon } from "@/components/art/ShortcutIcon";
 import { Logo } from "@/components/brand/Logo";
 import { FestivalBanner } from "@/components/festival/FestivalBanner";
-import { GameHeroCard, GameTile } from "@/components/games/GameCards";
+import { GameMini } from "@/components/games/GameCards";
 import { CoinBalance, SectionHeader } from "@/components/ui/premium";
 import { rememberPlayed, useGameLive } from "@/lib/games/live";
 import type { Game } from "@/lib/app/types";
@@ -163,24 +163,29 @@ function Shortcuts() {
 }
 
 function GameModes() {
-  const { setSheet } = useApp();
+  const { setSheet, push } = useApp();
   const live = useGameLive();
-  const gaddar = PLAYABLE.find((g) => g.id === "gaddar");
-  const others = PLAYABLE.filter((g) => g.id !== "gaddar");
   const open = (g: Game) => {
     rememberPlayed(g.id);
     setSheet({ kind: "game", gameId: g.id });
   };
   return (
-    <section className="mt-7" aria-labelledby="games-h">
-      <SectionHeader title={<span id="games-h">Game Modes</span>} sub="Ek tap me khelo" icon={<Flame className="h-4.5 w-4.5 text-gold" aria-hidden />} />
-      {gaddar ? <GameHeroCard g={gaddar} live={live?.gaddar} onOpen={() => open(gaddar)} /> : null}
-      <ul className="mt-3 grid grid-cols-2 gap-3 px-4">
-        {others.map((g, i) => (
+    <section className="mt-6" aria-labelledby="games-h">
+      <SectionHeader title={<span id="games-h">Game Modes</span>} icon={<Flame className="h-4.5 w-4.5 text-gold" aria-hidden />} />
+      <ul className="no-scrollbar flex scroll-pl-4 snap-x gap-2.5 overflow-x-auto px-4 pb-1">
+        {PLAYABLE.map((g, i) => (
           <li key={g.id}>
-            <GameTile g={g} live={live?.[g.id]} index={i} onOpen={() => open(g)} />
+            <GameMini g={g} live={live?.[g.id]} index={i} onOpen={() => open(g)} />
           </li>
         ))}
+        <li>
+          <button type="button" onClick={() => push({ kind: "games" })} className="pn-card grid h-[132px] w-[100px] shrink-0 snap-start place-items-center rounded-[20px] text-center" aria-label="Sab games">
+            <span>
+              <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-gold/20 text-[20px] text-gold">›</span>
+              <span className="mt-1.5 block font-display text-[13px] font-black text-cream">Sab games</span>
+            </span>
+          </button>
+        </li>
       </ul>
     </section>
   );
