@@ -20,38 +20,70 @@ export function useTagTitle() {
 }
 
 /**
- * The tag link between two seats when tagged people sit beside each other:
- * a glowing double ribbon in the relationship's colour, the relationship badge
- * floating in the middle and a small level plate under it.
+ * The tag link between two seats when tagged people sit beside each other, drawn like the reference: a glowing wave in
+ * the tag's colour that touches both avatars, the relationship badge in the middle with little white wings, and a few
+ * candy bubbles floating around it. It sits above the seats and reaches each avatar's rim, whatever the name widths.
  */
 export function TagLink({ tag, gap, size }: { tag: Tag; gap: number; size: number }) {
   const rel = relationshipById(tag.relation);
   const lv = tagLevel(tag.intimacy).level;
-  // A bit bigger than before, but never wider than the gap between the two seats
-  const icon = Math.round(Math.max(22, Math.min(34, gap * 0.95, size * 0.5)));
-  // The ribbon runs from inside one avatar to inside the other (it passes under them), so it always looks joined,
-  // whatever the width of the name under each seat
-  const reach = size * 0.75;
+  const col = tagColors(tag);
+  const icon = Math.round(Math.max(24, Math.min(36, gap * 1.05, size * 0.52)));
+  // How far the seat column is wider than the avatar (a long name widens it), plus a little overlap onto the rim
+  const reach = Math.max(size * 0.15, (72 - size) / 2, 0) + 7;
   const w = gap + reach * 2;
+  const h = Math.max(icon * 1.5, size * 0.62);
   const gid = `tl-${tag.id}`;
+  const lite = typeof document !== "undefined" && document.documentElement.hasAttribute("data-lite");
+  // From the avatar's rim (x 0) arching up and down into the badge (x 100)
+  const half = "M2 24 C18 4 46 4 66 16 C78 23 90 24 98 21";
   return (
-    <span className="relative z-[5] flex shrink-0 items-center justify-center" style={{ width: gap, height: size }} aria-label={`${rel.label} tag, level ${lv}`} role="img">
-      {/* One thin gold swoosh running through the badge, fading at both ends */}
-      <svg className="pointer-events-none absolute top-1/2 -translate-y-1/2" style={{ width: w, height: icon * 1.2, left: -reach }} viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden>
-        <defs>
-          <linearGradient id={gid} x1="0" x2="1">
-            <stop offset="0" stopColor="#ffd98a" />
-            <stop offset="0.5" stopColor="#ffe9b0" />
-            <stop offset="1" stopColor="#f5b54a" />
-          </linearGradient>
-        </defs>
-        <path d="M1 20 C14 10 30 10 46 18 C60 25 76 30 99 20" fill="none" stroke="rgba(90,40,0,0.45)" strokeWidth="4.2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        <path d="M1 20 C14 10 30 10 46 18 C60 25 76 30 99 20" fill="none" stroke={`url(#${gid})`} strokeWidth="2.6" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-        <circle cx="1.5" cy="20" r="2.2" fill="#ffd98a" />
-        <circle cx="98.5" cy="20" r="2.2" fill="#f5b54a" />
-      </svg>
-      <motion.span className="relative z-[1] grid place-items-center" animate={{ y: [0, -2, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} aria-hidden>
+    <span className="pointer-events-none relative z-20 flex shrink-0 items-center justify-center" style={{ width: gap, height: size }} aria-label={`${rel.label} tag, level ${lv}`} role="img">
+      {/* Two mirrored halves: from each avatar's rim up over the badge, so both sides always look the same */}
+      {(["left", "right"] as const).map((side) => (
+        <svg
+          key={side}
+          className="absolute top-1/2 overflow-visible"
+          style={{ width: gap / 2 + reach, height: h, [side]: -reach, transform: `translateY(-50%)${side === "right" ? " scaleX(-1)" : ""}`, filter: `drop-shadow(0 0 4px ${col.glow})` }}
+          viewBox="0 0 100 40"
+          preserveAspectRatio="none"
+          aria-hidden
+        >
+          <defs>
+            <linearGradient id={`${gid}-${side}`} x1="0" x2="1">
+              <stop offset="0" stopColor={col.from} stopOpacity="0.7" />
+              <stop offset="0.35" stopColor={col.from} />
+              <stop offset="1" stopColor="#ffffff" />
+            </linearGradient>
+          </defs>
+          <path d={half} fill="none" stroke={col.from} strokeOpacity="0.4" strokeWidth="8" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+          <path d={half} fill="none" stroke={`url(#${gid}-${side})`} strokeWidth="3.2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        </svg>
+      ))}
+      {/* candy bubbles around the badge */}
+      {[
+        { x: -0.42, y: -0.62, d: 0.22, c: ["#7fd4ff", "#3a8dff"] },
+        { x: 0.46, y: -0.5, d: 0.17, c: ["#ffb3d9", "#ff5ca8"] },
+        { x: 0.3, y: 0.55, d: 0.2, c: ["#c9b6ff", "#7b5cff"] },
+      ].map((b, i) => (
+        <motion.span
+          key={i}
+          className="absolute rounded-full"
+          style={{ width: size * b.d, height: size * b.d, left: `calc(50% + ${b.x * gap}px)`, top: `calc(50% + ${b.y * size * 0.5}px)`, background: `repeating-linear-gradient(135deg, ${b.c[0]} 0 3px, ${b.c[1]} 3px 6px)`, boxShadow: "inset -2px -2px 3px rgba(0,0,0,0.25), inset 2px 2px 3px rgba(255,255,255,0.5)", opacity: 0.9 }}
+          animate={lite ? undefined : { y: [0, -3, 0] }}
+          transition={{ duration: 2.2 + i * 0.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.3 }}
+          aria-hidden
+        />
+      ))}
+      <motion.span className="relative z-[1] flex items-center" animate={lite ? undefined : { y: [0, -2, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} aria-hidden>
+        {/* little white wings, like the reference */}
+        <svg viewBox="0 0 20 14" style={{ width: icon * 0.5, height: icon * 0.36, marginRight: -icon * 0.14 }} aria-hidden>
+          <path d="M20 8 C14 1 6 0 1 2 C4 4 5 5 6 6 C3 6 2 7 1 8 C5 9 8 9 9 9 C7 10 6 11 6 12 C11 13 16 12 20 8Z" fill="#fff" stroke="#f3c6dd" strokeWidth="0.8" />
+        </svg>
         <BffBadge id={tag.relation} size={icon} />
+        <svg viewBox="0 0 20 14" style={{ width: icon * 0.5, height: icon * 0.36, marginLeft: -icon * 0.14, transform: "scaleX(-1)" }} aria-hidden>
+          <path d="M20 8 C14 1 6 0 1 2 C4 4 5 5 6 6 C3 6 2 7 1 8 C5 9 8 9 9 9 C7 10 6 11 6 12 C11 13 16 12 20 8Z" fill="#fff" stroke="#f3c6dd" strokeWidth="0.8" />
+        </svg>
       </motion.span>
     </span>
   );

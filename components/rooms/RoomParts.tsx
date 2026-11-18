@@ -449,7 +449,7 @@ function EdgeLink({ s, from, to, gap, size }: { s: RoomSession; from: number; to
   const cpLevel = useCpLevelBetween(x, y);
   if (!cpLevel && !tag) return null;
   return (
-    <span className="pointer-events-none absolute top-0 z-[5]" style={{ left: "100%", width: gap }}>
+    <span className="pointer-events-none absolute top-0 z-20" style={{ left: "100%", width: gap }}>
       {cpLevel ? <CpLink gap={gap} size={size} level={cpLevel} /> : tag ? <TagLink tag={tag} gap={gap} size={size} /> : null}
     </span>
   );
@@ -755,9 +755,9 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
                   {fx.badge ? <VipBadge set={fx.badge} level={p.vip} size={16} className="ml-1" /> : null}
                   <ParivarTag personId={p.id} className="ml-1 !px-1 !text-[9px]" />
                 </span>
-                {/* Animated chat bubble (SVGA): every bubble has the same width, so the art is never stretched out of
-                    shape by a long or short message; its inner box (x 9–90%, y 19–81% of the file) sits over the text */}
-                <p className="relative mx-2 my-2.5 flex min-h-[40px] w-[210px] items-center px-3 py-1.5 text-[12.5px] font-semibold leading-snug text-white [text-shadow:0_1px_2px_rgb(120_10_30/0.7)]">
+                {/* Animated chat bubble (SVGA): the bubble fits the message (a short line gets a small bubble, a long one a
+                    wide one); the art's inner box (x 9–90%, y 19–81% of the file) is fitted over the text */}
+                <p className="relative mx-2 my-2.5 flex min-h-[38px] w-fit min-w-[84px] max-w-[230px] items-center px-3.5 py-1.5 text-[12.5px] font-semibold leading-snug text-white [text-shadow:0_1px_2px_rgb(120_10_30/0.7)]">
                   <VipBubbleArt set={bubble} onError={() => setFailedBubble(bubble.bubble)} />
                   <span className="relative break-words">
                     <MentionText text={m.text} />
