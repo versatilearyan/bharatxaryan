@@ -54,6 +54,8 @@ export type ServerGift = {
   soundUrl: string | null;
   /** Not on sale (the Newbie welcome reward gift): known so the room can show it, never listed to send. */
   offSale?: boolean;
+  /** "Server notification" switched on in the admin panel: everyone sees a banner, with the sender's message. */
+  announce?: boolean;
 };
 
 const obj = (v: unknown) => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : undefined);
@@ -176,6 +178,7 @@ export async function getGiftCatalog(): Promise<ServerGift[]> {
         animationRatio: str(o.animationRatio) ?? null,
         soundUrl: mediaSrc(o.soundUrl),
         offSale: o.offSale === true,
+        ...(typeof o.announce === "boolean" ? { announce: o.announce } : {}),
       },
     ];
   });

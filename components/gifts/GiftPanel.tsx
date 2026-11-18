@@ -10,7 +10,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, formatCoins } from "@/components/ui/kit";
 import { GIFTS_LIVE, GIFTS_SOON_TEXT, giftById, giftCategories, giftCategoryKind, giftsOnSale } from "@/lib/app/data";
-import { bagGiftCounts, useGiftsVersion, useRewards } from "@/lib/app/rewards-store";
+import { bagGiftCounts, loadGiftCatalog, useGiftsVersion, useRewards } from "@/lib/app/rewards-store";
 import { WELCOME_GIFT_ID, useNewbieMe } from "@/lib/app/newbie";
 import { ComingSoonBadge, SoonTag } from "@/components/ui/ComingSoonBadge";
 import { GIFT_MESSAGE_MAX, useGiftNews } from "@/lib/app/gift-news-store";
@@ -48,6 +48,10 @@ function GiftPanelImpl({ open, onClose, s, initialTo }: { open: boolean; onClose
   // Backend rooms: the server's gifts (admin panel) and the gifts in your server Bag (won as rewards)
   const backend = Boolean(s.room.server);
   const giftsV = useGiftsVersion();
+  // Fresh catalog each time the panel opens: gifts the admins just added (and their switches) show straight away
+  useEffect(() => {
+    if (open) void loadGiftCatalog();
+  }, [open]);
   const newbieMe = useNewbieMe();
   // The Welcome Newbie gift shows only to the host of a welcome room (the server checks it again when it is sent)
   const canWelcome = Boolean(s.room.newbie && (s.isOwner || newbieMe?.isHost));
@@ -93,7 +97,7 @@ function GiftPanelImpl({ open, onClose, s, initialTo }: { open: boolean; onClose
   const have = pkg[gift] ?? 0;
   const canAfford = isPkg ? have >= qty : total <= coins;
 
-  // Only Sunset Romance, Crystal Palace and Storm Guardian get a server notification
+  // Gifts with "Server notification" switched on in the admin panel get the message box and the banner
   const big = Boolean(selected.news);
   const sent = () => {
     // Backend rooms: the server announces it to everyone (you included); demo rooms announce here

@@ -242,6 +242,8 @@ export function setServerGifts(list: ServerGift[]) {
       g.video = { src: sg.animationUrl, poster: sg.imageUrl ?? icon, icon, ...(ratio ? { floating: true, ratio } : {}) };
       delete g.svga;
     }
+    // The admin's "Server notification" switch decides the banner and the message box (not the bundled list)
+    if (sg.announce !== undefined) g.news = sg.announce || undefined;
     if (sg.offSale) {
       rewardOnlyGifts.set(sg.id, g);
       continue;
