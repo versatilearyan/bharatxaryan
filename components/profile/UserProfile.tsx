@@ -35,7 +35,7 @@ import { PROPOSAL_LINES, daysTogether, loveLevel, partnerIn, type RingId } from 
 import { useMarket } from "@/lib/app/market-store";
 import { ME_ID, useApp } from "@/lib/app/store";
 import { useMe } from "@/lib/app/me-store";
-import { useGiftsVersion } from "@/lib/app/rewards-store";
+import { loadGiftCatalog, useGiftsVersion } from "@/lib/app/rewards-store";
 import { GUARD_PER_DAY, giftStars, giftWallList, giftWallStats, seeded } from "@/lib/app/social";
 import { partnerOf, relationshipById, tagLevel, type Tag } from "@/lib/app/tags";
 import type { GiftId, Room } from "@/lib/app/types";
@@ -974,6 +974,10 @@ export function UserRoomsScreen({ personId }: { personId: string }) {
 export function GiftWallScreen({ personId }: { personId: string }) {
   const { pop, receivedOf, openProfile } = useApp();
   useGiftsVersion();
+  // New gifts the admins added appear on the wall straight away
+  useEffect(() => {
+    void loadGiftCatalog();
+  }, []);
   const serverGifts = useGiftsReceived(personId);
   const received = serverGifts ? serverGifts.gifts : receivedOf(personId);
   const wall = giftWallStats(received);
