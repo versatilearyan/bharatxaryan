@@ -14,7 +14,7 @@ import { SvgaAnim, preloadSvga } from "@/components/effects/SvgaAnim";
 import { VipAvatar, VipBadge } from "@/components/effects/VipFx";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Check, ChevronLeft, ChevronRight, Copy, Gift, Lock, MessageCircle, Shield, ShieldCheck, ShieldOff, UserPlus } from "lucide-react";
+import { Ban, Check, ChevronLeft, ChevronRight, Copy, Gift, Lock, MessageCircle, Shield, ShieldCheck, ShieldOff, UserPlus } from "lucide-react";
 import { RemovalRequests, RemoveGuardSheet, useGuardRemoval } from "@/components/profile/GuardRemoval";
 import { readToken } from "@/lib/auth/token";
 import { GiftArt } from "@/components/art/GiftArt";
@@ -72,7 +72,7 @@ function Panel({ title, meta, onOpen, children }: { title: string; meta?: ReactN
 }
 
 /** Banner, avatar, name, level, VIP, charm, ID and bio. */
-export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, charmPoints, backendProfile = false }: { personId: string; topLeft?: ReactNode; topRight?: ReactNode; vipFresh?: boolean; charmPoints?: number; backendProfile?: boolean }) {
+export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, charmPoints, backendProfile = false, banned }: { personId: string; topLeft?: ReactNode; topRight?: ReactNode; vipFresh?: boolean; charmPoints?: number; backendProfile?: boolean; banned?: { until?: string } | null }) {
   const { profile, toast, push, session } = useApp();
   const person = usePeople();
   const p = person(personId);
@@ -120,8 +120,18 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, char
           framedStyle={(drop) => ({ marginLeft: 24, marginBottom: drop + 8 })}
           render={(s, framed) => (framed ? <PersonAvatar person={{ ...p, frame: "none" }} size={s} className="rounded-full" /> : <PersonAvatar person={p} size={s} className="rounded-full ring-4 ring-ink" />)}
         />
+        {banned ? (
+          // A banned ID says so on its profile, for everyone to see
+          <div className="mt-3 flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#5a0d16] to-[#2a0a10] px-3 py-2 ring-1 ring-[#ff6b6b]/50" role="status">
+            <Ban className="h-5 w-5 shrink-0 text-[#ff6b6b]" aria-hidden />
+            <span className="text-[13px] font-bold text-[#ffb0b4]">
+              {banned.until ? `Ye ID ${new Date(banned.until).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })} tak suspend hai` : "Ye ID ban ho chuki hai"}
+            </span>
+          </div>
+        ) : null}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <h1 className={`font-display text-[26px] font-extrabold ${nameTone(p.vip)}`} style={nameFace(p.nameFont)}><NameText text={p.name} /></h1>
+          <h1 className={`font-display text-[26px] font-extrabold ${banned ? "text-cream/50 line-through decoration-[#ff6b6b]/70" : nameTone(p.vip)}`} style={nameFace(p.nameFont)}><NameText text={p.name} /></h1>
+          {banned ? <span className="rounded-md bg-[#e2404a] px-2 py-0.5 text-[11px] font-extrabold tracking-wide text-white">🚫 BANNED</span> : null}
           {fx.badge ? <VipBadge set={fx.badge} level={p.vip ?? (fx.badge.level || undefined)} size={22} animated /> : null}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -710,6 +720,7 @@ export function UserProfileScreen({ personId }: { personId: string }) {
           vipFresh={!pub.isBackendUser || pub.loadedFor === personId}
           charmPoints={pub.data?.charmPoints}
           backendProfile={pub.isBackendUser}
+          banned={pub.data?.banned ? { until: pub.data.bannedUntil } : null}
           topLeft={
             <button type="button" onClick={pop} aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full bg-black/40 text-cream backdrop-blur">
               <ChevronLeft className="h-6 w-6" />

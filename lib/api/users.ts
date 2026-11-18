@@ -108,6 +108,9 @@ export type PublicUserProfile = Partial<VipProfileFields> & {
   /** Charm points and Active Level, exactly as the server has them. */
   charmPoints?: number;
   level?: number;
+  /** Banned by staff; bannedUntil is set for a suspension, empty for a permanent ban. */
+  banned?: boolean;
+  bannedUntil?: string;
   /** The 7-digit ID people see and search by. */
   publicId?: string;
 };
@@ -242,6 +245,8 @@ function readPublicProfile(r: unknown): PublicUserProfile {
     charmPoints: typeof d.charmPoints === "number" && Number.isFinite(d.charmPoints) ? d.charmPoints : undefined,
     level: typeof d.level === "number" && Number.isFinite(d.level) ? d.level : undefined,
     publicId: d.publicId == null ? undefined : String(d.publicId),
+    banned: d.banned === true,
+    bannedUntil: str(d.bannedUntil),
     ...readLook(d),
     ...readVip(d),
   };
