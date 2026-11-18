@@ -1,11 +1,12 @@
 import { useId, type ReactNode } from "react";
 
-export type ShortcutKind = "ranking" | "tasks" | "friends";
+export type ShortcutKind = "ranking" | "tasks" | "friends" | "events";
 
 const TONES: Record<ShortcutKind, { hi: string; mid: string; deep: string }> = {
   ranking: { hi: "#d0602e", mid: "#8e2a17", deep: "#2c0a07" }, // sindoor
   tasks: { hi: "#7d64e0", mid: "#3d2a92", deep: "#120b32" }, // indigo
   friends: { hi: "#2fae86", mid: "#136a52", deep: "#05201a" }, // peacock
+  events: { hi: "#e0559a", mid: "#8e1f5c", deep: "#2a0618" }, // gulabi
 };
 
 /**
@@ -85,12 +86,26 @@ export function ShortcutIcon({ kind, size = 66, children }: { kind: ShortcutKind
 
         {kind === "ranking" ? <Trophy gold={u("gold")} deep={deep} /> : null}
         {kind === "tasks" ? <Ledger gold={u("gold")} paper={u("paper")} deep={deep} /> : null}
+        {kind === "events" ? <EventStar gold={u("gold")} deep={deep} /> : null}
 
         {/* Glass sheen */}
         <path d="M6.4 21 C7.6 11.8 15 5 24 5 C33 5 40.4 11.8 41.6 21 C36 16.6 30.4 15 24 15 C17.6 15 12 16.6 6.4 21 Z" fill={u("sheen")} />
       </svg>
       {children ? <span className="absolute inset-0 grid place-items-center">{children}</span> : null}
     </span>
+  );
+}
+
+/** Events: a gift box with a star burst above it. */
+function EventStar({ gold, deep }: { gold: string; deep: string }) {
+  return (
+    <g style={{ filter: `drop-shadow(0 1.2px 1px ${deep})` }}>
+      <path d="M24 9.6 L25.5 13 L29.2 13.4 L26.4 15.8 L27.2 19.4 L24 17.6 L20.8 19.4 L21.6 15.8 L18.8 13.4 L22.5 13 Z" fill={gold} />
+      <rect x="15.4" y="22" width="17.2" height="13.4" rx="1.6" fill={gold} />
+      <rect x="14.4" y="19.6" width="19.2" height="4" rx="1.2" fill={gold} />
+      <rect x="22.7" y="19.6" width="2.6" height="15.8" fill={deep} opacity="0.5" />
+      <rect x="14.4" y="23" width="19.2" height="1.2" fill={deep} opacity="0.3" />
+    </g>
   );
 }
 

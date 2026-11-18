@@ -1,8 +1,9 @@
 "use client";
 
+import { eventCenterOn } from "@/lib/api/events";
 import { Hut3D, Mic3D } from "@/components/art/Icons3D";
 import { RoomCover } from "@/components/rooms/RoomCover";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Bell, ChevronRight, Crown, Flame, MonitorPlay, Play, Plus, Radio, UsersRound } from "lucide-react";
 import { activeRooms } from "@/lib/app/active-rooms";
@@ -119,9 +120,28 @@ function TopBar() {
 
 function Shortcuts() {
   const { setSheet, profile, push } = useApp();
+  // The Event Center button shows only while the admins have it switched on
+  const [eventsOn, setEventsOn] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void eventCenterOn().then((on) => live && setEventsOn(on));
+    return () => {
+      live = false;
+    };
+  }, []);
   const person = usePeople();
   const online = PEOPLE.filter((p) => p.online && profile.following.includes(p.id));
   const items = [
+    ...(eventsOn
+      ? [
+          {
+            label: "Events",
+            onClick: () => push({ kind: "eventCenter" }),
+            art: <ShortcutIcon kind="events" />,
+            dot: true,
+          },
+        ]
+      : []),
     {
       label: "Ranking",
       onClick: () => push({ kind: "ranking" }),
@@ -148,7 +168,7 @@ function Shortcuts() {
     },
   ];
   return (
-    <div className="mt-3 grid grid-cols-3 gap-2.5 px-4">
+    <div className={`mt-3 grid gap-2.5 px-4 ${items.length > 3 ? "grid-cols-4" : "grid-cols-3"}`}>
       {items.map((it, i) => (
         <motion.button key={it.label} type="button" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * i, type: "spring", stiffness: 260, damping: 24 }} whileTap={{ scale: 0.95 }} onClick={it.onClick} className="relative flex flex-col items-center gap-1.5 overflow-hidden rounded-[22px] bg-gradient-to-b pn-card lift rounded-[22px] py-3.5">
           <span aria-hidden className="pointer-events-none absolute -top-8 left-1/2 h-16 w-16 -translate-x-1/2 rounded-full bg-gold/15 blur-2xl" />

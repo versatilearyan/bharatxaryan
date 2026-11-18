@@ -44,6 +44,8 @@ export type Screen =
   | { kind: "ranking" }
   /** PK Coins: your balance, the PK ranking (week / month / overall) and your history. */
   | { kind: "pkCoins" }
+  /** Event Center: the admins' events by section, with banners (switched on from the admin panel). */
+  | { kind: "eventCenter" }
   /** pay: open checkout for this red packet straight away. */
   | { kind: "shop"; tab?: ShopTab; pay?: RedPacketId }
   | { kind: "bag" }
