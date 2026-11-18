@@ -13,8 +13,8 @@ import { Modal } from "@/components/ui/Modal";
 import { isNativeApp } from "@/lib/native/bridge";
 
 /** Raise this together with the app's versionCode every time a new APK is put on the server. */
-export const LATEST_APP_BUILD = 5;
-export const LATEST_APP_VERSION = "1.0.4";
+export const LATEST_APP_BUILD = 7;
+export const LATEST_APP_VERSION = "1.0.6";
 
 const SEEN = "panchayat.updatePrompt";
 
