@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { personById } from "./data";
 import { useMe } from "./me-store";
-import { SERVER_USER_PREFIX, useServerPeople } from "./server-rooms";
+import { SERVER_USER_PREFIX, useNameLookup, useServerPeople } from "./server-rooms";
 import { ME_ID, useApp } from "./store";
 import { activeVipLevel } from "./vip-cosmetics";
 import { publicUserId } from "./public-ids";
@@ -20,6 +20,15 @@ export function usePeople() {
   const myVip = me.profile.data?.vipActive !== undefined ? activeVipLevel(me.profile.data) : vip.level || undefined;
   // Names and pictures of people in backend rooms (from the participants API or LiveKit)
   const serverPeople = useServerPeople();
+  // People drawn without a name are looked up after the render (never during it)
+  const lookup = useNameLookup();
+  const missing = useRef<string[]>([]);
+  useEffect(() => {
+    if (!missing.current.length) return;
+    const ids = missing.current;
+    missing.current = [];
+    lookup(ids);
+  });
   return useCallback(
     (id: string): Person => {
       if (id === ME_ID) {
@@ -46,6 +55,7 @@ export function usePeople() {
       if (id.startsWith(SERVER_USER_PREFIX)) {
         const userId = id.slice(SERVER_USER_PREFIX.length);
         const sp = serverPeople[id];
+        if (!sp?.name && userId !== "unknown") missing.current.push(id);
         return {
           id,
           uid: publicUserId(userId),
