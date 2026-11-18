@@ -63,8 +63,12 @@ export function VipBubbleArt({ set, onError }: { set: EffectSet; onError?: () =>
  * The entry banner, with a line of text where the art leaves room for it.
  * The text shrinks to fit the bar (down to 60%), so long names still show in full.
  */
-export function VipEntryBanner({ set, avatar: avatarIn, children, className = "", style }: { set: EffectSet; avatar?: ReactNode; children?: ReactNode; className?: string; style?: CSSProperties }) {
-  const avatar = set.entryNoAvatar ? undefined : avatarIn;
+export function VipEntryBanner({ set, avatar: avatarIn, fill, children, className = "", style }: { set: EffectSet; avatar?: ReactNode; fill?: { photo?: string; name?: string }; children?: ReactNode; className?: string; style?: CSSProperties }) {
+  // In the animation's own slot (the Shop's setting): the picture and name are part of the animation, nothing on top
+  // A file without an avatar slot falls back to drawing the picture and name over it
+  const [noSlot, setNoSlot] = useState("");
+  const inSlot = set.entrySlot !== undefined && Boolean(fill) && noSlot !== set.entry;
+  const avatar = set.entryNoAvatar || inSlot ? undefined : avatarIn;
   const box = useRef<HTMLDivElement>(null);
   const row = useRef<HTMLSpanElement>(null);
   const [scale, setScale] = useState(1);
@@ -81,8 +85,8 @@ export function VipEntryBanner({ set, avatar: avatarIn, children, className = ""
   return (
     <div className={`relative @container ${className}`} style={{ aspectRatio: set.entryRatio, ...style }}>
       {/* Not paused off-screen: the banner slides in from outside the room and must already be playing */}
-      <SvgaAnim src={set.entry} observe={false} className="absolute inset-0 h-full w-full" />
-      {children ? (
+      <SvgaAnim src={set.entry} observe={false} className="absolute inset-0 h-full w-full" fill={inSlot ? { ...fill, slot: set.entrySlot, onMissing: () => setNoSlot(set.entry) } : undefined} />
+      {children && !inSlot ? (
         // With an avatar the row starts right after the left ornament, so the bar has no empty start
         <div ref={box} className={`absolute top-1/2 flex -translate-y-1/2 ${avatar ? "justify-start" : "justify-center"}`} style={{ left: avatar ? set.entryAvatarAt : set.entryText[0], right: set.entryText[1] }}>
           <span ref={row} className="flex shrink-0 items-center gap-[2.5cqw]" style={{ transform: `scale(${scale})`, transformOrigin: avatar ? "left center" : "center" }}>

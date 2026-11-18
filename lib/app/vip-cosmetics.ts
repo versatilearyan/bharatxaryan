@@ -108,7 +108,16 @@ export function rewardFx(r: RewardEffects | undefined): Effects {
       : as({ frame: r.FRAME.url });
   }
   if (r.BUBBLE) fx.bubble = as({ bubble: r.BUBBLE.url });
-  if (r.ENTRY) fx.entry = as({ entry: r.ENTRY.url });
+  if (r.ENTRY) {
+    // The Shop's setting: the picture inside the animation (its avatar slot), over it, or none
+    const a = (r.ENTRY.avatar ?? "").trim();
+    const up = a.toUpperCase();
+    fx.entry = as({
+      entry: r.ENTRY.url,
+      ...(up === "NONE" ? { entryNoAvatar: true } : {}),
+      ...(up === "SLOT" ? { entrySlot: "" } : up.startsWith("SLOT:") ? { entrySlot: a.slice(5) } : {}),
+    });
+  }
   // A badge the person chose to wear (SVGA plays, a picture shows still); it takes the place of the VIP badge
   if (r.BADGE) fx.badge = { ...base, level: 0, badge: assetKind(r.BADGE.url) === "svga" ? r.BADGE.url : "", badgeStill: assetKind(r.BADGE.url) === "svga" ? "" : r.BADGE.url };
   if (r.PROFILE) {

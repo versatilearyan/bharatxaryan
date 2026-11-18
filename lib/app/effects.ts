@@ -32,6 +32,8 @@ export type EffectSet = {
   entryAvatarAt: string;
   /** Show only the name on the entry banner, no avatar. */
   entryNoAvatar?: boolean;
+  /** The picture and name go into the animation's own slots (its image keys): "" finds them by name, else the key to use. */
+  entrySlot?: string;
   /** A name plate on the frame (name frames): where it sits, as a share of the frame picture, and how the name is drawn. */
   plate?: { name: string; x: number; y: number; w: number; h: number; color: string; stroke: string };
 };

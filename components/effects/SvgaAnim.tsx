@@ -109,7 +109,94 @@ export function mediaKind(src: string): "svga" | "mp4" | "image" {
   return "svga";
 }
 
-export function SvgaAnim(props: { src: string; loop?: number; className?: string; style?: CSSProperties; onEnd?: () => void; onReady?: () => void; onError?: () => void; observe?: boolean }) {
+/**
+ * A person's picture and name put into an animation's own slots (entry banners made with an avatar placeholder).
+ * slot: the image key for the picture; "" finds it by its name (avatar, head, photo …). The name goes into a key
+ * named like "name" or "nick" when the file has one.
+ */
+export type SvgaFill = { photo?: string; name?: string; slot?: string; onMissing?: () => void };
+
+const AVATAR_KEY = /(avatar|head|photo|portrait|touxiang|tou_?xiang|user_?(img|pic|icon|head)|^img_?avatar|^pic_?user)/i;
+const NAME_KEY = /(nick|user_?name|^name|_name$|^text_?name)/i;
+
+function loadImage(src: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+/** A round picture (or the first letter of the name when there's no picture), drawn square for the slot. */
+async function avatarCanvas(photo: string | undefined, name: string | undefined): Promise<HTMLCanvasElement> {
+  const size = 256;
+  const c = document.createElement("canvas");
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext("2d");
+  if (!ctx) return c;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+  ctx.clip();
+  const img = photo ? await loadImage(photo) : null;
+  if (img) {
+    const k = Math.max(size / img.width, size / img.height);
+    const w = img.width * k;
+    const h = img.height * k;
+    ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+  } else {
+    ctx.fillStyle = "#5b3a8a";
+    ctx.fillRect(0, 0, size, size);
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 120px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText((name ?? "?").trim().slice(0, 1).toUpperCase() || "?", size / 2, size / 2 + 6);
+  }
+  ctx.restore();
+  return c;
+}
+
+/** The name, white with a dark outline, shrunk to fit the slot. */
+function nameCanvas(name: string): HTMLCanvasElement {
+  const c = document.createElement("canvas");
+  c.width = 480;
+  c.height = 96;
+  const ctx = c.getContext("2d");
+  if (!ctx) return c;
+  let px = 64;
+  ctx.font = `800 ${px}px system-ui, sans-serif`;
+  while (px > 24 && ctx.measureText(name).width > c.width - 16) {
+    px -= 4;
+    ctx.font = `800 ${px}px system-ui, sans-serif`;
+  }
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = Math.max(4, px / 8);
+  ctx.strokeStyle = "rgba(40,12,0,0.9)";
+  ctx.strokeText(name, c.width / 2, c.height / 2);
+  ctx.fillStyle = "#fff";
+  ctx.fillText(name, c.width / 2, c.height / 2);
+  return c;
+}
+
+/** The parsed file with the person's picture and name in its slots (a copy: the cached file stays as it is). */
+async function filled(video: Video, fill: SvgaFill): Promise<Video> {
+  const keys = Object.keys(video.images ?? {});
+  const avatarKey = fill.slot ? (keys.includes(fill.slot) ? fill.slot : null) : (keys.find((k) => AVATAR_KEY.test(k)) ?? null);
+  const nameKey = fill.name ? (keys.find((k) => k !== avatarKey && NAME_KEY.test(k)) ?? null) : null;
+  if (!avatarKey) fill.onMissing?.();
+  if (!avatarKey && !nameKey) return video;
+  const replace: Record<string, HTMLCanvasElement> = {};
+  if (avatarKey) replace[avatarKey] = await avatarCanvas(fill.photo, fill.name);
+  if (nameKey && fill.name) replace[nameKey] = nameCanvas(fill.name);
+  return { ...video, replaceElements: { ...video.replaceElements, ...replace } } as Video;
+}
+
+export function SvgaAnim(props: { src: string; loop?: number; className?: string; style?: CSSProperties; onEnd?: () => void; onReady?: () => void; onError?: () => void; observe?: boolean; fill?: SvgaFill }) {
   const kind = mediaKind(props.src);
   if (kind === "mp4") return <Mp4Anim {...props} />;
   if (kind === "image") return <ImageAnim {...props} />;
@@ -170,7 +257,7 @@ function ImageAnim({ src, loop = 0, className = "", style, onEnd, onReady, onErr
   );
 }
 
-function SvgaCanvas({ src, loop = 0, className = "", style, onEnd, onReady, onError, observe = true }: { src: string; loop?: number; className?: string; style?: CSSProperties; onEnd?: () => void; onReady?: () => void; onError?: () => void; observe?: boolean }) {
+function SvgaCanvas({ src, loop = 0, className = "", style, onEnd, onReady, onError, observe = true, fill }: { src: string; loop?: number; className?: string; style?: CSSProperties; onEnd?: () => void; onReady?: () => void; onError?: () => void; observe?: boolean; fill?: SvgaFill }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [failed, setFailed] = useState(false);
   const endRef = useRef(onEnd);
@@ -186,7 +273,8 @@ function SvgaCanvas({ src, loop = 0, className = "", style, onEnd, onReady, onEr
     let stopWatch = () => {};
     (async () => {
       try {
-        const [{ Player }, video] = await Promise.all([import("svga"), load(src)]);
+        const [{ Player }, parsed] = await Promise.all([import("svga"), load(src)]);
+        const video = fill ? await filled(parsed, fill) : parsed;
         if (cancelled || !ref.current) return;
         player = new Player({ container: ref.current, loop, isUseIntersectionObserver: observe });
         player.onEnd = () => endRef.current?.();
@@ -221,7 +309,8 @@ function SvgaCanvas({ src, loop = 0, className = "", style, onEnd, onReady, onEr
       stopWatch();
       player?.destroy();
     };
-  }, [src, loop, observe]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, loop, observe, fill?.photo, fill?.name, fill?.slot]);
 
   if (failed) return null;
   return <canvas ref={ref} className={className} style={style} aria-hidden />;
