@@ -15,7 +15,7 @@
  *   connection itself is closed by the room screen (useLiveVoice).
  */
 import { publicRoomId } from "./public-ids";
-import type { VipProfileFields } from "@/lib/api/users";
+import { getPublicProfile, type VipProfileFields } from "@/lib/api/users";
 import { ApiError } from "@/lib/api/client";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { closeRoom, getPublicRooms, getRoomById, isOpenRoom, leaveRoom, roomErrorText, type VoiceRoom, type VoiceRoomType } from "@/lib/api/voice-rooms";
@@ -59,6 +59,38 @@ export type ServerPerson = {
   /** VIP status and cosmetics from their public profile (GET /users/{id}/profile). Replaced on every load. */
   vip?: Partial<VipProfileFields>;
 };
+
+/** Names of people seen before, kept on this device (names only: picture links expire). */
+const NAME_CACHE_KEY = "panchayat-people-names-v1";
+const NAME_CACHE_MAX = 3000;
+function readNameCache(): Record<string, ServerPerson> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(NAME_CACHE_KEY) ?? "{}") as Record<string, { n?: unknown; g?: unknown }>;
+    const out: Record<string, ServerPerson> = {};
+    for (const [id, v] of Object.entries(raw)) {
+      if (typeof v?.n === "string" && v.n) out[id] = { name: v.n, ...(v.g === "male" || v.g === "female" ? { gender: v.g as Gender } : {}) };
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+function writeNameCache(people: Record<string, ServerPerson>) {
+  try {
+    const entries = Object.entries(people).filter(([, p]) => p.name);
+    const keep = entries.slice(-NAME_CACHE_MAX);
+    const out: Record<string, { n: string; g?: string }> = {};
+    for (const [id, p] of keep) out[id] = { n: p.name!, ...(p.gender ? { g: p.gender } : {}) };
+    window.localStorage.setItem(NAME_CACHE_KEY, JSON.stringify(out));
+  } catch {
+    /* storage full or blocked: names load from the server as before */
+  }
+}
+
+/** Ask for the names of people the app only knows by number. */
+const LookupCtx = createContext<(ids: string[]) => void>(() => {});
+export const useNameLookup = () => useContext(LookupCtx);
 const PeopleCtx = createContext<Record<string, ServerPerson>>({});
 /** Read-only lookup used by usePeople(). Empty outside the provider. */
 export const useServerPeople = () => useContext(PeopleCtx);
@@ -368,7 +400,55 @@ export function ServerRoomsProvider({ children }: { children: ReactNode }) {
     }
   }, [activeServerId, toast, exitRoom]);
 
+  // Names seen before come back at once (saved on this device), so no one shows as "User 1234" while loading
   const [people, setPeople] = useState<Record<string, ServerPerson>>({});
+  // Loaded after the first render (the server has no device storage), names already known win
+  const cacheLoaded = useRef(false);
+  useEffect(() => {
+    const cached = readNameCache();
+    cacheLoaded.current = true;
+    if (Object.keys(cached).length) setPeople((all) => {
+      const next = { ...cached };
+      for (const [id, p] of Object.entries(all)) next[id] = { ...cached[id], ...p };
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    if (!cacheLoaded.current) return;
+    const t = window.setTimeout(() => writeNameCache(people), 800);
+    return () => window.clearTimeout(t);
+  }, [people]);
+  // Anyone still without a name is looked up once (their public profile), a few at a time
+  const asked = useRef(new Set<string>());
+  const lookup = useCallback((ids: string[]) => {
+    const want = ids.filter((id) => id.startsWith(SERVER_USER_PREFIX) && /^\d+$/.test(id.slice(SERVER_USER_PREFIX.length)) && !asked.current.has(id));
+    if (!want.length) return;
+    want.forEach((id) => asked.current.add(id));
+    void (async () => {
+      for (let i = 0; i < want.length; i += 4) {
+        const part = want.slice(i, i + 4);
+        const found = await Promise.all(
+          part.map((id) =>
+            getPublicProfile(id.slice(SERVER_USER_PREFIX.length)).then(
+              (p) => [id, p] as const,
+              () => null,
+            ),
+          ),
+        );
+        const add: Record<string, ServerPerson> = {};
+        for (const f of found) {
+          if (!f) continue;
+          const [id, p] = f;
+          if (p.fullName) add[id] = { name: p.fullName, avatarUrl: p.avatarUrl ?? undefined };
+        }
+        if (Object.keys(add).length) setPeople((all) => {
+          const next = { ...all };
+          for (const [id, v] of Object.entries(add)) next[id] = { ...all[id], name: v.name, avatarUrl: all[id]?.avatarUrl ?? v.avatarUrl };
+          return next;
+        });
+      }
+    })();
+  }, []);
   const rememberPeople = useCallback((add: Record<string, ServerPerson>) => {
     setPeople((all) => {
       let changed = false;
@@ -393,7 +473,9 @@ export function ServerRoomsProvider({ children }: { children: ReactNode }) {
   );
   return (
     <Ctx.Provider value={value}>
-      <PeopleCtx.Provider value={people}>{children}</PeopleCtx.Provider>
+      <LookupCtx.Provider value={lookup}>
+        <PeopleCtx.Provider value={people}>{children}</PeopleCtx.Provider>
+      </LookupCtx.Provider>
     </Ctx.Provider>
   );
 }
