@@ -883,7 +883,7 @@ function MunshiDesk() {
       .then((i) => {
         if (!live) return;
         setWho(i.name);
-        setOn(i.enabled && !/PanchayatPlay/.test(navigator.userAgent));
+        setOn(i.enabled);
       })
       .catch(() => undefined);
     return () => {

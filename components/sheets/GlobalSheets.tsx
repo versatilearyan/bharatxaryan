@@ -297,7 +297,7 @@ function CoinsSheetImpl({ open, onClose }: { open: boolean; onClose: () => void 
   const [manualOn, setManualOn] = useState(false);
   const [manualName, setManualName] = useState("Mukhiya ji");
   useEffect(() => {
-    if (!open || !signedIn || /PanchayatPlay/.test(navigator.userAgent)) return;
+    if (!open || !signedIn) return;
     let live = true;
     manualTopupApi.info().then((i) => { if (live) { setManualOn(i.enabled); setManualName(i.name); } }).catch(() => undefined);
     return () => {

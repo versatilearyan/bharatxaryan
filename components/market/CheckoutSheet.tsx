@@ -57,16 +57,14 @@ const inputClass = "h-11 w-full rounded-2xl border border-line bg-surface px-4 t
 export function CheckoutSheet({ item, onClose }: { item: CheckoutItem | null; onClose: () => void }) {
   const { profile, refreshCoins, toast } = useApp();
   const me = useMe();
-  // The app installed from the Play Store (its user agent says PanchayatPlay) buys with Google Play (Google's rule).
-  // The app downloaded from our website pays with PayU, just like the website.
-  const [native, setNative] = useState(false);
-  useEffect(() => setNative(isNativeApp() && /PanchayatPlay/.test(navigator.userAgent)), []);
-  // Manual UPI top-up for coin packs, when the admin switched it on (never in the Play Store build)
+  // Every payment goes through PayU: on the website and in every app build (Google Play Billing is not used).
+  const native = false;
+  // Manual UPI top-up for coin packs, when the admin switched it on
   const { setSheet } = useApp();
   const [manualOn, setManualOn] = useState(false);
   const [manualName, setManualName] = useState("Mukhiya ji");
   useEffect(() => {
-    if (!item || item.purchase?.purpose !== "COIN_PACK" || /PanchayatPlay/.test(navigator.userAgent)) return;
+    if (!item || item.purchase?.purpose !== "COIN_PACK") return;
     let live = true;
     manualTopupApi.info().then((i) => { if (live) { setManualOn(i.enabled); setManualName(i.name); } }).catch(() => undefined);
     return () => {
