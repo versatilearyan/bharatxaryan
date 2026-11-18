@@ -20,6 +20,7 @@ import { NAME_FONTS, nameFace } from "@/lib/app/fonts";
 import { ME_ID, useApp } from "@/lib/app/store";
 import type { Cover, RoomBackground, RoomSettings } from "@/lib/app/types";
 import { RoomCover } from "./RoomCover";
+import { RoomLevelBadge, RoomLevelSheet } from "./RoomLevel";
 import { MODE_LABEL, type RoomMode } from "./roomMode";
 import type { RoomSession } from "./useRoomSession";
 import { useKeepMounted } from "@/components/ui/lazySheet";
@@ -80,6 +81,7 @@ function RoomInfoSheetImpl({ s }: { s: RoomSession }) {
   const joined = isJoined(s.room.id);
   const following = isFollowingRoom(s.room.id);
   const lvl = roomLevelOf(s.room);
+  const [levels, setLevels] = useState(false);
   const staff = [s.room.hostId, ...s.admins.filter((id) => id !== s.room.hostId && !s.kicked.includes(id))];
   const announcement = announcementOf(s.room);
 
@@ -97,6 +99,7 @@ function RoomInfoSheetImpl({ s }: { s: RoomSession }) {
   };
 
   return (
+    <>
     <LightSheet
       open={open}
       onClose={close}
@@ -142,8 +145,8 @@ function RoomInfoSheetImpl({ s }: { s: RoomSession }) {
             </div>
           </div>
           {s.room.permanent ? (
-            <div className="-mr-5 flex shrink-0 items-center gap-2 rounded-l-2xl bg-gradient-to-r from-[#eef3fb] to-[#f8f9fc] py-2 pl-2 pr-4">
-              <LevelGem level={lvl.level} />
+            <button type="button" onClick={() => setLevels(true)} aria-label="Room levels" className="-mr-5 flex shrink-0 items-center gap-2 rounded-l-2xl bg-gradient-to-r from-[#eef3fb] to-[#f8f9fc] py-2 pl-2 pr-4 text-left">
+              <RoomLevelBadge level={lvl.level} size={44} />
               <span className="min-w-0">
                 <span className="block text-[12px] font-extrabold text-[#1f1d3a]">Room exp</span>
                 <span className="block text-[13px] font-extrabold text-[#2f8cf0]">{formatPoints(lvl.points)}</span>
@@ -151,7 +154,7 @@ function RoomInfoSheetImpl({ s }: { s: RoomSession }) {
                   <span className="block h-full rounded-full bg-[#2f8cf0]" style={{ width: `${lvl.progress * 100}%` }} />
                 </span>
               </span>
-            </div>
+            </button>
           ) : null}
         </div>
 
@@ -249,6 +252,8 @@ function RoomInfoSheetImpl({ s }: { s: RoomSession }) {
         </div>
       </div>
     </LightSheet>
+    <RoomLevelSheet open={levels} onClose={() => setLevels(false)} room={s.room} />
+    </>
   );
 }
 
