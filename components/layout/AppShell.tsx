@@ -34,6 +34,7 @@ import { DiscoverScreen } from "@/components/discover/DiscoverScreen";
 import { ProfileScreen } from "@/components/profile/ProfileScreen";
 import { MomentsScreen } from "@/components/social/MomentsScreen";
 import { CpProposalPrompt } from "@/components/market/ServerCp";
+import { AccountBans } from "@/components/safety/AccountBans";
 import { VipLevelUpPrompt } from "@/components/vip/VipLevelUp";
 import { VipRenewPrompt } from "@/components/vip/VipRenewPrompt";
 import { GlobalSheets } from "@/components/sheets/GlobalSheets";
@@ -155,6 +156,7 @@ function Frame() {
               <GiftOverlay />
               <RedPacketBanner />
               <GiftBanner />
+              <AccountBans />
               <RewardWon />
               <AppUpdatePrompt />
             </>
