@@ -111,6 +111,8 @@ export type PublicUserProfile = Partial<VipProfileFields> & {
   /** Banned by staff; bannedUntil is set for a suspension, empty for a permanent ban. */
   banned?: boolean;
   bannedUntil?: string;
+  /** Official ID number ("001", "002", ...), shown with a blue tick */
+  officialCode?: string;
   /** The 7-digit ID people see and search by. */
   publicId?: string;
 };
@@ -247,6 +249,7 @@ function readPublicProfile(r: unknown): PublicUserProfile {
     publicId: d.publicId == null ? undefined : String(d.publicId),
     banned: d.banned === true,
     bannedUntil: str(d.bannedUntil),
+    officialCode: str(d.officialCode),
     ...readLook(d),
     ...readVip(d),
   };

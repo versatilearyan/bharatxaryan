@@ -1,5 +1,6 @@
 "use client";
 
+import { OfficialTick } from "@/components/sarpanch/Sarpanch";
 import { NameText } from "@/components/ui/NameText";
 import { VipBadge } from "@/components/effects/VipFx";
 import { nameTone } from "@/lib/app/fonts";
@@ -568,7 +569,7 @@ function FindUserSheetImpl({ open, onClose }: { open: boolean; onClose: () => vo
   return (
     <BottomSheet open={open} onClose={close} title="Find people">
       <div className="px-5 pb-6">
-        <p className="mb-3 text-[12.5px] text-muted">Search by someone&apos;s 7-digit ID (it&apos;s on their profile) or by name.</p>
+        <p className="mb-3 text-[12.5px] text-muted">Search by someone&apos;s 7-digit ID (it&apos;s on their profile), an official ID like 001, or by name.</p>
         <CodeField value={q} onChange={setQ} onSubmit={() => search.run(q)} label="User ID or name" placeholder="e.g. 6372289" />
         <div className="mt-4 space-y-2" aria-live="polite">
           {search.state?.loading ? (
@@ -582,9 +583,12 @@ function FindUserSheetImpl({ open, onClose }: { open: boolean; onClose: () => vo
                 <div key={u.id} className="flex items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line">
                   <PersonAvatar person={{ ...person(userPersonId(u.id)), photo: u.avatarUrl, frame: "none" }} size={48} />
                   <button type="button" onClick={() => !me && openProfile(u)} className="min-w-0 flex-1 text-left">
-                    <span className="block truncate text-[15px] font-bold text-cream">{u.name}</span>
+                    <span className="flex items-center gap-1 truncate text-[15px] font-bold text-cream">
+                      <span className="truncate">{u.name}</span>
+                      {u.officialCode ? <OfficialTick className="h-4 w-4" /> : null}
+                    </span>
                     <span className="block truncate text-[11.5px] text-muted">
-                      ID {u.publicId}
+                      {u.officialCode ? <b className="text-[#5fb0ff]">Official · </b> : null}ID {u.officialCode ?? u.publicId}
                       {u.vipLevel ? ` · VIP ${u.vipLevel}` : ""}
                       {me ? " · That's you" : ""}
                     </span>

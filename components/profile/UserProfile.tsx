@@ -1,5 +1,6 @@
 "use client";
 
+import { OfficialTick } from "@/components/sarpanch/Sarpanch";
 import { NameText } from "@/components/ui/NameText";
 import { useServerGuard } from "./useServerGuard";
 import { useGiftsReceived } from "./useGiftsReceived";
@@ -72,7 +73,7 @@ function Panel({ title, meta, onOpen, children }: { title: string; meta?: ReactN
 }
 
 /** Banner, avatar, name, level, VIP, charm, ID and bio. */
-export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, charmPoints, backendProfile = false, banned }: { personId: string; topLeft?: ReactNode; topRight?: ReactNode; vipFresh?: boolean; charmPoints?: number; backendProfile?: boolean; banned?: { until?: string } | null }) {
+export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, charmPoints, backendProfile = false, banned, officialCode }: { personId: string; topLeft?: ReactNode; topRight?: ReactNode; vipFresh?: boolean; charmPoints?: number; backendProfile?: boolean; banned?: { until?: string } | null; officialCode?: string }) {
   const { profile, toast, push, session } = useApp();
   const person = usePeople();
   const p = person(personId);
@@ -132,6 +133,12 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, char
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <h1 className={`font-display text-[26px] font-extrabold ${banned ? "text-cream/50 line-through decoration-[#ff6b6b]/70" : nameTone(p.vip)}`} style={nameFace(p.nameFont)}><NameText text={p.name} /></h1>
           {banned ? <span className="rounded-md bg-[#e2404a] px-2 py-0.5 text-[11px] font-extrabold tracking-wide text-white">🚫 BANNED</span> : null}
+          {officialCode ? (
+            <>
+              <OfficialTick className="h-6 w-6" />
+              <span className="rounded-md bg-gradient-to-r from-[#3b82f6] to-[#60a5fa] px-2 py-0.5 text-[11px] font-extrabold tracking-wide text-white">OFFICIAL</span>
+            </>
+          ) : null}
           {fx.badge ? <VipBadge set={fx.badge} level={p.vip ?? (fx.badge.level || undefined)} size={22} animated /> : null}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -149,13 +156,14 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, char
         <button
           type="button"
           onClick={() => {
-            navigator.clipboard?.writeText(p.uid).catch(() => {});
-            toast(`ID ${p.uid} copied`);
+            const uid = officialCode ?? p.uid;
+            navigator.clipboard?.writeText(uid).catch(() => {});
+            toast(`ID ${uid} copied`);
           }}
           className="mt-0.5 flex items-center gap-1 text-[12.5px] text-muted hover:text-cream"
-          aria-label={`User ID ${p.uid}, copy`}
+          aria-label={`User ID ${officialCode ?? p.uid}, copy`}
         >
-          {p.handle} · ID {p.uid} <Copy className="h-3 w-3" aria-hidden />
+          {p.handle} · ID {officialCode ? <b className="text-[#5fb0ff]">{officialCode}</b> : p.uid} <Copy className="h-3 w-3" aria-hidden />
         </button>
         <p className={`mt-3 text-[14px] leading-relaxed ${p.bio ? "text-cream/85" : "text-muted"}`}>{p.bio || (mine ? "Add a bio so people know what you're about." : "No bio yet.")}</p>
       </div>
@@ -721,6 +729,7 @@ export function UserProfileScreen({ personId }: { personId: string }) {
           charmPoints={pub.data?.charmPoints}
           backendProfile={pub.isBackendUser}
           banned={pub.data?.banned ? { until: pub.data.bannedUntil } : null}
+          officialCode={pub.data?.officialCode}
           topLeft={
             <button type="button" onClick={pop} aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full bg-black/40 text-cream backdrop-blur">
               <ChevronLeft className="h-6 w-6" />
