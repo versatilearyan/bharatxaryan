@@ -162,6 +162,7 @@ function EntryBanner({ item, onDone }: { item: EntryItem; onDone: () => void }) 
           >
             <VipEntryBanner
               set={src}
+              fill={{ photo: me ? profile.photo : p!.photo, name: me ? profile.name : p!.name }}
               avatar={<PersonAvatar person={me ? { id: ME_ID, look: profile.look, photo: profile.photo, frame: "none" } : { ...p!, frame: "none" }} size={64} className="!h-full !w-full" />}
             >
               <span className={me ? nameTone(vip.level, "text-[#ffe08a]", "room") : "text-[#ffe08a]"}><NameText text={me ? profile.name : p!.name} /></span> entered
