@@ -46,4 +46,4 @@ export const SOCIAL_LINKS: { label: string; href: string | null }[] = [
 ];
 
 /** Public contact email. `null` until an official address exists. */
-export const CONTACT_EMAIL: string | null = null;
+export const CONTACT_EMAIL: string | null = "support@panchayat.world";
