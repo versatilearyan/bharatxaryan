@@ -90,7 +90,7 @@ export type Toast = { id: number; text: string; tone: "default" | "gold" | "erro
 export type GiftFx = { id: number; giftId: GiftId; fromName: string; toName: string; count: number; combo?: number; earned?: number; charm?: number; room?: boolean };
 
 /** The Combo button after you send a gift: tap within COMBO_MS to send the same gift again. */
-export type GiftCombo = { giftId: GiftId; n: number; key: number; send: () => boolean };
+export type GiftCombo = { giftId: GiftId; n: number; key: number; send: () => boolean; /** Shown outside a room too (Parivar gifts). */ anywhere?: boolean };
 export const COMBO_MS = 5000;
 
 export type NewRoom = {

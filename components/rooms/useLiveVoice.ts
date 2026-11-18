@@ -236,6 +236,22 @@ function snapshot(room: Room): VoicePerson[] {
 }
 
 /** `serverRoomId` is the backend room id, or null for local sample rooms (then nothing connects). */
+/**
+ * Speaker off means silence: every remote voice is muted on this device and stops downloading (setEnabled false),
+ * because a volume of 0 alone is ignored by some Android web views. Speaker on brings them back.
+ */
+function applySpeakerTo(room: Room, on: boolean, musicMuted: boolean, heard: (identity: string) => boolean) {
+  for (const p of room.remoteParticipants.values()) {
+    p.setVolume(on ? 1 : 0);
+    for (const pub of p.audioTrackPublications.values()) {
+      if (pub.isSubscribed && pub.isEnabled !== on) pub.setEnabled(on);
+    }
+  }
+  document.querySelectorAll<HTMLAudioElement>("[data-live-voice] audio").forEach((a) => {
+    a.muted = !on || (a.dataset.music === "1" && (musicMuted || !heard(a.dataset.musicFrom ?? "")));
+  });
+}
+
 export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [joined, setJoined] = useState(false);
@@ -303,9 +319,7 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       setPeople((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
       setMicOn(room.localParticipant.isMicrophoneEnabled);
     };
-    const applySpeaker = () => {
-      for (const p of room.remoteParticipants.values()) p.setVolume(speakerRef.current ? 1 : 0);
-    };
+    const applySpeaker = () => applySpeakerTo(room, speakerRef.current, remoteMusicMuted.current, heardMusic);
 
     room
       .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: { identity: string }) => {
@@ -319,6 +333,7 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
           el.muted = remoteMusicMuted.current || !heardMusic(participant.identity);
         }
         audioBox.appendChild(el);
+        if (!speakerRef.current) pub.setEnabled(false);
         applySpeaker();
         sync();
       })
@@ -593,6 +608,8 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
     }
     setMicBusy(true);
     micChanging.current = true;
+    // The button changes at once; the real state is set again when LiveKit is done
+    setMicOn(on);
     // You turned it off: the watchdog must not turn it back on
     if (!on) wantMic.current = false;
     try {
@@ -664,7 +681,8 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
   const setSpeaker = useCallback((on: boolean) => {
     speakerRef.current = on;
     const room = roomRef.current;
-    if (room) for (const p of room.remoteParticipants.values()) p.setVolume(on ? 1 : 0);
+    if (room) applySpeakerTo(room, on, remoteMusicMuted.current, heardMusic);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const startAudio = useCallback(() => {

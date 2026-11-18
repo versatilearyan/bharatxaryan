@@ -194,6 +194,7 @@ export function ProfileScreen() {
         <LinkRow href="/about" icon={<Info className="h-4.5 w-4.5" />} label="About Panchayat" />
         <LinkRow href="/privacy" icon={<Shield className="h-4.5 w-4.5" />} label="Privacy Policy" />
         <LinkRow href="/terms" icon={<FileText className="h-4.5 w-4.5" />} label="Terms of Service" />
+        <LinkRow href="/child-safety" icon={<Shield className="h-4.5 w-4.5" />} label="Child Safety Standards" />
         <Row icon={<LogOut className="h-4.5 w-4.5" />} label="Log out" danger onClick={signOut} />
         {session && native ? <Row icon={<Trash2 className="h-4.5 w-4.5" />} label="Delete my account" danger onClick={() => setDeleteOpen(true)} /> : null}
       </section>

@@ -5,6 +5,7 @@
  * conversation view, in the same look as the demo chat screens. Data and
  * actions come from lib/app/chat-store.tsx.
  */
+import { NameText } from "@/components/ui/NameText";
 import { openReport } from "@/components/safety/Safety";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -174,7 +175,7 @@ function InboxRow({ c, onOpen }: { c: ChatConversation; onOpen: (personId: strin
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5">
-            <span className={`truncate text-[15px] ${p?.vip ? `font-bold ${vipName(p.vip)}` : unread ? "font-bold text-cream" : "font-semibold text-cream/90"}`}>{name}</span>
+            <span className={`truncate text-[15px] ${p?.vip ? `font-bold ${vipName(p.vip)}` : unread ? "font-bold text-cream" : "font-semibold text-cream/90"}`}><NameText text={name} /></span>
             {p?.vip ? <VipBadgeFor personId={personId} vip={p.vip} size={16} /> : null}
             {c.official ? <OfficialTick className="h-4 w-4" /> : null}
             {c.pinned ? <span className="shrink-0 rounded-full bg-gold/15 px-1.5 py-px text-[9.5px] font-bold text-gold">PINNED</span> : null}
@@ -673,7 +674,7 @@ export function ServerConversationView({ personId }: { personId: string }) {
             ) : null}
             <span className="min-w-0">
               <span className="flex items-center gap-1.5">
-                <span className={`truncate text-[15px] font-bold ${!group && p?.vip ? vipName(p.vip) : "text-cream"}`}>{group ? (groupInfo?.name ?? conv?.otherName ?? "Group") : name}</span>
+                <span className={`truncate text-[15px] font-bold ${!group && p?.vip ? vipName(p.vip) : "text-cream"}`}>{group ? (groupInfo?.name ?? conv?.otherName ?? "Group") : <NameText text={name} />}</span>
                 {!group && p?.vip ? <VipBadgeFor personId={personId} vip={p.vip} size={16} /> : null}
               </span>
               <span className={`block truncate text-[11px] ${typers.length ? "text-speak" : "text-muted"}`} role="status">

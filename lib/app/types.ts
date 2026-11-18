@@ -209,7 +209,8 @@ export type RoomMessage =
   | { id: string; kind: "text"; authorId: string; text: string; imageUrl?: string }
   | { id: string; kind: "gift"; fromId: string; toId: string; giftId: GiftId; count: number; charm?: number; earned?: number }
   | { id: string; kind: "video"; authorId: string; title: string }
-  | { id: string; kind: "join"; authorId: string };
+  | { id: string; kind: "join"; authorId: string }
+  | { id: string; kind: "redpacket-top"; sender: string; amount: number; rows: { name: string; coins: number; me: boolean }[] };
 
 export type DirectMessage = { id: string; from: "me" | "them"; text: string; at: number };
 

@@ -27,22 +27,26 @@ export function useTagTitle() {
 export function TagLink({ tag, gap, size }: { tag: Tag; gap: number; size: number }) {
   const rel = relationshipById(tag.relation);
   const lv = tagLevel(tag.intimacy).level;
-  const icon = Math.round(Math.max(18, Math.min(28, gap * 0.78, size * 0.4)));
-  const w = gap + size * 0.3;
+  // A bit bigger than before, but never wider than the gap between the two seats
+  const icon = Math.round(Math.max(22, Math.min(34, gap * 0.95, size * 0.5)));
+  // The ribbon runs from one seat's edge to the other's, unbroken at both ends
+  const w = gap + size * 0.5;
   const gid = `tl-${tag.id}`;
   return (
     <span className="relative z-20 flex shrink-0 items-center justify-center" style={{ width: gap, height: size }} aria-label={`${rel.label} tag, level ${lv}`} role="img">
       {/* One thin gold swoosh running through the badge, fading at both ends */}
-      <svg className="pointer-events-none absolute top-1/2 -translate-y-1/2" style={{ width: w, height: icon * 1.2, left: -size * 0.15 }} viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden>
+      <svg className="pointer-events-none absolute top-1/2 -translate-y-1/2" style={{ width: w, height: icon * 1.2, left: -size * 0.25 }} viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden>
         <defs>
           <linearGradient id={gid} x1="0" x2="1">
-            <stop offset="0" stopColor="#ffd98a" stopOpacity="0" />
-            <stop offset="0.25" stopColor="#ffd98a" />
-            <stop offset="0.75" stopColor="#f5b54a" />
-            <stop offset="1" stopColor="#f5b54a" stopOpacity="0" />
+            <stop offset="0" stopColor="#ffd98a" />
+            <stop offset="0.5" stopColor="#ffe9b0" />
+            <stop offset="1" stopColor="#f5b54a" />
           </linearGradient>
         </defs>
-        <path d="M2 26 C14 10 30 8 46 17 C60 25 76 34 98 25" fill="none" stroke={`url(#${gid})`} strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M1 20 C14 10 30 10 46 18 C60 25 76 30 99 20" fill="none" stroke="rgba(90,40,0,0.45)" strokeWidth="4.2" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        <path d="M1 20 C14 10 30 10 46 18 C60 25 76 30 99 20" fill="none" stroke={`url(#${gid})`} strokeWidth="2.6" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+        <circle cx="1.5" cy="20" r="2.2" fill="#ffd98a" />
+        <circle cx="98.5" cy="20" r="2.2" fill="#f5b54a" />
       </svg>
       <motion.span className="relative grid place-items-center" animate={{ y: [0, -2, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} aria-hidden>
         <BffBadge id={tag.relation} size={icon} />

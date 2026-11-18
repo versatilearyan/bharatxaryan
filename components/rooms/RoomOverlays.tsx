@@ -1,5 +1,6 @@
 "use client";
 
+import { NameText } from "@/components/ui/NameText";
 import { VipAvatar, VipBadge } from "@/components/effects/VipFx";
 import { useRoomFx } from "./useRoomFx";
 import { usePublicProfile } from "@/components/profile/usePublicProfile";
@@ -145,7 +146,7 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
               </button>
               <div className="min-w-0">
                 <p className="flex items-center gap-1.5 truncate text-[19px] font-extrabold text-[#1c1820]">
-                  <span className={`${vipName(p.vip)} truncate`} style={nameFace(p.nameFont)}>{p.name}</span> {cardFx.badge ? <VipBadge set={cardFx.badge} level={p.vip ?? (cardFx.badge.level || undefined)} size={18} animated /> : null} {role ? <RoleBadge role={role} /> : null}
+                  <span className={`${vipName(p.vip)} truncate`} style={nameFace(p.nameFont)}><NameText text={p.name} /></span> {cardFx.badge ? <VipBadge set={cardFx.badge} level={p.vip ?? (cardFx.badge.level || undefined)} size={18} animated /> : null} {role ? <RoleBadge role={role} /> : null}
                 </p>
                 <div className="mt-0.5 flex items-center gap-1">
                   {/* Backend users: their real level and charm from their profile (loaded when the card opens) */}

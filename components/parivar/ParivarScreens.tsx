@@ -1,5 +1,6 @@
 "use client";
 
+import { NameText } from "@/components/ui/NameText";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { SignBadge } from "./ParivarFrames";
 import { AnimatePresence, motion } from "framer-motion";
@@ -469,7 +470,7 @@ export function ParivarHome({ id }: { id: string }) {
                     <PersonAvatar person={who} size={42} />
                     <span className="min-w-0 flex-1">
                       <span className={`block truncate text-[14px] font-bold ${nameTone(who.vip)}`} style={nameFace(who.nameFont)}>
-                        {m.id === ME_ID ? `${who.name} (you)` : who.name}
+                        <NameText text={m.id === ME_ID ? `${who.name} (you)` : who.name} />
                       </span>
                       <span className="text-[11px] text-muted">{m.contribution.toLocaleString("en-IN")} EXP contributed</span>
                     </span>

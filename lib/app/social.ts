@@ -3,8 +3,8 @@
  * Sample people get stable made-up values (seeded from their id) so every
  * profile looks lived-in; your own actions on this device add on top.
  */
-import { GIFTS, PEOPLE } from "./data";
-import type { GiftId } from "./types";
+import { GIFTS, PEOPLE, giftById, giftsOnSale } from "./data";
+import type { Gift, GiftId } from "./types";
 
 /** Stable 0–1 number from a string. */
 export function seeded(str: string) {
@@ -32,11 +32,23 @@ export const MY_SAMPLE_RECEIVED: Partial<Record<GiftId, number>> = {};
 /** Stars for one gift type: lit at 1 received, 2 stars at 10, 3 stars at 100. */
 export const giftStars = (count: number) => (count >= 100 ? 3 : count >= 10 ? 2 : count >= 1 ? 1 : 0);
 
+/**
+ * Every gift that belongs on the gift wall: the live catalog (so a gift the admin adds shows at once), plus any gift
+ * this person got that is no longer on sale. Cheapest first.
+ */
+export function giftWallList(received: Partial<Record<GiftId, number>>): Gift[] {
+  const list = [...giftsOnSale()];
+  const ids = new Set(list.map((g) => g.id as string));
+  for (const id of Object.keys(received)) if ((received[id as GiftId] ?? 0) > 0 && !ids.has(id)) list.push(giftById(id));
+  return list.sort((a, b) => a.cost - b.cost);
+}
+
 export function giftWallStats(received: Partial<Record<GiftId, number>>) {
+  const all = giftWallList(received);
   const gifts = Object.values(received).reduce((a, b) => a + (b ?? 0), 0);
-  const stars = GIFTS.reduce((a, g) => a + giftStars(received[g.id] ?? 0) * (g.tier === "legendary" ? 5 : 1), 0);
+  const stars = all.reduce((a, g) => a + giftStars(received[g.id] ?? 0) * (g.tier === "legendary" ? 5 : 1), 0);
   // The showcase gift is the most valuable one received
-  const best = [...GIFTS].reverse().find((g) => (received[g.id] ?? 0) > 0) ?? null;
+  const best = [...all].reverse().find((g) => (received[g.id] ?? 0) > 0) ?? null;
   return { gifts, stars, best };
 }
 

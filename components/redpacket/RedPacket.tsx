@@ -389,9 +389,8 @@ export function RoomRedPacket({ s }: { s: RoomSession }) {
   useEffect(() => {
     if (!d?.top?.length || ranked.current.has(d.id)) return;
     ranked.current.add(d.id);
-    const medal = ["🥇", "🥈", "🥉", "4.", "5."];
-    s.addSystem(`🧧 Top lootors: ${d.top.map((t, i) => `${medal[i]} ${t.userId && t.userId === myId ? "You" : t.name} ${t.coins.toLocaleString("en-IN")}`).join(" · ")}`);
-  }, [d, s, myId]);
+    s.addMessage({ id: `rpt-${d.id}`, kind: "redpacket-top", sender: d.fromId === ME_ID ? "Your" : person(d.fromId).name, amount: packetById(d.packet).amount, rows: d.top.slice(0, 5).map((t) => ({ name: t.name, coins: t.coins, me: Boolean(t.userId && t.userId === myId) })) });
+  }, [d, s, myId, person]);
 
   return (
     <>

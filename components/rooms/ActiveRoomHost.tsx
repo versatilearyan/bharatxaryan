@@ -1,5 +1,6 @@
 "use client";
 
+import { NameText } from "@/components/ui/NameText";
 import { useEffect, useRef, useState } from "react";
 import { publishActiveVoice } from "@/lib/app/active-voice";
 import { RoomCover } from "@/components/rooms/RoomCover";
@@ -163,7 +164,7 @@ function EntryBanner({ item, onDone }: { item: EntryItem; onDone: () => void }) 
               set={src}
               avatar={<PersonAvatar person={me ? { id: ME_ID, look: profile.look, photo: profile.photo, frame: "none" } : { ...p!, frame: "none" }} size={64} className="!h-full !w-full" />}
             >
-              <span className={me ? nameTone(vip.level, "text-[#ffe08a]", "room") : "text-[#ffe08a]"}>{me ? profile.name : p!.name}</span> entered
+              <span className={me ? nameTone(vip.level, "text-[#ffe08a]", "room") : "text-[#ffe08a]"}><NameText text={me ? profile.name : p!.name} /></span> entered
             </VipEntryBanner>
           </motion.div>
         ) : null}

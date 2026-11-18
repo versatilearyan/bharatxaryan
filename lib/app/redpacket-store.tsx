@@ -189,7 +189,8 @@ function useRedPacketState() {
     async (dropId: string): Promise<number> => {
       const d = drops.find((x) => x.id === dropId);
       const t = Date.now();
-      if (!d || d.fromId === ME_ID || d.left <= 0 || t < d.rainAt || t > d.endAt || activeRoomId !== d.roomId) return 0;
+      // Backend packets: everyone in the room can loot, the sender too (the server keeps it fair)
+      if (!d || (!d.serverId && d.fromId === ME_ID) || d.left <= 0 || t < d.rainAt || t > d.endAt || activeRoomId !== d.roomId) return 0;
       if (d.serverId) {
         if (d.maxGrabs && d.grabs >= d.maxGrabs) return 0;
         try {

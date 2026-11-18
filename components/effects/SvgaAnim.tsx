@@ -183,6 +183,7 @@ function SvgaCanvas({ src, loop = 0, className = "", style, onEnd, onReady, onEr
   useEffect(() => {
     let player: import("svga").Player | null = null;
     let cancelled = false;
+    let stopWatch = () => {};
     (async () => {
       try {
         const [{ Player }, video] = await Promise.all([import("svga"), load(src)]);
@@ -191,7 +192,20 @@ function SvgaCanvas({ src, loop = 0, className = "", style, onEnd, onReady, onEr
         player.onEnd = () => endRef.current?.();
         await player.mount(video);
         if (cancelled) return;
-        sharpen(player, ref.current, video.size);
+        const el = ref.current;
+        const p = player;
+        if (el.clientWidth > 0) sharpen(p, el, video.size);
+        else {
+          // Not laid out yet (hidden, or still sliding in): sharpen as soon as it has a size, or it stays blurry
+          const ro = new ResizeObserver(() => {
+            if (el.clientWidth > 0) {
+              ro.disconnect();
+              sharpen(p, el, video.size);
+            }
+          });
+          ro.observe(el);
+          stopWatch = () => ro.disconnect();
+        }
         player.start();
         readyRef.current?.();
       } catch (e) {
@@ -204,6 +218,7 @@ function SvgaCanvas({ src, loop = 0, className = "", style, onEnd, onReady, onEr
     })();
     return () => {
       cancelled = true;
+      stopWatch();
       player?.destroy();
     };
   }, [src, loop, observe]);

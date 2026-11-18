@@ -1,5 +1,6 @@
 "use client";
 
+import { NameText } from "@/components/ui/NameText";
 import { backdropStyle } from "@/components/ui/PanchayatBackground";
 import { useEffect, useMemo, useState } from "react";
 import { getRanking, type Ranking, type RankingType } from "@/lib/api/rankings";
@@ -180,7 +181,7 @@ export function RankingScreen() {
             return (
               <button key={r.key} type="button" onClick={r.open} aria-label={`Number ${pd.place}: ${r.title}`} className={`relative flex min-w-0 flex-col items-center text-center ${pd.lift}`}>
                 <RankFrame r={r} pd={pd} />
-                <span className={`-mt-1 line-clamp-1 max-w-full font-display text-[13px] font-bold ${(r.people?.length === 1 && vipName(r.people[0].vip)) || "text-cream"}`} style={nameFace(r.people?.length === 1 ? r.people[0].nameFont : r.room?.settings?.nameFont)}>{r.title}</span>
+                <span className={`-mt-1 line-clamp-1 max-w-full font-display text-[13px] font-bold ${(r.people?.length === 1 && vipName(r.people[0].vip)) || "text-cream"}`} style={nameFace(r.people?.length === 1 ? r.people[0].nameFont : r.room?.settings?.nameFont)}><NameText text={r.title} /></span>
                 <span className="text-[12.5px] font-extrabold" style={{ color: pd.ring }}>
                   {r.value.toLocaleString("en-IN")}
                 </span>
@@ -195,7 +196,7 @@ export function RankingScreen() {
               <button type="button" onClick={r.open} className={`flex w-full items-center gap-3 px-3 py-2.5 text-left ${r.mine ? "bg-gold/10" : ""}`}>
                 <span className="w-6 text-center font-display text-[15px] font-extrabold text-cream/70">{i + 4}</span>
                 <Avatars r={r} size={40} />
-                <span className={`min-w-0 flex-1 truncate text-[14.5px] font-semibold ${(r.people?.length === 1 && vipName(r.people[0].vip)) || "text-cream"}`} style={nameFace(r.people?.length === 1 ? r.people[0].nameFont : r.room?.settings?.nameFont)}>{r.mine && !r.room ? `${r.title} (you)` : r.title}</span>
+                <span className={`min-w-0 flex-1 truncate text-[14.5px] font-semibold ${(r.people?.length === 1 && vipName(r.people[0].vip)) || "text-cream"}`} style={nameFace(r.people?.length === 1 ? r.people[0].nameFont : r.room?.settings?.nameFont)}><NameText text={r.mine && !r.room ? `${r.title} (you)` : r.title} /></span>
                 <span className="text-right">
                   <span className="block text-[14px] font-extrabold text-gold">{r.value.toLocaleString("en-IN")}</span>
                   <span className="text-[10.5px] text-cream/50">{unit}</span>

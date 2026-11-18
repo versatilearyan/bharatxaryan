@@ -1,5 +1,6 @@
 "use client";
 
+import { NameText } from "@/components/ui/NameText";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CalendarDays, Coffee, Film, Flame, Gamepad2, Laugh, Music2, BookOpen, Feather, Trophy, Sparkles, SearchX, type LucideIcon } from "lucide-react";
@@ -258,7 +259,7 @@ export function DiscoverScreen() {
                 <PersonAvatar person={p} size={48} />
                 <span className="min-w-0">
                   <span className="flex items-center gap-1.5">
-                    <span className={`truncate text-[15px] font-semibold ${nameTone(p.vip)}`}>{p.name}</span>
+                    <span className={`truncate text-[15px] font-semibold ${nameTone(p.vip)}`}><NameText text={p.name} /></span>
                     <VipBadgeFor personId={p.id} vip={p.vip} size={16} />
                     <LevelPill level={p.level} gender={p.gender} size="sm" />
                   </span>

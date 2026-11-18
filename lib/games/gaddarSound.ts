@@ -4,7 +4,7 @@
  * Sounds for Gaon ka Gaddaar, made with the browser's own synthesiser (no files to download, nothing to lag).
  * Browsers only let sound start after a tap, so the first tap in the game wakes it up.
  */
-export type Sfx = "enter" | "join" | "click" | "task" | "taskAll" | "kill" | "report" | "emergency" | "vote" | "alarm" | "fixed" | "vent" | "win" | "lose" | "chat" | "tick";
+export type Sfx = "enter" | "join" | "click" | "task" | "taskAll" | "kill" | "report" | "emergency" | "vote" | "alarm" | "fixed" | "vent" | "win" | "lose" | "chat" | "tick" | "turn" | "myTurn" | "voteOpen" | "voteLock" | "reveal";
 
 const KEY = "gaddar.sound.v1";
 let ctx: AudioContext | null = null;
@@ -108,6 +108,16 @@ const SOUNDS: Record<Sfx, Note[]> = {
   win: [C5, E5, G5, C6, 0, G5, C6, 1318.5].map((f, i) => ({ f: f || 1, t: i * 0.13, d: 0.28, type: "triangle" as OscillatorType, v: f ? 0.38 : 0.0001 })),
   lose: [{ f: 392, t: 0, d: 0.3, type: "triangle", v: 0.33 }, { f: 330, t: 0.28, d: 0.3, type: "triangle", v: 0.33 }, { f: 262, t: 0.56, d: 0.6, type: "triangle", v: 0.33 }],
   chat: [{ f: 1200, t: 0, d: 0.06, type: "sine", v: 0.12 }],
+  // the next speaker gets the floor: a soft temple bell
+  turn: [{ f: 784, t: 0, d: 0.5, type: "sine", v: 0.22 }, { f: 1568, t: 0, d: 0.35, type: "sine", v: 0.08 }],
+  // your turn to speak: a bright double bell
+  myTurn: [{ f: 880, t: 0, d: 0.35, type: "sine", v: 0.3 }, { f: 1320, t: 0.18, d: 0.5, type: "sine", v: 0.3 }, { f: 1760, t: 0.18, d: 0.3, type: "sine", v: 0.1 }],
+  // everyone has spoken: the vote opens with a dhol-like thump and a rising call
+  voteOpen: [{ f: 110, t: 0, d: 0.25, type: "sine", to: 60, v: 0.45 }, { f: 110, t: 0.22, d: 0.25, type: "sine", to: 60, v: 0.45 }, { f: C5, t: 0.42, d: 0.14, type: "triangle", v: 0.3 }, { f: G5, t: 0.54, d: 0.3, type: "triangle", v: 0.32 }],
+  // your vote is locked in
+  voteLock: [{ f: 660, t: 0, d: 0.07, type: "square", v: 0.12 }, { f: 990, t: 0.06, d: 0.18, type: "triangle", v: 0.32 }],
+  // the result: a drum roll
+  reveal: [0, 1, 2, 3, 4, 5, 6, 7].map((i) => ({ f: 140, t: i * 0.07, d: 0.06, type: "sine" as OscillatorType, to: 90, v: 0.25 + i * 0.02 })),
 };
 
 export function sfx(name: Sfx) {

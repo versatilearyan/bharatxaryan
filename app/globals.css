@@ -204,6 +204,12 @@ html[data-native] #main {
     filter: drop-shadow(0 0 3px rgb(255 80 40 / 0.35));
     animation: gold-sweep 4.5s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   }
+  /* Emoji in a highlighted name keep their own colours (the highlight only paints the letters) */
+  .gold-shine .vip-emoji, .vip-shine .vip-emoji, .vip-red .vip-emoji {
+    color: #fff;
+    -webkit-text-fill-color: currentColor;
+    background: none;
+  }
   @media (prefers-reduced-motion: reduce) {
     .vip-shine, .vip-red, .gold-shine { animation: none; background-position: 50% 0; }
   }

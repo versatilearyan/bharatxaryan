@@ -272,7 +272,8 @@ function Game({ roomId }: { roomId: string }) {
   const offset = useRef(0);
   const meAt = useRef(0);
   const lastPhase = useRef<string>("");
-  const now = useNow(250);
+  // Countdowns show whole seconds: twice a second is plenty (each tick re-renders the whole game screen)
+  const now = useNow(500);
 
   const apply = useCallback((b: GaddarBundle) => {
     if (b.map) setMap(b.map);
@@ -852,7 +853,7 @@ function Game({ roomId }: { roomId: string }) {
         {phase === "MEETING" && loaded ? <Meeting state={state} me={me} players={players} myId={myId} serverNow={serverNow} busy={busy} chat={chat} onVote={(t) => {
           sfx("vote");
           void run(() => gaddarApi.vote(roomId, t));
-        }} onSay={(text) => publish(gaddarChatDest(roomId), { text })} /> : null}
+        }} onSay={(text) => publish(gaddarChatDest(roomId), { text })} onPass={() => act("pass")} /> : null}
         {phase === "ENDED" && loaded ? <Ended state={state} myId={myId} busy={busy} onLobby={() => void run(() => gaddarApi.lobby(roomId))} onExit={pop} exitLabel={state.table ? "Wapas jao" : "Room me wapas"} /> : null}
 
         {/* Loading: wait for the map, the connection, the first positions and the village before showing anything */}
@@ -935,101 +936,179 @@ function Joystick({ stick }: { stick: React.MutableRefObject<{ x: number; y: num
 
 /* ---------------- Sarpanch ki baithak ---------------- */
 
-function Meeting({ state, me, players, myId, serverNow, busy, chat, onVote, onSay }: { state: GaddarState; me: GaddarMe | undefined; players: GaddarPlayer[]; myId: string; serverNow: number; busy: boolean; chat: GaddarChat[]; onVote: (target: string | null) => void; onSay: (text: string) => void }) {
+function Meeting({ state, me, players, myId, serverNow, busy, chat, onVote, onSay, onPass }: { state: GaddarState; me: GaddarMe | undefined; players: GaddarPlayer[]; myId: string; serverNow: number; busy: boolean; chat: GaddarChat[]; onVote: (target: string | null) => void; onSay: (text: string) => void; onPass: () => void }) {
   const m = state.meeting;
   const result = m?.result;
+  const talk = m?.stage === "TALK" && !result;
   const left = Math.max(0, Math.ceil((state.endsAt - serverNow) / 1000));
+  const turnLeft = Math.max(0, Math.ceil(((m?.turnEndsAt ?? 0) - serverNow) / 1000));
   const iVoted = !!me?.myVote || !!players.find((p) => p.id === myId)?.voted;
   const alive = me ? me.alive : true;
   const byId = new Map(players.map((p) => [p.id, p]));
+  const speaker = m?.speaker ? byId.get(m.speaker) : undefined;
+  const mySpeak = talk && m?.speaker === myId && alive;
   const [draft, setDraft] = useState("");
   const log = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    log.current?.scrollTo({ top: log.current.scrollHeight });
+    log.current?.scrollTo({ top: log.current.scrollHeight, behavior: "smooth" });
   }, [chat.length]);
+  // Sounds: a bell for every new speaker (brighter when it's you), the vote opening, the result
+  const lastKey = useRef("");
+  useEffect(() => {
+    const key = result ? "result" : talk ? `t${m?.turn}` : "vote";
+    if (key === lastKey.current) return;
+    lastKey.current = key;
+    if (result) sfx("reveal");
+    else if (talk) sfx(mySpeak ? "myTurn" : "turn");
+    else sfx("voteOpen");
+  }, [result, talk, m?.turn, mySpeak]);
+  // The last five seconds of your turn tick
+  useEffect(() => {
+    if (mySpeak && turnLeft > 0 && turnLeft <= 5) sfx("tick");
+  }, [mySpeak, turnLeft]);
   const say = () => {
     const t = draft.trim();
-    if (!t || !alive || result) return;
+    if (!t || !mySpeak) return;
     onSay(t);
     setDraft("");
   };
+  const turnPct = Math.min(1, turnLeft / 25);
+  const order = (m?.turns ?? []).map((id) => byId.get(id)).filter((p): p is GaddarPlayer => !!p);
   return (
-    <div className="absolute inset-0 z-30 flex flex-col bg-gradient-to-b from-[#3a2412] to-[#150f0b]">
+    <div className="absolute inset-0 z-30 flex flex-col bg-[radial-gradient(120%_80%_at_50%_0%,#5a3414_0%,#2a1a0c_55%,#120c08_100%)]">
       <div className="flex items-center gap-2 px-4 pb-1.5 pt-2.5">
         <div className="min-w-0 flex-1">
           <h2 className="truncate font-display text-[18px] font-extrabold text-gold">🛕 Sarpanch ki baithak</h2>
-          <p className="truncate text-[11.5px] text-cream/75">{m?.why === "emergency" ? `${m.byName} ne baithak bulayi` : `${m?.byName ?? "Kisi"} ko laash mili`}. Text me baat karo, phir vote do.</p>
+          <p className="truncate text-[11.5px] text-cream/75">{m?.why === "emergency" ? `${m.byName} ne baithak bulayi` : `${m?.byName ?? "Kisi"} ko laash mili`}. {result ? "Faisla ho gaya." : talk ? "Har ek ko 25 second milenge bolne ke liye." : "Ab vote do!"}</p>
         </div>
-        <span className="rounded-full bg-black/40 px-3 py-1 font-display text-[15px] font-extrabold text-cream">{left}s</span>
+        <span className={`rounded-full px-3 py-1 font-display text-[15px] font-extrabold ${!talk && !result && left <= 5 ? "animate-pulse bg-[#e2404a] text-white" : "bg-black/40 text-cream"}`}>{left}s</span>
       </div>
 
+      {/* Who speaks in what order */}
+      {!result ? (
+        <div className="no-scrollbar flex shrink-0 items-center gap-1.5 overflow-x-auto px-4 pb-2" aria-label="Bolne ki baari">
+          {order.map((p, i) => {
+            const done = talk ? i < (m?.turn ?? 0) : true;
+            const now = talk && p.id === m?.speaker;
+            return (
+              <span key={p.id} className={`flex shrink-0 items-center gap-1 rounded-full py-0.5 pl-0.5 pr-2 text-[10.5px] font-bold ring-1 ${now ? "bg-gold text-ink ring-gold" : done ? "bg-white/5 text-cream/45 ring-white/10" : "bg-white/10 text-cream/80 ring-white/15"}`}>
+                <Face p={p} size={18} /> {p.id === myId ? "You" : p.name}
+              </span>
+            );
+          })}
+        </div>
+      ) : null}
+
       <div className="flex min-h-0 flex-1 gap-3 px-4 pb-3">
-        {/* Text chat */}
-        <section className="flex min-h-0 w-[44%] flex-col rounded-2xl bg-black/30 ring-1 ring-white/10" aria-label="Baithak chat">
-          <p className="flex items-center gap-1.5 px-3 pt-2 text-[11px] font-bold uppercase tracking-wide text-cream/60">
-            <MessageSquareText className="h-3.5 w-3.5" aria-hidden /> Baat-cheet
-          </p>
+        {/* Who has the floor, and what they said */}
+        <section className="flex min-h-0 w-[46%] flex-col rounded-2xl bg-black/30 ring-1 ring-white/10" aria-label="Baithak chat">
+          {talk && speaker ? (
+            <div className={`flex items-center gap-2.5 border-b border-white/10 px-3 py-2 ${mySpeak ? "bg-gold/15" : ""}`}>
+              <span className="relative grid h-11 w-11 shrink-0 place-items-center">
+                <svg viewBox="0 0 44 44" className="absolute inset-0 -rotate-90" aria-hidden>
+                  <circle cx="22" cy="22" r="20" stroke="rgba(255,255,255,0.12)" strokeWidth="3" fill="none" />
+                  <circle cx="22" cy="22" r="20" stroke={turnLeft <= 5 ? "#ff6b6b" : "#e7bc72"} strokeWidth="3" fill="none" strokeLinecap="round" strokeDasharray={`${2 * Math.PI * 20}`} strokeDashoffset={`${2 * Math.PI * 20 * (1 - turnPct)}`} style={{ transition: "stroke-dashoffset 1s linear" }} />
+                </svg>
+                <Face p={speaker} size={32} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-extrabold text-cream">{mySpeak ? "Tumhari baari! Bolo" : `${speaker.name} bol raha hai`}</span>
+                <span className={`block text-[11px] font-bold ${turnLeft <= 5 ? "text-[#ff8a80]" : "text-gold"}`}>{turnLeft}s baaki{mySpeak ? "" : " · suno"}</span>
+              </span>
+              {mySpeak ? (
+                <button type="button" onClick={onPass} className="shrink-0 rounded-full bg-white/12 px-2.5 py-1 text-[11px] font-bold text-cream active:scale-95">
+                  Pass
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <p className="flex items-center gap-1.5 px-3 pt-2 text-[11px] font-bold uppercase tracking-wide text-cream/60">
+              <MessageSquareText className="h-3.5 w-3.5" aria-hidden /> Baat-cheet
+            </p>
+          )}
           <div ref={log} className="app-scroll min-h-0 flex-1 space-y-1 px-3 py-1.5">
-            {chat.length === 0 ? <p className="pt-3 text-center text-[12px] text-cream/45">Kuch likho: kisne kya dekha?</p> : null}
+            {chat.length === 0 ? <p className="pt-3 text-center text-[12px] text-cream/45">{talk ? "Jiski baari hai wo batayega kisne kya dekha." : "Kuch nahi kaha gaya."}</p> : null}
             {chat.map((c, i) => (
-              <div key={`${c.t}-${i}`} className={`flex ${c.from === myId ? "justify-end" : "justify-start"}`}>
+              <motion.div key={`${c.t}-${i}`} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className={`flex ${c.from === myId ? "justify-end" : "justify-start"}`}>
                 <p className="max-w-[88%] rounded-2xl px-2.5 py-1 text-[12.5px] leading-snug text-white shadow" style={{ background: c.from === myId ? "linear-gradient(135deg,#7c4dff,#ff3d8b)" : "rgba(255,255,255,0.12)" }}>
                   {c.from === myId ? null : <b className="mr-1 text-[11px]" style={{ color: GADDAR_COLORS[c.color % GADDAR_COLORS.length] }}>{c.name}</b>}
                   {c.text}
                 </p>
-              </div>
+              </motion.div>
             ))}
           </div>
-          <div className="flex items-center gap-1.5 border-t border-white/10 p-1.5">
-            <input
-              value={draft}
-              maxLength={140}
-              disabled={!alive || !!result}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && say()}
-              placeholder={alive ? "Kuch likho…" : "Bhoot baat nahi kar sakte"}
-              aria-label="Message"
-              className="h-9 min-w-0 flex-1 rounded-full bg-white/10 px-3 text-[13px] text-cream placeholder:text-cream/40 focus:outline-none disabled:opacity-50"
-            />
-            <button type="button" disabled={!draft.trim() || !alive || !!result} onClick={say} aria-label="Send" className="grid h-9 w-9 place-items-center rounded-full bg-gold text-ink disabled:opacity-40">
-              <Send className="h-4 w-4" />
-            </button>
-          </div>
+          {/* Only the speaker types; everyone else listens */}
+          {mySpeak ? (
+            <div className="flex items-center gap-1.5 border-t border-white/10 p-1.5">
+              <input
+                value={draft}
+                maxLength={140}
+                autoFocus
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && say()}
+                placeholder="Apna faisla aur shak batao…"
+                aria-label="Message"
+                className="h-9 min-w-0 flex-1 rounded-full bg-white/10 px-3 text-[13px] text-cream placeholder:text-cream/40 focus:outline-none"
+              />
+              <button type="button" disabled={!draft.trim()} onClick={say} aria-label="Send" className="grid h-9 w-9 place-items-center rounded-full bg-gold text-ink disabled:opacity-40">
+                <Send className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <p className="border-t border-white/10 px-3 py-2 text-center text-[11px] font-semibold text-cream/50">{result ? "Baithak khatam" : talk ? (alive ? "Apni baari ka intezaar karo" : "Bhoot sirf sun sakte hain") : "Bolne ka samay khatam. Vote do!"}</p>
+          )}
         </section>
 
         {/* The vote */}
         <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {talk ? <p className="mb-1.5 rounded-xl bg-black/30 px-2.5 py-1.5 text-center text-[11.5px] font-semibold text-cream/70">🗳️ Vote sabke bolne ke baad khulega</p> : null}
           <ul className="app-scroll grid min-h-0 flex-1 grid-cols-2 content-start gap-1.5">
             {players
               .filter((p) => !p.gone)
               .map((p) => {
                 const votes = result?.tally[p.id] ?? 0;
                 const isMe = p.id === myId;
+                const picked = me?.myVote === p.id;
+                const out = result?.ejected === p.id;
                 return (
                   <li key={p.id}>
-                    <button
+                    <motion.button
                       type="button"
-                      disabled={busy || !alive || iVoted || !p.alive || !!result}
-                      onClick={() => onVote(p.id)}
-                      className={`flex w-full items-center gap-2 rounded-xl p-2 text-left ring-1 ${p.alive ? "bg-white/[0.08] ring-white/15" : "bg-black/30 opacity-50 ring-white/5"} ${me?.myVote === p.id ? "ring-2 ring-gold" : ""}`}
+                      whileTap={{ scale: 0.95 }}
+                      disabled={busy || !alive || iVoted || !p.alive || !!result || talk}
+                      onClick={() => {
+                        sfx("voteLock");
+                        onVote(p.id);
+                      }}
+                      animate={out ? { scale: [1, 1.08, 1], transition: { repeat: 2, duration: 0.5 } } : undefined}
+                      className={`relative flex w-full items-center gap-2 overflow-hidden rounded-xl p-2 text-left ring-1 transition ${p.alive ? "bg-white/[0.08] ring-white/15" : "bg-black/30 opacity-50 ring-white/5"} ${picked ? "!bg-gold/20 ring-2 !ring-gold" : ""} ${out ? "!bg-[#e2404a]/30 !ring-[#ff6b6b]" : ""} ${talk && p.id === m?.speaker ? "ring-2 !ring-gold/70" : ""}`}
                     >
                       <Face p={p} size={30} />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[12px] font-bold text-cream">{isMe ? `${p.name} (you)` : p.name}</span>
-                        <span className="block text-[9.5px] text-cream/60">{!p.alive ? "Bhoot" : p.voted ? "Vote de diya" : "Soch raha hai…"}</span>
+                        <span className="block text-[9.5px] text-cream/60">{!p.alive ? "Bhoot 👻" : talk ? (p.id === m?.speaker ? "🎙️ Bol raha hai" : "Sun raha hai") : p.voted ? "✅ Vote de diya" : "🤔 Soch raha hai…"}</span>
                       </span>
-                      {result && votes > 0 ? <span className="rounded-full bg-gold px-2 py-0.5 text-[10.5px] font-extrabold text-ink">{votes}</span> : null}
-                    </button>
+                      {picked && !result ? <span className="rounded-full bg-gold px-1.5 py-0.5 text-[9.5px] font-extrabold text-ink">TUMHARA</span> : null}
+                      {result && votes > 0 ? (
+                        <span className="flex gap-0.5" aria-label={`${votes} votes`}>
+                          {Array.from({ length: Math.min(votes, 5) }).map((_, i) => (
+                            <motion.span key={i} initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.15 * i }} className="grid h-4 w-4 place-items-center rounded-full bg-gold text-[9px] font-extrabold text-ink">
+                              ✓
+                            </motion.span>
+                          ))}
+                        </span>
+                      ) : null}
+                    </motion.button>
                   </li>
                 );
               })}
           </ul>
           {!result ? (
-            <button type="button" disabled={busy || !alive || iVoted} onClick={() => onVote(null)} className="mt-1.5 h-9 w-full rounded-full bg-white/12 text-[12.5px] font-bold text-cream disabled:opacity-45">
-              {iVoted ? (me?.myVote === "0" ? "Tumne skip kiya" : "Vote ho gaya") : alive ? "Skip (kisi ko mat nikalo)" : "Bhoot vote nahi de sakte"}
+            <button type="button" disabled={busy || !alive || iVoted || talk} onClick={() => { sfx("voteLock"); onVote(null); }} className="mt-1.5 h-9 w-full rounded-full bg-white/12 text-[12.5px] font-bold text-cream disabled:opacity-45">
+              {talk ? "Pehle sabki baat suno" : iVoted ? (me?.myVote === "0" ? "Tumne skip kiya" : "Vote ho gaya ✅") : alive ? "Skip (kisi ko mat nikalo)" : "Bhoot vote nahi de sakte"}
             </button>
           ) : (
-            <div className="mt-1.5 rounded-xl bg-black/50 p-2.5 text-center ring-1 ring-gold/30">
+            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 220, damping: 14 }} className="mt-1.5 rounded-xl bg-black/50 p-2.5 text-center ring-1 ring-gold/30">
               {result.ejected ? (
                 <>
                   <p className="font-display text-[15px] font-extrabold text-cream">{result.ejectedName ?? byId.get(result.ejected)?.name} ko gaon se nikala gaya</p>
@@ -1038,7 +1117,8 @@ function Meeting({ state, me, players, myId, serverNow, busy, chat, onVote, onSa
               ) : (
                 <p className="font-display text-[15px] font-extrabold text-cream">Koi nahi nikla</p>
               )}
-            </div>
+              <p className="mt-0.5 text-[10.5px] text-cream/55">Skip: {result.tally.skip ?? 0}</p>
+            </motion.div>
           )}
         </section>
       </div>

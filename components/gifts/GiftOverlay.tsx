@@ -58,7 +58,7 @@ export function GiftOverlay() {
         ) : null}
       </AnimatePresence>
       <AnimatePresence>{burst && !giftFx ? <CoinBurst key={burst.id} fx={burst} onDone={() => setBurst(null)} /> : null}</AnimatePresence>
-      <AnimatePresence>{giftCombo && inRoom ? <ComboButton key="combo" combo={giftCombo} onExpire={clearCombo} /> : null}</AnimatePresence>
+      <AnimatePresence>{giftCombo && (inRoom || giftCombo.anywhere) ? <ComboButton key="combo" combo={giftCombo} onExpire={clearCombo} /> : null}</AnimatePresence>
     </>
   );
 }

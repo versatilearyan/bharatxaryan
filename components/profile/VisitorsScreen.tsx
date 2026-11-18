@@ -1,5 +1,6 @@
 "use client";
 
+import { NameText } from "@/components/ui/NameText";
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, Footprints, Lock } from "lucide-react";
@@ -175,7 +176,7 @@ function LocalVisitorsScreen() {
               <button type="button" onClick={() => openProfile(v.id)} className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left ring-1 ${isNew ? "bg-coral/10 ring-coral/30" : "bg-surface ring-line"}`}>
                 <PersonAvatar person={p} size={46} />
                 <span className="min-w-0 flex-1">
-                  <span className={`block truncate text-[14.5px] font-bold ${nameTone(p.vip)}`} style={nameFace(p.nameFont)}>{p.name}</span>
+                  <span className={`block truncate text-[14.5px] font-bold ${nameTone(p.vip)}`} style={nameFace(p.nameFont)}><NameText text={p.name} /></span>
                   <span className="block text-[11.5px] text-muted">
                     {tab === "visitors" ? "Visited your profile" : "You visited"}
                     {v.times > 1 ? ` · ${v.times} times` : ""}

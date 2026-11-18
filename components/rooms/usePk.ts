@@ -77,8 +77,26 @@ export function usePk(s: RoomSession) {
   const srvReported = useRef(-1);
   /** Server clock minus this device's clock. */
   const offset = useRef(0);
-  /** A finished battle you closed on your screen. */
-  const [hiddenVersion, setHiddenVersion] = useState(-1);
+  /** A finished battle you closed on your screen (remembered for this room, so it doesn't come back when the room opens again). */
+  const hideKey = `pk.hidden.${serverId ?? ""}`;
+  const [hiddenVersion, setHiddenVersionState] = useState(() => {
+    try {
+      return Number(sessionStorage.getItem(hideKey) ?? -1);
+    } catch {
+      return -1;
+    }
+  });
+  const setHiddenVersion = useCallback(
+    (v: number) => {
+      setHiddenVersionState(v);
+      try {
+        sessionStorage.setItem(hideKey, String(v));
+      } catch {
+        /* private window */
+      }
+    },
+    [hideKey],
+  );
   const pid = useCallback((u: string) => (u === myId ? ME_ID : `${SERVER_USER_PREFIX}${u}`), [myId]);
   const who = useCallback((u?: string) => (!u ? "Someone" : u === myId ? name : person(pid(u)).name), [myId, name, person, pid]);
   const applySrv = useCallback(
@@ -171,18 +189,18 @@ export function usePk(s: RoomSession) {
   }, [s, name, serverId, server]);
   const close = useCallback(() => {
     if (serverId) {
-      // A finished battle: just hide it here. A running one: the server closes it for everyone.
-      if (live.current?.phase === "done") setHiddenVersion(srvVersion.current);
-      else server((id) => pkApi.close(id));
+      // Hide it here at once; the owner or an admin also closes it on the server for everyone (finished or running)
+      setHiddenVersion(srvVersion.current);
+      if (s.canModerate) server((id) => pkApi.close(id));
       return;
     }
     setPk(null);
     s.addSystem(`${name} closed the PK.`);
-  }, [s, name, serverId, server]);
+  }, [s, name, serverId, server, setHiddenVersion]);
   const dismiss = useCallback(() => {
     if (serverId) setHiddenVersion(srvVersion.current);
     else setPk(null);
-  }, [serverId]);
+  }, [serverId, setHiddenVersion]);
 
   const score = useCallback((side: PkSide, by: string, points: number) => {
     setPk((p) => {

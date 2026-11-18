@@ -1,5 +1,6 @@
 "use client";
 
+import { NameText } from "@/components/ui/NameText";
 import { VipAvatar, VipBadge } from "@/components/effects/VipFx";
 import { CharmBadge } from "@/components/ui/CharmBadge";
 import { LevelPill } from "@/components/profile/IdTags";
@@ -44,7 +45,7 @@ export function MomentAuthor({ a, size = 42, sub }: { a: Moment["author"]; size?
       <span className="min-w-0">
         <span className="flex min-w-0 items-center gap-1">
           <span className={`truncate text-[14.5px] font-extrabold ${vipName(vip) || "text-cream"}`} style={nameFace(a.nameFont as NameFont | undefined)}>
-            {a.name}
+            <NameText text={a.name} />
           </span>
           {fx?.badge ? (
             <span className="relative inline-flex shrink-0 overflow-hidden rounded-md">

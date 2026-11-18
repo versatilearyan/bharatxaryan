@@ -71,6 +71,11 @@ export function Footer() {
                     Terms
                   </Link>
                 </li>
+                <li>
+                  <Link href="/child-safety" className="text-sm text-muted transition-colors hover:text-cream">
+                    Child Safety
+                  </Link>
+                </li>
               </ul>
             </div>
           </div>

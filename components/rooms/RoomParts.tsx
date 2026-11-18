@@ -1,5 +1,6 @@
 "use client";
 
+import { NameText } from "@/components/ui/NameText";
 import { openReport } from "@/components/safety/Safety";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLiveCounts } from "@/lib/app/live-counts";
@@ -391,7 +392,7 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
       ) : null}
       {/* Empty seats have no label (as in the reference); the space is kept so rows don't jump */}
       <span className={`relative z-[2] mt-1 truncate font-bold ${owner ? "text-cream/60" : (p && vipName(p.vip, "room")) || "text-cream"} ${p || owner ? "" : numbered ? "hidden" : "invisible"}`} style={{ ...nameFace(p?.nameFont), maxWidth: Math.max(72, size * 1.3), fontSize: size >= 70 ? 15 : size < 50 ? 11 : 12.5, marginTop: frame ? size * 0.14 : undefined }}>
-        {p ? p.name : owner ? owner.name : "Empty"}
+        {p ? <NameText text={p.name} /> : owner ? owner.name : "Empty"}
       </span>
       {p && isNewbieSeat ? <NewbieBadge className="relative z-[2]" /> : null}
     </div>
@@ -666,6 +667,26 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
             {m.text}
           </p>
         );
+      case "redpacket-top":
+        // The red packet's Top 5 lootors, drawn like a gift card
+        return (
+          <div className="w-[min(92%,280px)] overflow-hidden rounded-2xl bg-gradient-to-br from-[#c1121f]/45 via-black/45 to-black/45 text-cream ring-1 ring-[#ffd36e]/35">
+            <p className="px-3 pb-1.5 pt-2.5 text-[12.5px] font-bold leading-snug">
+              🧧 <span className="text-[#ffe08a]">{m.sender}</span>&apos;s red packet <span className="font-display font-extrabold text-gold">{m.amount.toLocaleString("en-IN")}</span> · Top lootors
+            </p>
+            <ol className="space-y-0.5 border-t border-white/10 px-3 py-1.5">
+              {m.rows.map((r, i) => (
+                <li key={`${r.name}${i}`} className="flex items-center gap-2 text-[12px]">
+                  <span className="w-5 text-center">{["🥇", "🥈", "🥉", "4.", "5."][i]}</span>
+                  <span className={`min-w-0 flex-1 truncate font-semibold ${r.me ? "text-pink" : ""}`}>{r.me ? "You" : r.name}</span>
+                  <span className="flex items-center gap-1 font-extrabold text-gold">
+                    <Coin className="h-3.5 w-3.5" /> {r.coins.toLocaleString("en-IN")}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        );
       case "join":
         return (
           <p className={`${base} bg-black/25 text-cream/70`}>
@@ -687,7 +708,7 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
           <div className="w-[min(92%,280px)] overflow-hidden rounded-2xl bg-gradient-to-br from-gold/20 via-black/40 to-black/40 text-cream ring-1 ring-gold/25">
             <div className="flex items-center gap-2.5 px-3 pb-2 pt-2.5">
               <span className="min-w-0 flex-1 text-[12.5px] leading-snug">
-                <span className={`font-bold ${vipName(from.vip, "room") || "text-gold"}`} style={nameFace(from.nameFont)}>{m.fromId === ME_ID ? "You" : from.name}</span> sent{" "}
+                <span className={`font-bold ${vipName(from.vip, "room") || "text-gold"}`} style={nameFace(from.nameFont)}>{m.fromId === ME_ID ? "You" : <NameText text={from.name} />}</span> sent{" "}
                 <span className="font-bold text-gold">{m.toId === ME_ID ? (m.fromId === ME_ID ? "yourself" : "you") : person(m.toId).name}</span> {g.name} <span className="font-display font-extrabold italic text-gold">×{m.count}</span>
                 {g.blurb ? <span className="mt-0.5 block text-[11.5px] text-cream/65">{g.blurb}</span> : null}
               </span>
@@ -716,7 +737,7 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
               <PersonAvatar person={p} size={24} className="mt-0.5" />
               <div className="min-w-0">
                 <span className={`block text-[11px] font-bold ${m.authorId === ME_ID ? "text-pink" : "text-cream/60"}`} style={nameFace(p.nameFont)}>
-                  <span className={vipName(p.vip, "room")}>{m.authorId === ME_ID ? "You" : p.name}</span>
+                  <span className={vipName(p.vip, "room")}>{m.authorId === ME_ID ? "You" : <NameText text={p.name} />}</span>
                   {fx.badge ? <VipBadge set={fx.badge} level={p.vip} size={16} className="ml-1" /> : null}
                 </span>
                 <ChatPhoto src={m.imageUrl} />
@@ -730,13 +751,13 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
               <PersonAvatar person={p} size={24} className="mt-0.5" />
               <div className="min-w-0">
                 <span className={`block text-[11px] font-bold ${m.authorId === ME_ID ? "text-pink" : "text-cream/60"}`} style={nameFace(p.nameFont)}>
-                  <span className={vipName(p.vip, "room")}>{m.authorId === ME_ID ? "You" : p.name}</span>
+                  <span className={vipName(p.vip, "room")}>{m.authorId === ME_ID ? "You" : <NameText text={p.name} />}</span>
                   {fx.badge ? <VipBadge set={fx.badge} level={p.vip} size={16} className="ml-1" /> : null}
                   <ParivarTag personId={p.id} className="ml-1 !px-1 !text-[9px]" />
                 </span>
-                {/* Animated chat bubble (SVGA): the text box is normal bubble size and the art's
-                    inner box (x 9–90%, y 19–81% of the file) is stretched over it */}
-                <p className="relative mx-2 my-2.5 flex min-h-[34px] w-fit min-w-[96px] max-w-[230px] items-center px-3 py-1.5 text-[12.5px] font-semibold leading-snug text-white [text-shadow:0_1px_2px_rgb(120_10_30/0.7)]">
+                {/* Animated chat bubble (SVGA): every bubble has the same width, so the art is never stretched out of
+                    shape by a long or short message; its inner box (x 9–90%, y 19–81% of the file) sits over the text */}
+                <p className="relative mx-2 my-2.5 flex min-h-[40px] w-[210px] items-center px-3 py-1.5 text-[12.5px] font-semibold leading-snug text-white [text-shadow:0_1px_2px_rgb(120_10_30/0.7)]">
                   <VipBubbleArt set={bubble} onError={() => setFailedBubble(bubble.bubble)} />
                   <span className="relative break-words">
                     <MentionText text={m.text} />
@@ -750,7 +771,7 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
             <PersonAvatar person={p} size={24} className="mt-0.5" />
             <p className={`${base} ${fx.bubbleClass ?? "bg-black/30 text-cream"}`}>
               <span className={`mr-1.5 text-[11px] font-bold ${fx.bubbleClass ? "text-white/85" : m.authorId === ME_ID ? "text-pink" : "text-cream/60"}`} style={nameFace(p.nameFont)}>
-                <span className={vipName(p.vip, "room")}>{m.authorId === ME_ID ? "You" : p.name}</span>
+                <span className={vipName(p.vip, "room")}>{m.authorId === ME_ID ? "You" : <NameText text={p.name} />}</span>
                 {fx.badge ? <VipBadge set={fx.badge} level={p.vip} size={16} className="ml-1" /> : null}
                   <ParivarTag personId={p.id} className="ml-1 !px-1 !text-[9px]" />
               </span>

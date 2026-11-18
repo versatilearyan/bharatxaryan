@@ -22,7 +22,7 @@ const COUNTS = [1, 5, 10];
  * between members of the same Parivar.
  */
 export function ParivarGiftSheet({ p, open, onClose, toId, onSent }: { p: ParivarProfile; open: boolean; onClose: () => void; toId?: string; onSent?: () => void }) {
-  const { coins, toast, playGift, refreshCoins } = useApp();
+  const { coins, toast, playGift, refreshCoins, armCombo } = useApp();
   const { myId } = useServerRooms();
   const giftsV = useGiftsVersion();
   const gifts = useMemo(() => giftsOnSale().filter((g) => (g.id as string) !== WELCOME_GIFT_ID), [giftsV]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -61,6 +61,22 @@ export function ParivarGiftSheet({ p, open, onClose, toId, onSent }: { p: Pariva
       }
       const r = await sendDirectGift(receiver!.userId, gift.id, count, "PARIVAR");
       playGift({ giftId: gift.id, fromName: "You", toName: receiver!.name, count, combo: 1, charm: r.charm, earned: r.earned });
+      // Combo: tap within a few seconds to send the same gift to the same member again (×2, ×3, ...)
+      const target = receiver!;
+      const g = gift;
+      const qty = count;
+      const comboSend = (n: number) => () => {
+        void sendDirectGift(target.userId, g.id, qty, "PARIVAR")
+          .then((x) => {
+            playGift({ giftId: g.id, fromName: "You", toName: target.name, count: qty, combo: n, charm: x.charm, earned: x.earned });
+            void refreshCoins();
+            onSent?.();
+          })
+          .catch((e) => toast(e instanceof Error && e.message ? e.message : "Couldn't send the gift.", "error"));
+        armCombo({ giftId: g.id, n, anywhere: true, send: comboSend(n + 1) });
+        return true;
+      };
+      armCombo({ giftId: g.id, n: 1, anywhere: true, send: comboSend(2) });
       toast(`You sent ${receiver!.name} ${gift.name}${count > 1 ? ` ×${count}` : ""}${r.charm ? ` · +${n(r.charm)} charm` : ""}${r.earned ? ` · +${n(r.earned)} coins` : ""} for them`, "gold");
       void refreshCoins();
       onSent?.();

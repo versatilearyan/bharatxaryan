@@ -1,5 +1,6 @@
 "use client";
 
+import { NameText } from "@/components/ui/NameText";
 import { VipBadge } from "@/components/effects/VipFx";
 import { nameTone } from "@/lib/app/fonts";
 import { useMarket } from "@/lib/app/market-store";
@@ -76,7 +77,7 @@ function PersonSheet({ personId, onClose }: { personId: string | null; onClose: 
             <PersonAvatar person={p} size={88} />
           </div>
           <p className="mt-3 flex items-center justify-center gap-1.5">
-            <span className={`font-display text-[22px] font-extrabold ${nameTone(p.vip)}`}>{p.name}</span>
+            <span className={`font-display text-[22px] font-extrabold ${nameTone(p.vip)}`}><NameText text={p.name} /></span>
             {fxOf(p.id, p.vip).badge ? <VipBadge set={fxOf(p.id, p.vip).badge!} level={p.vip} size={24} animated /> : null}
           </p>
           <p className="mt-0.5 flex items-center justify-center gap-1.5 text-[12px] text-muted">

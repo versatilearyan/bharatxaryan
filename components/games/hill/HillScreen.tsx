@@ -138,7 +138,7 @@ export function HillScreen() {
     let prevCoins = 0;
     let stuntId = 0;
     const resize = () => {
-      dpr = Math.min(2, window.devicePixelRatio || 1);
+      dpr = Math.min(document.documentElement.hasAttribute("data-lite") ? 1.25 : 2, window.devicePixelRatio || 1);
       W = box.clientWidth;
       H = box.clientHeight;
       cv.width = Math.round(W * dpr);

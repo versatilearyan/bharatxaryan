@@ -37,7 +37,7 @@ export type GaddarSettings = { map: string; gaddars: number; killCd: number };
 export type GaddarPhase = "NONE" | "LOBBY" | "PLAY" | "MEETING" | "ENDED";
 export type GaddarPlayer = { id: string; name: string; avatarUrl?: string; color: number; hat?: number; suit?: number; acc?: number; alive: boolean; gone: boolean; role?: "GADDAR" | "GAONWALA"; voted?: boolean };
 export type GaddarResult = { ejected: string | null; ejectedName?: string; wasGaddar?: boolean; tally: Record<string, number> };
-export type GaddarMeeting = { by: string; byName: string; why: "report" | "emergency"; result?: GaddarResult };
+export type GaddarMeeting = { by: string; byName: string; why: "report" | "emergency"; result?: GaddarResult; stage: "TALK" | "VOTE"; speaker?: string; turn: number; turns: string[]; turnEndsAt: number };
 export type GaddarState = {
   phase: GaddarPhase;
   version: number;
@@ -122,6 +122,12 @@ export function readState(raw: unknown): GaddarState {
           by: str(meeting.by) ?? "",
           byName: str(meeting.byName) ?? "Someone",
           why: meeting.why === "emergency" ? "emergency" : "report",
+          // The baithak goes in turns: each living player gets 25 seconds to speak, then everyone votes
+          stage: meeting.stage === "TALK" ? "TALK" : "VOTE",
+          speaker: str(meeting.speaker),
+          turn: num(meeting.turn),
+          turns: Array.isArray(meeting.turns) ? meeting.turns.map((x) => String(x)) : [],
+          turnEndsAt: num(meeting.turnEndsAt),
           result: meeting.result
             ? { ejected: str(result.ejected) ?? null, ejectedName: str(result.ejectedName), wasGaddar: result.wasGaddar === true, tally: Object.fromEntries(Object.entries(obj(result.tally)).map(([k, v]) => [k, num(v)])) }
             : undefined,

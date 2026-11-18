@@ -624,6 +624,8 @@ export function CpProposalPrompt() {
   const { session, push, toast } = useApp();
   const [p, setP] = useState<CpProposal | null>(null);
   const [busy, setBusy] = useState(false);
+  /** The celebration after a yes: shown to the one who said yes, and to the one who proposed when the news comes. */
+  const [yay, setYay] = useState<{ ringId?: string; name: string } | null>(null);
   useCpEvents(
     useCallback(
       (type: string, body: Record<string, unknown>) => {
@@ -638,7 +640,7 @@ export function CpProposalPrompt() {
             break;
           case "PROPOSAL_ACCEPTED":
             notify("invite");
-            toast("They said yes! You're a CP now 💞", "gold");
+            setYay({ ringId: typeof body.ringId === "string" ? body.ringId : undefined, name: typeof body.name === "string" ? body.name : typeof body.byName === "string" ? body.byName : "Your partner" });
             break;
           case "PROPOSAL_DECLINED":
             toast("Your proposal was declined. The ring is back in your bag.");
@@ -661,15 +663,13 @@ export function CpProposalPrompt() {
       [toast],
     ),
   );
-  if (!session || !p) return null;
+  if (!session || (!p && !yay)) return null;
   const answer = (yes: boolean) => {
+    if (!p) return;
     setBusy(true);
     (yes ? cpApi.accept(p.id) : cpApi.decline(p.id))
       .then(() => {
-        if (yes) {
-          toast("You're a CP now 💞", "gold");
-          push({ kind: "love-home", personId: "me" });
-        }
+        if (yes) setYay({ ringId: p.ringId, name: p.from.name });
         setP(null);
       })
       .catch((e) => {
@@ -680,27 +680,112 @@ export function CpProposalPrompt() {
   };
   return (
     <AnimatePresence>
-      <motion.div className="fixed inset-0 z-[96] grid place-items-center bg-black/70 px-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-label="CP proposal">
-        <motion.div initial={{ scale: 0.85, y: 20 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 22 }} className="w-full max-w-[330px] overflow-hidden rounded-[28px] bg-gradient-to-b from-[#6b1f3d] to-[#1d0c16] p-5 text-center ring-1 ring-pink/50">
-          <motion.div animate={{ rotate: [0, -8, 8, 0], scale: [1, 1.08, 1] }} transition={{ duration: 1.8, repeat: Infinity }} className="mx-auto w-fit">
-            <CpRing id={p.ringId} size={84} />
+      {yay ? (
+        <CpYay key="yay" ringId={yay.ringId} name={yay.name} onDone={() => { setYay(null); push({ kind: "love-home", personId: "me" }); }} />
+      ) : p ? (
+        <motion.div key="ask" className="fixed inset-0 z-[96] grid place-items-center bg-black/75 px-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-label="CP proposal">
+          <motion.div initial={{ scale: 0.85, y: 20 }} animate={{ scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 300, damping: 22 }} className="relative w-full max-w-[340px] overflow-hidden rounded-[30px] bg-[radial-gradient(120%_70%_at_50%_0%,#8a2346_0%,#4a1226_50%,#1d0c16_100%)] px-5 pb-5 pt-9 text-center ring-1 ring-gold/50 shadow-[0_30px_80px_-10px_rgba(255,92,138,0.45)]">
+            <Toran />
+            <p className="font-display text-[13px] font-bold uppercase tracking-[0.2em] text-gold/80">Ek khaas paigaam</p>
+            <RingBox ringId={p.ringId} />
+            <p className="mt-1 font-display text-[21px] font-extrabold text-cream">{p.from.name} ne tumhe propose kiya!</p>
+            <p className="text-[12px] text-cream/60">Kya tum unke CP banoge? 💞</p>
+            {p.message ? <p className="mt-3 rounded-2xl bg-black/30 px-3 py-2 text-[13px] italic text-cream/90 ring-1 ring-gold/20">“{p.message}”</p> : null}
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
+              <button type="button" disabled={busy} onClick={() => answer(false)} className="h-11 rounded-full bg-white/10 text-[14px] font-bold text-cream active:scale-95">
+                Decline
+              </button>
+              <motion.button type="button" disabled={busy} onClick={() => answer(true)} animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 1.2, repeat: Infinity }} className="h-11 rounded-full bg-gradient-to-r from-pink via-[#ff7a8a] to-gold text-[14px] font-extrabold text-white shadow-[0_8px_24px_-6px_rgba(255,92,138,0.7)]">
+                💞 Haan, Say yes
+              </motion.button>
+            </div>
+            <button type="button" onClick={() => setP(null)} className="mt-2 text-[11.5px] text-cream/50">
+              Decide later
+            </button>
           </motion.div>
-          <p className="mt-2 font-display text-[19px] font-extrabold text-cream">{p.from.name} proposed!</p>
-          {p.message ? <p className="mt-3 rounded-2xl bg-black/30 px-3 py-2 text-[13px] italic text-cream/90">“{p.message}”</p> : null}
-          <div className="mt-4 grid grid-cols-2 gap-2.5">
-            <button type="button" disabled={busy} onClick={() => answer(false)} className="h-11 rounded-full bg-white/10 text-[14px] font-bold text-cream">
-              Decline
-            </button>
-            <button type="button" disabled={busy} onClick={() => answer(true)} className="h-11 rounded-full bg-gradient-to-r from-pink to-gold text-[14px] font-extrabold text-white">
-              💞 Say yes
-            </button>
-          </div>
-          <button type="button" onClick={() => setP(null)} className="mt-2 text-[11.5px] text-cream/50">
-            Decide later
-          </button>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}
+
+/** A marigold toran across the top of the card (Panchayat's festive touch). */
+function Toran() {
+  return (
+    <svg viewBox="0 0 340 40" className="pointer-events-none absolute inset-x-0 top-0 h-9 w-full" aria-hidden>
+      <path d="M0 6 Q85 30 170 6 T340 6" stroke="#2f6b2a" strokeWidth="2" fill="none" />
+      {Array.from({ length: 13 }).map((_, i) => {
+        const x = 13 + i * 26;
+        const y = 6 + 18 * Math.sin((i / 12) * Math.PI) * (i % 2 ? 1 : 0.9);
+        return (
+          <g key={i}>
+            <circle cx={x} cy={y} r="6" fill={i % 2 ? "#ffb02e" : "#ff7a1a"} />
+            <circle cx={x} cy={y} r="2.4" fill="#ffd36e" />
+            <path d={`M${x} ${y + 6} l-4 9 l4 -2 l4 2 z`} fill="#3f8a34" />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/** A velvet ring box that opens and lifts the ring out with sparkles. */
+function RingBox({ ringId }: { ringId: string }) {
+  return (
+    <div className="relative mx-auto mt-3 h-[150px] w-[170px]" aria-hidden>
+      {/* glow */}
+      <motion.div className="absolute left-1/2 top-6 h-28 w-28 -translate-x-1/2 rounded-full bg-gold/30 blur-2xl" initial={{ opacity: 0 }} animate={{ opacity: [0, 1, 0.7] }} transition={{ delay: 0.7, duration: 1.2 }} />
+      {/* box base */}
+      <div className="absolute bottom-2 left-1/2 h-[58px] w-[118px] -translate-x-1/2 rounded-b-[18px] rounded-t-[8px] bg-gradient-to-b from-[#b0123f] to-[#5c0a22] shadow-[inset_0_-6px_0_rgba(0,0,0,0.25),0_10px_24px_-8px_rgba(0,0,0,0.7)] ring-1 ring-gold/60">
+        <div className="absolute inset-x-3 top-2 h-7 rounded-[10px] bg-[#2a0612] shadow-[inset_0_4px_8px_rgba(0,0,0,0.6)]" />
+        <div className="absolute inset-x-0 bottom-3 h-[3px] bg-gold/70" />
+      </div>
+      {/* the ring rises */}
+      <motion.div className="absolute left-1/2 -translate-x-1/2" initial={{ bottom: 34, scale: 0.5, opacity: 0 }} animate={{ bottom: 64, scale: 1, opacity: 1 }} transition={{ delay: 0.75, type: "spring", stiffness: 140, damping: 11 }}>
+        <motion.div animate={{ rotate: [0, -6, 6, 0], y: [0, -4, 0] }} transition={{ delay: 1.6, duration: 2.2, repeat: Infinity }}>
+          <CpRing id={ringId} size={78} />
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+      {/* lid flips open */}
+      <motion.div className="absolute bottom-[58px] left-1/2 h-[34px] w-[122px] -translate-x-1/2 origin-bottom rounded-t-[20px] rounded-b-[6px] bg-gradient-to-b from-[#d01a4d] to-[#7a0e2c] ring-1 ring-gold/60 shadow-[0_-4px_10px_rgba(0,0,0,0.3)]" initial={{ rotateX: 0 }} animate={{ rotateX: -112 }} transition={{ delay: 0.35, duration: 0.55, ease: [0.3, 1.4, 0.5, 1] }} style={{ transformPerspective: 400 }}>
+        <div className="absolute inset-x-0 top-2 mx-auto h-[3px] w-[70%] rounded bg-gold/70" />
+      </motion.div>
+      {/* sparkles */}
+      {[[-62, -8], [58, -14], [-44, 34], [50, 30], [0, -30]].map(([x, y], i) => (
+        <motion.span key={i} className="absolute left-1/2 top-1/2 text-[16px] text-gold" initial={{ opacity: 0, x: 0, y: 0, scale: 0 }} animate={{ opacity: [0, 1, 0], x, y, scale: [0, 1.2, 0.6] }} transition={{ delay: 1 + i * 0.12, duration: 1.4, repeat: Infinity, repeatDelay: 1.2 }}>
+          ✦
+        </motion.span>
+      ))}
+    </div>
+  );
+}
+
+/** "You're a CP now": rings and petals fall, diyas glow, then the couple's Love Home opens. */
+function CpYay({ ringId, name, onDone }: { ringId?: string; name: string; onDone: () => void }) {
+  useEffect(() => {
+    const t = window.setTimeout(onDone, 5200);
+    return () => window.clearTimeout(t);
+  }, [onDone]);
+  return (
+    <motion.div className="fixed inset-0 z-[96] grid place-items-center overflow-hidden bg-[radial-gradient(80%_60%_at_50%_45%,#6b1f3d_0%,#2a0c1a_60%,#0d0508_100%)] px-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onDone} role="dialog" aria-label="You're a CP now">
+      {/* petals and hearts falling */}
+      {Array.from({ length: 26 }).map((_, i) => (
+        <motion.span key={i} className="pointer-events-none absolute top-[-40px] text-[20px]" style={{ left: `${(i * 37) % 100}%` }} initial={{ y: -40, rotate: 0, opacity: 0 }} animate={{ y: "110vh", rotate: 360 * (i % 2 ? 1 : -1), opacity: [0, 1, 1, 0] }} transition={{ delay: (i % 9) * 0.25, duration: 3.6 + (i % 5) * 0.4, repeat: Infinity }}>
+          {["🌸", "💖", "🌼", "✨", "💞"][i % 5]}
+        </motion.span>
+      ))}
+      <motion.div className="relative text-center" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 180, damping: 12 }}>
+        <motion.div className="absolute left-1/2 top-10 h-48 w-48 -translate-x-1/2 rounded-full bg-pink/30 blur-3xl" animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }} aria-hidden />
+        <div className="relative mx-auto flex w-fit items-center gap-3">
+          <motion.span animate={{ x: [-30, 0] }} transition={{ duration: 0.8 }} className="text-[44px]">💍</motion.span>
+          {ringId ? <CpRing id={ringId} size={96} /> : <span className="text-[80px]">💞</span>}
+          <motion.span animate={{ x: [30, 0] }} transition={{ duration: 0.8 }} className="text-[44px]">🪔</motion.span>
+        </div>
+        <p className="relative mt-4 bg-gradient-to-r from-[#ffd6e4] via-gold to-[#ffd6e4] bg-clip-text font-display text-[30px] font-black text-transparent">Badhai ho! 🎉</p>
+        <p className="relative mt-1 font-display text-[18px] font-extrabold text-cream">Tum aur {name} ab CP ho 💞</p>
+        <p className="relative mt-2 text-[12px] text-cream/60">Tap to open your Love Home</p>
+      </motion.div>
+    </motion.div>
   );
 }
 

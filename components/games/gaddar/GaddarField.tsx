@@ -105,10 +105,14 @@ export function GaddarField({ roomId, map, myId, players, me, snapRef, controls,
     let nearAt = 0;
     let raf = 0;
     let t = 0;
+    // Lite phones run the village at about 30 frames a second (half the work, far less heat); others at the screen's rate
+    const lite = document.documentElement.hasAttribute("data-lite");
+    let drawnAt = 0;
 
     const resize = () => {
       // Layout size, not the on-screen box: the same when the page is turned sideways with CSS
-      const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+      // Lite phones (and the Android app) draw at a lower resolution: much less work for the GPU, less heat
+      const dpr = Math.min(lite ? 1.1 : 1.5, window.devicePixelRatio || 1);
       cv.width = Math.max(2, Math.round(cv.clientWidth * dpr));
       cv.height = Math.max(2, Math.round(cv.clientHeight * dpr));
     };
@@ -128,6 +132,8 @@ export function GaddarField({ roomId, map, myId, players, me, snapRef, controls,
 
     const frame = (now: number) => {
       raf = requestAnimationFrame(frame);
+      if (lite && now - drawnAt < 31) return;
+      drawnAt = now;
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       t += dt;

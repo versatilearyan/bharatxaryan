@@ -230,7 +230,7 @@ function Table({ roomId }: { roomId: string }) {
       }
     });
     const keep = window.setInterval(refresh, 8000);
-    const clock = window.setInterval(() => setNow(Date.now()), 250);
+    const clock = window.setInterval(() => setNow(Date.now()), 500);
     const wake = () => wakeSound();
     window.addEventListener("pointerdown", wake, { once: true });
     return () => {

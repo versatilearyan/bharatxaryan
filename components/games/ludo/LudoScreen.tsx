@@ -119,7 +119,7 @@ function LudoTable({ roomId }: { roomId: string }) {
 
   // Turn clock
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 250);
+    const t = window.setInterval(() => setNow(Date.now()), 500);
     return () => window.clearInterval(t);
   }, []);
 

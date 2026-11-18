@@ -1,5 +1,6 @@
 "use client";
 
+import { NameText } from "@/components/ui/NameText";
 import { useServerGuard } from "./useServerGuard";
 import { useGiftsReceived } from "./useGiftsReceived";
 import { friendsApi, type FollowStatus } from "@/lib/api/social";
@@ -33,7 +34,8 @@ import { PROPOSAL_LINES, daysTogether, loveLevel, partnerIn, type RingId } from 
 import { useMarket } from "@/lib/app/market-store";
 import { ME_ID, useApp } from "@/lib/app/store";
 import { useMe } from "@/lib/app/me-store";
-import { GUARD_PER_DAY, giftStars, giftWallStats, seeded } from "@/lib/app/social";
+import { useGiftsVersion } from "@/lib/app/rewards-store";
+import { GUARD_PER_DAY, giftStars, giftWallList, giftWallStats, seeded } from "@/lib/app/social";
 import { partnerOf, relationshipById, tagLevel, type Tag } from "@/lib/app/tags";
 import type { GiftId, Room } from "@/lib/app/types";
 import { nameFace, nameTone } from "@/lib/app/fonts";
@@ -119,7 +121,7 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, char
           render={(s, framed) => (framed ? <PersonAvatar person={{ ...p, frame: "none" }} size={s} className="rounded-full" /> : <PersonAvatar person={p} size={s} className="rounded-full ring-4 ring-ink" />)}
         />
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <h1 className={`font-display text-[26px] font-extrabold ${nameTone(p.vip)}`} style={nameFace(p.nameFont)}>{p.name}</h1>
+          <h1 className={`font-display text-[26px] font-extrabold ${nameTone(p.vip)}`} style={nameFace(p.nameFont)}><NameText text={p.name} /></h1>
           {fx.badge ? <VipBadge set={fx.badge} level={p.vip ?? (fx.badge.level || undefined)} size={22} animated /> : null}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -512,7 +514,7 @@ export function FindCpSheet({ open, onClose }: { open: boolean; onClose: () => v
                     <PersonAvatar person={p} size={42} />
                     <span className="min-w-0 flex-1">
                       <span className={`block truncate text-[14px] font-bold ${nameTone(p.vip)}`} style={nameFace(p.nameFont)}>
-                        {p.name}
+                        <NameText text={p.name} />
                       </span>
                       <span className="text-[11px] text-muted">
                         Lv {p.level}
@@ -951,6 +953,7 @@ export function UserRoomsScreen({ personId }: { personId: string }) {
 
 export function GiftWallScreen({ personId }: { personId: string }) {
   const { pop, receivedOf, openProfile } = useApp();
+  useGiftsVersion();
   const serverGifts = useGiftsReceived(personId);
   const received = serverGifts ? serverGifts.gifts : receivedOf(personId);
   const wall = giftWallStats(received);
@@ -1003,7 +1006,7 @@ export function GiftWallScreen({ personId }: { personId: string }) {
       ) : null}
       {tab === "wall" ? <p className="mx-4 text-[11.5px] text-muted">Each gift earns a star at 1, 10 and 100 received. Legendary gifts count five times.</p> : null}
       <div className={`mt-3 grid grid-cols-3 gap-2.5 px-4 ${tab === "wall" ? "" : "hidden"}`}>
-        {GIFTS.map((g) => {
+        {giftWallList(received).map((g) => {
           const n = received[g.id] ?? 0;
           const stars = giftStars(n);
           return (

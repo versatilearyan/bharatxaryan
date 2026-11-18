@@ -36,6 +36,8 @@ export const viewport: Viewport = {
   themeColor: "#111114",
   colorScheme: "dark",
   viewportFit: "cover",
+  // The on-screen keyboard shrinks the page (instead of sliding over it), so chat boxes stay above it
+  interactiveWidget: "resizes-content",
 };
 
 /**

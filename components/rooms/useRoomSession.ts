@@ -1443,6 +1443,7 @@ export function useRoomSession(room: Room) {
     videoSync,
     setVideo,
     addSystem,
+    addMessage: add,
     vacate,
     cardId,
     openCard: setCardId,

@@ -1,5 +1,6 @@
 "use client";
 
+import { NameText } from "@/components/ui/NameText";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { CircleHelp } from "lucide-react";
@@ -77,7 +78,7 @@ function Row({ p, right, sub, onClick, badge }: { p: Person; right?: React.React
       <PersonAvatar person={p} size={44} />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className={`truncate text-[15px] font-semibold ${nameTone(p.vip)}`}>{p.id === ME_ID ? `${p.name} (you)` : p.name}</span>
+          <span className={`truncate text-[15px] font-semibold ${nameTone(p.vip)}`}><NameText text={p.id === ME_ID ? `${p.name} (you)` : p.name} /></span>
           {badge !== undefined ? badge : <VipBadgeFor personId={p.id} vip={p.vip} size={16} />}
           <LevelPill level={p.level} gender={p.gender} size="sm" />
         </span>
@@ -258,7 +259,7 @@ function Contribution({ s }: { s: RoomSession }) {
                 </span>
                 <PersonAvatar person={p} size={50} />
                 <span className="min-w-0 flex-1">
-                  <span className={`block truncate text-[15px] font-bold ${nameTone(p.vip)}`}>{r.id === ME_ID ? `${p.name} (you)` : p.name}</span>
+                  <span className={`block truncate text-[15px] font-bold ${nameTone(p.vip)}`}><NameText text={r.id === ME_ID ? `${p.name} (you)` : p.name} /></span>
                   <span className="mt-0.5 flex items-center gap-1">
                     <VipBadgeFor personId={p.id} vip={p.vip} size={16} />
                     <LevelPill level={p.level} gender={p.gender} size="sm" />

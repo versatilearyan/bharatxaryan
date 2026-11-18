@@ -55,7 +55,13 @@ export default function PrivacyPage() {
       <p>We protect data with encryption in transit and access controls. No service is perfectly secure, so please use a strong sign-in method.</p>
 
       <H>Children</H>
-      <p>Panchayat is not for children under 13, or under the age required in your country. If you think a child has an account, tell us and we will remove it.</p>
+      <p>
+        Panchayat is only for people aged 18 or older. If you think a child has an account, tell us and we will remove it. See our{" "}
+        <Link href="/child-safety" className="text-gold underline-offset-4 hover:underline">
+          Child Safety Standards
+        </Link>
+        .
+      </p>
 
       <H>Changes</H>
       <p>If we change this policy we will update the date above and, for big changes, tell you in the app.</p>
