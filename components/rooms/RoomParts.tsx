@@ -618,6 +618,16 @@ export function RoomChat({ s, className = "" }: { s: RoomSession; className?: st
     const el = ref.current;
     if (el && stick.current) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [s.messages.length]);
+  // When the chat gets shorter (more seats, the keyboard), keep the newest message in view
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      if (stick.current) el.scrollTop = el.scrollHeight;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
     <div
       ref={ref}
@@ -656,7 +666,7 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
   const myName = useApp().profile.name;
   // A bubble file that can't be played falls back to the plain bubble
   const [failedBubble, setFailedBubble] = useState("");
-  const base = "w-fit max-w-[92%] rounded-2xl px-3 py-1.5 text-[12.5px] leading-snug";
+  const base = "w-fit max-w-[92%] rounded-2xl px-3 py-1.5 text-[12.5px] leading-snug break-words [overflow-wrap:anywhere]";
   const body = (() => {
     switch (m.kind) {
       case "system":
