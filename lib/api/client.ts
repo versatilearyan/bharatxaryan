@@ -238,8 +238,11 @@ async function request<T>(path: string, { method = "GET", body, auth = false, ti
   }
   if (auth && (res.status === 401 || (res.status === 403 && !forbiddenIsAccess))) {
     if (!retried && readToken()?.refreshToken) throw new RetryWithNewToken();
+    // 403 with a token that was just renewed is "you can't do this" (not in the room, not the owner ...),
+    // never a dead session: say why and stay signed in. Only 401 ends the session.
+    if (res.status === 403) throw new ApiError(friendly(403, message), 403, "forbidden", fields);
     onUnauthorized?.("rejected");
-    throw new ApiError("Your session has ended. Please sign in again.", res.status, res.status === 401 ? "unauthorized" : "forbidden", fields);
+    throw new ApiError("Your session has ended. Please sign in again.", res.status, "unauthorized", fields);
   }
   throw new ApiError(friendly(res.status, message), res.status, res.status === 401 ? "unauthorized" : res.status === 403 ? "forbidden" : "http", fields, res.status === 429 ? retryAfterOf(res) : undefined);
 }
