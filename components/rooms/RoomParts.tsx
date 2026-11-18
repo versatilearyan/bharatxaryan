@@ -449,7 +449,7 @@ function EdgeLink({ s, from, to, gap, size }: { s: RoomSession; from: number; to
   const cpLevel = useCpLevelBetween(x, y);
   if (!cpLevel && !tag) return null;
   return (
-    <span className="pointer-events-none absolute top-0 z-20" style={{ left: "100%", width: gap }}>
+    <span className="pointer-events-none absolute top-0 z-[5]" style={{ left: "100%", width: gap }}>
       {cpLevel ? <CpLink gap={gap} size={size} level={cpLevel} /> : tag ? <TagLink tag={tag} gap={gap} size={size} /> : null}
     </span>
   );

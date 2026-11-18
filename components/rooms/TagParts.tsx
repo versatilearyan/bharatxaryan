@@ -29,13 +29,15 @@ export function TagLink({ tag, gap, size }: { tag: Tag; gap: number; size: numbe
   const lv = tagLevel(tag.intimacy).level;
   // A bit bigger than before, but never wider than the gap between the two seats
   const icon = Math.round(Math.max(22, Math.min(34, gap * 0.95, size * 0.5)));
-  // The ribbon runs from one seat's edge to the other's, unbroken at both ends
-  const w = gap + size * 0.5;
+  // The ribbon runs from inside one avatar to inside the other (it passes under them), so it always looks joined,
+  // whatever the width of the name under each seat
+  const reach = size * 0.75;
+  const w = gap + reach * 2;
   const gid = `tl-${tag.id}`;
   return (
-    <span className="relative z-20 flex shrink-0 items-center justify-center" style={{ width: gap, height: size }} aria-label={`${rel.label} tag, level ${lv}`} role="img">
+    <span className="relative z-[5] flex shrink-0 items-center justify-center" style={{ width: gap, height: size }} aria-label={`${rel.label} tag, level ${lv}`} role="img">
       {/* One thin gold swoosh running through the badge, fading at both ends */}
-      <svg className="pointer-events-none absolute top-1/2 -translate-y-1/2" style={{ width: w, height: icon * 1.2, left: -size * 0.25 }} viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden>
+      <svg className="pointer-events-none absolute top-1/2 -translate-y-1/2" style={{ width: w, height: icon * 1.2, left: -reach }} viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden>
         <defs>
           <linearGradient id={gid} x1="0" x2="1">
             <stop offset="0" stopColor="#ffd98a" />
@@ -48,7 +50,7 @@ export function TagLink({ tag, gap, size }: { tag: Tag; gap: number; size: numbe
         <circle cx="1.5" cy="20" r="2.2" fill="#ffd98a" />
         <circle cx="98.5" cy="20" r="2.2" fill="#f5b54a" />
       </svg>
-      <motion.span className="relative grid place-items-center" animate={{ y: [0, -2, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} aria-hidden>
+      <motion.span className="relative z-[1] grid place-items-center" animate={{ y: [0, -2, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }} aria-hidden>
         <BffBadge id={tag.relation} size={icon} />
       </motion.span>
     </span>
