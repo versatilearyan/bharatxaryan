@@ -1,9 +1,9 @@
 "use client";
 
 import { OfficialBadge, OfficialPkBadge } from "@/components/rooms/OfficialBadge";
-import { useSeatScale } from "./useSeatScale";
+import { useFitSeatScale, useSeatScale } from "./useSeatScale";
 import { RoomCover } from "@/components/rooms/RoomCover";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Crown, Hand, Mic, MicOff, Swords, Volume2, VolumeX } from "lucide-react";
 import { CreatePkSheet, PkPanel } from "./PkParts";
@@ -27,11 +27,15 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
   const { musicOff } = useMusic();
   const [draft, setDraft] = useState("");
   const vip = s.room.vip;
-  const seatScale = useSeatScale();
+  // Seats are sized to leave the chat its share of the room, however many seats there are
+  const rootRef = useRef<HTMLDivElement>(null);
+  const seatsRef = useRef<HTMLDivElement>(null);
+  const chatRef = useRef<HTMLDivElement>(null);
+  const seatScale = useFitSeatScale(useSeatScale(), rootRef, seatsRef, chatRef);
   const close = () => setSheet(null);
 
   return (
-    <div className={`relative flex h-full flex-col overflow-hidden ${vip ? "bg-wine-2" : "bg-ink"}`}>
+    <div ref={rootRef} className={`relative flex h-full min-h-0 flex-col overflow-hidden ${vip ? "bg-wine-2" : "bg-ink"}`}>
       {/* Backdrop: room cover fading into the room surface */}
       {s.room.newbie ? (
         <div className="absolute inset-0" aria-hidden style={{ backgroundImage: `linear-gradient(to bottom, rgba(10,6,3,0.12), rgba(10,6,3,0.5) 62%, rgba(10,6,3,0.88)), url(${s.room.newbieBackground ?? "/backgrounds/newbie-room.jpg"}), radial-gradient(120% 70% at 50% 0%, #6b4a1f 0%, #2a1a0c 50%, #0c0703 100%)`, backgroundSize: "cover", backgroundPosition: "center top" }} />
@@ -61,7 +65,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
       {arena ? null : <PkPanel s={s} />}
 
       {/* Seats: the owner's fixed seat + intimacy seat on top, then linked pairs */}
-      <div className={`relative z-10 shrink-0 ${pkOn ? "mt-1.5" : "mt-2"}`}>
+      <div ref={seatsRef} className={`relative z-10 shrink-0 ${pkOn ? "mt-1.5" : "mt-2"}`}>
         {musicOff ? null : <MusicPill className="absolute right-2 top-6 z-20" onlyMe={s.musicOnlyMe} requestCount={s.canModerate ? songs.requests.length : 0} onOpen={() => setSheet("music")} />}
         {s.roomOpen ? (
           <>
@@ -79,7 +83,10 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         )}
       </div>
 
-      <RoomChat s={s} className="relative z-10 mt-1 min-h-[72px] flex-1 pb-2" />
+      {/* The chat takes the rest of the room (never less than its share: the seats shrink instead) and scrolls inside */}
+      <div ref={chatRef} className="relative z-10 mt-1 flex min-h-[72px] flex-1 basis-0 flex-col">
+        <RoomChat s={s} className="min-h-0 flex-1 overflow-x-hidden pb-2" />
+      </div>
 
       {/* Controls */}
       <div className={`pb-safe relative z-10 shrink-0 border-t ${vip ? "border-gold/15 bg-[#1a0b11]/90" : "border-line bg-ink/90"} backdrop-blur`}>
