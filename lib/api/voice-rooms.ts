@@ -65,6 +65,9 @@ export type VoiceRoom = {
   newbieBackground?: string | null;
   /** An official room of Panchayat (the Sarpanch owns it). */
   official?: boolean;
+  /** An Official PK room (set from the admin panel) and its event title. */
+  officialPk?: boolean;
+  officialPkTitle?: string;
 };
 
 /** What POST /voice-rooms/{id}/join returns: where and how to connect to LiveKit. */
@@ -203,6 +206,8 @@ export function readVoiceRoom(raw: unknown): VoiceRoom | null {
     points: num(r.points),
     exp: num(r.exp),
     official: r.official === true ? true : undefined,
+    officialPk: r.officialPk === true ? true : undefined,
+    officialPkTitle: typeof r.officialPkTitle === "string" && r.officialPkTitle ? r.officialPkTitle : undefined,
   };
 }
 

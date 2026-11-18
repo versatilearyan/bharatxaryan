@@ -157,6 +157,10 @@ export function RankingScreen() {
                 {tab === t.id ? <motion.span layoutId="rank-tab" className="absolute inset-x-1 bottom-0 h-[3px] rounded-full bg-gold" /> : null}
               </button>
             ))}
+            {/* PK has its own board (PK Coins earned in PK battles), kept apart from the others */}
+            <button type="button" onClick={() => push({ kind: "pkCoins" })} className="relative shrink-0 pb-2 font-display text-[16px] font-bold text-cream/45">
+              PK
+            </button>
           </div>
           {tab === "family" ? (
             <FamilyPeriodSwitch period={famPeriod} onChange={setFamPeriod} />

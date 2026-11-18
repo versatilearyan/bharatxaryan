@@ -17,7 +17,12 @@ export type ShopCategory = {
   /** Days a bought item lasts (0 = forever). */
   validDays?: number;
   active?: boolean;
+  /** COINS, or PK_COINS: the PK Shop, bought only with PK Coins. */
+  currency?: ShopCurrency;
 };
+
+export type ShopCurrency = "COINS" | "PK_COINS";
+const currencyOf = (v: unknown): ShopCurrency => (v === "PK_COINS" ? "PK_COINS" : "COINS");
 
 export type ShopProduct = {
   id: string;
@@ -33,6 +38,8 @@ export type ShopProduct = {
   /** Days a bought item lasts (0 = forever). */
   validDays?: number;
   active?: boolean;
+  /** What the price is in: coins, or PK Coins (the PK Shop). */
+  currency?: ShopCurrency;
 };
 
 const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : typeof v === "number" && Number.isFinite(v) ? String(v) : undefined);
@@ -70,7 +77,7 @@ function readCategory(raw: unknown): ShopCategory | null {
   const r = raw as Record<string, unknown>;
   const id = str(r.id);
   if (!id) return null;
-  return { id, name: str(r.name) ?? "Untitled", displayOrder: num(r.displayOrder), active: bool(r.active) };
+  return { id, name: str(r.name) ?? "Untitled", displayOrder: num(r.displayOrder), active: bool(r.active), currency: currencyOf(r.currency) };
 }
 
 function readProduct(raw: unknown): ShopProduct | null {
@@ -91,6 +98,7 @@ function readProduct(raw: unknown): ShopProduct | null {
     displayOrder: num(r.displayOrder),
     validDays: num(r.validDays),
     active: bool(r.active),
+    currency: currencyOf(r.currency),
   };
 }
 
@@ -126,7 +134,7 @@ export async function getShopProduct(id: string) {
 
 /* ---------------- buying with coins ---------------- */
 
-export type BuyResult = { productId: string; name: string; owned: number; coinsSpent: number; balance: number };
+export type BuyResult = { productId: string; name: string; owned: number; coinsSpent: number; balance: number; currency?: ShopCurrency; pkCoins?: number; pkCoinsSpent?: number; validDays?: number };
 export type OwnedShopItem = ShopProduct & { quantity: number; lastBoughtAt?: string };
 
 const newRequestId = () =>
@@ -138,7 +146,17 @@ const newRequestId = () =>
  */
 export async function buyShopProduct(id: string, quantity = 1, requestId = newRequestId()): Promise<BuyResult> {
   const d = (await api<unknown>(`/api/v1/shop/products/${encodeURIComponent(id)}/buy`, { method: "POST", auth: true, forbiddenIsAccess: true, body: { quantity, requestId } })) as Record<string, unknown> | null;
-  return { productId: str(d?.productId) ?? id, name: str(d?.name) ?? "", owned: num(d?.owned) ?? 0, coinsSpent: num(d?.coinsSpent) ?? 0, balance: num(d?.balance) ?? 0 };
+  return {
+    productId: str(d?.productId) ?? id,
+    name: str(d?.name) ?? "",
+    owned: num(d?.owned) ?? 0,
+    coinsSpent: num(d?.coinsSpent) ?? 0,
+    balance: num(d?.balance) ?? 0,
+    currency: currencyOf(d?.currency),
+    pkCoins: num(d?.pkCoins),
+    pkCoinsSpent: num(d?.pkCoinsSpent),
+    validDays: num(d?.validDays),
+  };
 }
 
 /** GET /shop/me/items: what you bought. */

@@ -4,6 +4,7 @@ import { ReferralCapture } from "@/components/rewards/ReferralCapture";
 import { WelcomeGift } from "@/components/rewards/WelcomeGift";
 import { DailyGift } from "@/components/rewards/DailyGift";
 import { ParivarRedPacketPrompt } from "@/components/parivar/ParivarFamilyExtras";
+import { PkCoinsScreen } from "@/components/market/PkCoinsScreen";
 import dynamic from "next/dynamic";
 import { Activity, useEffect } from "react";
 import { ReportHost } from "@/components/safety/Safety";
@@ -239,6 +240,8 @@ function ScreenView({ screen }: { screen: Screen }) {
       return <StatsScreen personId={screen.personId} />;
     case "ranking":
       return <RankingScreen />;
+    case "pkCoins":
+      return <PkCoinsScreen />;
     case "shop":
       return <ShopScreen initialTab={screen.tab} initialPay={screen.pay} />;
     case "bag":

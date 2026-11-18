@@ -110,6 +110,9 @@ export type Room = {
   newbieBackground?: string;
   /** An official room of Panchayat (the Sarpanch owns it and sits on the owner seat). */
   official?: boolean;
+  /** An Official PK room (admin panel): a PK badge, and the event's title. */
+  officialPk?: boolean;
+  officialPkTitle?: string;
   /** Pre-loaded video for Watch Together rooms. */
   videoId?: string;
   /**

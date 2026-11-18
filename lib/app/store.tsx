@@ -42,6 +42,8 @@ export type Screen =
   | { kind: "gift-wall"; personId: string }
   | { kind: "stats"; personId: string }
   | { kind: "ranking" }
+  /** PK Coins: your balance, the PK ranking (week / month / overall) and your history. */
+  | { kind: "pkCoins" }
   /** pay: open checkout for this red packet straight away. */
   | { kind: "shop"; tab?: ShopTab; pay?: RedPacketId }
   | { kind: "bag" }
@@ -749,10 +751,17 @@ function useAppState() {
   useEffect(() => {
     if (!hydrated || !sessionEmail) return;
     return subscribe("/user/queue/wallet", (body) => {
-      const b = body && typeof body === "object" ? (body as { balance?: unknown }).balance : undefined;
+      const o = (body && typeof body === "object" ? body : {}) as { balance?: unknown; type?: unknown; kind?: unknown; change?: unknown };
+      // PK Coins are their own currency: never touch the coin balance; say what was earned or granted
+      if (o.type === "PK_COINS") {
+        const c = typeof o.change === "number" ? o.change : 0;
+        if (c > 0 && (o.kind === "EARN" || o.kind === "GRANT")) toast(`+${c.toLocaleString("en-IN")} PK Coins${o.kind === "GRANT" ? " from Panchayat" : ""}`, "gold");
+        return;
+      }
+      const b = o.balance;
       if (typeof b === "number" && Number.isFinite(b)) setCoins(Math.max(0, Math.floor(b)));
     });
-  }, [hydrated, sessionEmail]);
+  }, [hydrated, sessionEmail, toast]);
 
   const updateProfile = useCallback((patch: Partial<Profile>) => setProfile((p) => ({ ...p, ...patch })), []);
 

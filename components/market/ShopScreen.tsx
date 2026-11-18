@@ -15,6 +15,8 @@ import { MyTitlesSheet } from "@/components/profile/ProfileTitles";
 import { useApp, type ShopTab } from "@/lib/app/store";
 import { ApiError } from "@/lib/api/client";
 import { buyShopProduct, getShopCategories, getShopProduct, getShopProducts, type ShopCategory, type ShopProduct } from "@/lib/api/shop";
+import { getPkMe } from "@/lib/api/pk-coins";
+import { PkCoin, formatPk } from "./PkCoin";
 
 const RARITY_TINT: Record<string, string> = { common: "#aaa6b0", rare: "#7fdcff", epic: "#b48bff", legendary: "#e7bc72" };
 const rarityTint = (r?: string) => (r ? RARITY_TINT[r.toLowerCase()] : undefined) ?? "#aaa6b0";
@@ -59,6 +61,15 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
   };
   /** Products per tab, so going back to a tab shows it at once. */
   const [products, setProducts] = useState<Record<TabKey, Load<ShopProduct[]>>>({});
+  /** PK Coins (the PK Shop's currency) and how many days a PK item lasts when it has none set. */
+  const [pk, setPk] = useState<{ balance: number; itemDays: number } | null>(null);
+  const loadPk = useCallback(() => {
+    getPkMe().then(
+      (m) => setPk({ balance: m.balance, itemDays: m.itemDays }),
+      () => {},
+    );
+  }, []);
+  useEffect(loadPk, [loadPk]);
   const [openId, setOpenId] = useState<string | null>(null);
   /** The red packet being paid for in rupees. */
   const [paying, setPaying] = useState<RedPacketId | null>(initialPay ?? null);
@@ -101,8 +112,18 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
   const tabs: { key: TabKey; label: string }[] =
     categories.status === "ok" ? [{ key: ALL, label: "All" }, ...categories.data.map((c) => ({ key: catKey(c.id), label: c.name })), { key: PACKETS, label: "Red packets" }, { key: TITLES, label: "Titles" }] : [];
   const current = tab && tab !== PACKETS ? products[tab] : undefined;
+  const pkTab = categories.status === "ok" && categories.data.some((c) => c.currency === "PK_COINS" && catKey(c.id) === tab);
+  const isPk = (p: ShopProduct) => p.currency === "PK_COINS";
+  /** PK items are never for ever: their own days, else the PK default. */
+  const daysOf = (p: ShopProduct) => (isPk(p) ? p.validDays || pk?.itemDays || 7 : p.validDays);
   const buy = (p: ShopProduct) => {
     if (p.price === undefined) return toast("This item doesn't have a price yet.");
+    if (isPk(p)) {
+      if ((pk?.balance ?? 0) < p.price) return toast("Not enough PK Coins. Send gifts during a live PK to earn them.", "error");
+      setOpenId(null);
+      setConfirm(p);
+      return;
+    }
     if (coins < p.price) {
       toast("Not enough coins. Add coins to buy this.", "error");
       setSheet({ kind: "coins" });
@@ -118,6 +139,11 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
     buyShopProduct(p.id)
       .then((r) => {
         setConfirm(null);
+        if (r.currency === "PK_COINS") {
+          setPk((x) => ({ balance: r.pkCoins ?? Math.max(0, (x?.balance ?? 0) - (p.price ?? 0)), itemDays: x?.itemDays ?? 7 }));
+          toast(`${p.name} is yours for ${r.validDays ?? daysOf(p)} days. Wear it from your Bag.`, "gold");
+          return;
+        }
         void refreshCoins();
         toast(`${p.name} is yours${r.owned > 1 ? ` (you have ${r.owned})` : ""}. Find it in your Bag.`, "gold");
       })
@@ -137,11 +163,24 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
           </button>
         }
       />
-      <button type="button" onClick={() => setSheet({ kind: "coins" })} className="mx-4 flex w-[calc(100%-2rem)] items-center gap-2 rounded-2xl bg-surface px-4 py-2.5 ring-1 ring-line">
-        <Coin className="h-5 w-5" />
-        <span className="font-display text-[17px] font-bold text-cream">{formatCoins(coins)}</span>
-        <span className="ml-auto text-[12px] font-semibold text-gold">Add coins</span>
-      </button>
+      {pkTab ? (
+        <button type="button" onClick={() => push({ kind: "pkCoins" })} className="mx-4 flex w-[calc(100%-2rem)] items-center gap-2 rounded-2xl bg-gradient-to-r from-[#3a0f22] via-surface to-[#0f1f45] px-4 py-2.5 ring-1 ring-line">
+          <PkCoin className="h-5 w-5" />
+          <span className="font-display text-[17px] font-bold text-cream">{formatPk(pk?.balance ?? 0)}</span>
+          <span className="ml-auto text-right text-[11.5px] font-semibold leading-tight text-gold">PK Coins · earn by gifting in a live PK</span>
+        </button>
+      ) : (
+        <button type="button" onClick={() => setSheet({ kind: "coins" })} className="mx-4 flex w-[calc(100%-2rem)] items-center gap-2 rounded-2xl bg-surface px-4 py-2.5 ring-1 ring-line">
+          <Coin className="h-5 w-5" />
+          <span className="font-display text-[17px] font-bold text-cream">{formatCoins(coins)}</span>
+          {pk && pk.balance > 0 ? (
+            <span className="ml-2 flex items-center gap-1 text-[13px] font-bold text-cream/80">
+              <PkCoin className="h-4 w-4" /> {formatPk(pk.balance)}
+            </span>
+          ) : null}
+          <span className="ml-auto text-[12px] font-semibold text-gold">Add coins</span>
+        </button>
+      )}
 
       {categories.status === "loading" ? (
         <div className="mx-4 mt-3 flex gap-1 rounded-full bg-surface p-1 ring-1 ring-line" aria-busy="true" aria-label="Loading shop">
@@ -190,10 +229,10 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
           {current.data.map((p) => (
             <div key={p.id} className="flex flex-col items-center rounded-3xl bg-surface p-3 ring-1 ring-line">
               <button type="button" onClick={() => setOpenId(p.id)} className="flex w-full flex-col items-center" aria-label={`See ${p.name}`}>
-                {p.rarity ? (
-                  <span className="text-[10.5px] font-extrabold uppercase tracking-[0.14em]" style={{ color: rarityTint(p.rarity) }}>
-                    {p.rarity}
-                    {p.validDays ? ` · ${p.validDays} days` : ""}
+                {p.rarity || daysOf(p) ? (
+                  <span className="text-[10.5px] font-extrabold uppercase tracking-[0.14em]" style={{ color: p.rarity ? rarityTint(p.rarity) : "#f5c451" }}>
+                    {p.rarity ?? ""}
+                    {daysOf(p) ? `${p.rarity ? " · " : ""}${daysOf(p)} days` : ""}
                   </span>
                 ) : (
                   <span className="h-[15px]" />
@@ -218,15 +257,18 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-bold text-cream">{confirm.name}</span>
                 <span className="mt-0.5 flex items-center gap-1 text-[13px] font-bold text-gold">
-                  <Coin className="h-4 w-4" /> {(confirm.price ?? 0).toLocaleString("en-IN")}
+                  {isPk(confirm) ? <PkCoin className="h-4 w-4" /> : <Coin className="h-4 w-4" />} {(confirm.price ?? 0).toLocaleString("en-IN")}
                 </span>
+                {daysOf(confirm) ? <span className="mt-0.5 block text-[11.5px] font-semibold text-cream/70">Valid for {daysOf(confirm)} days</span> : null}
               </span>
             </div>
             <p className="mt-3 text-[12.5px] text-muted">
-              You have {formatCoins(coins)} coins. After buying: {formatCoins(Math.max(0, coins - (confirm.price ?? 0)))}.
+              {isPk(confirm)
+                ? `You have ${formatPk(pk?.balance ?? 0)} PK Coins. After buying: ${formatPk(Math.max(0, (pk?.balance ?? 0) - (confirm.price ?? 0)))}. It goes to your Bag, where you can wear it or take it off.`
+                : `You have ${formatCoins(coins)} coins. After buying: ${formatCoins(Math.max(0, coins - (confirm.price ?? 0)))}.`}
             </p>
             <button type="button" onClick={confirmBuy} disabled={buying} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gold text-[15px] font-bold text-ink disabled:opacity-60">
-              {buying ? "Buying…" : <>Buy for <Coin className="h-4 w-4" /> {(confirm.price ?? 0).toLocaleString("en-IN")}</>}
+              {buying ? "Buying…" : <>Buy for {isPk(confirm) ? <PkCoin className="h-4 w-4" /> : <Coin className="h-4 w-4" />} {(confirm.price ?? 0).toLocaleString("en-IN")}</>}
             </button>
           </div>
         ) : null}
@@ -241,12 +283,12 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
 
 function PriceButton({ product, onBuy, big }: { product: ShopProduct; onBuy: (p: ShopProduct) => void; big?: boolean }) {
   return (
-    <motion.button type="button" whileTap={{ scale: 0.95 }} onClick={() => onBuy(product)} aria-label={product.price === undefined ? `${product.name}: price not set` : `Buy ${product.name} for ${product.price} coins`} className={`mt-auto flex w-full items-center justify-center gap-1 rounded-full bg-gold font-bold text-ink ${big ? "h-11 text-[14px]" : "mt-2 h-9 text-[13px]"}`}>
+    <motion.button type="button" whileTap={{ scale: 0.95 }} onClick={() => onBuy(product)} aria-label={product.price === undefined ? `${product.name}: price not set` : `Buy ${product.name} for ${product.price} ${product.currency === "PK_COINS" ? "PK Coins" : "coins"}`} className={`mt-auto flex w-full items-center justify-center gap-1 rounded-full font-bold ${product.currency === "PK_COINS" ? "bg-gradient-to-r from-[#e2324f] to-[#2f6bf0] text-white" : "bg-gold text-ink"} ${big ? "h-11 text-[14px]" : "mt-2 h-9 text-[13px]"}`}>
       {product.price === undefined ? (
         "Price not set"
       ) : (
         <>
-          <Coin className="h-4 w-4" /> {product.price.toLocaleString("en-IN")}
+          {product.currency === "PK_COINS" ? <PkCoin className="h-4 w-4" /> : <Coin className="h-4 w-4" />} {product.price.toLocaleString("en-IN")}
         </>
       )}
     </motion.button>

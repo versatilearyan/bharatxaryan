@@ -114,6 +114,8 @@ export function toAppRoom(v: VoiceRoom, myId: string | undefined, prefs: ServerR
     extraSeats: v.extraSeats || undefined,
     newbieBackground: v.newbieBackground || undefined,
     official: v.official || undefined,
+    officialPk: v.officialPk || undefined,
+    officialPkTitle: v.officialPkTitle,
     settings: v.settings as Partial<RoomSettings>,
     server: { id: v.id, ownerId: v.ownerId, mine, status: v.status, description: v.description, maxParticipants: v.maxParticipants },
   };
