@@ -240,6 +240,17 @@ function snapshot(room: Room): VoicePerson[] {
  * Speaker off means silence: every remote voice is muted on this device and stops downloading (setEnabled false),
  * because a volume of 0 alone is ignored by some Android web views. Speaker on brings them back.
  */
+/**
+ * Starts every voice / music <audio> the browser left paused. Browsers pause sound that starts (or is un-muted) without a
+ * tap, so a song could play for the owner and stay silent for a listener until they did something (like opening their mic).
+ * Called from any tap in the room, and right after the speaker or song volume is changed.
+ */
+function playPaused() {
+  document.querySelectorAll<HTMLAudioElement>("[data-live-voice] audio").forEach((a) => {
+    if (a.paused) void a.play().catch(() => {});
+  });
+}
+
 function applySpeakerTo(room: Room, on: boolean, musicMuted: boolean, heard: (identity: string) => boolean) {
   for (const p of room.remoteParticipants.values()) {
     p.setVolume(on ? 1 : 0);
@@ -250,6 +261,7 @@ function applySpeakerTo(room: Room, on: boolean, musicMuted: boolean, heard: (id
   document.querySelectorAll<HTMLAudioElement>("[data-live-voice] audio").forEach((a) => {
     a.muted = !on || (a.dataset.music === "1" && (musicMuted || !heard(a.dataset.musicFrom ?? "")));
   });
+  playPaused();
 }
 
 export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
@@ -537,21 +549,30 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       if (pub.isMuted) return; // muted on purpose (not by the OS)
       if (track.isUpstreamPaused) void track.resumeUpstream().catch(() => {});
     };
-    const micWatch = window.setInterval(keepMic, 2000);
+    const micWatch = window.setInterval(() => {
+      keepMic();
+      // A song the browser left paused starts as soon as the browser allows it (no need to open the mic)
+      playPaused();
+    }, 2000);
     const onVisible = () => {
       if (document.visibilityState !== "visible") return;
       micFixes = 0;
       keepMic();
       if (!room.canPlaybackAudio) room.startAudio().catch(() => {});
+      playPaused();
       resume();
     };
     /** Sound blocked by the browser: the next tap anywhere is allowed to start it. */
     const onTap = () => {
       if (!room.canPlaybackAudio) room.startAudio().catch(() => {});
+      // Even when sound is "allowed", a song's <audio> can still be paused: any tap starts it (no need to open the mic first)
+      playPaused();
     };
+    // A touch only counts as a tap for the browser when it ends, so listen to those too
+    const tapEvents = ["pointerdown", "pointerup", "touchend", "click"] as const;
     window.addEventListener("online", resume);
     document.addEventListener("visibilitychange", onVisible);
-    document.addEventListener("pointerdown", onTap, { passive: true });
+    tapEvents.forEach((ev) => document.addEventListener(ev, onTap, { passive: true }));
 
     // Tells Android this page is playing a call. It can help the browser keep it going; it promises nothing.
     if ("mediaSession" in navigator && typeof MediaMetadata !== "undefined") {
@@ -581,7 +602,7 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
       window.clearInterval(micWatch);
       window.removeEventListener("online", resume);
       document.removeEventListener("visibilitychange", onVisible);
-      document.removeEventListener("pointerdown", onTap);
+      tapEvents.forEach((ev) => document.removeEventListener(ev, onTap));
       if ("mediaSession" in navigator) {
         navigator.mediaSession.metadata = null;
         navigator.mediaSession.playbackState = "none";

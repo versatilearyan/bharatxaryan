@@ -28,6 +28,7 @@ import { useRewards } from "@/lib/app/rewards-store";
 import { getMyShopItems, type OwnedShopItem } from "@/lib/api/shop";
 import { treasureApi, type TreasureMine } from "@/lib/api/parivar";
 import { ShopProductAsset } from "./ShopProductAsset";
+import { CpRing } from "./CpRing";
 import { useEffect as useEffectBag } from "react";
 import { rewardTypeText } from "./RewardWon";
 import { Gift as GiftIcon, Music } from "lucide-react";
@@ -70,6 +71,27 @@ export function BagScreen() {
     let live = true;
     getMyShopItems()
       .then((list) => live && setBought(list))
+      .catch(() => {
+        /* the rest of the Bag still shows */
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+  // Rings won from Family chests live in the CP ring bag ("lib-<id>"): they offer "Add to CP" like a shop ring
+  const [chestRings, setChestRings] = useState<{ id: string; name: string; count: number }[]>([]);
+  useEffectBag(() => {
+    if (!readToken()) return;
+    let live = true;
+    Promise.all([cpApi.bag(), cpApi.rings()])
+      .then(([bagMap, cat]) => {
+        if (!live) return;
+        setChestRings(
+          Object.entries(bagMap)
+            .filter(([id, n]) => id.startsWith("lib-") && n > 0)
+            .map(([id, n]) => ({ id, name: cat.find((r) => r.id === id)?.name ?? "Ring", count: n })),
+        );
+      })
       .catch(() => {
         /* the rest of the Bag still shows */
       });
@@ -326,6 +348,37 @@ export function BagScreen() {
     tint: ITEM_TINT,
     note: isRing(b) ? (serverCp ? "Add it to your CP's ring box. It only adds Charm when partners send each other gifts." : "Propose to someone with this ring.") : b.description,
   }));
+  const chestRingAct = (id: string, name: string): Entry["action"] =>
+    serverCp
+      ? {
+          label: ringBusy === id ? "Adding…" : "💍 Add to CP",
+          disabled: ringBusy !== null,
+          run: () => {
+            setRingBusy(id);
+            cpApi
+              .addRing(id, "BAG")
+              .then(() => {
+                toast(`${name} added to your CP 💞`, "gold");
+                setChestRings((list) => list.map((x) => (x.id === id ? { ...x, count: x.count - 1 } : x)).filter((x) => x.count > 0));
+                setOpen(null);
+              })
+              .catch((e) => toast(e instanceof Error && e.message ? e.message : "Couldn't add the ring.", "error"))
+              .finally(() => setRingBusy(null));
+          },
+        }
+      : { label: "💍 Propose", run: () => (setOpen(null), setProposeRing({ id, name })) };
+  const chestRingItems: Entry[] = chestRings.map((r) => ({
+    key: `chest-ring-${r.id}`,
+    name: r.name,
+    kind: "CP ring",
+    action: chestRingAct(r.id, r.name),
+    art: <CpRing id={r.id} size={64} />,
+    badge: "Permanent",
+    count: r.count > 1 ? r.count : undefined,
+    source: "Family chest",
+    tint: ITEM_TINT,
+    note: serverCp ? "Add it to your CP's ring box. It only adds Charm when partners send each other gifts." : "Propose to someone with this ring.",
+  }));
   const chestItems: Entry[] = chestWon.map((c, i) => ({
     key: `chest-won-${i}-${c.at}`,
     name: c.label,
@@ -339,6 +392,7 @@ export function BagScreen() {
   const items: Entry[] = [
     ...boughtItems,
     ...rewardGifts,
+    ...chestRingItems,
     ...chestItems,
     ...srv.items,
     // Signed in, your red packets are the server's inventory

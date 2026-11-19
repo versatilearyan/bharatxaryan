@@ -66,7 +66,9 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
       {arena ? null : <PkPanel s={s} />}
 
       {/* Seats: the owner's fixed seat + intimacy seat on top, then linked pairs */}
-      <div ref={seatsRef} className={`relative z-10 shrink-0 ${pkOn ? "mt-1.5" : "mt-2"}`}>
+      {/* The seats keep their size and place however many there are (extra seats, PK): when they don't all fit, this area
+          scrolls inside itself, so the seats never run over the chat and the chat never gets pushed out. */}
+      <div ref={seatsRef} className={`relative z-10 shrink-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${pkOn ? "mt-1.5" : "mt-2"}`} style={{ maxHeight: "58%" }}>
         {musicOff ? null : <MusicPill className="absolute right-2 top-6 z-20" onlyMe={s.musicOnlyMe} requestCount={s.canModerate ? songs.requests.length : 0} onOpen={() => setSheet("music")} />}
         {s.roomOpen ? (
           <>
