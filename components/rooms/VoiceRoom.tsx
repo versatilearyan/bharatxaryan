@@ -1,7 +1,7 @@
 "use client";
 
 import { OfficialBadge, OfficialPkBadge } from "@/components/rooms/OfficialBadge";
-import { useFitSeatScale, useSeatScale } from "./useSeatScale";
+import { useSeatScale } from "./useSeatScale";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
@@ -31,7 +31,8 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const seatsRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
-  const seatScale = useFitSeatScale(useSeatScale(), rootRef, seatsRef, chatRef);
+  // Seats keep one fixed size (set by the screen only): they never resize or move when extra seats open or the chat changes
+  const seatScale = useSeatScale();
   const close = () => setSheet(null);
 
   return (

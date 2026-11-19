@@ -273,6 +273,12 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
   const pkNow = usePkState()?.pk;
   const pkSide = pkNow ? sideOfSeat(pkNow.mode, index) : null;
 
+  const nameSize = size >= 70 ? 15 : size < 50 ? 11 : 12.5;
+  const nameW = Math.round(Math.min(Math.max(72, size * 1.3), size * 1.6));
+  const nameH = Math.round(nameSize * 1.4);
+  // avatar + gap + name line (+ room for the NEWBIE tag in welcome rooms), always the same
+  const slotH = size + 4 + 4 + nameH + (s.room.newbie ? 20 : 0);
+
   const onEmpty = () => {
     if (s.canModerate) s.setSeatMenu(index);
     else s.takeSeat(index);
@@ -288,7 +294,9 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
   }, [id]);
 
   return (
-    <div className="relative flex flex-col items-center gap-1" data-seat={index}>
+    // A seat is a fixed slot: its width and height never depend on the name, the frame, the NEWBIE tag or who sits here,
+    // so no seat (or row of seats) ever shifts when people move or extra seats open
+    <div className="relative flex flex-col items-center gap-1" data-seat={index} style={{ width: size, height: slotH }}>
       <AnimatePresence>
         {landed ? (
           <motion.span
@@ -391,7 +399,7 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
         </span>
       ) : null}
       {/* Empty seats have no label (as in the reference); the space is kept so rows don't jump */}
-      <span className={`relative z-[2] mt-1 truncate font-bold ${owner ? "text-cream/60" : (p && vipName(p.vip, "room")) || "text-cream"} ${p || owner ? "" : numbered ? "hidden" : "invisible"}`} style={{ ...nameFace(p?.nameFont), maxWidth: Math.max(72, size * 1.3), fontSize: size >= 70 ? 15 : size < 50 ? 11 : 12.5, marginTop: frame ? size * 0.14 : undefined }}>
+      <span className={`relative z-[2] mt-1 shrink-0 truncate text-center font-bold ${owner ? "text-cream/60" : (p && vipName(p.vip, "room")) || "text-cream"} ${p || owner ? "" : numbered ? "hidden" : "invisible"}`} style={{ ...nameFace(p?.nameFont), width: nameW, height: nameH, lineHeight: `${nameH}px`, fontSize: nameSize }}>
         {p ? <NameText text={p.name} /> : owner ? owner.name : "Empty"}
       </span>
       {p && isNewbieSeat ? <NewbieBadge className="relative z-[2]" /> : null}
