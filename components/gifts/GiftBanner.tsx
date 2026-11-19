@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Lock } from "lucide-react";
+import { Lock, X } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
 import { Marquee, roomKind } from "@/components/redpacket/RedPacket";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
@@ -97,6 +97,18 @@ export function GiftBanner() {
               ) : (
                 <span className="relative shrink-0 rounded-full bg-gradient-to-b from-[#fff3c4] to-[#f0c66a] px-2.5 py-[3px] text-[11px] font-extrabold text-[#5b1fa8] shadow-[0_1px_4px_rgb(0_0_0/0.25)]">Join</span>
               )}
+              {/* Close just this notification (the tap on the banner would otherwise take you to the room) */}
+              <button
+                type="button"
+                aria-label="Close notification"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  dismiss(n.id);
+                }}
+                className="relative grid h-6 w-6 shrink-0 place-items-center rounded-full bg-black/25 text-white/85 active:bg-black/45"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+              </button>
             </div>
           </motion.div>
         ) : null}
