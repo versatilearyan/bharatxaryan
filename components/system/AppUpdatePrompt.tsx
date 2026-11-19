@@ -12,7 +12,7 @@ import { Download, Sparkles } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { isNativeApp } from "@/lib/native/bridge";
 
-/** Raise this together with the app's versionCode every time a new APK is put on the server (1.0.7 = build 8 is the newest). */
+/** Raise this together with the app's versionCode every time a new APK is put on the server (1.0.7 = build 8). */
 export const LATEST_APP_BUILD = 8;
 export const LATEST_APP_VERSION = "1.0.7";
 
