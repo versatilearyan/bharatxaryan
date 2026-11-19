@@ -12,9 +12,9 @@ import { Download, Sparkles } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { isNativeApp } from "@/lib/native/bridge";
 
-/** Raise this together with the app's versionCode every time a new APK is put on the server (1.0.6 = build 7 is live). */
-export const LATEST_APP_BUILD = 7;
-export const LATEST_APP_VERSION = "1.0.6";
+/** Raise this together with the app's versionCode every time a new APK is put on the server (1.0.7 = build 8). */
+export const LATEST_APP_BUILD = 8;
+export const LATEST_APP_VERSION = "1.0.7";
 
 const SEEN = "panchayat.updatePrompt";
 
@@ -50,7 +50,7 @@ export function AppUpdatePrompt() {
         <Sparkles className="h-7 w-7" aria-hidden />
       </span>
       <p className="mt-3 text-[13px] leading-relaxed text-cream/80">
-        Panchayat {LATEST_APP_VERSION} is ready, with a screen that fits every phone, smoother rooms and more. Update the app to use all the new features.
+        Panchayat {LATEST_APP_VERSION} is ready, with steady room seats, chest rewards you can use from your Bag and smoother rooms. Update the app to use all the new features.
       </p>
       <a href="/download/apk" onClick={later} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c]">
         <Download className="h-4 w-4" aria-hidden /> Update now
