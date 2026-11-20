@@ -4,8 +4,9 @@
  * Tells people using an old Android app (the APK from our website) that a new version is ready.
  * The app says which build it is in its user agent ("PanchayatBuild/4"); apps made before that
  * say nothing and count as build 0. When the newest build is higher, a small dialog offers the
- * download. "Later" hides it until the app is opened again. Never shown in a browser or in the
- * Google Play build (Play updates the app by itself).
+ * download. "Later" remembers this build in localStorage (not sessionStorage, which the Android
+ * WebView can forget every time the app is reopened) so it doesn't nag again until a newer build
+ * ships. Never shown in a browser or in the Google Play build (Play updates the app by itself).
  */
 import { useEffect, useState } from "react";
 import { Download, Sparkles } from "lucide-react";
@@ -29,7 +30,8 @@ export function AppUpdatePrompt() {
     if (!isNativeApp() || /PanchayatPlay/.test(navigator.userAgent)) return;
     if (appBuild(navigator.userAgent) >= LATEST_APP_BUILD) return;
     try {
-      if (sessionStorage.getItem(SEEN)) return;
+      // Dismissed this exact build already: a newer build (a higher number) still prompts again
+      if (Number(localStorage.getItem(SEEN)) === LATEST_APP_BUILD) return;
     } catch {
       /* storage blocked: show it */
     }
@@ -39,7 +41,7 @@ export function AppUpdatePrompt() {
   const later = () => {
     setOpen(false);
     try {
-      sessionStorage.setItem(SEEN, "1");
+      localStorage.setItem(SEEN, String(LATEST_APP_BUILD));
     } catch {
       /* ignore */
     }
