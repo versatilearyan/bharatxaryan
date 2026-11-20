@@ -368,8 +368,9 @@ export function TreasureSheet({ p, open, onClose, onChanged }: Props) {
   const [mine, setMine] = useState<TreasureMine | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [sending, setSending] = useState<string | null>(null);
-  const [mode, setMode] = useState<"ALL" | "TARGET" | "TAKE_ALL">("ALL");
+  const [mode, setMode] = useState<"ALL" | "TARGET" | "TAKE_ALL" | "MULTIPLE">("ALL");
   const [target, setTarget] = useState("");
+  const [selected, setSelected] = useState<string[]>([]);
   const [stage, setStage] = useState<TreasureOpening | null>(null);
   const [tab, setTab] = useState<"chests" | "history" | "mine">("chests");
   const now = useNow();
@@ -481,7 +482,7 @@ export function TreasureSheet({ p, open, onClose, onChanged }: Props) {
                                 Claim
                               </Btn>
                             ) : ready && d.canSend ? (
-                              <Btn disabled={busy !== null} onClick={() => { setMode("ALL"); setTarget(""); setSending(c.id); }}>
+                              <Btn disabled={busy !== null} onClick={() => { setMode("ALL"); setTarget(""); setSelected([]); setSending(c.id); }}>
                                 Send Chest
                               </Btn>
                             ) : ready ? (
@@ -563,7 +564,7 @@ export function TreasureSheet({ p, open, onClose, onChanged }: Props) {
                         <span className="min-w-0 flex-1">
                           <span className="block text-[13.5px] font-bold text-cream">{h.name}</span>
                           <span className="block text-[11.5px] text-muted">
-                            {h.mode === "ALL" ? `${h.members} members` : h.mode === "TAKE_ALL" ? "Taken by the sender" : "Sent to one member"} · 🪙 {n(h.coins)}
+                            {h.mode === "ALL" ? `${h.members} members` : h.mode === "TAKE_ALL" ? "Taken by the sender" : h.mode === "MULTIPLE" ? `${h.members} chosen members` : "Sent to one member"} · 🪙 {n(h.coins)}
                             {h.diamonds ? ` · 💎 ${n(h.diamonds)}` : ""}
                           </span>
                           <span className="block text-[11px] text-cream/50">
@@ -652,6 +653,7 @@ export function TreasureSheet({ p, open, onClose, onChanged }: Props) {
               [
                 ["ALL", "Distribute to All Members", "Every member gets a lucky share. Some get more than others."],
                 ["TARGET", "Send to a particular member", "That one member receives the whole chest."],
+                ["MULTIPLE", "Send to a few members", "Pick 2 or more members; only they share the chest."],
                 ["TAKE_ALL", "Take All", "You keep the whole chest for yourself."],
               ] as const
             ).map(([k, title, sub]) => (
@@ -691,18 +693,41 @@ export function TreasureSheet({ p, open, onClose, onChanged }: Props) {
                 ))}
               </ul>
             ) : null}
+            {mode === "MULTIPLE" ? (
+              <ul className="mt-3 max-h-[28vh] space-y-1 overflow-y-auto rounded-2xl bg-black/20 p-2 scroll-thin">
+                {d.members.map((m) => {
+                  const on = selected.includes(m.userId);
+                  return (
+                    <li key={m.userId}>
+                      <button
+                        type="button"
+                        onClick={() => setSelected((s) => (on ? s.filter((x) => x !== m.userId) : [...s, m.userId]))}
+                        className={`flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-[12.5px] text-cream ${on ? "bg-gold/20" : ""}`}
+                      >
+                        <span className="grid h-6 w-6 place-items-center overflow-hidden rounded-full bg-white/10 text-[11px] font-bold">
+                          <Initial name={m.name} url={m.avatarUrl} />
+                        </span>
+                        {m.name}
+                        <span className="ml-auto">{on ? "✓" : ""}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+            {mode === "MULTIPLE" && selected.length > 0 ? <p className="mt-1.5 px-1 text-[11px] text-muted">{selected.length} chosen · at least 2 needed</p> : null}
             <Btn
               className="mt-4 w-full"
-              disabled={busy !== null || (mode === "TARGET" && !target)}
+              disabled={busy !== null || (mode === "TARGET" && !target) || (mode === "MULTIPLE" && selected.length < 2)}
               onClick={() =>
                 void run("send", async () => {
-                  const r = await treasureApi.send(p.id, chestOf.id, mode, mode === "TARGET" ? target : undefined);
+                  const r = await treasureApi.send(p.id, chestOf.id, mode, mode === "TARGET" ? target : undefined, mode === "MULTIPLE" ? selected : undefined);
                   setSending(null);
                   await play(r.distributionId);
                 })
               }
             >
-              {busy === "send" ? "Opening…" : mode === "ALL" ? "Open for everyone" : mode === "TARGET" ? "Send to this member" : "Take all"}
+              {busy === "send" ? "Opening…" : mode === "ALL" ? "Open for everyone" : mode === "TARGET" ? "Send to this member" : mode === "MULTIPLE" ? `Send to ${selected.length || "these"} members` : "Take all"}
             </Btn>
           </div>
         ) : null}

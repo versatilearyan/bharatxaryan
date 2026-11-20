@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Lock, X } from "lucide-react";
 import { GiftArt } from "@/components/art/GiftArt";
 import { Marquee, roomKind } from "@/components/redpacket/RedPacket";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
+import { Modal } from "@/components/ui/Modal";
 import { giftById } from "@/lib/app/data";
 import { useGiftNews } from "@/lib/app/gift-news-store";
 import { usePeople } from "@/lib/app/people";
@@ -53,6 +54,9 @@ export function GiftBanner() {
   const here = n?.roomId === activeRoomId;
   const locked = Boolean(room?.password) && room?.hostId !== ME_ID;
   const name = (pid: string) => (pid === ME_ID ? "You" : person(pid).name);
+  // Tapping the banner asks first, instead of jumping straight into the room
+  const [ask, setAsk] = useState(false);
+  const askLabel = n ? (room ? `${roomKind(room)} ${room.code}` : (n.roomName ?? "a room")) : "";
   return (
     <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--st)+50px)] z-[66] h-[48px] overflow-hidden">
       <AnimatePresence>
@@ -65,8 +69,8 @@ export function GiftBanner() {
             animate={{ x: 0 }}
             exit={{ x: "-105%" }}
             transition={{ type: "spring", stiffness: 160, damping: 24 }}
-            // Tap anywhere on the banner: you go to the room where it happened (also from another room)
-            onClick={here ? () => dismiss(n.id) : () => void go()}
+            // Tap anywhere on the banner: asks first before taking you to the room where it happened
+            onClick={here ? () => dismiss(n.id) : () => setAsk(true)}
             className="pointer-events-auto absolute inset-x-3 top-1.5 flex h-[38px] cursor-pointer items-center"
           >
             <motion.span className="relative z-10 -mr-5 h-[40px] w-[40px] shrink-0 drop-shadow-[0_3px_8px_rgb(0_0_0/0.5)]" animate={{ rotate: [-6, 6, -6], scale: [1, 1.06, 1] }} transition={{ duration: 1.8, repeat: Infinity }}>
@@ -113,6 +117,24 @@ export function GiftBanner() {
           </motion.div>
         ) : null}
       </AnimatePresence>
+      <Modal open={ask} onClose={() => setAsk(false)} title="Join this room?" className="max-w-[300px] text-center">
+        <p className="text-[13px] leading-relaxed text-cream/80">
+          {name(n?.fromId ?? "")} sent a gift in <span className="font-bold text-gold">{askLabel}</span>. Go there now?
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setAsk(false);
+            void go();
+          }}
+          className="mt-4 h-11 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c]"
+        >
+          Go to room
+        </button>
+        <button type="button" onClick={() => setAsk(false)} className="mt-2 h-10 w-full rounded-full text-[13px] font-semibold text-cream/60">
+          Not now
+        </button>
+      </Modal>
     </div>
   );
 }

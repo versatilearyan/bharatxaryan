@@ -279,7 +279,7 @@ export type TreasureChest = {
   openNowCost?: number;
 };
 export type TreasureMember = { userId: string; name: string; role: string; avatarUrl?: string };
-export type TreasureHistory = { id: string; name: string; tier: string; mode: "ALL" | "TARGET" | "TAKE_ALL"; at: string; members: number; coins: number; diamonds: number; sentBy?: string; top?: string };
+export type TreasureHistory = { id: string; name: string; tier: string; mode: "ALL" | "TARGET" | "TAKE_ALL" | "MULTIPLE"; at: string; members: number; coins: number; diamonds: number; sentBy?: string; top?: string };
 export type TreasureInfo = {
   canSend: boolean;
   weekActivity: number;
@@ -294,7 +294,7 @@ export type TreasureOpening = {
   id: string;
   name: string;
   tier: string;
-  mode: "ALL" | "TARGET" | "TAKE_ALL";
+  mode: "ALL" | "TARGET" | "TAKE_ALL" | "MULTIPLE";
   sentBy?: string;
   at: string;
   totalCoins: number;
@@ -315,8 +315,12 @@ export const treasureApi = {
   mine: (id: string) => api<TreasureMine>(`${base}/${id}/treasure/me`, opts),
   claim: (id: string, chestId: string) => api<{ unlockAt: string }>(`${base}/${id}/treasure/chests/${chestId}/claim`, { ...opts, method: "POST" }),
   openNow: (id: string, chestId: string, expectedCost: number) => api<{ cost: number }>(`${base}/${id}/treasure/chests/${chestId}/open-now`, { ...opts, method: "POST", body: { expectedCost } }),
-  send: (id: string, chestId: string, mode: "ALL" | "TARGET" | "TAKE_ALL", targetUserId?: string) =>
-    api<{ distributionId: string }>(`${base}/${id}/treasure/chests/${chestId}/send`, { ...opts, method: "POST", body: { mode, targetUserId: targetUserId ? Number(targetUserId) : undefined } }),
+  send: (id: string, chestId: string, mode: "ALL" | "TARGET" | "TAKE_ALL" | "MULTIPLE", targetUserId?: string, targetUserIds?: string[]) =>
+    api<{ distributionId: string }>(`${base}/${id}/treasure/chests/${chestId}/send`, {
+      ...opts,
+      method: "POST",
+      body: { mode, targetUserId: targetUserId ? Number(targetUserId) : undefined, targetUserIds: targetUserIds?.length ? targetUserIds.map(Number) : undefined },
+    }),
   opening: (id: string, did: string) => api<TreasureOpening>(`${base}/${id}/treasure/openings/${did}`, opts),
   seen: (id: string, did: string) => api<unknown>(`${base}/${id}/treasure/openings/${did}/seen`, { ...opts, method: "POST" }),
 };
