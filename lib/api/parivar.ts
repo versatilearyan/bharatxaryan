@@ -188,6 +188,45 @@ export function parseGiftCard(text: string): { giftId: string; count: number; fr
   }
 }
 
+/** A frame / bubble / entry / badge / gift won from a Family Treasure chest comes as a system line too: a plain medal (no variation selector, so it's exactly 2 UTF-16 units) and a small JSON. */
+const REWARD_CARD_PREFIX = "🎖";
+export function parseRewardCard(text: string): { name: string; slot: string; mediaUrl?: string; mediaFormat?: string; expiresAt?: string; from: string; plus: number } | null {
+  if (!text.startsWith(REWARD_CARD_PREFIX + "{")) return null;
+  try {
+    const o = JSON.parse(text.slice(REWARD_CARD_PREFIX.length)) as Record<string, unknown>;
+    if (typeof o.n !== "string") return null;
+    return { name: o.n, slot: String(o.s ?? ""), mediaUrl: typeof o.u === "string" && o.u ? o.u : undefined, mediaFormat: typeof o.m === "string" && o.m ? o.m : undefined, expiresAt: typeof o.x === "string" && o.x ? o.x : undefined, from: String(o.f ?? "Someone"), plus: Number(o.p) || 0 };
+  } catch {
+    return null;
+  }
+}
+
+/** A new member's "hi everyone" card: a plain waving hand (exactly 2 UTF-16 units) and a small JSON. */
+const WELCOME_CARD_PREFIX = "👋";
+export function parseWelcomeCard(text: string): { userId: string; name: string; avatarUrl?: string } | null {
+  if (!text.startsWith(WELCOME_CARD_PREFIX + "{")) return null;
+  try {
+    const o = JSON.parse(text.slice(WELCOME_CARD_PREFIX.length)) as Record<string, unknown>;
+    if (typeof o.u !== "string" || typeof o.n !== "string") return null;
+    return { userId: o.u, name: o.n, avatarUrl: typeof o.a === "string" && o.a ? o.a : undefined };
+  } catch {
+    return null;
+  }
+}
+
+/** A donation card: a plain moneybag (exactly 2 UTF-16 units) and a small JSON. */
+const DONATION_CARD_PREFIX = "💰";
+export function parseDonationCard(text: string): { name: string; amount: number; fundsAfter: number } | null {
+  if (!text.startsWith(DONATION_CARD_PREFIX + "{")) return null;
+  try {
+    const o = JSON.parse(text.slice(DONATION_CARD_PREFIX.length)) as Record<string, unknown>;
+    if (typeof o.n !== "string" || typeof o.a !== "number") return null;
+    return { name: o.n, amount: o.a, fundsAfter: typeof o.f === "number" ? o.f : 0 };
+  } catch {
+    return null;
+  }
+}
+
 /* ---------- Family Treasure ---------- */
 
 export type TreasureRarity = "COMMON" | "PREMIUM" | "EPIC" | "LEGENDARY" | "ULTRA_RARE";

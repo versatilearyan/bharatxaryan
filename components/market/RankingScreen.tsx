@@ -8,12 +8,13 @@ import type { VoiceRoom } from "@/lib/api/voice-rooms";
 import { serverRoomAppId, toAppRoom, userPersonId, useServerRooms } from "@/lib/app/server-rooms";
 import { motion } from "framer-motion";
 import { ChevronLeft, Heart } from "lucide-react";
-import { RingArt } from "@/components/art/RingArt";
+import { CpRing } from "@/components/market/CpRing";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { FamilyBar, FamilyBody, FamilyPeriodSwitch, useFamilyRanking, type FamilyPeriod } from "@/components/parivar/ParivarRanking";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { PEOPLE } from "@/lib/app/data";
-import { RANK_PERIODS, RANK_TABS, periodShare, sampleScore, type RankPeriod, type RankTab, type RingId } from "@/lib/app/market";
+import { RANK_PERIODS, RANK_TABS, periodShare, sampleScore, type RankPeriod, type RankTab } from "@/lib/app/market";
+import { cpApi, type CpCouple, type CpRankingRow } from "@/lib/api/cp";
 import { useMarket } from "@/lib/app/market-store";
 import { usePeople } from "@/lib/app/people";
 import { COINS_PER_GROWTH, vipName } from "@/lib/app/levels";
@@ -22,7 +23,7 @@ import { nameFace } from "@/lib/app/fonts";
 import { ME_ID, useApp } from "@/lib/app/store";
 import type { Person, Room } from "@/lib/app/types";
 
-type Row = { key: string; people?: Person[]; room?: Room; ring?: RingId; title: string; value: number; mine: boolean; open: () => void };
+type Row = { key: string; people?: Person[]; room?: Room; ring?: string; title: string; value: number; mine: boolean; open: () => void };
 
 /**
  * Top 3 frames. `cy` and `hole` are where the frame's inner circle sits, as a
@@ -71,6 +72,70 @@ export function RankingScreen() {
     };
   }, [serverType, period, myId, rememberPeople]);
 
+  // Signed in: the Couple leaderboard comes from the server too (real CPs, gifts between partners)
+  const cpActive = tab === "couple" && Boolean(myId);
+  const [cp, setCp] = useState<{ key: string; rows: CpRankingRow[] | null; error: string }>({ key: "", rows: null, error: "" });
+  const cpKey = cpActive ? `cp:${period}` : "";
+  useEffect(() => {
+    if (!cpActive) return;
+    let live = true;
+    const key = `cp:${period}`;
+    setCp((s) => (s.key === key ? s : { key, rows: null, error: "" }));
+    cpApi
+      .ranking(period, 50)
+      .then((rows) => {
+        if (!live) return;
+        setCp({ key, rows, error: "" });
+        // Names and pictures for the partners in it
+        const add: Record<string, { name: string; avatarUrl?: string }> = {};
+        for (const r of rows) {
+          if (r.couple.a !== myId) add[userPersonId(r.couple.a)] = r.couple.people[r.couple.a] ?? { userId: r.couple.a, name: "Someone" };
+          if (r.couple.b !== myId) add[userPersonId(r.couple.b)] = r.couple.people[r.couple.b] ?? { userId: r.couple.b, name: "Someone" };
+        }
+        if (Object.keys(add).length) rememberPeople(add);
+      })
+      .catch((e) => live && setCp({ key, rows: null, error: e instanceof Error && e.message ? e.message : "Couldn't load the ranking." }));
+    return () => {
+      live = false;
+    };
+  }, [cpActive, period, myId, rememberPeople]);
+
+  // Your own real CP (signed in), for the "Find a CP" / "Love Home" button and the bottom row
+  const [myRealCouple, setMyRealCouple] = useState<CpCouple | null>(null);
+  useEffect(() => {
+    if (!myId) return setMyRealCouple(null);
+    let live = true;
+    cpApi
+      .mine()
+      .then((c) => live && setMyRealCouple(c))
+      .catch(() => {
+        /* the rest of the ranking still shows */
+      });
+    return () => {
+      live = false;
+    };
+  }, [myId]);
+
+  const cpRows = useMemo<Row[] | null>(() => {
+    if (!cpActive) return null;
+    const data = cp.key === cpKey ? cp.rows : null;
+    if (!data) return [];
+    const idOf = (raw: string) => (raw === myId ? ME_ID : userPersonId(raw));
+    return data.map((r) => {
+      const aId = idOf(r.couple.a);
+      const bId = idOf(r.couple.b);
+      return {
+        key: r.couple.id,
+        people: [person(aId), person(bId)],
+        ring: r.couple.ring || undefined,
+        title: `${person(aId).name} & ${person(bId).name}`,
+        value: r.love,
+        mine: aId === ME_ID || bId === ME_ID,
+        open: () => push({ kind: "love-home", personId: aId === ME_ID ? bId : aId }),
+      };
+    });
+  }, [cpActive, cp, cpKey, myId, person, push]);
+
   const serverRows = useMemo<Row[] | null>(() => {
     if (!serverType) return null;
     const data = srv.key === srvKey ? srv.data : null;
@@ -93,6 +158,7 @@ export function RankingScreen() {
 
   const rows = useMemo<Row[]>(() => {
     if (serverRows) return serverRows;
+    if (cpRows) return cpRows;
     const share = periodShare(period);
     const myToday = (v: number) => (period === "yesterday" ? 0 : v);
     if (tab === "popularity" || tab === "vip") {
@@ -102,6 +168,7 @@ export function RankingScreen() {
       return list.sort((a, b) => b.value - a.value);
     }
     if (tab === "couple") {
+      // Not signed in: a demo preview (your own sample CP, no real leaderboard)
       return couples
         .map((c) => ({
           key: c.id,
@@ -125,18 +192,28 @@ export function RankingScreen() {
         open: () => openRoom(r.id),
       }))
       .sort((a, b) => b.value - a.value);
-  }, [serverRows, tab, period, charmOf, vipPoints, couples, myCouple, rooms, roomPointsOf, person, openProfile, openRoom, push, setTab]);
+  }, [serverRows, cpRows, tab, period, charmOf, vipPoints, couples, myCouple, rooms, roomPointsOf, person, openProfile, openRoom, push, setTab]);
 
   const top = [rows[1], rows[0], rows[2]];
   const myIndex = rows.findIndex((r) => r.mine);
   const me = myIndex >= 0 ? rows[myIndex] : null;
+  // Signed in with a real CP that gained no love this period (so it isn't in the leaderboard): show it anyway, at 0
+  const meRow =
+    me ??
+    (cpActive && myRealCouple
+      ? (() => {
+          const aId = myRealCouple.a === myId ? ME_ID : userPersonId(myRealCouple.a);
+          const bId = myRealCouple.b === myId ? ME_ID : userPersonId(myRealCouple.b);
+          return { key: myRealCouple.id, people: [person(aId), person(bId)], ring: myRealCouple.ring || undefined, title: `${person(aId).name} & ${person(bId).name}`, value: 0, mine: true, open: () => push({ kind: "love-home", personId: aId === ME_ID ? bId : aId }) };
+        })()
+      : null);
   const cta =
     tab === "popularity"
       ? { label: "Get gifts", go: () => (pop(), app.setTab("rooms")) }
       : tab === "vip"
         ? { label: "Add coins", go: () => app.setSheet({ kind: "coins" }) }
         : tab === "couple"
-          ? { label: myCouple ? "Love Home" : "Find a CP", go: () => push({ kind: "love-home", personId: ME_ID }) }
+          ? { label: (myId ? myRealCouple : myCouple) ? "Love Home" : "Find a CP", go: () => push({ kind: "love-home", personId: ME_ID }) }
           : { label: myPermanentRoom ? "Open room" : "Create room", go: () => (myPermanentRoom ? openRoom(myPermanentRoom.id) : push({ kind: "create-room" })) };
 
   return (
@@ -208,7 +285,17 @@ export function RankingScreen() {
               </button>
             </li>
           ))}
-          {serverType && srv.error ? <li className="px-4 py-6 text-center text-[13px] text-coral">{srv.error}</li> : serverType && !(srv.key === srvKey && srv.data) ? <li className="px-4 py-6 text-center text-[13px] text-muted">Loading…</li> : rows.length <= 3 ? <li className="px-4 py-6 text-center text-[13px] text-muted">{rows.length ? "Nobody else here yet." : "Nobody here yet. Gifts sent in rooms count."}</li> : null}
+          {serverType && srv.error ? (
+            <li className="px-4 py-6 text-center text-[13px] text-coral">{srv.error}</li>
+          ) : cpActive && cp.error ? (
+            <li className="px-4 py-6 text-center text-[13px] text-coral">{cp.error}</li>
+          ) : serverType && !(srv.key === srvKey && srv.data) ? (
+            <li className="px-4 py-6 text-center text-[13px] text-muted">Loading…</li>
+          ) : cpActive && !(cp.key === cpKey && cp.rows) ? (
+            <li className="px-4 py-6 text-center text-[13px] text-muted">Loading…</li>
+          ) : rows.length <= 3 ? (
+            <li className="px-4 py-6 text-center text-[13px] text-muted">{rows.length ? "Nobody else here yet." : cpActive ? "No couples here yet. Gifts between partners count." : "Nobody here yet. Gifts sent in rooms count."}</li>
+          ) : null}
         </ol>
         </>}
       </div>
@@ -216,11 +303,11 @@ export function RankingScreen() {
       {/* Your own row, always visible */}
       {tab === "family" ? <FamilyBar data={fam} /> : <div className="pb-safe flex items-center gap-3 border-t border-white/10 bg-ink-2 px-3 py-2.5">
         <span className="w-6 text-center font-display text-[15px] font-extrabold text-cream/70">{me && me.value > 0 ? myIndex + 1 : "–"}</span>
-        {me ? <Avatars r={me} size={40} /> : <PersonAvatar person={person(ME_ID)} size={40} />}
+        {meRow ? <Avatars r={meRow} size={40} /> : <PersonAvatar person={person(ME_ID)} size={40} />}
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[14px] font-bold text-cream">{me ? me.title : tab === "couple" ? "No CP yet" : "No room yet"}</span>
+          <span className="block truncate text-[14px] font-bold text-cream">{meRow ? meRow.title : tab === "couple" ? "No CP yet" : "No room yet"}</span>
           <span className="text-[11.5px] text-cream/55">
-            {unit} {(me?.value ?? 0).toLocaleString("en-IN")}
+            {unit} {(meRow?.value ?? 0).toLocaleString("en-IN")}
           </span>
         </span>
         <button type="button" onClick={cta.go} className="h-9 shrink-0 rounded-full bg-gold px-4 text-[12.5px] font-bold text-ink">
@@ -248,7 +335,7 @@ function Avatars({ r, size }: { r: Row; size: number }) {
       </span>
       {r.ring ? (
         <span className="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
-          <RingArt id={r.ring} size={Math.round(size * 0.5)} />
+          <CpRing id={r.ring} size={Math.round(size * 0.5)} />
         </span>
       ) : (
         <Heart className="absolute -bottom-1 left-1/2 h-4 w-4 -translate-x-1/2 fill-pink text-pink" aria-hidden />

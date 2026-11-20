@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FramedPicture, SignBadge } from "./ParivarFrames";
-import { parivarApi, parivarExtra, parseGiftCard } from "@/lib/api/parivar";
+import { parivarApi, parivarExtra, parseDonationCard, parseGiftCard, parseRewardCard, parseWelcomeCard } from "@/lib/api/parivar";
 import { useApp } from "@/lib/app/store";
 import { parseRedPacket } from "./ParivarFamilyExtras";
 
@@ -34,7 +34,22 @@ export function ParivarChatRow() {
           if (m) {
             const gc = m.kind === "SYSTEM" ? parseGiftCard(m.text) : null;
             const rp = m.kind === "SYSTEM" ? parseRedPacket(m.text) : null;
-            last = rp ? `🧧 ${rp.from} ne red packet bheja (${rp.total.toLocaleString("en-IN")} coins)` : gc ? `🎁 ${gc.from} sent ${gc.everyone ? "everyone" : gc.self ? "themselves" : gc.to} a gift` : m.kind === "SYSTEM" ? m.text : `${m.name ? `${m.name}: ` : ""}${m.text}`;
+            const rc = m.kind === "SYSTEM" ? parseRewardCard(m.text) : null;
+            const wc = m.kind === "SYSTEM" ? parseWelcomeCard(m.text) : null;
+            const dc = m.kind === "SYSTEM" ? parseDonationCard(m.text) : null;
+            last = rp
+              ? `🧧 ${rp.from} ne red packet bheja (${rp.total.toLocaleString("en-IN")} coins)`
+              : gc
+                ? `🎁 ${gc.from} sent ${gc.everyone ? "everyone" : gc.self ? "themselves" : gc.to} a gift`
+                : rc
+                  ? `🎖️ ${rc.from} won ${rc.name} from a chest${rc.plus ? ` (+${rc.plus} more)` : ""}`
+                  : wc
+                    ? `👋 ${wc.name} joined the family`
+                    : dc
+                      ? `💰 ${dc.name} donated ${dc.amount.toLocaleString("en-IN")} Family Fund`
+                      : m.kind === "SYSTEM"
+                        ? m.text
+                        : `${m.name ? `${m.name}: ` : ""}${m.text}`;
             at = m.at;
           }
         } catch {

@@ -55,6 +55,8 @@ export type CpCouple = {
 export type CpProposal = { id: string; fromUserId: string; toUserId: string; ringId: string; message?: string; createdAt: number; status: string; from: CpPerson; to: CpPerson };
 export type CpCharmEntry = { id: string; senderId: string; receiverId: string; giftId: string; giftName: string; count: number; coins: number; charm: number; at: string };
 export type CpBlessing = { id: string; by: CpPerson; createdAt: number; love: number };
+/** One row of the Couple leaderboard: the couple and how much love they gained in the period. */
+export type CpRankingRow = { rank: number; love: number; couple: CpCouple };
 
 const person = (v: unknown): CpPerson => {
   const o = obj(v) ?? {};
@@ -121,6 +123,13 @@ export const cpApi = {
   decline: (id: string) => api<unknown>(`/api/v1/cp/proposals/${encodeURIComponent(id)}/decline`, { ...opts, method: "POST" }),
   cancel: (id: string) => api<unknown>(`/api/v1/cp/proposals/${encodeURIComponent(id)}/cancel`, { ...opts, method: "POST" }),
   mine: async () => readCouple(await api<unknown>("/api/v1/cp/me", opts)),
+  /** Couples by love gained: today, yesterday, this week, this month, or all time. */
+  ranking: async (period: "today" | "yesterday" | "week" | "month" | "all" = "today", limit = 50): Promise<CpRankingRow[]> =>
+    ((await api<unknown>(`/api/v1/cp/ranking?period=${period}&limit=${limit}`, opts)) as unknown[] | null ?? []).flatMap((r) => {
+      const o = obj(r);
+      const couple = o ? readCouple(o.couple) : null;
+      return couple ? [{ rank: num(o?.rank), love: num(o?.love), couple }] : [];
+    }),
   of: async (userId: string) => readCouple(await api<unknown>(`/api/v1/users/${encodeURIComponent(userId)}/cp`, opts)),
   addRing: async (ringId: string, source: "BAG" | "BUY") =>
     readCouple(await api<unknown>("/api/v1/cp/me/rings", { ...opts, method: "POST", body: { ringId, source }, headers: source === "BUY" ? { "Idempotency-Key": key() } : undefined })),

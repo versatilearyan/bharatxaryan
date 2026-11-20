@@ -101,6 +101,8 @@ export type ServerAuction = {
   bids: { userId: string; total: number }[];
   winner: { userId: string; total: number } | null;
   tagResult: { kind: "new" | "existing" | "full" | "taken"; token: string } | null;
+  /** Someone invited to the empty auction seat, waiting for their answer (expiresAt is on the server's clock). */
+  invite: { userId: string; byUserId: string; expiresAt: number } | null;
   event?: GameEvent;
 };
 
@@ -133,6 +135,11 @@ export function readAuction(raw: unknown): ServerAuction | null {
       : [],
     winner: w && str(w.userId) ? { userId: str(w.userId)!, total: num(w.total) ?? 0 } : null,
     tagResult: t && (t.kind === "new" || t.kind === "existing" || t.kind === "full" || t.kind === "taken") ? { kind: t.kind, token: str(t.token) ?? "bicycle" } : null,
+    invite: (() => {
+      const i = obj(d.invite);
+      const userId = str(i?.userId);
+      return i && userId ? { userId, byUserId: str(i.byUserId) ?? "", expiresAt: num(i.expiresAt) ?? 0 } : null;
+    })(),
     event: readEvent(d.event),
   };
 }
@@ -151,6 +158,13 @@ export const auctionApi = {
   get: (roomId: string) => auctionCall(roomId, "/auction", "GET"),
   sit: (roomId: string, userId?: string) => auctionCall(roomId, "/auction/seat", "POST", userId ? { userId: n(userId) } : {}),
   leave: (roomId: string) => auctionCall(roomId, "/auction/leave", "POST"),
+  /** Owner / admin: take the person off the auction seat. */
+  remove: (roomId: string) => auctionCall(roomId, "/auction/remove", "POST"),
+  /** Owner / admin: invite someone to the empty auction seat (they accept or refuse). */
+  invite: (roomId: string, userId: string) => auctionCall(roomId, "/auction/invite", "POST", { userId: n(userId) }),
+  acceptInvite: (roomId: string) => auctionCall(roomId, "/auction/invite/accept", "POST"),
+  declineInvite: (roomId: string) => auctionCall(roomId, "/auction/invite/decline", "POST"),
+  cancelInvite: (roomId: string) => auctionCall(roomId, "/auction/invite/cancel", "POST"),
   declare: (roomId: string, relation: string, declaration: string) => auctionCall(roomId, "/auction/declaration", "PUT", { relation, declaration }),
   configure: (roomId: string, patch: { mode?: string; offer?: string; startGiftId?: string }) => auctionCall(roomId, "/auction/config", "PUT", patch),
   start: (roomId: string) => auctionCall(roomId, "/auction/start", "POST"),

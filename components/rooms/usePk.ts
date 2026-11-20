@@ -115,6 +115,7 @@ export function usePk(s: RoomSession) {
       else if (m.event.type === "STARTED" && p) s.addSystem(`${by} has started a PK. The rule for this round is ${RULE_TEXT[p.rule]}.`);
       else if (m.event.type === "CLOSED") s.addSystem(`${by} closed the PK.`);
       else if (m.event.type === "ENDED" && p) s.addSystem(endText(p, p.winner));
+      else if (m.event.type === "FORFEITED" && p) s.addSystem(`${by} left the PK seat. ${p.winner === "red" ? "Red" : "Blue"} wins by forfeit! 🏆`);
     },
     [who, s],
   );

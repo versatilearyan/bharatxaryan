@@ -1,7 +1,7 @@
 "use client";
 
 import { NameText } from "@/components/ui/NameText";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { publishActiveVoice } from "@/lib/app/active-voice";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { VipEntryBanner } from "@/components/effects/VipFx";
@@ -18,7 +18,9 @@ import { KharidariRoom } from "./KharidariRoom";
 import { RoomOverlays, SeatInvitePrompt } from "./RoomOverlays";
 import { RoomGamePill } from "@/components/games/jackaroo/RoomGamePill";
 import { useAuction, type Auction } from "./useAuction";
-import { PkContext, usePk } from "./usePk";
+import { BLUE_SEAT, PkContext, RED_SEAT, usePk } from "./usePk";
+import { AlertTriangle } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 import { useRoomSession, type RoomMode, type RoomSession } from "./useRoomSession";
 import { VoiceRoom } from "./VoiceRoom";
 import { WatchTogetherRoom } from "./WatchTogetherRoom";
@@ -40,11 +42,34 @@ export function ActiveRoomHost() {
 
 function ActiveRoom({ room }: { room: Room }) {
   const { roomOpen } = useApp();
-  const s = useRoomSession(room);
+  const rawS = useRoomSession(room);
   // The auction keeps its clock and simulated bidders running in the background too
-  const auction = useAuction(s);
+  const auction = useAuction(rawS);
   // PK battles keep scoring while the room is minimised, like the auction
-  const pk = usePk(s);
+  const pk = usePk(rawS);
+
+  // A 1v1 fighter (red or blue seat) tries to leave or move while the PK is live: confirm first, since it forfeits
+  // the battle to the other side. Wrapping takeSeat/leaveSeat here covers every "move" or "leave" button in the room.
+  const [pkConfirm, setPkConfirm] = useState<null | { message: string; run: () => void }>(null);
+  const onPkSeat = pk.pk?.phase === "live" && pk.pk.mode === "1v1" && (rawS.mySeat === RED_SEAT || rawS.mySeat === BLUE_SEAT);
+  const takeSeat = useCallback(
+    (index: number) => {
+      if (onPkSeat && index !== rawS.mySeat) {
+        setPkConfirm({ message: "You're fighting in this PK. Moving to another seat forfeits it — the other side wins. Move anyway?", run: () => rawS.takeSeat(index) });
+        return;
+      }
+      rawS.takeSeat(index);
+    },
+    [onPkSeat, rawS],
+  );
+  const leaveSeat = useCallback(() => {
+    if (onPkSeat) {
+      setPkConfirm({ message: "You're fighting in this PK. Leaving your seat forfeits it — the other side wins. Leave anyway?", run: () => rawS.leaveSeat() });
+      return;
+    }
+    rawS.leaveSeat();
+  }, [onPkSeat, rawS]);
+  const s = useMemo(() => ({ ...rawS, takeSeat, leaveSeat }), [rawS, takeSeat, leaveSeat]);
   const mode = s.mode;
   // Screens on top of the room (Ludo) use its mic without opening it
   const sRef = useRef(s);
@@ -89,6 +114,27 @@ function ActiveRoom({ room }: { room: Room }) {
       {/* Outside the room screen so it shows even while the room is minimised */}
       <SeatInvitePrompt s={s} />
       <AnimatePresence>{!roomOpen ? <MiniRoom s={s} mode={mode} a={auction} /> : null}</AnimatePresence>
+
+      {/* A PK fighter tries to leave or move seats while the battle is live: confirm, since it forfeits */}
+      <Modal open={pkConfirm !== null} onClose={() => setPkConfirm(null)} title="Leave the PK?" className="max-w-[320px] text-center">
+        <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-coral/15 text-coral">
+          <AlertTriangle className="h-6 w-6" aria-hidden />
+        </span>
+        <p className="mt-3 text-[13px] leading-relaxed text-cream/80">{pkConfirm?.message}</p>
+        <button
+          type="button"
+          onClick={() => {
+            pkConfirm?.run();
+            setPkConfirm(null);
+          }}
+          className="mt-4 h-11 w-full rounded-full bg-coral font-display text-[14px] font-extrabold text-white"
+        >
+          Yes, forfeit and leave
+        </button>
+        <button type="button" onClick={() => setPkConfirm(null)} className="mt-2 h-10 w-full rounded-full text-[13px] font-semibold text-cream/60">
+          Stay and keep fighting
+        </button>
+      </Modal>
     </>
   );
 }

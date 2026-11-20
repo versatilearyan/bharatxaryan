@@ -29,7 +29,7 @@ export function KharidariRoom({ s, a }: { s: RoomSession; a: Auction }) {
   const { leaveRoom, coins, tagBetween } = useApp();
   const person = usePeople();
   const tagTitle = useTagTitle();
-  const [sheet, setSheet] = useState<null | "gift" | "bid-gift" | "emoji" | "menu" | "invite" | "seat-item" | "setup" | "declare">(null);
+  const [sheet, setSheet] = useState<null | "gift" | "bid-gift" | "emoji" | "menu" | "invite" | "seat-item" | "seat-remove" | "setup" | "declare">(null);
   const [draft, setDraft] = useState("");
   const close = () => setSheet(null);
   const item = a.itemId ? person(a.itemId) : null;
@@ -53,7 +53,9 @@ export function KharidariRoom({ s, a }: { s: RoomSession; a: Auction }) {
       return;
     }
     if (a.itemId) {
-      s.openCard(a.itemId);
+      // The owner or an admin can take someone off the seat (while bidding is closed)
+      if (s.canModerate && a.phase === "idle") setSheet("seat-remove");
+      else s.openCard(a.itemId);
       return;
     }
     if (a.phase !== "idle") return;
@@ -301,27 +303,105 @@ export function KharidariRoom({ s, a }: { s: RoomSession; a: Auction }) {
       {/* Owner: pick who sits on the auction seat */}
       <BottomSheet open={sheet === "seat-item"} onClose={close} title="Auction seat">
         <ul className="px-5 pb-5">
+          {/* An invite is waiting for its answer: the owner or an admin can take it back */}
+          {a.invite ? (
+            <li className="mb-2 flex items-center gap-3 rounded-2xl bg-white/[0.06] px-3 py-2 ring-1 ring-white/10">
+              <PersonAvatar person={person(a.invite.id)} size={36} />
+              <span className="min-w-0 flex-1 text-[13px] text-cream/85">
+                Invited <b className="text-cream">{a.invite.id === ME_ID ? "you" : person(a.invite.id).name}</b>. Waiting for the answer…
+              </span>
+              <button type="button" onClick={a.cancelInvite} className="rounded-full bg-white/10 px-3 py-1 text-[12px] font-bold text-cream">
+                Cancel
+              </button>
+            </li>
+          ) : null}
           {/* The owner's seat is fixed, so the owner is never offered for the auction seat */}
           {[...(s.isOwner ? [] : [ME_ID]), ...s.seatedIds.filter((id) => id !== ME_ID && id !== s.room.hostId), ...s.listenerIds].map((id) => {
             const p = person(id);
             return (
-              <li key={id}>
+              <li key={id} className="flex items-center gap-2 py-2">
+                <PersonAvatar person={p} size={40} />
+                <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-cream">{id === ME_ID ? "Me" : p.name}</span>
+                {/* Ask them: they accept or refuse (yourself you just seat) */}
+                {id !== ME_ID ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      a.inviteToAuction(id);
+                      close();
+                    }}
+                    className="rounded-full bg-gradient-to-r from-[#f6d899] to-[#c9954a] px-3 py-1 text-[12px] font-extrabold text-[#2a1a0c]"
+                  >
+                    Invite
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => {
                     a.sitOnAuction(id);
                     close();
                   }}
-                  className="flex w-full items-center gap-3 py-2 text-left"
+                  className="rounded-full bg-[#7b5cff] px-3 py-1 text-[12px] font-bold text-white"
                 >
-                  <PersonAvatar person={p} size={40} />
-                  <span className="flex-1 text-[14px] font-semibold text-cream">{id === ME_ID ? "Me" : p.name}</span>
-                  <span className="rounded-full bg-[#7b5cff] px-3 py-1 text-[12px] font-bold text-white">Seat</span>
+                  Seat
                 </button>
               </li>
             );
           })}
         </ul>
+      </BottomSheet>
+
+      {/* Owner / admin: the person on the auction seat. Take them off, or open their card. */}
+      <BottomSheet open={sheet === "seat-remove"} onClose={close} title="Auction seat">
+        {item ? (
+          <div className="px-5 pb-5">
+            <div className="flex items-center gap-3">
+              <PersonAvatar person={item} size={48} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[15px] font-bold text-cream">{item.name}</p>
+                <p className="text-[12px] text-cream/60">is on the auction seat</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                a.removeFromAuction();
+                close();
+              }}
+              className="mt-4 h-11 w-full rounded-full bg-[#e2242f] font-display text-[14px] font-extrabold text-white"
+            >
+              Remove from the auction seat
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                close();
+                if (a.itemId) s.openCard(a.itemId);
+              }}
+              className="mt-2 h-10 w-full rounded-full bg-white/10 text-[13px] font-semibold text-cream"
+            >
+              View profile
+            </button>
+          </div>
+        ) : null}
+      </BottomSheet>
+
+      {/* The invited person: accept to sit on the auction seat, or refuse */}
+      <BottomSheet open={Boolean(a.invite && a.invite.id === ME_ID)} onClose={a.declineInvite} title="Auction seat invite">
+        <div className="px-5 pb-5 text-center">
+          <p className="text-[14px] leading-relaxed text-cream/85">
+            {a.invite?.byId && a.invite.byId !== ME_ID ? <b className="text-cream">{person(a.invite.byId).name}</b> : "The owner"} invited you to the auction seat.
+            <span className="mt-1 block text-[12px] text-cream/60">You&apos;ll declare the tag you want, and the room bids with gifts.</span>
+          </p>
+          <div className="mt-4 flex gap-2">
+            <button type="button" onClick={a.declineInvite} className="h-11 flex-1 rounded-full bg-white/10 text-[14px] font-bold text-cream">
+              Refuse
+            </button>
+            <button type="button" onClick={a.acceptInvite} className="h-11 flex-1 rounded-full bg-gradient-to-r from-[#f6d899] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c]">
+              Accept
+            </button>
+          </div>
+        </div>
       </BottomSheet>
 
       {/* Owner and admins: Kharidari settings */}

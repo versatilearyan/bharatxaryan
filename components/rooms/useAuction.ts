@@ -107,6 +107,23 @@ export function useAuction(s: RoomSession) {
             ss.addSystem(`🔨 Kharidari started (${m.mode === "bff" ? "BFF" : "Ordinary bidding"}): ${item === ME_ID ? "you" : person(item).name} for ${prizeText}. Starting price: ${g.name} (${m.startPrice})`);
           }
           break;
+        case "INVITED":
+          // actor = the invited person; they answer in the prompt
+          if (actor) ss.addSystem(`${nm(actor)} was invited to the auction seat`);
+          break;
+        case "INVITE_DECLINED":
+          if (actor) ss.addSystem(`${nm(actor)} refused the auction seat invite`);
+          break;
+        case "INVITE_EXPIRED":
+        case "INVITE_CANCELLED":
+          break;
+        case "REMOVED":
+          // actor = the person who was taken off the seat
+          if (actor) {
+            ss.addSystem(`${nm(actor)} was removed from the auction seat`);
+            if (actor === ME_ID) toast("The owner or an admin took you off the auction seat", "error");
+          }
+          break;
         case "NO_SALE":
           if (actor) ss.addSystem(`No bids reached the starting price for ${nm(actor)}. Kharidari closed.`);
           break;
@@ -251,6 +268,49 @@ export function useAuction(s: RoomSession) {
     if (serverId) return server((rid) => auctionApi.leave(rid));
     setA((x) => ({ ...x, itemId: null, phase: "idle", winner: null, bids: [], tagResult: null, declaration: "" }));
   }, [toast, serverId, server]);
+
+  /** Owner / admin: take the person off the auction seat (not while bidding is open). */
+  const removeFromAuction = useCallback(() => {
+    if (ref.current.phase === "bidding") {
+      toast("Bidding is open. End it first, then remove them.");
+      return;
+    }
+    if (serverId) return server((rid) => auctionApi.remove(rid));
+    const who = ref.current.itemId;
+    setA((x) => ({ ...x, itemId: null, phase: "idle", winner: null, bids: [], tagResult: null, declaration: "" }));
+    if (who) sRef.current.addSystem(`${nameOf(who)} was removed from the auction seat`);
+  }, [toast, serverId, server, nameOf]);
+
+  /** Owner / admin: invite someone to the empty auction seat. They accept or refuse. */
+  const inviteToAuction = useCallback(
+    (id: string) => {
+      const st = ref.current;
+      if (st.phase !== "idle" || st.itemId) return;
+      if (id === sRef.current.room.hostId) {
+        toast("The owner's seat is fixed. Invite someone else.");
+        return;
+      }
+      if (serverId) {
+        const uid = id.startsWith(SERVER_USER_PREFIX) ? id.slice(SERVER_USER_PREFIX.length) : null;
+        if (uid) server((rid) => auctionApi.invite(rid, uid));
+        return;
+      }
+      // Demo rooms: the invited person accepts at once
+      sitOnAuction(id);
+    },
+    [toast, serverId, server, sitOnAuction],
+  );
+  const cancelInvite = useCallback(() => {
+    if (serverId) server((rid) => auctionApi.cancelInvite(rid));
+  }, [serverId, server]);
+  const acceptInvite = useCallback(() => {
+    if (serverId) server((rid) => auctionApi.acceptInvite(rid));
+  }, [serverId, server]);
+  const declineInvite = useCallback(() => {
+    if (serverId) server((rid) => auctionApi.declineInvite(rid));
+  }, [serverId, server]);
+  /** The invite waiting for an answer (backend rooms): who was invited and who invited them. */
+  const invite = serverId && srv?.invite ? { id: pid(srv.invite.userId), byId: srv.invite.byUserId ? pid(srv.invite.byUserId) : null } : null;
 
   /** The person on the auction seat declares the tag they want before bidding starts. */
   const declare = useCallback(
@@ -422,7 +482,7 @@ export function useAuction(s: RoomSession) {
     [toast],
   );
 
-  return { ...a, active, top, startPrice, myTotal, secondsLeft, bid, start, endNow, configure, declare, sitOnAuction, leaveAuction, roundMs: ROUND_MS };
+  return { ...a, active, top, startPrice, myTotal, secondsLeft, bid, start, endNow, configure, declare, sitOnAuction, leaveAuction, removeFromAuction, inviteToAuction, cancelInvite, acceptInvite, declineInvite, invite, roundMs: ROUND_MS };
 }
 
 export type Auction = ReturnType<typeof useAuction>;

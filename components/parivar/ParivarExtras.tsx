@@ -2,16 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronDown, ChevronLeft, Coins as CoinsI, Gift, Heart as HeartI, House, Landmark, Lock, MessagesSquare, Pin, Plus, Send, Settings2, Smile, Star as StarI, Trash2 } from "lucide-react";
+import { AtSign, Check, ChevronDown, ChevronLeft, Coins as CoinsI, Gift, Heart as HeartI, House, Landmark, Lock, MessagesSquare, Pin, Plus, Search, Send, Settings2, Smile, Star as StarI, Trash2 } from "lucide-react";
 import { Glyph, KIND_GLYPH, RewardArt } from "./ParivarUi";
 import { GiftArt } from "@/components/art/GiftArt";
 import type { GiftId } from "@/lib/app/types";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin } from "@/components/ui/kit";
 import { giftById } from "@/lib/app/data";
-import { parseGiftCard } from "@/lib/api/parivar";
+import { parseGiftCard, parseRewardCard, parseWelcomeCard, parseDonationCard } from "@/lib/api/parivar";
 import { RedPacketChatCard, parseRedPacket } from "./ParivarFamilyExtras";
-import { parivarExtra, type WorldNewsItem, type ChatMsg, type ChatPrefs, type ChestsInfo, type ChoriInfo, type CheerTier, type GachaInfo, type GachaResult, type KavachInfo, type NewsPost, type ParivarProfile, type ShopItem, type TasksInfo } from "@/lib/api/parivar";
+import { parivarExtra, type WorldNewsItem, type ChatMsg, type ChatPrefs, type ChestsInfo, type ChoriInfo, type CheerTier, type GachaInfo, type GachaResult, type KavachInfo, type NewsPost, type ParivarMemberInfo, type ParivarProfile, type ShopItem, type TasksInfo } from "@/lib/api/parivar";
+import { SvgaAnim } from "@/components/effects/SvgaAnim";
+import { Medal } from "lucide-react";
 import { getRoomById } from "@/lib/api/voice-rooms";
 import { serverRoomAppId, useServerRooms, userPersonId } from "@/lib/app/server-rooms";
 import { useApp } from "@/lib/app/store";
@@ -1138,6 +1140,8 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
   const [err, setErr] = useState("");
   const [settings, setSettings] = useState(false);
   const [tray, setTray] = useState(false);
+  const [mention, setMention] = useState(false);
+  const textInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<Pending[]>([]);
   const [fresh, setFresh] = useState(0);
   const [loaded, setLoaded] = useState(false);
@@ -1341,6 +1345,12 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
                     <RedPacketChatCard p={p} packetId={parseRedPacket(m.text)!.id} from={parseRedPacket(m.text)!.from} total={parseRedPacket(m.text)!.total} pieces={parseRedPacket(m.text)!.pieces} message={parseRedPacket(m.text)!.message} />
                   ) : m.kind === "SYSTEM" && parseGiftCard(m.text) ? (
                     <GiftCardLine c={parseGiftCard(m.text)!} />
+                  ) : m.kind === "SYSTEM" && parseRewardCard(m.text) ? (
+                    <RewardCardLine c={parseRewardCard(m.text)!} />
+                  ) : m.kind === "SYSTEM" && parseWelcomeCard(m.text) ? (
+                    <WelcomeCardLine c={parseWelcomeCard(m.text)!} me={me} onGift={onGift} onWelcome={(line) => void send(line)} onSeeProfile={seeProfile} />
+                  ) : m.kind === "SYSTEM" && parseDonationCard(m.text) ? (
+                    <DonationCardLine c={parseDonationCard(m.text)!} />
                   ) : m.kind === "SYSTEM" ? (
                     <p className={`mx-auto my-1.5 w-fit max-w-[88%] rounded-2xl px-3 py-1.5 text-center text-[11.5px] leading-snug ${/won|gift|sent|🎁|🎰/.test(m.text) ? "bg-gold/10 text-gold/90 ring-1 ring-gold/20" : "bg-black/35 text-cream/65"}`}>{m.text}</p>
                   ) : mine ? (
@@ -1416,12 +1426,16 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
             <button type="button" onClick={() => setTray((v) => !v)} className={`grid h-11 w-11 shrink-0 place-items-center rounded-full ${tray ? "bg-gold/20 text-gold" : "bg-white/8 text-cream/80"}`} aria-label="Emoji" aria-expanded={tray}>
               <Smile className="h-5 w-5" aria-hidden />
             </button>
+            <button type="button" onClick={() => setMention(true)} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/8 text-cream/80" aria-label="Tag a member">
+              <AtSign className="h-5 w-5" aria-hidden />
+            </button>
             {onGift ? (
               <button type="button" onClick={() => onGift()} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-b from-[#f2cf8c] to-[#d9a84f] text-[#2a1a0c]" aria-label="Send a gift to a member">
                 <Gift className="h-5 w-5" aria-hidden />
               </button>
             ) : null}
             <input
+              ref={textInput}
               value={text}
               maxLength={500}
               onChange={(e) => setText(e.target.value)}
@@ -1435,6 +1449,17 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
               <Send className="h-5 w-5" aria-hidden />
             </button>
           </div>
+
+          <MentionSheet
+            open={mention}
+            onClose={() => setMention(false)}
+            members={p.members}
+            onPick={(name) => {
+              setMention(false);
+              setText((t) => (t && !t.endsWith(" ") ? `${t} @${name} ` : `${t}@${name} `));
+              textInput.current?.focus();
+            }}
+          />
 
           <BottomSheet open={Boolean(pick)} onClose={() => setPick(null)} title={pick?.name ?? "Member"}>
             <div className="px-4 pb-4">
@@ -1748,6 +1773,132 @@ function GiftCardLine({ c }: { c: NonNullable<ReturnType<typeof parseGiftCard>> 
         </span>
       </div>
     </div>
+  );
+}
+
+/** Pick a member to @ tag in a chat message: search by name, or tag everyone with ALL. */
+function MentionSheet({ open, onClose, members, onPick }: { open: boolean; onClose: () => void; members: ParivarMemberInfo[]; onPick: (name: string) => void }) {
+  const [q, setQ] = useState("");
+  useEffect(() => {
+    if (open) setQ("");
+  }, [open]);
+  const shown = members.filter((m) => m.name.toLowerCase().includes(q.trim().toLowerCase()));
+  return (
+    <BottomSheet open={open} onClose={onClose} title="Tag a member">
+      <div className="px-4 pb-2">
+        <div className="flex h-10 items-center gap-2 rounded-full bg-white/10 px-3.5">
+          <Search className="h-4 w-4 shrink-0 text-cream/50" aria-hidden />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search nickname" className="h-full min-w-0 flex-1 bg-transparent text-[13.5px] text-cream placeholder:text-cream/40 focus:outline-none" aria-label="Search nickname" />
+        </div>
+      </div>
+      <ul className="max-h-[50vh] overflow-y-auto pb-4">
+        <li>
+          <button type="button" onClick={() => onPick("ALL")} className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-sky-400 text-[13px] font-extrabold text-white">@</span>
+            <span className="truncate text-[14px] font-semibold text-cream">ALL</span>
+          </button>
+        </li>
+        {shown.map((m) => (
+          <li key={m.userId}>
+            <button type="button" onClick={() => onPick(m.name)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
+              {m.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={m.avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+              ) : (
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 text-cream/60">👤</span>
+              )}
+              <span className="min-w-0 flex-1 truncate text-[14px] font-semibold text-cream">{m.name}</span>
+            </button>
+          </li>
+        ))}
+        {!shown.length ? <li className="px-4 py-6 text-center text-[13px] text-muted">No one matches that.</li> : null}
+      </ul>
+    </BottomSheet>
+  );
+}
+
+/** A few different lines to welcome a new member with, so the chat doesn't look like a bot repeating itself. */
+const WELCOME_LINES = ["Welcome! 👋", "Nice to meet you~ 😊", "Glad you're here! 🎉", "Welcome to the family! 🌹"];
+
+/** A new member's own "hi everyone" card, with Welcome and Send a gift buttons (a frame around it like the reference app's). */
+function WelcomeCardLine({ c, me, onGift, onWelcome, onSeeProfile }: { c: NonNullable<ReturnType<typeof parseWelcomeCard>>; me: string | null; onGift?: (to?: string) => void; onWelcome: (line: string) => void; onSeeProfile: (uid: string) => void }) {
+  const mine = c.userId === me;
+  const line = useMemo(() => WELCOME_LINES[Math.floor(Math.random() * WELCOME_LINES.length)], [c.userId]);
+  return (
+    <div className="mx-auto my-2.5 flex w-[min(92%,320px)] items-start gap-2">
+      <button type="button" onClick={() => onSeeProfile(c.userId)} className="shrink-0">
+        {c.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={c.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover ring-1 ring-gold/40" />
+        ) : (
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-white/10 text-cream/60">👤</span>
+        )}
+      </button>
+      <div className="min-w-0 flex-1 rounded-2xl rounded-tl-sm bg-gradient-to-br from-sky-400/15 via-black/40 to-black/40 px-3.5 py-2.5 ring-1 ring-sky-300/30">
+        <p className="truncate text-[12px] font-bold text-sky-300">{c.name}</p>
+        <p className="mt-0.5 text-[13.5px] leading-snug text-cream/90">Hi everyone, I&apos;m {c.name}. Nice to meet you!</p>
+        {!mine ? (
+          <div className="mt-2 flex gap-4 border-t border-white/10 pt-1.5 text-[12.5px] font-bold">
+            <button type="button" onClick={() => onWelcome(`@${c.name} ${line}`)} className="text-sky-300">
+              Welcome
+            </button>
+            {onGift ? (
+              <button type="button" onClick={() => onGift(c.userId)} className="text-gold">
+                Send a gift
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/** "X donated N Family Fund" in the family chat. */
+function DonationCardLine({ c }: { c: NonNullable<ReturnType<typeof parseDonationCard>> }) {
+  return (
+    <div className="mx-auto my-2 w-[min(92%,300px)] overflow-hidden rounded-2xl bg-gradient-to-br from-gold/20 via-black/40 to-black/40 text-cream ring-1 ring-gold/25">
+      <p className="flex items-center gap-1.5 px-3 pt-2.5 text-[11.5px] font-bold uppercase tracking-wide text-gold/85">
+        <Landmark className="h-3.5 w-3.5" aria-hidden /> Donate to the family!
+      </p>
+      <p className="px-3 pb-2.5 pt-1 text-[13px] leading-snug text-cream/90">
+        <span className="font-bold text-gold">{c.name}</span> donated <span className="font-display font-extrabold text-gold">{c.amount.toLocaleString("en-IN")}</span> Family Fund.
+      </p>
+      <div className="flex items-center gap-1.5 border-t border-white/10 px-3 py-1.5 text-[11.5px]">
+        <span className="text-cream/60">Family Fund</span>
+        <span className="font-bold text-gold">+{c.amount.toLocaleString("en-IN")} = {c.fundsAfter.toLocaleString("en-IN")}</span>
+      </div>
+    </div>
+  );
+}
+
+const REWARD_SLOT_TEXT: Record<string, string> = { FRAME: "Frame", BUBBLE: "Chat bubble", ENTRY: "Entry effect", BADGE: "Badge", PROFILE: "Profile effect" };
+
+/** A frame / bubble / entry / badge / gift won from a Family Treasure chest: a card in the family chat, like the gift card. */
+function RewardCardLine({ c }: { c: NonNullable<ReturnType<typeof parseRewardCard>> }) {
+  const { push } = useApp();
+  const days = c.expiresAt ? Math.max(1, Math.round((Date.parse(c.expiresAt) - Date.now()) / 86_400_000)) : 0;
+  return (
+    <button
+      type="button"
+      onClick={() => push({ kind: "bag" })}
+      className="mx-auto my-2 block w-[min(92%,300px)] overflow-hidden rounded-2xl bg-gradient-to-br from-gold/20 via-black/40 to-black/40 text-left text-cream ring-1 ring-gold/25"
+    >
+      <div className="flex items-center gap-2.5 px-3 pb-2 pt-2.5">
+        <span className="min-w-0 flex-1 text-[12.5px] leading-snug">
+          <span className="font-bold text-gold">{c.from}</span> won <span className="font-bold text-gold">{c.name}</span> from a Family chest
+          {c.plus ? <span className="mt-0.5 block text-[11.5px] text-cream/65">+{c.plus} more in the chest</span> : null}
+        </span>
+        <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-black/25">
+          {c.mediaUrl && c.mediaFormat !== "MP3" ? <SvgaAnim src={c.mediaUrl} className="h-full w-full" /> : <Medal className="h-6 w-6 text-gold" aria-hidden />}
+        </span>
+      </div>
+      <div className="flex items-center gap-3 border-t border-white/10 px-3 py-1.5 text-[11.5px]">
+        <span className="text-cream/60">{c.slot ? REWARD_SLOT_TEXT[c.slot] ?? c.slot : "Gift card"}</span>
+        <span className="font-bold text-gold">{days ? `${days} day${days === 1 ? "" : "s"} left` : "Permanent"}</span>
+        <span className="ml-auto text-cream/60">{c.slot ? "Wear from Bag" : "Send from Bag"} →</span>
+      </div>
+    </button>
   );
 }
 

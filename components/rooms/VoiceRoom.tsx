@@ -1,7 +1,7 @@
 "use client";
 
 import { OfficialBadge, OfficialPkBadge } from "@/components/rooms/OfficialBadge";
-import { useSeatScale } from "./useSeatScale";
+import { useFitSeatScale, useSeatScale } from "./useSeatScale";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
@@ -31,8 +31,9 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const seatsRef = useRef<HTMLDivElement>(null);
   const chatRef = useRef<HTMLDivElement>(null);
-  // Seats keep one fixed size (set by the screen only): they never resize or move when extra seats open or the chat changes
-  const seatScale = useSeatScale();
+  // Every seat keeps its own fixed slot (names/badges never shift it), but the whole group scales down together,
+  // never a single seat alone, when there isn't room for it all (extra seats, PK) — so nothing ever scrolls or is cut off.
+  const seatScale = useFitSeatScale(useSeatScale(), rootRef, seatsRef, chatRef);
   const close = () => setSheet(null);
 
   return (
@@ -65,10 +66,9 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
 
       {arena ? null : <PkPanel s={s} />}
 
-      {/* Seats: the owner's fixed seat + intimacy seat on top, then linked pairs */}
-      {/* The seats keep their size and place however many there are (extra seats, PK): when they don't all fit, this area
-          scrolls inside itself, so the seats never run over the chat and the chat never gets pushed out. */}
-      <div ref={seatsRef} className={`relative z-10 shrink-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${pkOn ? "mt-1.5" : "mt-2"}`} style={{ maxHeight: "58%" }}>
+      {/* Seats: the owner's fixed seat + intimacy seat on top, then linked pairs. No scrolling here: the whole
+          group shrinks together to stay on screen with the chat, however many seats there are. */}
+      <div ref={seatsRef} className={`relative z-10 shrink-0 ${pkOn ? "mt-1.5" : "mt-2"}`}>
         {musicOff ? null : <MusicPill className="absolute right-2 top-6 z-20" onlyMe={s.musicOnlyMe} requestCount={s.canModerate ? songs.requests.length : 0} onOpen={() => setSheet("music")} />}
         {s.roomOpen ? (
           <>
