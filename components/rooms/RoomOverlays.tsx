@@ -264,7 +264,7 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
                   {onMic ? (
                     <>
                       <Action icon={s.adminMuted.includes(id) ? <Mic className="h-4.5 w-4.5" /> : <MicOff className="h-4.5 w-4.5" />} label={s.adminMuted.includes(id) ? "Unmute" : "Mute"} onClick={() => s.toggleForceMute(id)} />
-                      {id !== s.room.hostId ? <Action icon={<UserMinus className="h-4.5 w-4.5" />} label="Off mic" onClick={() => s.removeFromMic(id)} /> : null}
+                      {id !== s.room.hostId ? <Action icon={<UserMinus className="h-4.5 w-4.5" />} label="Lift up" onClick={() => s.removeFromMic(id)} /> : null}
                     </>
                   ) : (
                     <Action icon={<Mic className="h-4.5 w-4.5" />} label="Invite to mic" onClick={() => s.inviteToSeat(id)} />

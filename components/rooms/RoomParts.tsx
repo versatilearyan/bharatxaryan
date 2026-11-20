@@ -1065,8 +1065,8 @@ function RoomMenuSheetImpl({ open, onClose, s, extra, onInvite }: { open: boolea
   const { toast, leaveRoom, push } = useApp();
   const music = useMusic();
   const live = useServerRooms();
-  // Only the owner of a backend room can close it
-  const canClose = Boolean(s.room.server?.mine);
+  // Only the owner of a backend room can close it, and never a permanent room (it was bought to stay)
+  const canClose = Boolean(s.room.server?.mine && !s.room.permanent);
   const [confirmClose, setConfirmClose] = useState(false);
   useEffect(() => {
     if (!open) setConfirmClose(false);
