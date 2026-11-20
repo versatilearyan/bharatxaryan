@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Check, ChevronLeft, Crown, Ellipsis, Flame, Gift, MessageCircle, Pencil, Plus, Quote, RefreshCw, Search, Shield, Trophy, UsersRound } from "lucide-react";
+import { ArrowDown, Camera, Check, ChevronLeft, ChevronsUpDown, Crown, Ellipsis, Flame, Gift, MessageCircle, Pencil, Plus, Quote, RefreshCw, Search, Shield, Trophy, UsersRound } from "lucide-react";
 import { Glyph, RewardArt } from "./ParivarUi";
 import { ParivarGiftSheet } from "./ParivarGift";
 import { useServerRooms, userPersonId } from "@/lib/app/server-rooms";
@@ -1429,14 +1429,29 @@ function RolePill({ role }: { role: ParivarRole }) {
   return <span className={`mt-1 inline-block rounded-md bg-gradient-to-r px-2.5 py-0.5 text-[11px] font-bold text-white ${ROLE_PILL[role]}`}>{ROLE_LABEL[role]}</span>;
 }
 
+type DonationMetric = "gold" | "activity";
+type DonationPeriod = "weekly" | "total";
+const DONATION_FIELD: Record<DonationMetric, Record<DonationPeriod, "goldDonationWeekly" | "goldDonationTotal" | "activityDonationWeekly" | "activityDonationTotal">> = {
+  gold: { weekly: "goldDonationWeekly", total: "goldDonationTotal" },
+  activity: { weekly: "activityDonationWeekly", total: "activityDonationTotal" },
+};
+
 function MembersPanel({ p, can, busy, run, onGift }: { p: ParivarProfile; can: (perm: string) => boolean; busy: boolean; run: (f: () => Promise<unknown>, ok?: string) => Promise<void>; onGift: (userId: string) => void }) {
   const [q, setQ] = useState("");
+  const [metric, setMetric] = useState<DonationMetric>("gold");
+  const [sortBy, setSortBy] = useState<DonationPeriod>("total");
   const { myId } = useServerRooms();
   const { openProfile } = useApp();
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return [...p.members].filter((m) => !needle || m.name.toLowerCase().includes(needle)).sort((a, b) => b.contribution - a.contribution);
-  }, [p.members, q]);
+    const field = DONATION_FIELD[metric][sortBy];
+    return [...p.members].filter((m) => !needle || m.name.toLowerCase().includes(needle)).sort((a, b) => b[field] - a[field]);
+  }, [p.members, q, metric, sortBy]);
+  const sortHeader = (period: DonationPeriod, label: string) => (
+    <button type="button" onClick={() => setSortBy(period)} className={`flex items-center gap-0.5 ${sortBy === period ? "text-gold" : "text-cream/45"}`}>
+      {label} {sortBy === period ? <ArrowDown className="h-3 w-3" aria-hidden /> : <ChevronsUpDown className="h-3 w-3" aria-hidden />}
+    </button>
+  );
   return (
     <div className="-mx-4">
       <div className="mx-4 flex items-center gap-3">
@@ -1448,10 +1463,23 @@ function MembersPanel({ p, can, busy, run, onGift }: { p: ParivarProfile; can: (
           <UsersRound className="h-5 w-5" aria-hidden /> {n(p.memberCount)}/{n(p.capacity)}
         </span>
       </div>
-      <p className="mx-4 mt-3 flex justify-between text-[12px] font-semibold text-cream/45">
-        <span>Gold donation</span>
-        <span>Total</span>
-      </p>
+      <div className="mx-4 mt-3 flex items-center justify-between">
+        <div className="flex gap-4 text-[12.5px] font-bold">
+          {([
+            ["gold", "Gold Donation"],
+            ["activity", "Activity Donation"],
+          ] as const).map(([key, label]) => (
+            <button key={key} type="button" onClick={() => setMetric(key)} className={`relative pb-1 ${metric === key ? "text-gold" : "text-cream/45"}`}>
+              {label}
+              {metric === key ? <span className="absolute -bottom-0.5 left-1/2 h-[3px] w-[3px] -translate-x-1/2 rounded-full bg-gold" /> : null}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-3 text-[11.5px] font-bold">
+          {sortHeader("weekly", "Weekly")}
+          {sortHeader("total", "Total")}
+        </div>
+      </div>
       <ul className="mt-1">
         {rows.map((m, i) => (
           <li key={m.userId} className={`flex items-center gap-3 border-b border-white/[0.06] px-4 py-3 ${q ? "" : (ROW_TINT[i] ?? "")}`}>
@@ -1465,7 +1493,10 @@ function MembersPanel({ p, can, busy, run, onGift }: { p: ParivarProfile; can: (
                 <RolePill role={m.role} />
               </span>
             </button>
-            <span className="text-[14px] font-semibold text-cream/70">{n(m.contribution)}</span>
+            <span className="flex shrink-0 flex-col items-end text-[11.5px] text-cream/50">
+              <span className={`text-[14px] font-semibold ${sortBy === "weekly" ? "text-gold" : "text-cream/70"}`}>{n(m[DONATION_FIELD[metric].weekly])}</span>
+              <span className={sortBy === "total" ? "font-semibold text-gold" : ""}>{n(m[DONATION_FIELD[metric].total])} total</span>
+            </span>
             {true ? (
               <button type="button" onClick={() => onGift(m.userId)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gold/15 text-gold ring-1 ring-gold/30" aria-label={`Send ${m.name} a gift`}>
                 <Gift className="h-4 w-4" aria-hidden />

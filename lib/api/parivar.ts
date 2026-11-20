@@ -41,7 +41,22 @@ export type ParivarCard = {
   myApplication?: string | null;
 };
 
-export type ParivarMemberInfo = { userId: string; name: string; avatarUrl?: string; publicId: number; role: ParivarRole; contribution: number; joinedAt: string };
+export type ParivarMemberInfo = {
+  userId: string;
+  name: string;
+  avatarUrl?: string;
+  publicId: number;
+  role: ParivarRole;
+  /** Lifetime activity (EXP) contributed — same number as activityDonationTotal, kept for callers that only need one number. */
+  contribution: number;
+  joinedAt: string;
+  /** Coins donated to the Parivar treasury: this week, and lifetime. */
+  goldDonationWeekly: number;
+  goldDonationTotal: number;
+  /** Activity (EXP) contributed: this week, and lifetime. */
+  activityDonationWeekly: number;
+  activityDonationTotal: number;
+};
 export type ParivarFeedItem = { id: string; kind: string; exp: number; coins: number; text: string; who?: string; whoAvatar?: string; other?: string; at: string };
 
 export type ParivarProfile = ParivarCard & {
