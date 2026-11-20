@@ -173,6 +173,8 @@ export const parivarExtra = {
   claimChest: (id: string, chestId: string) => api<{ kind: string; amount: number; label: string }>(`${base}/${id}/chests/${chestId}/claim`, { ...opts, method: "POST" }),
   kavach: (id: string) => api<KavachInfo>(`${base}/${id}/kavach`, opts),
   activateKavach: (id: string, typeId: string) => api<KavachInfo>(`${base}/${id}/kavach/${typeId}/activate`, keyed()),
+  /** What members have done (joins, gifts, donations, Gacha wins, chest wins...): News > Family activity. */
+  activity: (id: string) => api<ParivarFeedItem[]>(`${base}/${id}/activity`, opts),
   chori: (id: string) => api<ChoriInfo>(`${base}/${id}/chori`, opts),
   setChoriMembers: (id: string, on: boolean) => api<ChoriInfo>(`${base}/${id}/chori/members`, { ...opts, method: "PUT", body: { on } }),
   attempt: (id: string, targetId: string) => api<{ result: "SUCCESS" | "FAILED" | "BLOCKED"; amount: number }>(`${base}/${id}/chori/${targetId}`, keyed()),

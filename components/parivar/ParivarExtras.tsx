@@ -11,7 +11,7 @@ import { Coin } from "@/components/ui/kit";
 import { giftById } from "@/lib/app/data";
 import { parseGiftCard, parseRewardCard, parseWelcomeCard, parseDonationCard } from "@/lib/api/parivar";
 import { RedPacketChatCard, parseRedPacket } from "./ParivarFamilyExtras";
-import { parivarExtra, type WorldNewsItem, type ChatMsg, type ChatPrefs, type ChestsInfo, type ChoriInfo, type CheerTier, type GachaInfo, type GachaResult, type KavachInfo, type NewsPost, type ParivarMemberInfo, type ParivarProfile, type ShopItem, type TasksInfo } from "@/lib/api/parivar";
+import { parivarExtra, type WorldNewsItem, type ChatMsg, type ChatPrefs, type ChestsInfo, type ChoriInfo, type CheerTier, type GachaInfo, type GachaResult, type KavachInfo, type NewsPost, type ParivarFeedItem, type ParivarMemberInfo, type ParivarProfile, type ShopItem, type TasksInfo } from "@/lib/api/parivar";
 import { SvgaAnim } from "@/components/effects/SvgaAnim";
 import { Medal } from "lucide-react";
 import { getRoomById } from "@/lib/api/voice-rooms";
@@ -1356,7 +1356,9 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
                   ) : mine ? (
                     <div className={`flex justify-end ${first ? "mt-2.5" : "mt-0.5"} ${onGift ? "cursor-pointer" : ""}`} onClick={() => onGift && m.userId && setPick(m)}>
                       <div className={`max-w-[80%] rounded-2xl bg-gradient-to-br from-[#f2cf8c] to-[#d9a84f] px-3 py-1.5 text-[#2a1a0c] shadow-sm ${lastOfRun ? "rounded-br-md" : ""}`}>
-                        <p className="text-[14px] leading-snug break-words whitespace-pre-wrap">{m.text}</p>
+                        <p className="text-[14px] leading-snug break-words whitespace-pre-wrap">
+                          <MentionText text={m.text} members={p.members} tone="light" />
+                        </p>
                         <p className="mt-0.5 text-right text-[10px] text-[#2a1a0c]/55">{clock(m.at)}</p>
                       </div>
                     </div>
@@ -1386,7 +1388,9 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
                             })()}
                           </p>
                         ) : null}
-                        <p className="text-[14px] leading-snug break-words whitespace-pre-wrap text-cream">{m.text}</p>
+                        <p className="text-[14px] leading-snug break-words whitespace-pre-wrap text-cream">
+                          <MentionText text={m.text} members={p.members} tone="dark" />
+                        </p>
                         <p className="mt-0.5 text-right text-[10px] text-cream/40">{clock(m.at)}</p>
                       </div>
                     </div>
@@ -1438,7 +1442,12 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
               ref={textInput}
               value={text}
               maxLength={500}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setText(v);
+                // Typing "@" opens the member list straight away, same as tapping the @ button
+                if (v.endsWith("@")) setMention(true);
+              }}
               onFocus={() => setTray(false)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && void send()}
               placeholder="Message your Parivar"
@@ -1456,7 +1465,11 @@ export function ChatSheet({ p, open, onClose, onHome, onGift }: Omit<Props, "onC
             members={p.members}
             onPick={(name) => {
               setMention(false);
-              setText((t) => (t && !t.endsWith(" ") ? `${t} @${name} ` : `${t}@${name} `));
+              // Replace a trailing bare "@" (typed to open this sheet) instead of doubling up
+              setText((t) => {
+                const base = t.endsWith("@") ? t.slice(0, -1) : t;
+                return base && !base.endsWith(" ") ? `${base} @${name} ` : `${base}@${name} `;
+              });
               textInput.current?.focus();
             }}
           />
@@ -1776,6 +1789,35 @@ function GiftCardLine({ c }: { c: NonNullable<ReturnType<typeof parseGiftCard>> 
   );
 }
 
+/** A chat message with any "@Name" (or "@ALL") mentions picked out and highlighted. */
+function MentionText({ text, members, tone }: { text: string; members: ParivarMemberInfo[]; tone: "light" | "dark" }) {
+  const names = useMemo(
+    () =>
+      ["ALL", ...members.map((m) => m.name)]
+        .filter(Boolean)
+        .sort((a, b) => b.length - a.length)
+        .map((nm) => nm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+    [members],
+  );
+  if (!names.length || !text.includes("@")) return <>{text}</>;
+  const re = new RegExp(`@(${names.join("|")})(?=\\s|$)`, "g");
+  const parts: ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  let found: RegExpExecArray | null;
+  while ((found = re.exec(text))) {
+    if (found.index > last) parts.push(text.slice(last, found.index));
+    parts.push(
+      <span key={key++} className={`font-bold ${tone === "light" ? "text-[#1d4ed8]" : "text-sky-300"}`}>
+        @{found[1]}
+      </span>,
+    );
+    last = found.index + found[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return <>{parts}</>;
+}
+
 /** Pick a member to @ tag in a chat message: search by name, or tag everyone with ALL. */
 function MentionSheet({ open, onClose, members, onPick }: { open: boolean; onClose: () => void; members: ParivarMemberInfo[]; onPick: (name: string) => void }) {
   const [q, setQ] = useState("");
@@ -1939,9 +1981,59 @@ export function WorldNews() {
   );
 }
 
-/** The News tab: World news (automatic) and the family's own notices. */
+const ACTIVITY_ICON: Record<string, string> = {
+  CREATED: "🏰",
+  JOINED: "👋",
+  REMOVED: "🚪",
+  ROLE: "🎖️",
+  EDIT: "✏️",
+  DONATION: "💰",
+  LEVEL: "🆙",
+  RANKPRIZE: "🏆",
+  KAVACH: "🛡️",
+  STEAL: "🕵️",
+  GACHA: "🎰",
+  GACHA_WIN: "🎰",
+  CHEST_WIN: "🗝️",
+};
+
+/** The family's own activity: joins, donations, Gacha wins, chest wins and more — how everyone's been contributing. */
+function FamilyActivity({ p }: { p: ParivarProfile }) {
+  const d = useLoad<ParivarFeedItem[]>(() => parivarExtra.activity(p.id), [p.id]);
+  if (!d.data) return <Loading error={d.error} retry={d.reload} />;
+  if (!d.data.length) return <p className="py-8 text-center text-[12.5px] text-muted">Nothing yet. Joins, donations, Gacha and chest wins show up here.</p>;
+  return (
+    <ul className="space-y-2">
+      {d.data.map((x) => (
+        <li key={x.id} className="flex items-start gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line">
+          <span className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-black/25 text-[17px]">
+            {x.whoAvatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={x.whoAvatar} alt="" className="h-full w-full object-cover" />
+            ) : (
+              ACTIVITY_ICON[x.kind] ?? "📌"
+            )}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] leading-snug text-cream/90">
+              <span className="font-bold text-cream">{x.who ?? "Someone"}</span> {x.text}
+              {x.other ? <span className="font-semibold text-cream"> · {x.other}</span> : null}
+            </span>
+            <span className="mt-0.5 flex items-center gap-2 text-[11px] text-cream/45">
+              {ago(x.at)}
+              {x.exp > 0 ? <span className="font-semibold text-gold">+{x.exp.toLocaleString("en-IN")} activity</span> : null}
+              {x.coins > 0 ? <span className="flex items-center gap-0.5 font-semibold text-gold"><Coin className="h-3 w-3" /> {x.coins.toLocaleString("en-IN")}</span> : null}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The News tab: World news (automatic), the family's own notices, and the family's own activity. */
 export function NewsTab({ p, onChanged }: { p: ParivarProfile; onChanged: () => void }) {
-  const [view, setView] = useState<"world" | "family">("world");
+  const [view, setView] = useState<"world" | "family" | "activity">("world");
   return (
     <div className="space-y-3">
       <div className="flex gap-2" role="tablist" aria-label="News">
@@ -1949,6 +2041,7 @@ export function NewsTab({ p, onChanged }: { p: ParivarProfile; onChanged: () => 
           [
             ["world", "World news"],
             ["family", "Family notices"],
+            ["activity", "Family activity"],
           ] as const
         ).map(([k, label]) => (
           <button key={k} type="button" role="tab" aria-selected={view === k} onClick={() => setView(k)} className={`flex-1 rounded-full py-2 text-[12.5px] font-bold ring-1 ${view === k ? "bg-gold/15 text-gold ring-gold/50" : "text-cream/70 ring-line"}`}>
@@ -1956,7 +2049,7 @@ export function NewsTab({ p, onChanged }: { p: ParivarProfile; onChanged: () => 
           </button>
         ))}
       </div>
-      {view === "world" ? <WorldNews /> : <FamilyNotices p={p} onChanged={onChanged} />}
+      {view === "world" ? <WorldNews /> : view === "family" ? <FamilyNotices p={p} onChanged={onChanged} /> : <FamilyActivity p={p} />}
     </div>
   );
 }
