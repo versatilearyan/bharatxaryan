@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import { Bell, ChevronRight, Crown, Flame, MonitorPlay, Play, Plus, Radio, UsersRound } from "lucide-react";
 import { activeRooms } from "@/lib/app/active-rooms";
 import { useLiveCounts } from "@/lib/app/live-counts";
-import { NewbieRooms } from "@/components/newbie/NewbieUi";
+import { OfficialRooms } from "@/components/rooms/OfficialRoomsUi";
 import { ShortcutIcon } from "@/components/art/ShortcutIcon";
 import { Logo } from "@/components/brand/Logo";
 import { FestivalBanner } from "@/components/festival/FestivalBanner";
@@ -31,7 +31,7 @@ export function HomeScreen() {
       <TopBar />
       <Greeting />
       <HomeFestival />
-      <NewbieRooms />
+      <OfficialRooms />
       <Shortcuts />
       <GameModes />
       <FeaturedVip />
