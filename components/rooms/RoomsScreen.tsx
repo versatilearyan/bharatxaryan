@@ -1,6 +1,7 @@
 "use client";
 
 import { NewbieRooms } from "@/components/newbie/NewbieUi";
+import { OfficialRooms } from "@/components/rooms/OfficialRoomsUi";
 import { isGameTable, useLiveCounts } from "@/lib/app/live-counts";
 import { activeRooms, byOnline } from "@/lib/app/active-rooms";
 import { useEffect, useMemo, useState } from "react";
@@ -47,7 +48,7 @@ export function RoomsScreen() {
   const [resultsShown, setResultsShown] = useState(30);
 
   const browsing = !q.trim() && filter === "All";
-  const recommended = [...rooms].filter((r) => r.live && !r.createdByMe).sort((a, b) => b.members - a.members).slice(0, 5);
+  const recommended = [...rooms].filter((r) => r.live && !r.createdByMe && !r.official).sort((a, b) => b.members - a.members).slice(0, 5);
 
   return (
     <div className="app-scroll aurora h-full pb-[calc(100px+var(--mini,0px)+var(--sb))]">
@@ -89,6 +90,7 @@ export function RoomsScreen() {
       ) : browsing ? (
         <>
           <NewbieRooms className="mt-1" />
+          <OfficialRooms />
           <LiveRooms />
           <section className="mt-3">
             <SectionTitle>Recommended</SectionTitle>
@@ -99,7 +101,7 @@ export function RoomsScreen() {
             </div>
           </section>
           <Section title="Voice rooms" action={() => setFilter("Voice")}>
-            {rooms.filter((r) => r.type === "voice" && !r.vip).slice(0, 4).map((r) => (
+            {rooms.filter((r) => r.type === "voice" && !r.vip && !r.official).slice(0, 4).map((r) => (
               <RoomRow key={r.id} room={r} />
             ))}
           </Section>
@@ -253,7 +255,7 @@ function LiveRooms() {
     }, 30_000);
     return () => window.clearInterval(t);
   }, [refresh]);
-  const real = useMemo(() => rooms.filter((r) => r.server && !r.createdByMe), [rooms]);
+  const real = useMemo(() => rooms.filter((r) => r.server && !r.createdByMe && !r.official), [rooms]);
   const active = useMemo(() => activeRooms(real, counts, { gameTables: true }), [real, counts]);
   const quiet = useMemo(() => real.filter((r) => !active.includes(r) && !(isGameTable(r.name) && counts)).sort((a, b) => b.members - a.members), [real, active, counts]);
   const firstLoad = live.status === "loading" && !live.loadedAt;
