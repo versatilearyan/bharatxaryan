@@ -58,6 +58,7 @@ export function GiftBanner() {
   const [ask, setAsk] = useState(false);
   const askLabel = n ? (room ? `${roomKind(room)} ${room.code}` : (n.roomName ?? "a room")) : "";
   return (
+    <>
     <div className="pointer-events-none absolute inset-x-0 top-[calc(var(--st)+50px)] z-[66] h-[48px] overflow-hidden">
       <AnimatePresence>
         {n && known ? (
@@ -117,24 +118,26 @@ export function GiftBanner() {
           </motion.div>
         ) : null}
       </AnimatePresence>
-      <Modal open={ask} onClose={() => setAsk(false)} title="Join this room?" className="max-w-[300px] text-center">
-        <p className="text-[13px] leading-relaxed text-cream/80">
-          {name(n?.fromId ?? "")} sent a gift in <span className="font-bold text-gold">{askLabel}</span>. Go there now?
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            setAsk(false);
-            void go();
-          }}
-          className="mt-4 h-11 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c]"
-        >
-          Go to room
-        </button>
-        <button type="button" onClick={() => setAsk(false)} className="mt-2 h-10 w-full rounded-full text-[13px] font-semibold text-cream/60">
-          Not now
-        </button>
-      </Modal>
     </div>
+    {/* Outside the banner's clipped 48px strip: a Modal needs the full screen to center itself in */}
+    <Modal open={ask} onClose={() => setAsk(false)} title="Join this room?" className="max-w-[300px] text-center">
+      <p className="text-[13px] leading-relaxed text-cream/80">
+        {name(n?.fromId ?? "")} sent a gift in <span className="font-bold text-gold">{askLabel}</span>. Go there now?
+      </p>
+      <button
+        type="button"
+        onClick={() => {
+          setAsk(false);
+          void go();
+        }}
+        className="mt-4 h-11 w-full rounded-full bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#c9954a] font-display text-[14px] font-extrabold text-[#2a1a0c]"
+      >
+        Go to room
+      </button>
+      <button type="button" onClick={() => setAsk(false)} className="mt-2 h-10 w-full rounded-full text-[13px] font-semibold text-cream/60">
+        Not now
+      </button>
+    </Modal>
+    </>
   );
 }
