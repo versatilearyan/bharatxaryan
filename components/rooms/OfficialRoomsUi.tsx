@@ -53,7 +53,8 @@ function OfficialCard({ room }: { room: Room }) {
 export function OfficialRooms({ className = "mt-5" }: { className?: string }) {
   const { rooms } = useApp();
   const live = useLiveCounts();
-  const official = [...rooms.filter((r) => r.official)].sort(byOnline(live));
+  // Newbie Welcome rooms get their own section above this one, even the ones that also carry the official flag
+  const official = [...rooms.filter((r) => r.official && !r.newbie)].sort(byOnline(live));
   if (!official.length) return null;
   return (
     <section className={className} aria-labelledby="official-rooms-h">
