@@ -23,17 +23,17 @@ function OfficialCard({ room }: { room: Room }) {
       whileTap={{ scale: 0.97 }}
       onClick={() => openRoom(room.id)}
       aria-label={`${room.name}, an official Panchayat room`}
-      className="relative flex w-[168px] shrink-0 items-center gap-2 overflow-hidden rounded-2xl bg-[#121a2c] p-2 text-left ring-1 ring-[#3b82f6]/25"
+      className="relative flex w-[200px] shrink-0 items-center gap-2.5 overflow-hidden rounded-2xl bg-[#121a2c] p-2.5 text-left ring-1 ring-[#3b82f6]/25"
     >
-      <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl ring-1 ring-white/10">
+      <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1 ring-white/10">
         <RoomCover room={room} />
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1">
-          <ShieldCheck className="h-3 w-3 shrink-0 text-[#6ea2ff]" aria-hidden />
-          <span className="truncate font-display text-[12.5px] font-bold text-cream">{room.name}</span>
+          <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-[#6ea2ff]" aria-hidden />
+          <span className="truncate font-display text-[13.5px] font-bold text-cream">{room.name}</span>
         </span>
-        <span className="mt-0.5 flex items-center gap-1 text-[10px] text-cream/50">
+        <span className="mt-0.5 flex items-center gap-1 text-[11px] text-cream/50">
           <span className="relative flex h-1.5 w-1.5 shrink-0" aria-hidden>
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#3ddc84]/60" />
             <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#3ddc84]" />

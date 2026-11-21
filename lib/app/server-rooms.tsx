@@ -132,7 +132,7 @@ export function toAppRoom(v: VoiceRoom, myId: string | undefined, prefs: ServerR
     members: v.memberCount ?? 0,
     fans: v.fanCount,
     // Fixed by the room's mode: 12 in a YouTube room, 10 otherwise (the server decides the same way)
-    seats: (v.roomType === "WATCH" ? 12 : 10) + (v.newbie && v.extraSeats ? 6 : 0),
+    seats: (v.roomType === "WATCH" ? 12 : 10) + ((v.newbie || v.official) && v.extraSeats ? 6 : 0),
     vip: false,
     live: true,
     isPrivate: v.isPrivate,
