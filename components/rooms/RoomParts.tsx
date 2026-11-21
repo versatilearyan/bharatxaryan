@@ -1307,8 +1307,9 @@ export function EmojiButton({ onClick }: { onClick: () => void }) {
 export function MicOrderBar({ s }: { s: RoomSession }) {
   const mine = s.micRequests.some((r) => r.id === ME_ID);
   const myPlace = s.micRequests.findIndex((r) => r.id === ME_ID) + 1;
-  if (!s.micOrder && !mine) return null;
   const count = s.micRequests.length;
+  // Nothing to show with an empty queue, even while mic order is on, unless it's you waiting
+  if (count === 0 && !mine) return null;
   return (
     <div className="mt-2 flex justify-center">
       <button
