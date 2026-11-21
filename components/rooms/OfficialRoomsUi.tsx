@@ -23,9 +23,9 @@ function OfficialCard({ room }: { room: Room }) {
       whileTap={{ scale: 0.97 }}
       onClick={() => openRoom(room.id)}
       aria-label={`${room.name}, an official Panchayat room`}
-      className="relative flex w-[200px] shrink-0 items-center gap-2.5 overflow-hidden rounded-2xl bg-[#121a2c] p-2.5 text-left ring-1 ring-[#3b82f6]/25"
+      className="relative flex w-[184px] shrink-0 items-center gap-2 overflow-hidden rounded-2xl bg-[#121a2c] p-2.5 text-left ring-1 ring-[#3b82f6]/25"
     >
-      <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl ring-1 ring-white/10">
+      <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-xl ring-1 ring-white/10">
         <RoomCover room={room} />
       </span>
       <span className="min-w-0 flex-1">
