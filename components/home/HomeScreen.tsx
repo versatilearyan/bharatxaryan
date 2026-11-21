@@ -9,6 +9,7 @@ import { Bell, ChevronRight, Crown, Flame, MonitorPlay, Play, Plus, Radio, Users
 import { activeRooms } from "@/lib/app/active-rooms";
 import { useLiveCounts } from "@/lib/app/live-counts";
 import { OfficialRooms } from "@/components/rooms/OfficialRoomsUi";
+import { NewbieRooms } from "@/components/newbie/NewbieUi";
 import { ShortcutIcon } from "@/components/art/ShortcutIcon";
 import { Logo } from "@/components/brand/Logo";
 import { FestivalBanner } from "@/components/festival/FestivalBanner";
@@ -31,6 +32,7 @@ export function HomeScreen() {
       <TopBar />
       <Greeting />
       <HomeFestival />
+      <NewbieRooms />
       <OfficialRooms />
       <Shortcuts />
       <GameModes />
