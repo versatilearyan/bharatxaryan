@@ -74,7 +74,6 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
           <>
             {/* Slightly smaller seats leave more room for the chat */}
             {arena ? <PkArena s={s} gold={vip} scale={seatScale} /> : s.room.newbie ? <NewbieSeatLayout s={s} scale={seatScale} /> : <SeatLayout s={s} gold={vip} scale={seatScale} />}
-            <MicOrderBar s={s} />
           </>
         ) : (
           <ClosedRoomCard s={s} />
@@ -85,6 +84,8 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
           <p className="mt-1 text-center text-[9.5px] text-cream/40">Voice isn&apos;t connected in this web preview.</p>
         )}
       </div>
+      {/* Outside the measured seat area: turning mic order on/off must never resize (and so rescale) the seats */}
+      {s.roomOpen ? <MicOrderBar s={s} /> : null}
 
       {/* The chat takes the rest of the room (never less than its share: the seats shrink instead) and scrolls inside */}
       <div ref={chatRef} className="relative z-10 mt-1 flex min-h-[72px] flex-1 basis-0 flex-col">
