@@ -369,11 +369,24 @@ function Game({ roomId }: { roomId: string }) {
     };
   }, [mapId, map?.id, roomId]);
 
-  // Text only: the room's mic is turned off while you are in the game
+  // Text only, except during your own turn in the baithak's Talk stage: your mic opens for everyone to
+  // hear for your 30 seconds, then it closes again automatically when the floor moves to the next player.
+  const myTurnToSpeak = Boolean(
+    state?.phase === "MEETING" && state.meeting?.stage === "TALK" && !state.meeting?.result && state.meeting?.speaker === myId && (me ? me.alive : true),
+  );
   useEffect(() => {
-    if (voice?.seated && !voice.muted) voice.toggleMute();
+    if (!voice) return;
+    if (myTurnToSpeak) {
+      if (!voice.seated) {
+        voice.sitToTalk();
+        return;
+      }
+      if (voice.muted) voice.toggleMute();
+    } else if (voice.seated && !voice.muted) {
+      voice.toggleMute();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [voice?.seated, voice?.muted]);
+  }, [voice?.seated, voice?.muted, myTurnToSpeak]);
 
   const inGame = state?.phase === "PLAY" || state?.phase === "MEETING" || state?.phase === "ENDED";
   const mapReady = !!map && map.id === mapId;
@@ -972,14 +985,14 @@ function Meeting({ state, me, players, myId, serverNow, busy, chat, onVote, onSa
     onSay(t);
     setDraft("");
   };
-  const turnPct = Math.min(1, turnLeft / 25);
+  const turnPct = Math.min(1, turnLeft / 30);
   const order = (m?.turns ?? []).map((id) => byId.get(id)).filter((p): p is GaddarPlayer => !!p);
   return (
     <div className="absolute inset-0 z-30 flex flex-col bg-[radial-gradient(120%_80%_at_50%_0%,#5a3414_0%,#2a1a0c_55%,#120c08_100%)]">
       <div className="flex items-center gap-2 px-4 pb-1.5 pt-2.5">
         <div className="min-w-0 flex-1">
           <h2 className="truncate font-display text-[18px] font-extrabold text-gold">🛕 Sarpanch ki baithak</h2>
-          <p className="truncate text-[11.5px] text-cream/75">{m?.why === "emergency" ? `${m.byName} ne baithak bulayi` : `${m?.byName ?? "Kisi"} ko laash mili`}. {result ? "Faisla ho gaya." : talk ? "Har ek ko 25 second milenge bolne ke liye." : "Ab vote do!"}</p>
+          <p className="truncate text-[11.5px] text-cream/75">{m?.why === "emergency" ? `${m.byName} ne baithak bulayi` : `${m?.byName ?? "Kisi"} ko laash mili`}. {result ? "Faisla ho gaya." : talk ? "Har ek ko 30 second milenge bolne ke liye, mic ke saath." : "Ab vote do!"}</p>
         </div>
         <span className={`rounded-full px-3 py-1 font-display text-[15px] font-extrabold ${!talk && !result && left <= 5 ? "animate-pulse bg-[#e2404a] text-white" : "bg-black/40 text-cream"}`}>{left}s</span>
       </div>
@@ -1012,8 +1025,8 @@ function Meeting({ state, me, players, myId, serverNow, busy, chat, onVote, onSa
                 <Face p={speaker} size={32} />
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-extrabold text-cream">{mySpeak ? "Tumhari baari! Bolo" : `${speaker.name} bol raha hai`}</span>
-                <span className={`block text-[11px] font-bold ${turnLeft <= 5 ? "text-[#ff8a80]" : "text-gold"}`}>{turnLeft}s baaki{mySpeak ? "" : " · suno"}</span>
+                <span className="block truncate text-[13px] font-extrabold text-cream">{mySpeak ? "🎙️ Khud ko prove karo!" : `${speaker.name} bol raha hai`}</span>
+                <span className={`block text-[11px] font-bold ${turnLeft <= 5 ? "text-[#ff8a80]" : "text-gold"}`}>{mySpeak ? `Tumhare paas ${turnLeft} second hain, mic sabko sunai de raha hai` : `${turnLeft}s baaki · suno`}</span>
               </span>
               {mySpeak ? (
                 <button type="button" onClick={onPass} className="shrink-0 rounded-full bg-white/12 px-2.5 py-1 text-[11px] font-bold text-cream active:scale-95">

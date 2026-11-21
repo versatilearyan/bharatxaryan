@@ -162,7 +162,9 @@ export function NewbieSeatLayout({ s, scale = 1 }: { s: RoomSession; scale?: num
 
       <AnimatePresence initial={false}>
         {seatsOn && extra.length ? (
-          <motion.div key="extra" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+          // Opacity only, no height animation: animating height here fights the room's own seat-area
+          // resize observer (it fires on every intermediate frame), which was flickering the whole layout.
+          <motion.div key="extra" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
             <div className="mx-1 mt-3.5 rounded-3xl bg-gradient-to-b from-gold/[0.12] to-gold/[0.03] px-2 py-3 ring-1 ring-gold/30">
               <p className="text-center text-[10.5px] font-extrabold tracking-[0.22em] text-gold">✨ EXTRA WELCOME SEATS</p>
               <div className="mt-2.5 flex flex-wrap justify-center gap-x-2 gap-y-2.5">
