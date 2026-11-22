@@ -9,6 +9,7 @@ import "@fontsource/righteous/400.css";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { VersionGuard } from "@/components/system/VersionGuard";
+import { MaintenanceGuard } from "@/components/system/MaintenanceGuard";
 import { SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         <Providers>{children}</Providers>
         <VersionGuard />
+        <MaintenanceGuard />
       </body>
     </html>
   );
