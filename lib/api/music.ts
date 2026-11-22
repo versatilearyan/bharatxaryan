@@ -66,4 +66,15 @@ export const musicApi = {
     const d = obj(await api<unknown>("/api/v1/music/sources", opts));
     return { audius: d?.audius !== false, jamendo: d?.jamendo === true };
   },
+  /** What's playing in a room right now, for someone who just joined (the live topic only reaches people already connected). */
+  nowPlaying: async (roomId: string): Promise<RoomNowPlaying | null> => {
+    const d = obj(await api<unknown>(`/api/voice-rooms/${encodeURIComponent(roomId)}/music/now-playing`, opts));
+    return d && typeof d.title === "string" && d.title ? { title: d.title, artist: text(d.artist), playing: d.playing === true } : null;
+  },
 };
+
+/** Broadcast to the room so everyone's icon shows the song, not just whoever is playing it (the audio
+ *  itself already reaches everyone through the room's call). Ephemeral — never stored past the room. */
+export type RoomNowPlaying = { title: string; artist: string; playing: boolean };
+export const roomMusicTopic = (roomId: string) => `/topic/voice-rooms/${encodeURIComponent(roomId)}/music`;
+export const roomMusicSend = (roomId: string) => `/app/voice-rooms/${encodeURIComponent(roomId)}/music`;

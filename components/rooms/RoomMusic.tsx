@@ -14,17 +14,21 @@ import { lazySheet } from "@/components/ui/lazySheet";
 
 /** The spinning-disc pill beside the top seats: what's playing in the room. Tap for the songs. */
 export function MusicPill({ className = "", onOpen, onlyMe = false, requestCount = 0 }: { className?: string; onOpen: () => void; onlyMe?: boolean; requestCount?: number }) {
-  const { current, playing, queue } = useMusic();
+  const { current, playing, queue, roomNowPlaying } = useMusic();
+  // Mine first (I have something queued); else whatever was last broadcast for the room, so everyone
+  // sees the song playing, not just whoever added it.
+  const title = current?.title ?? roomNowPlaying?.title;
+  const isPlaying = current ? playing : Boolean(roomNowPlaying?.playing);
   return (
     <>
-      <button type="button" onClick={onOpen} aria-label={current ? `Now playing ${current.title}. Open songs` : "Songs. Open songs"} className={`relative flex h-9 max-w-[96px] items-center gap-1.5 rounded-full bg-black/45 py-1 pl-1 pr-2.5 ring-1 ring-white/15 backdrop-blur ${className}`}>
-        <motion.span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#3a2d6b] to-[#111] ring-1 ring-white/20" animate={playing ? { rotate: 360 } : { rotate: 0 }} transition={playing ? { duration: 4, repeat: Infinity, ease: "linear" } : { duration: 0.3 }}>
+      <button type="button" onClick={onOpen} aria-label={title ? `Now playing ${title}. Open songs` : "Songs. Open songs"} className={`relative flex h-9 max-w-[96px] items-center gap-1.5 rounded-full bg-black/45 py-1 pl-1 pr-2.5 ring-1 ring-white/15 backdrop-blur ${className}`}>
+        <motion.span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#3a2d6b] to-[#111] ring-1 ring-white/20" animate={isPlaying ? { rotate: 360 } : { rotate: 0 }} transition={isPlaying ? { duration: 4, repeat: Infinity, ease: "linear" } : { duration: 0.3 }}>
           <Disc3 className="h-4 w-4 text-cream/85" aria-hidden />
         </motion.span>
         <span className="min-w-0 overflow-hidden whitespace-nowrap text-[11px] font-bold text-cream">
-          {current ? (
+          {title ? (
             <motion.span className="inline-block" animate={{ x: ["0%", "-60%"] }} transition={{ duration: 6, repeat: Infinity, repeatType: "reverse", ease: "linear", delay: 1 }}>
-              {current.title}
+              {title}
             </motion.span>
           ) : queue.length ? (
             "Paused"

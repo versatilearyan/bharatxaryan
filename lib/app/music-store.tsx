@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { musicApi } from "@/lib/api/music";
+import { musicApi, roomMusicSend, roomMusicTopic, type RoomNowPlaying } from "@/lib/api/music";
+import { publish, subscribe } from "@/lib/realtime/stomp";
 import { LIBRARY, MAX_SONG_MB, isExternalSong, type Song } from "./music";
 import { useApp } from "./store";
 
@@ -256,10 +257,41 @@ function useMusicState() {
     audio.current?.pause();
   }, [activeRoomId]);
 
+  /* ---- Letting everyone else in the room see what's playing (the audio itself already reaches them
+   * through the room's call) ---- */
+  const [roomNowPlaying, setRoomNowPlaying] = useState<RoomNowPlaying | null>(null);
+  useEffect(() => {
+    setRoomNowPlaying(null);
+    if (!activeRoomId) return;
+    let live = true;
+    musicApi.nowPlaying(activeRoomId).then((np) => live && setRoomNowPlaying(np)).catch(() => undefined);
+    return subscribe(roomMusicTopic(activeRoomId), (body) => {
+      if (live) setRoomNowPlaying(body as RoomNowPlaying | null);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRoomId]);
+  // Only ever broadcast when I actually have something queued, or when I just did (so I can clear it
+  // for everyone when my own queue ends) — never on mount just because I haven't queued anything, or
+  // whatever someone else is playing in this room would wrongly look cleared for everyone.
+  const hadCurrent = useRef(false);
+  useEffect(() => {
+    if (!activeRoomId) return;
+    if (current) {
+      hadCurrent.current = true;
+      publish(roomMusicSend(activeRoomId), { title: current.title, artist: current.artist, playing });
+    } else if (hadCurrent.current) {
+      hadCurrent.current = false;
+      publish(roomMusicSend(activeRoomId), null);
+    }
+  }, [activeRoomId, current?.title, current?.artist, playing]);
+
   return {
     library, songById, mine, loaded, refreshSongs, upload, removeSong, favourites, toggleFavourite,
     queue, index, current, playing, repeat, setRepeat, pos, volume, setVolume, order, removeFromQueue, playAt, toggle, next, seek,
     musicOff, setMusicOff, onlyHere,
+    /** What's playing in the room right now, for display only (MusicPill): mine if I have something
+     *  queued, else whatever the last broadcast said (maybe nobody, maybe someone else). */
+    roomNowPlaying,
     /** The element the current song plays in (streamed into a live room's call by whoever plays it). */
     audioElement,
   };
