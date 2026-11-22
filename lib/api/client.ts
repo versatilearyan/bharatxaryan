@@ -97,7 +97,7 @@ async function callRefresh(stale: Stored): Promise<Stored | null> {
     res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, { method: "POST", headers, body: JSON.stringify({ refreshToken: now.refreshToken }) });
   } catch {
     // Offline or server down: not a sign-out, the session may still be good
-    throw new ApiError("Can't reach the server. Check your connection and try again.", 0, "network");
+    throw new ApiError("We're doing a quick update behind the scenes — sorry for the interruption! Please try again in a minute or two. Thanks for your patience.", 0, "network");
   }
   if (res.status === 401 || res.status === 400) {
     // The session ended (expired, signed out elsewhere, or already used)
@@ -208,7 +208,7 @@ async function request<T>(path: string, { method = "GET", body, auth = false, ti
     if (ctrl.signal.aborted) throw new ApiError("The server is taking too long to answer. Try again.", 0, "timeout");
     // fetch rejects without detail for offline, DNS, a stopped ngrok tunnel and CORS blocks alike
     void e;
-    throw new ApiError("Can't reach the server. Check your connection and try again.", 0, "network");
+    throw new ApiError("We're doing a quick update behind the scenes — sorry for the interruption! Please try again in a minute or two. Thanks for your patience.", 0, "network");
   } finally {
     clearTimeout(timer);
   }
@@ -272,7 +272,7 @@ function readError(data: unknown): { message: string; fields: Record<string, str
 /** Show the backend's own message for client errors, but never anything that looks internal. */
 function friendly(status: number, message: string) {
   const internal = !message || message.length > 160 || /exception|stack|sql|jdbc|hibernate|smtp|at [\w.$]+\(|org\.|java\./i.test(message);
-  if (status >= 500) return "Something went wrong on our side. Try again in a moment.";
+  if (status >= 500) return "We're doing a quick update behind the scenes — sorry for the interruption! Please try again in a minute or two. Thanks for your patience.";
   if (status === 413) return "That file is too large for the server. Choose a smaller file.";
   if (status === 415) return "The server doesn't accept that file type. Use a JPG, PNG or WebP image.";
   if (status === 429) return internal ? "Too many attempts. Wait a little and try again." : message;
