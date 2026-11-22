@@ -73,7 +73,10 @@ function stop() {
 
 function scheduleRetry() {
   if (retryTimer || subs.size === 0) return;
-  const delay = Math.min(30_000, 1000 * 2 ** attempts) + Math.floor(Math.random() * 400);
+  // Wide jitter on top of the backoff: after a server restart every open tab drops at once, and a
+  // narrow window just moves the reconnect stampede a second later. Spreading it over several
+  // seconds lets the backend pick up the reconnecting load gradually instead of all at once.
+  const delay = Math.min(30_000, 1000 * 2 ** attempts) + Math.floor(Math.random() * 5000);
   attempts += 1;
   setStatus("reconnecting");
   retryTimer = setTimeout(() => {
