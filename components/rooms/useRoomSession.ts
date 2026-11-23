@@ -352,17 +352,22 @@ export function useRoomSession(room: Room) {
   const role: RoomRole = srv
     ? srv.ownerId === ME_ID || room.hostId === ME_ID
       ? "owner"
-      : srv.admins.includes(ME_ID)
-        ? "admin"
-        : baseRole === "guest"
-          ? "guest"
-          : "member"
+      : srv.coOwners.includes(ME_ID)
+        ? "co-owner"
+        : srv.admins.includes(ME_ID)
+          ? "admin"
+          : baseRole === "guest"
+            ? "guest"
+            : "member"
     : baseRole;
   const isOwner = role === "owner";
-  const canModerate = role === "owner" || role === "admin";
+  /** The owner or a co-owner: same authority as the owner everywhere except the fixed owner seat. */
+  const hasOwnerPower = role === "owner" || role === "co-owner";
+  const canModerate = hasOwnerPower || role === "admin";
   /** "Owner" or "Admin", for system messages about your actions. */
-  const actor = isOwner ? "Owner" : "Admin";
+  const actor = hasOwnerPower ? "Owner" : "Admin";
   const admins = srv ? srv.admins : adminsOf(room);
+  const coOwners = srv ? srv.coOwners : [];
 
   const seatedIds = useMemo(() => seats.filter((s): s is string => Boolean(s)), [seats]);
   const mySeat = seats.indexOf(ME_ID);
@@ -393,10 +398,10 @@ export function useRoomSession(room: Room) {
   const canManage = useCallback(
     (id: string) => {
       if (id === ME_ID || !canModerate) return false;
-      if (isOwner) return true;
-      return id !== room.hostId && !admins.includes(id);
+      if (hasOwnerPower) return true;
+      return id !== room.hostId && !admins.includes(id) && !coOwners.includes(id);
     },
-    [canModerate, isOwner, room.hostId, admins],
+    [canModerate, hasOwnerPower, room.hostId, admins, coOwners],
   );
 
   // Rotate who is speaking among seated people
@@ -953,7 +958,7 @@ export function useRoomSession(room: Room) {
 
   const setAdmin = useCallback(
     (id: string, on: boolean) => {
-      if (!isOwner || id === ME_ID) return;
+      if (!hasOwnerPower || id === ME_ID) return;
       if (live) {
         const uid = rs.userIdOf(id);
         if (uid) void rs.run((rid) => roomStateApi.setAdmin(rid, uid, on));
@@ -967,9 +972,19 @@ export function useRoomSession(room: Room) {
         }
       }
       setRoomAdmin(room, id, on);
-      addSystem(on ? `Owner made ${person(id).name} an admin` : `Owner removed ${person(id).name} as admin`);
+      addSystem(on ? `${actor} made ${person(id).name} an admin` : `${actor} removed ${person(id).name} as admin`);
     },
-    [isOwner, setRoomAdmin, room, addSystem, person, membershipOf, toast, live, rs],
+    [hasOwnerPower, setRoomAdmin, room, addSystem, person, membershipOf, toast, live, rs, actor],
+  );
+
+  /** Only the real owner — once the room is level 5 or higher — can give or remove a co-owner. */
+  const setCoOwner = useCallback(
+    (id: string, on: boolean) => {
+      if (!isOwner || id === ME_ID || !live) return;
+      const uid = rs.userIdOf(id);
+      if (uid) void rs.run((rid) => roomStateApi.setCoOwner(rid, uid, on));
+    },
+    [isOwner, live, rs],
   );
 
   const setMode = useCallback(
@@ -1370,10 +1385,13 @@ export function useRoomSession(room: Room) {
     room,
     role,
     isOwner,
+    hasOwnerPower,
     canModerate,
     actor,
     canManage,
     admins,
+    coOwners,
+    setCoOwner,
     mode,
     setMode,
     seats,

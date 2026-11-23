@@ -21,7 +21,7 @@ import type { RoomSession } from "./useRoomSession";
  * The files are drawn by the existing VIP components, which need to know how
  * each file is laid out (where the avatar sits in a frame, the text box in a
  * bubble). Those measurements come from the bundled set for the person's VIP
- * level (VIP 8 and up use the VIP 7 ones). Only the links come from the server.
+ * level. Only the links come from the server.
  */
 export type ServerVip = NonNullable<RoomMember["vip"]>;
 

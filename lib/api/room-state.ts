@@ -38,6 +38,8 @@ export type RoomEventType =
   | "REMOVED_FROM_MIC"
   | "ADMIN_ADDED"
   | "ADMIN_REMOVED"
+  | "CO_OWNER_ADDED"
+  | "CO_OWNER_REMOVED"
   | "KICKED"
   | "BANNED"
   | "UNBANNED";
@@ -50,6 +52,8 @@ export type RoomState = {
   version: number;
   ownerId: string;
   admins: string[];
+  /** Same authority as the owner everywhere except the fixed owner seat (unlocks at room level 5). */
+  coOwners: string[];
   /** seats[i]: the user id on seat i, or null. Seat 0 is the owner's. */
   seats: (string | null)[];
   closedSeats: number[];
@@ -90,6 +94,7 @@ export function readRoomState(raw: unknown): RoomState | RoomClosedNotice | null
     version: d.version,
     ownerId: id(d.ownerId) ?? "",
     admins: Array.isArray(d.admins) ? d.admins.map(id).filter((x): x is string => Boolean(x)) : [],
+    coOwners: Array.isArray(d.coOwners) ? d.coOwners.map(id).filter((x): x is string => Boolean(x)) : [],
     seats: d.seats.map((s) => id(s) ?? null),
     closedSeats: ints(d.closedSeats),
     mutedSeats: ints(d.mutedSeats),
@@ -162,6 +167,7 @@ export const roomStateApi = {
   cancelSeatInvite: (roomId: string, userId: string) => call(roomId, "/seats/invite/cancel", "POST", { userId: n(userId) }),
   removeFromMic: (roomId: string, userId: string) => call(roomId, "/seats/remove", "POST", { userId: n(userId) }),
   setAdmin: (roomId: string, userId: string, on: boolean) => call(roomId, `/admins/${encodeURIComponent(userId)}`, "PUT", { on }),
+  setCoOwner: (roomId: string, userId: string, on: boolean) => call(roomId, `/co-owners/${encodeURIComponent(userId)}`, "PUT", { on }),
   kick: (roomId: string, userId: string) => call(roomId, "/kick", "POST", { userId: n(userId) }),
   ban: (roomId: string, userId: string) => call(roomId, "/bans", "POST", { userId: n(userId) }),
   unban: (roomId: string, userId: string) => call(roomId, `/bans/${encodeURIComponent(userId)}`, "DELETE"),

@@ -11,7 +11,7 @@ import { CpBannerPill } from "@/components/market/CpParts";
 import { CardCpPill, useRoomSocial } from "./RoomSocial";
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Ban, Check, ChevronRight, Copy, Eye, Gift, Heart, Lock, LockOpen, MessageCircle, Mic, MicOff, Pencil, Shield, ShieldOff, User, UserMinus, UserPlus, UserX, X } from "lucide-react";
+import { Ban, Check, ChevronRight, Copy, Crown, Eye, Gift, Heart, Lock, LockOpen, MessageCircle, Mic, MicOff, Pencil, Shield, ShieldOff, User, UserMinus, UserPlus, UserX, X } from "lucide-react";
 import { SunsetScene } from "@/components/art/SunsetScene";
 import { GiftPanel } from "@/components/gifts/LazyGiftPanel";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -19,7 +19,7 @@ import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { CharmBadge } from "@/components/ui/CharmBadge";
 import { Button, formatCount } from "@/components/ui/kit";
 import { usePeople } from "@/lib/app/people";
-import { vipName } from "@/lib/app/levels";
+import { ROOM_LEVEL_TABLE, roomExpLevel, vipName } from "@/lib/app/levels";
 import { ME_ID, useApp } from "@/lib/app/store";
 import { ParivarNameChip } from "@/components/parivar/ParivarScreens";
 import { MicQueueSheet, RoleBadge } from "./RoomParts";
@@ -75,10 +75,11 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
   }, [id, s]);
 
   if (!p || !id) return <AnimatePresence />;
-  const role = id === s.room.hostId ? "owner" : s.admins.includes(id) ? "admin" : null;
+  const role = id === s.room.hostId ? "owner" : s.coOwners.includes(id) ? "co-owner" : s.admins.includes(id) ? "admin" : null;
   const onMic = s.seatedIds.includes(id);
   const following = profile.following.includes(id);
   const manage = s.canManage(id);
+  const coOwnerCap = ROOM_LEVEL_TABLE[roomExpLevel(s.room.exp ?? 0).level - 1]?.coOwners ?? 0;
   const membership = membershipOf(s.room, id);
   const eligible = membership.joined && membership.followed;
   const me = id === ME_ID;
@@ -261,7 +262,7 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
               <div className="mt-4 border-t border-black/[0.06] pt-3">
                 <p className="mb-1 text-[10.5px] font-bold uppercase tracking-[0.14em] text-[#8d8796]">{s.isOwner ? "Owner tools" : "Admin tools"}</p>
                 <div className="grid grid-cols-4">
-                  {onMic ? (
+                  {role === "co-owner" ? null : onMic ? (
                     <>
                       <Action icon={s.adminMuted.includes(id) ? <Mic className="h-4.5 w-4.5" /> : <MicOff className="h-4.5 w-4.5" />} label={s.adminMuted.includes(id) ? "Unmute" : "Mute"} onClick={() => s.toggleForceMute(id)} />
                       {id !== s.room.hostId ? <Action icon={<UserMinus className="h-4.5 w-4.5" />} label="Lift up" onClick={() => s.removeFromMic(id)} /> : null}
@@ -269,15 +270,26 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
                   ) : (
                     <Action icon={<Mic className="h-4.5 w-4.5" />} label="Invite to mic" onClick={() => s.inviteToSeat(id)} />
                   )}
-                  {s.isOwner ? (
+                  {s.hasOwnerPower && role !== "co-owner" ? (
                     <Action
                       icon={role === "admin" ? <ShieldOff className="h-4.5 w-4.5" /> : <Shield className="h-4.5 w-4.5" />}
                       label={role === "admin" ? "Remove admin" : "Make admin"}
                       onClick={() => s.setAdmin(id, role !== "admin")}
                     />
                   ) : null}
-                  <Action icon={<UserX className="h-4.5 w-4.5" />} label="Kick out" danger onClick={() => s.kick(id)} />
-                  {s.room.server ? <Action icon={<Ban className="h-4.5 w-4.5" />} label="Ban" danger onClick={() => s.ban(id)} /> : null}
+                  {s.isOwner && (coOwnerCap > 0 || role === "co-owner") ? (
+                    <Action
+                      icon={role === "co-owner" ? <ShieldOff className="h-4.5 w-4.5" /> : <Crown className="h-4.5 w-4.5" />}
+                      label={role === "co-owner" ? "Remove co-owner" : "Make co-owner"}
+                      onClick={() => s.setCoOwner(id, role !== "co-owner")}
+                    />
+                  ) : null}
+                  {role === "co-owner" ? null : (
+                    <>
+                      <Action icon={<UserX className="h-4.5 w-4.5" />} label="Kick out" danger onClick={() => s.kick(id)} />
+                      {s.room.server ? <Action icon={<Ban className="h-4.5 w-4.5" />} label="Ban" danger onClick={() => s.ban(id)} /> : null}
+                    </>
+                  )}
                 </div>
               </div>
             ) : null}

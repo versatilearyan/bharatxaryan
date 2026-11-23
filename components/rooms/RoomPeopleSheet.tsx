@@ -124,7 +124,7 @@ function OnlineList({ s, ids }: { s: RoomSession; ids: string[] }) {
             // Backend rooms: the badge from this person's own record (none when they have none)
             badge={serverFx(id) ? (serverFx(id)?.badge ? <VipBadge set={serverFx(id)!.badge!} level={serverFx(id)!.badge!.level || undefined} size={16} /> : null) : undefined}
             onClick={() => id !== ME_ID && s.openCard(id)}
-            right={id === s.room.hostId ? <Pill tone="vip">Owner</Pill> : s.admins.includes(id) ? <Pill>Admin</Pill> : backendRole ? <Pill>{backendRole}</Pill> : onMic ? <Pill>Mic</Pill> : null}
+            right={id === s.room.hostId ? <Pill tone="vip">Owner</Pill> : s.coOwners.includes(id) ? <Pill tone="vip">Co-owner</Pill> : s.admins.includes(id) ? <Pill>Admin</Pill> : backendRole ? <Pill>{backendRole}</Pill> : onMic ? <Pill>Mic</Pill> : null}
           />
         );
       })}
@@ -136,19 +136,23 @@ function MembersList({ s }: { s: RoomSession }) {
   const person = usePeople();
   const { isJoined, toggleJoinRoom } = useApp();
   const joined = isJoined(s.room.id);
-  const admins = s.admins.filter((id) => id !== s.room.hostId && !s.kicked.includes(id));
-  const members = PEOPLE.filter((p) => p.id !== s.room.hostId && !admins.includes(p.id) && !s.kicked.includes(p.id)).slice(0, 8);
+  const coOwners = s.coOwners.filter((id) => id !== s.room.hostId && !s.kicked.includes(id));
+  const admins = s.admins.filter((id) => id !== s.room.hostId && !coOwners.includes(id) && !s.kicked.includes(id));
+  const members = PEOPLE.filter((p) => p.id !== s.room.hostId && !coOwners.includes(p.id) && !admins.includes(p.id) && !s.kicked.includes(p.id)).slice(0, 8);
   return (
     <div className="pb-4 pt-2">
       {!s.isOwner ? (
         <div className="mx-5 my-2 flex items-center justify-between rounded-2xl bg-cream/[0.05] p-3">
-          <p className="text-[12.5px] text-cream/80">{joined ? `You're a member${s.role === "admin" ? " and an admin" : ""} of this room` : "Join to become a member of this room"}</p>
+          <p className="text-[12.5px] text-cream/80">{joined ? `You're a member${s.role === "admin" ? " and an admin" : s.role === "co-owner" ? " and a co-owner" : ""} of this room` : "Join to become a member of this room"}</p>
           <button type="button" onClick={() => toggleJoinRoom(s.room)} className={`h-8 rounded-full px-3.5 text-[12px] font-bold ${joined ? "bg-cream/10 text-cream" : "bg-coral text-white"}`}>
             {joined ? "Joined" : "Join"}
           </button>
         </div>
       ) : null}
       <Row p={person(s.room.hostId)} sub={`Owner · ID ${person(s.room.hostId).uid}`} right={<Pill tone="vip">Owner</Pill>} onClick={() => s.room.hostId !== ME_ID && s.openCard(s.room.hostId)} />
+      {coOwners.map((id) => (
+        <Row key={id} p={person(id)} sub={`Co-owner · ID ${person(id).uid}`} right={<Pill tone="vip">Co-owner</Pill>} onClick={() => id !== ME_ID && s.openCard(id)} />
+      ))}
       {admins.map((id) => (
         <Row key={id} p={person(id)} sub={`Admin · ID ${person(id).uid}`} right={<Pill>Admin</Pill>} onClick={() => id !== ME_ID && s.openCard(id)} />
       ))}

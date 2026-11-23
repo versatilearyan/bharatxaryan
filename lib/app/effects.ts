@@ -12,7 +12,7 @@
  */
 import type { GiftId, GiftSetId } from "./types";
 
-export type VipSetId = "vip1" | "vip2" | "vip3" | "vip4" | "vip5" | "vip6" | "vip7";
+export type VipSetId = "vip1" | "vip2" | "vip3" | "vip4" | "vip5" | "vip6" | "vip7" | "vip8" | "vip9" | "vip10" | "vip11";
 export type EffectSetId = VipSetId | GiftSetId;
 
 /** What every wearable set has: an animated frame, a chat bubble and an entry banner, and how to fit each. */
@@ -192,6 +192,78 @@ export const VIP_SETS: VipSet[] = [
     // 212×112 bubble: the plate inside the gold border
     bubbleBox: [0.13, 0.22, 0.88, 0.79],
     // Same 440×112 canvas as VIP 5 and 6
+    entryRatio: "440 / 112",
+    entryText: ["13%", "8%"],
+    entryAvatarAt: "11%",
+  },
+  {
+    id: "vip8",
+    level: 8,
+    frame: "/effects/vip8/frame.svga",
+    bubble: "/effects/vip8/bubble.svga",
+    entry: "/effects/vip8/entry.svga",
+    badge: "/effects/vip8/badge.svga",
+    badgeStill: "/effects/vip8/badge.png",
+    badgeBand: [79, 256],
+    tint: "from-[#6a0f5a] to-[#260622]",
+    // No art uploaded yet for this level: same fit as VIP 7 until the real files are set from the admin panel.
+    frameScale: 1.44,
+    frameY: 0.47,
+    bubbleBox: [0.13, 0.22, 0.88, 0.79],
+    entryRatio: "440 / 112",
+    entryText: ["13%", "8%"],
+    entryAvatarAt: "11%",
+  },
+  {
+    id: "vip9",
+    level: 9,
+    frame: "/effects/vip9/frame.svga",
+    bubble: "/effects/vip9/bubble.svga",
+    entry: "/effects/vip9/entry.svga",
+    badge: "/effects/vip9/badge.svga",
+    badgeStill: "/effects/vip9/badge.png",
+    badgeBand: [79, 256],
+    tint: "from-[#8a2a0a] to-[#331004]",
+    // No art uploaded yet for this level: same fit as VIP 7 until the real files are set from the admin panel.
+    frameScale: 1.44,
+    frameY: 0.47,
+    bubbleBox: [0.13, 0.22, 0.88, 0.79],
+    entryRatio: "440 / 112",
+    entryText: ["13%", "8%"],
+    entryAvatarAt: "11%",
+  },
+  {
+    id: "vip10",
+    level: 10,
+    frame: "/effects/vip10/frame.svga",
+    bubble: "/effects/vip10/bubble.svga",
+    entry: "/effects/vip10/entry.svga",
+    badge: "/effects/vip10/badge.svga",
+    badgeStill: "/effects/vip10/badge.png",
+    badgeBand: [79, 256],
+    tint: "from-[#1a1a6a] to-[#07072a]",
+    // No art uploaded yet for this level: same fit as VIP 7 until the real files are set from the admin panel.
+    frameScale: 1.44,
+    frameY: 0.47,
+    bubbleBox: [0.13, 0.22, 0.88, 0.79],
+    entryRatio: "440 / 112",
+    entryText: ["13%", "8%"],
+    entryAvatarAt: "11%",
+  },
+  {
+    id: "vip11",
+    level: 11,
+    frame: "/effects/vip11/frame.svga",
+    bubble: "/effects/vip11/bubble.svga",
+    entry: "/effects/vip11/entry.svga",
+    badge: "/effects/vip11/badge.svga",
+    badgeStill: "/effects/vip11/badge.png",
+    badgeBand: [79, 256],
+    tint: "from-[#8a7a0a] to-[#332c04]",
+    // No art uploaded yet for this level: same fit as VIP 7 until the real files are set from the admin panel.
+    frameScale: 1.44,
+    frameY: 0.47,
+    bubbleBox: [0.13, 0.22, 0.88, 0.79],
     entryRatio: "440 / 112",
     entryText: ["13%", "8%"],
     entryAvatarAt: "11%",

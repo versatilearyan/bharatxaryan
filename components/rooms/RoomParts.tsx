@@ -239,9 +239,11 @@ export function ClosedRoomCard({ s }: { s: RoomSession }) {
 /* ------------------------------------------------------------------ */
 
 /** Small role badge under an avatar. */
-export function RoleBadge({ role, className = "" }: { role: "owner" | "admin"; className?: string }) {
+export function RoleBadge({ role, className = "" }: { role: "owner" | "co-owner" | "admin"; className?: string }) {
   return role === "owner" ? (
     <span className={`rounded-full bg-gold px-1.5 text-[9px] font-extrabold uppercase text-ink ${className}`}>Owner</span>
+  ) : role === "co-owner" ? (
+    <span className={`rounded-full bg-gold/80 px-1.5 text-[9px] font-extrabold uppercase text-ink ${className}`}>Co-owner</span>
   ) : (
     <span className={`rounded-full bg-[#8f7ae0] px-1.5 text-[9px] font-extrabold uppercase text-white ${className}`}>Admin</span>
   );
@@ -251,7 +253,7 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
   const person = usePeople();
   const id = s.seats[index];
   const isOwnerSeat = index === 0;
-  const role = id === s.room.hostId ? "owner" : id && s.admins.includes(id) ? "admin" : null;
+  const role = id === s.room.hostId ? "owner" : id && s.coOwners.includes(id) ? "co-owner" : id && s.admins.includes(id) ? "admin" : null;
   const speaking = id ? s.speakingIds.includes(id) : false;
   const reactions = s.reactions.filter((r) => id && r.personId === id);
   const p = id ? person(id) : null;

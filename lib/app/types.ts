@@ -40,8 +40,9 @@ export type Person = {
  */
 export type RoomType = "voice" | "watch" | "kharidari";
 
-/** What you are in a room. The owner is the main authority; admins are appointed by the owner. */
-export type RoomRole = "owner" | "admin" | "member" | "guest";
+/** What you are in a room. The owner is the main authority; a co-owner (room level 5+) has the same
+ *  authority except the fixed owner seat; admins are appointed by the owner or a co-owner. */
+export type RoomRole = "owner" | "co-owner" | "admin" | "member" | "guest";
 
 export type CoverTheme = "dusk" | "rose" | "gold" | "night" | "monsoon" | "ember";
 export type CoverMotif = "banyan" | "temple" | "huts" | "river" | "kites" | "lanterns";

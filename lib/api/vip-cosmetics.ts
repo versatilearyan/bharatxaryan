@@ -32,7 +32,7 @@ export type VipCosmetic = {
 export type CosmeticFilter = { level?: number; type?: CosmeticType; format?: CosmeticFormat };
 
 const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : typeof v === "number" && Number.isFinite(v) ? String(v) : undefined);
-const isLevel = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 7;
+const isLevel = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 11;
 
 export function toVipCosmetic(raw: unknown): VipCosmetic | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -59,7 +59,7 @@ export function toVipCosmetic(raw: unknown): VipCosmetic | null {
 
 /** The query string for a filter, after checking it. Throws before any request for a bad level. */
 export function cosmeticsQuery({ level, type, format }: CosmeticFilter = {}): string {
-  if (level !== undefined && !isLevel(level)) throw new ApiError("VIP cosmetics exist for VIP 1 to 7 only.", 0, "http");
+  if (level !== undefined && !isLevel(level)) throw new ApiError("VIP cosmetics exist for VIP 1 to 11 only.", 0, "http");
   const q = new URLSearchParams();
   if (level !== undefined) q.set("level", String(level));
   if (type) q.set("type", type);

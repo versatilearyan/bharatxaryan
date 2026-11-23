@@ -5,8 +5,8 @@
  * SVGA through SvgaAnim).
  *
  * The files' layout (where the avatar sits in a frame, the text box in a
- * bubble) comes from the bundled set for the person's VIP level (VIP 8 and up
- * use the VIP 7 ones). Only the links come from the server; nothing is invented.
+ * bubble) comes from the bundled set for the person's VIP level. Only the
+ * links come from the server; nothing is invented.
  */
 import type { VipProfileFields } from "@/lib/api/users";
 import type { RewardEffects } from "@/lib/api/rewards";
@@ -33,7 +33,7 @@ export function assetKind(url: string): "svga" | "image" {
 
 /** The bundled layout (frame window, bubble text box, entry text row) for a VIP level. */
 export const layoutFor = (level: number | null): VipSet => {
-  const l = Math.min(Math.max(level ?? 1, 1), 7);
+  const l = Math.min(Math.max(level ?? 1, 1), 11);
   return VIP_SETS.find((s) => s.level === l) ?? VIP_SETS[0];
 };
 
@@ -92,37 +92,40 @@ export const activeVipLevel = (v: Partial<VipProfileFields> | null | undefined) 
 /**
  * Spend rewards someone wears, as Effects. They replace the VIP piece in the
  * same place (a worn reward frame shows instead of the VIP frame). Admin files
- * have no measured layout, so they use the VIP 1 fit; SvgaAnim plays SVGA, MP4
- * and pictures alike.
+ * carry no layout themselves, so each one uses the fit of the VIP level the
+ * admin picked for it (the item's "Fits like" setting; 1 if never set).
+ * SvgaAnim plays SVGA, MP4 and pictures alike.
  */
 export function rewardFx(r: RewardEffects | undefined): Effects {
   const fx: Effects = {};
   if (!r) return fx;
-  const base = layoutFor(1);
-  const as = (patch: Partial<EffectSet>): EffectSet => ({ ...base, frame: "", bubble: "", entry: "", ...patch });
+  const as = (level: number, patch: Partial<EffectSet>): EffectSet => {
+    const base = layoutFor(level);
+    return { ...base, frame: "", bubble: "", entry: "", ...patch };
+  };
   if (r.FRAME) {
     const nf = r.FRAME.nameFrame;
     // A name frame brings its own fit and a plate for the wearer's name
     fx.frame = nf
-      ? as({ frame: r.FRAME.url, frameScale: nf.scale, frameY: nf.y, plate: { name: nf.name, x: nf.plateX, y: nf.plateY, w: nf.plateW, h: nf.plateH, color: nf.color, stroke: nf.stroke } })
-      : as({ frame: r.FRAME.url });
+      ? as(r.FRAME.layoutLevel, { frame: r.FRAME.url, frameScale: nf.scale, frameY: nf.y, plate: { name: nf.name, x: nf.plateX, y: nf.plateY, w: nf.plateW, h: nf.plateH, color: nf.color, stroke: nf.stroke } })
+      : as(r.FRAME.layoutLevel, { frame: r.FRAME.url });
   }
-  if (r.BUBBLE) fx.bubble = as({ bubble: r.BUBBLE.url });
+  if (r.BUBBLE) fx.bubble = as(r.BUBBLE.layoutLevel, { bubble: r.BUBBLE.url });
   if (r.ENTRY) {
     // The Shop's setting: the picture inside the animation (its avatar slot), over it, or none
     const a = (r.ENTRY.avatar ?? "").trim();
     const up = a.toUpperCase();
-    fx.entry = as({
+    fx.entry = as(r.ENTRY.layoutLevel, {
       entry: r.ENTRY.url,
       ...(up === "NONE" ? { entryNoAvatar: true } : {}),
       ...(up === "SLOT" ? { entrySlot: "" } : up.startsWith("SLOT:") ? { entrySlot: a.slice(5) } : {}),
     });
   }
   // A badge the person chose to wear (SVGA plays, a picture shows still); it takes the place of the VIP badge
-  if (r.BADGE) fx.badge = { ...base, level: 0, badge: assetKind(r.BADGE.url) === "svga" ? r.BADGE.url : "", badgeStill: assetKind(r.BADGE.url) === "svga" ? "" : r.BADGE.url };
+  if (r.BADGE) fx.badge = { ...layoutFor(r.BADGE.layoutLevel), level: 0, badge: assetKind(r.BADGE.url) === "svga" ? r.BADGE.url : "", badgeStill: assetKind(r.BADGE.url) === "svga" ? "" : r.BADGE.url };
   if (r.PROFILE) {
     const page: GiftSet = {
-      ...as({}),
+      ...as(r.PROFILE.layoutLevel, {}),
       id: "storm-guardian" as GiftSetId,
       name: r.PROFILE.name ?? "Profile effect",
       giftId: "storm-guardian" as GiftId,

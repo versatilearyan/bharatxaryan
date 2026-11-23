@@ -23,7 +23,7 @@ import { useEquipped } from "./useEquipped";
 const LABEL: Record<CosmeticType, string> = { FRAME: "Frame", BUBBLE: "Chat bubble", ENTRY: "Entry", BADGE: "Badge" };
 
 export function VipCosmeticsPreview({ level }: { level: number }) {
-  const valid = Number.isInteger(level) && level >= 1 && level <= 7;
+  const valid = Number.isInteger(level) && level >= 1 && level <= 11;
   const list = useCachedLoad<VipCosmetic[]>(valid ? `vip-cosmetics:${level}` : null, () => getCosmeticsByLevel(level));
   const eq = useEquipped(valid);
 
@@ -33,7 +33,7 @@ export function VipCosmeticsPreview({ level }: { level: number }) {
         VIP {level} cosmetics
       </h2>
       {!valid ? (
-        <p className="mt-2 rounded-2xl bg-black/15 p-4 text-[12.5px] text-cream/70 ring-1 ring-gold/15">Cosmetics are set for VIP 1 to 7. VIP {level} uses the VIP 7 set.</p>
+        <p className="mt-2 rounded-2xl bg-black/15 p-4 text-[12.5px] text-cream/70 ring-1 ring-gold/15">Cosmetics are set for VIP 1 to 11.</p>
       ) : list.loading ? (
         <div className="mt-3 grid place-items-center rounded-2xl bg-black/15 py-8 ring-1 ring-gold/15" role="status">
           <Loader2 className="h-5 w-5 animate-spin text-gold" aria-label="Loading cosmetics" />

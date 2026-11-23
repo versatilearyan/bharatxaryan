@@ -21,6 +21,8 @@ import { ME_ID } from "@/lib/app/store";
 export type LiveRoomState = {
   ownerId: string;
   admins: string[];
+  /** Same authority as the owner everywhere except the fixed owner seat (unlocks at room level 5). */
+  coOwners: string[];
   seats: (string | null)[];
   closedSeats: number[];
   mutedSeats: number[];
@@ -144,6 +146,7 @@ export function useRoomState(
     return {
       ownerId: toPerson(raw.ownerId),
       admins: raw.admins.map(toPerson),
+      coOwners: raw.coOwners.map(toPerson),
       seats: raw.seats.map((u) => (u ? toPerson(u) : null)),
       closedSeats: raw.closedSeats,
       mutedSeats: raw.mutedSeats,

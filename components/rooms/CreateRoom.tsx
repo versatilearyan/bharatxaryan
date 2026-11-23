@@ -54,7 +54,7 @@ export function CreateRoom() {
       return;
     }
     if (busy.current) return;
-    const payload = { name, description, roomType: SERVER_TYPE[type], isPrivate, maxParticipants: maxPeople };
+    const payload = { name, description, roomType: SERVER_TYPE[type], isPrivate, maxParticipants: maxPeople, temporary: !permanent };
     const invalid = validateCreateRoom(payload);
     setErrors(invalid);
     if (Object.keys(invalid).length) return;

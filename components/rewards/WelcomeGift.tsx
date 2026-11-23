@@ -97,7 +97,7 @@ export function WelcomeGift() {
             >
               <span className="absolute inset-x-0 top-0 h-[42%] rounded-b-[50%] bg-gradient-to-b from-[#ff5252] to-[#d1001f] shadow-[0_6px_14px_rgba(0,0,0,0.35)]" />
               <span className="absolute left-1/2 top-[34%] grid h-16 w-16 -translate-x-1/2 place-items-center rounded-full bg-gradient-to-b from-[#ffe9a8] to-[#e7a93a] font-display text-[26px] font-extrabold text-[#9a1a00] ring-4 ring-[#b3001b]">
-                {stage === "opened" ? "✓" : "開"}
+                {stage === "opened" ? "✓" : "P"}
               </span>
               <span className="absolute inset-x-0 bottom-6 text-center">
                 <span className="block font-display text-[13px] font-bold text-[#ffe9a8]">Welcome gift</span>

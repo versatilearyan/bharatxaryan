@@ -23,13 +23,6 @@ export type Song = {
 /** Songs from another site: they play with a CORS request so they can go into the call too. */
 export const isExternalSong = (s?: Song) => s?.source === "audius" || s?.source === "jamendo";
 
-/** "Paste a Spotify link" -> the track id, or null. */
-export function spotifyTrackId(input: string): string | null {
-  const t = input.trim();
-  const m = t.match(/open\.spotify\.com\/(?:intl-[a-z-]+\/)?track\/([A-Za-z0-9]{10,30})/) ?? t.match(/^spotify:track:([A-Za-z0-9]{10,30})$/);
-  return m ? m[1] : null;
-}
-
 export const LIBRARY: Song[] = [
   { id: "panchayat-raag", title: "Panchayat Raag", artist: "Bansuri & tabla · Raag Bhupali", uploader: "Panchayat", duration: 72, src: "/audio/panchayat-raag.mp3" },
   { id: "chai-ki-chuski", title: "Chai Ki Chuski", artist: "Bansuri · Raag Yaman", uploader: "riya", duration: 73, src: "/audio/songs/chai-ki-chuski.mp3" },

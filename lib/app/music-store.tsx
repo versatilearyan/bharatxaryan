@@ -98,10 +98,10 @@ function useMusicState() {
   const songById = useCallback((id: string) => library.find((s) => s.id === id) ?? external[id], [library, external]);
   const mine = useMemo(() => uploaded.filter((s) => s.mine), [uploaded]);
 
-  /** Upload an MP3. It is in everyone's library straight away. */
+  /** Upload an MP3 or M4A. It is in everyone's library straight away. */
   const upload = useCallback(
     async (file: File, title: string, artist: string) => {
-      if (!/\.mp3$/i.test(file.name)) return toast("Pick an MP3 file", "error"), false;
+      if (!/\.(mp3|m4a)$/i.test(file.name)) return toast("Pick an MP3 or M4A file", "error"), false;
       if (file.size > MAX_SONG_MB * 1024 * 1024) return toast(`Songs can be up to ${MAX_SONG_MB} MB`, "error"), false;
       try {
         const duration = await durationOf(file);

@@ -82,7 +82,7 @@ function RoomInfoSheetImpl({ s }: { s: RoomSession }) {
   const following = isFollowingRoom(s.room.id);
   const lvl = roomLevelOf(s.room);
   const [levels, setLevels] = useState(false);
-  const staff = [s.room.hostId, ...s.admins.filter((id) => id !== s.room.hostId && !s.kicked.includes(id))];
+  const staff = [s.room.hostId, ...s.coOwners.filter((id) => id !== s.room.hostId && !s.kicked.includes(id)), ...s.admins.filter((id) => id !== s.room.hostId && !s.coOwners.includes(id) && !s.kicked.includes(id))];
   const announcement = announcementOf(s.room);
 
   const share = async () => {
@@ -246,8 +246,8 @@ function RoomInfoSheetImpl({ s }: { s: RoomSession }) {
             ))}
           </div>
           <p className="mt-2 text-[12px] text-[#8d8a9c]">
-            You are {s.role === "owner" ? "the owner" : s.role === "admin" ? "an admin" : s.role === "member" ? "a member" : "a guest"} here.
-            {s.isOwner ? " Tap anyone in the room to make them an admin, mute them or kick them out." : ""} Only people who have joined and followed the room can be made admins.
+            You are {s.role === "owner" ? "the owner" : s.role === "co-owner" ? "a co-owner" : s.role === "admin" ? "an admin" : s.role === "member" ? "a member" : "a guest"} here.
+            {s.hasOwnerPower ? " Tap anyone in the room to make them an admin, mute them or kick them out." : ""} Only people who have joined and followed the room can be made admins.
           </p>
         </div>
       </div>

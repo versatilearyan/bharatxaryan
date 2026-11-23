@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Disc3, Heart, Music2, Pause, Play, Plus, Repeat1, Search, SkipForward, Trash2, Upload, Volume2 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { musicApi } from "@/lib/api/music";
-import { MAX_SONG_MB, mmss, spotifyTrackId, type Song } from "@/lib/app/music";
+import { MAX_SONG_MB, mmss, type Song } from "@/lib/app/music";
 import { useMusic } from "@/lib/app/music-store";
 import { useApp } from "@/lib/app/store";
 import { useServerRooms } from "@/lib/app/server-rooms";
@@ -201,21 +201,19 @@ function MusicSheetImpl({ open, onClose, canControl = true, requests }: { open: 
   );
 }
 
-/** The library: our songs and uploads, songs from Audius (and Jamendo when it is on), and a Spotify link. */
+/** The library: our songs and uploads, and songs from Audius (and Jamendo when it is on). */
 function Library({ onPick }: { onPick?: (s: Song) => void }) {
   const m = useMusic();
-  const [source, setSource] = useState<"ours" | "audius" | "jamendo" | "spotify">("ours");
+  const [source, setSource] = useState<"ours" | "audius" | "jamendo">("ours");
   const [jamendo, setJamendo] = useState(false);
   useEffect(() => {
     musicApi.sources().then((s) => setJamendo(s.jamendo)).catch(() => undefined);
   }, []);
-  const chips: [typeof source, string][] = [["ours", "Panchayat"], ["audius", "Audius"], ...(jamendo ? ([["jamendo", "Jamendo"]] as [typeof source, string][]) : []), ["spotify", "Spotify"]]
-  // A Spotify link plays for the owner only, so members who are asking for songs pick from the others
-  const shownChips = onPick ? chips.filter(([id]) => id !== "spotify") : chips;
+  const chips: [typeof source, string][] = [["ours", "Panchayat"], ["audius", "Audius"], ...(jamendo ? ([["jamendo", "Jamendo"]] as [typeof source, string][]) : [])];
   return (
     <div>
       <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pb-2" role="tablist" aria-label="Where to find songs">
-        {shownChips.map(([id, label]) => (
+        {chips.map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={source === id} onClick={() => setSource(id)} className={`h-8 shrink-0 rounded-full px-3.5 text-[12.5px] font-bold ring-1 ${source === id ? "bg-[#3d9bff]/20 text-[#7fb6ff] ring-[#3d9bff]/60" : "text-cream/65 ring-white/15"}`}>
             {label}
           </button>
@@ -227,8 +225,6 @@ function Library({ onPick }: { onPick?: (s: Song) => void }) {
             <SongRow key={s.id} song={s} right={<OrderButton song={s} label={onPick ? "Add" : "Order"} onOrder={() => (onPick ? onPick(s) : m.order(s.id))} />} />
           ))}
         </ul>
-      ) : source === "spotify" ? (
-        <SpotifyBox />
       ) : (
         <Catalogue key={source} source={source} onPick={onPick} />
       )}
@@ -282,40 +278,6 @@ function Catalogue({ source, onPick }: { source: "audius" | "jamendo"; onPick?: 
   );
 }
 
-/** Spotify: paste a track link to listen on your own phone. Spotify does not let any app send its songs into a room. */
-function SpotifyBox() {
-  const [link, setLink] = useState("");
-  const [id, setId] = useState<string | null>(null);
-  const [bad, setBad] = useState(false);
-  const show = () => {
-    const t = spotifyTrackId(link);
-    setId(t);
-    setBad(!t);
-  };
-  return (
-    <div className="px-4">
-      <p className="text-[12.5px] text-muted">Paste a Spotify song link. It plays here for you (full song if you are logged in to Spotify, a short preview if not).</p>
-      <div className="mt-2 flex gap-2">
-        <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="https://open.spotify.com/track/..." aria-label="Spotify link" className="h-10 min-w-0 flex-1 rounded-xl bg-surface px-3 text-[13px] text-cream ring-1 ring-line placeholder:text-muted focus:outline-none" />
-        <button type="button" onClick={show} disabled={!link.trim()} className="h-10 rounded-xl bg-[#3d9bff] px-4 text-[13px] font-bold text-white disabled:bg-cream/10 disabled:text-muted">
-          Show
-        </button>
-      </div>
-      {bad ? <p className="mt-2 text-[12px] text-[#ff8a8f]">That doesn&apos;t look like a Spotify song link.</p> : null}
-      {id ? (
-        <iframe
-          title="Spotify player"
-          className="mt-3 w-full rounded-2xl"
-          style={{ border: 0, height: 152 }}
-          src={`https://open.spotify.com/embed/track/${id}?utm_source=generator`}
-          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-          loading="lazy"
-        />
-      ) : null}
-      <p className="mt-3 rounded-xl bg-white/[0.05] px-3 py-2 text-[11.5px] leading-snug text-cream/70">Spotify&apos;s rules say its songs can only play inside Spotify, on the listener&apos;s own account. So the room can&apos;t hear this one. To play music for the whole room, use Panchayat songs, Audius, or upload your own.</p>
-    </div>
-  );
-}
 
 function Player() {
   const m = useMusic();
@@ -370,14 +332,14 @@ function UploadTab() {
   };
   return (
     <div className="px-4 pb-4">
-      <p className="text-[12.5px] text-muted">Upload your song (MP3). It goes live for everyone right away. Only upload music you made or have the rights to; songs that break this are removed.</p>
+      <p className="text-[12.5px] text-muted">Upload your song (MP3 or M4A). It goes live for everyone right away. Only upload music you made or have the rights to; songs that break this are removed.</p>
       <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-2xl border border-dashed border-[#3d9bff]/60 bg-[#3d9bff]/5 px-3 py-3">
         <Upload className="h-5 w-5 shrink-0 text-[#7fb6ff]" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-cream">{file ? file.name : `Choose an MP3 (up to ${MAX_SONG_MB} MB)`}</span>
+        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-cream">{file ? file.name : `Choose an MP3 or M4A (up to ${MAX_SONG_MB} MB)`}</span>
         <input
           ref={input}
           type="file"
-          accept=".mp3,audio/mpeg"
+          accept=".mp3,audio/mpeg,.m4a,audio/mp4,audio/x-m4a"
           className="sr-only"
           onChange={(e) => {
             const f = e.target.files?.[0] ?? null;

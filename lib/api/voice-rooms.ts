@@ -25,6 +25,9 @@ export type CreateVoiceRoomRequest = {
   roomType: VoiceRoomType;
   isPrivate: boolean;
   maxParticipants: number;
+  /** A temp room: free, any number allowed, deleted with all its data the moment the owner leaves.
+   *  false/omitted: a permanent room — the server only allows one per owner at a time. */
+  temporary?: boolean;
 };
 
 export const ROOM_NAME_MAX = 60;
@@ -68,6 +71,8 @@ export type VoiceRoom = {
   /** An Official PK room (set from the admin panel) and its event title. */
   officialPk?: boolean;
   officialPkTitle?: string;
+  /** A temp room: deleted with all its data the moment the owner leaves. */
+  temporary?: boolean;
 };
 
 /** What POST /voice-rooms/{id}/join returns: where and how to connect to LiveKit. */
@@ -211,6 +216,7 @@ export function readVoiceRoom(raw: unknown): VoiceRoom | null {
     official: r.official === true ? true : undefined,
     officialPk: r.officialPk === true ? true : undefined,
     officialPkTitle: typeof r.officialPkTitle === "string" && r.officialPkTitle ? r.officialPkTitle : undefined,
+    temporary: r.temporary === true ? true : undefined,
   };
 }
 
