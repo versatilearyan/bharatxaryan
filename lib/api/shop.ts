@@ -8,7 +8,7 @@
  */
 import { api } from "./client";
 
-export type ShopAssetType = "IMAGE" | "SVG" | "SVGA";
+export type ShopAssetType = "IMAGE" | "SVG" | "SVGA" | "MP4";
 
 export type ShopCategory = {
   id: string;
@@ -69,7 +69,7 @@ function one(data: unknown): Record<string, unknown> | null {
 
 export function readAssetType(v: unknown): ShopAssetType | undefined {
   const t = typeof v === "string" ? v.trim().toUpperCase() : "";
-  return t === "IMAGE" || t === "SVG" || t === "SVGA" ? t : undefined;
+  return t === "IMAGE" || t === "SVG" || t === "SVGA" || t === "MP4" ? t : undefined;
 }
 
 function readCategory(raw: unknown): ShopCategory | null {

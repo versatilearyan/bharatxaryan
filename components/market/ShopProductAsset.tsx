@@ -14,6 +14,7 @@ export function assetTypeOf(url: string | undefined, given?: string): ShopAssetT
   const path = url.split(/[?#]/)[0].toLowerCase();
   const ext = path.slice(path.lastIndexOf(".") + 1);
   if (ext === "svga") return "SVGA";
+  if (ext === "mp4") return "MP4";
   if (ext === "svg") return "SVG";
   return "IMAGE";
 }
@@ -81,7 +82,7 @@ export function ShopProductAsset({ url, type, name, className = "" }: { url?: st
     <div ref={box} className={`relative flex aspect-square w-full items-center justify-center overflow-hidden ${className}`} data-asset-type={kind ?? "none"} data-asset-state={!url ? "failed" : state}>
       {!url || state === "failed" ? (
         fallback
-      ) : kind === "SVGA" ? (
+      ) : kind === "SVGA" || kind === "MP4" ? (
         <>
           {near && (
             <SvgaAnim

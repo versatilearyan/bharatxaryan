@@ -4,10 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { API_BASE_URL } from "@/lib/api/client";
 import { Logo } from "@/components/brand/Logo";
 
-type Status = { maintenance: boolean; message: string; until: number | null; announcement: string };
+type Status = {
+  maintenance: boolean;
+  message: string;
+  until: number | null;
+  announcement: string;
+  apkBannerEnabled: boolean;
+  apkBannerText: string;
+  apkBannerSoon: string;
+};
 
-/** Shared by MaintenanceGuard and AnnouncementBanner, so there's one poll of /api/v1/status, not two. */
-function useAppStatus() {
+/** Shared by MaintenanceGuard, AnnouncementBanner and AppDownloadBanner, so there's one poll of /api/v1/status. */
+export function useAppStatus() {
   const [status, setStatus] = useState<Status | null>(null);
   const timer = useRef<number | null>(null);
 

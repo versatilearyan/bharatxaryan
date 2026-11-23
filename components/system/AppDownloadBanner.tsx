@@ -2,12 +2,14 @@
 
 /**
  * A ribbon under the top bar of Home that keeps running all the time, like the server-wide gift notification:
- * "Install the Panchayat app (APK) · Coming soon on Google Play" scrolls along, with a Download button.
- * Shown only in a normal browser, never inside the Android app. The small X hides it until the next visit.
+ * the Settings page's "APK banner" text, scrolling, with a Download button. Shown only in a normal browser,
+ * never inside the Android app, and only while the admin has it switched on. The small X hides it until the
+ * next visit.
  */
 import { useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
 import { isNativeApp } from "@/lib/native/bridge";
+import { useAppStatus } from "./MaintenanceGuard";
 
 export function useIsNativeApp(): boolean {
   const [native, setNative] = useState(false);
@@ -15,24 +17,24 @@ export function useIsNativeApp(): boolean {
   return native;
 }
 
-const MESSAGE = "📲 Install the Panchayat app (APK) from panchayat.world/download";
-const SOON = "Coming soon on Google Play";
-
 export function AppDownloadBanner() {
+  const status = useAppStatus();
   const [ready, setReady] = useState(false);
   const [closed, setClosed] = useState(false);
   useEffect(() => {
     setReady(!isNativeApp());
   }, []);
-  if (!ready || closed) return null;
+  const message = status?.apkBannerText?.trim();
+  if (!ready || closed || !status?.apkBannerEnabled || !message) return null;
+  const soon = status.apkBannerSoon?.trim();
   const run = (k: string) => (
     <span key={k} className="flex shrink-0 items-center gap-6 pr-6" aria-hidden={k !== "a"}>
-      <span>{MESSAGE}</span>
-      <span className="font-extrabold text-[#ffd98a]">{SOON}</span>
+      <span>{message}</span>
+      {soon ? <span className="font-extrabold text-[#ffd98a]">{soon}</span> : null}
     </span>
   );
   return (
-    <div role="status" aria-label="Install the Panchayat app. Coming soon on Google Play" className="px-3 pb-2">
+    <div role="status" aria-label={soon ? `${message}. ${soon}` : message} className="px-3 pb-2">
       <div className="relative flex h-[34px] items-center overflow-hidden rounded-full bg-[linear-gradient(90deg,rgb(76_24_140/0.96),rgb(132_40_160/0.92)_55%,rgb(190_60_140/0.88))] pl-3 pr-1 shadow-[0_4px_16px_-4px_rgb(150_60_220/0.7)] ring-1 ring-[#f6d899]/55">
         <span className="foil-shimmer animate-shimmer pointer-events-none absolute inset-0 opacity-20" aria-hidden />
         <div className="relative min-w-0 flex-1 overflow-hidden text-[11.5px] font-bold text-white drop-shadow-[0_1px_1px_rgb(40_0_60/0.6)]">
