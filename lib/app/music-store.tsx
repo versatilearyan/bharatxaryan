@@ -259,31 +259,34 @@ function useMusicState() {
 
   /* ---- Letting everyone else in the room see what's playing (the audio itself already reaches them
    * through the room's call) ---- */
+  // Server rooms (chess etc.) use a string app id like "srv-1503", not a real backend voice-room id —
+  // the backend's now-playing endpoints only know the latter, so this whole sync is skipped for them.
+  const syncRoomId = activeRoomId && /^\d+$/.test(activeRoomId) ? activeRoomId : null;
   const [roomNowPlaying, setRoomNowPlaying] = useState<RoomNowPlaying | null>(null);
   useEffect(() => {
     setRoomNowPlaying(null);
-    if (!activeRoomId) return;
+    if (!syncRoomId) return;
     let live = true;
-    musicApi.nowPlaying(activeRoomId).then((np) => live && setRoomNowPlaying(np)).catch(() => undefined);
-    return subscribe(roomMusicTopic(activeRoomId), (body) => {
+    musicApi.nowPlaying(syncRoomId).then((np) => live && setRoomNowPlaying(np)).catch(() => undefined);
+    return subscribe(roomMusicTopic(syncRoomId), (body) => {
       if (live) setRoomNowPlaying(body as RoomNowPlaying | null);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRoomId]);
+  }, [syncRoomId]);
   // Only ever broadcast when I actually have something queued, or when I just did (so I can clear it
   // for everyone when my own queue ends) — never on mount just because I haven't queued anything, or
   // whatever someone else is playing in this room would wrongly look cleared for everyone.
   const hadCurrent = useRef(false);
   useEffect(() => {
-    if (!activeRoomId) return;
+    if (!syncRoomId) return;
     if (current) {
       hadCurrent.current = true;
-      publish(roomMusicSend(activeRoomId), { title: current.title, artist: current.artist, playing });
+      publish(roomMusicSend(syncRoomId), { title: current.title, artist: current.artist, playing });
     } else if (hadCurrent.current) {
       hadCurrent.current = false;
-      publish(roomMusicSend(activeRoomId), null);
+      publish(roomMusicSend(syncRoomId), null);
     }
-  }, [activeRoomId, current?.title, current?.artist, playing]);
+  }, [syncRoomId, current?.title, current?.artist, playing]);
 
   return {
     library, songById, mine, loaded, refreshSongs, upload, removeSong, favourites, toggleFavourite,
