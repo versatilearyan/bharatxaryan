@@ -4,15 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { API_BASE_URL } from "@/lib/api/client";
 import { Logo } from "@/components/brand/Logo";
 
-type Status = { maintenance: boolean; message: string; until: number | null };
+type Status = { maintenance: boolean; message: string; until: number | null; announcement: string };
 
-/**
- * Full-screen block while maintenance mode is on (admin panel's Settings page). Polls the
- * backend's public /api/v1/status directly — that endpoint always answers, maintenance or not,
- * so this works even while every other request is being turned away. Clears itself the moment
- * staff turn maintenance back off, no refresh needed.
- */
-export function MaintenanceGuard() {
+/** Shared by MaintenanceGuard and AnnouncementBanner, so there's one poll of /api/v1/status, not two. */
+function useAppStatus() {
   const [status, setStatus] = useState<Status | null>(null);
   const timer = useRef<number | null>(null);
 
@@ -37,6 +32,17 @@ export function MaintenanceGuard() {
     };
   }, []);
 
+  return status;
+}
+
+/**
+ * Full-screen block while maintenance mode is on (admin panel's Settings page). Polls the
+ * backend's public /api/v1/status directly — that endpoint always answers, maintenance or not,
+ * so this works even while every other request is being turned away. Clears itself the moment
+ * staff turn maintenance back off, no refresh needed.
+ */
+export function MaintenanceGuard() {
+  const status = useAppStatus();
   if (!status?.maintenance) return null;
   return <MaintenanceScreen message={status.message} until={status.until} />;
 }
@@ -74,6 +80,46 @@ function MaintenanceScreen({ message, until }: { message: string; until: number 
         className="rounded-full border border-gold/40 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10"
       >
         Try again
+      </button>
+    </div>
+  );
+}
+
+const DISMISSED_KEY = "panchayat-announcement-dismissed";
+
+/**
+ * A slim banner at the top of the screen for whatever's in the Settings page's Announcement field
+ * (a sale, an event, "update the app" — plain text, staff's choice). Empty = nothing shows. Someone
+ * who closes it won't see that exact text again, but a new announcement (the text changed) shows
+ * even if they'd dismissed an earlier one.
+ */
+export function AnnouncementBanner() {
+  const status = useAppStatus();
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  useEffect(() => {
+    try {
+      setDismissed(window.localStorage.getItem(DISMISSED_KEY));
+    } catch {
+      /* storage unavailable */
+    }
+  }, []);
+  const text = status?.announcement?.trim();
+  if (status?.maintenance || !text || text === dismissed) return null;
+
+  const dismiss = () => {
+    setDismissed(text);
+    try {
+      window.localStorage.setItem(DISMISSED_KEY, text);
+    } catch {
+      /* storage unavailable */
+    }
+  };
+
+  return (
+    <div role="status" className="fixed inset-x-0 top-[var(--st)] z-[150] flex items-center gap-2 bg-gradient-to-r from-coral/95 to-pink/90 px-4 py-2 text-[13px] font-semibold text-white shadow-lg">
+      <span className="min-w-0 flex-1 truncate">{text}</span>
+      <button type="button" onClick={dismiss} aria-label="Dismiss" className="shrink-0 rounded-full p-1 leading-none hover:bg-white/15">
+        ✕
       </button>
     </div>
   );

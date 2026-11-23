@@ -141,7 +141,9 @@ function ComboButton({ combo, onExpire }: { combo: GiftCombo; onExpire: () => vo
 
 /** Gold coins burst out when a gift ends, with what the receiver got. */
 function CoinBurst({ fx, onDone }: { fx: GiftFx; onDone: () => void }) {
-  const reduce = useReducedMotion();
+  // This runs on every gift that earns coins/charm — one of the most common animations in the
+  // app — so weaker phones and the native app (data-lite) skip the 22 coin particles too.
+  const reduce = useReducedMotion() || (typeof document !== "undefined" && document.documentElement.hasAttribute("data-lite"));
   useEffect(() => {
     const t = window.setTimeout(onDone, 2200);
     return () => window.clearTimeout(t);
@@ -212,7 +214,9 @@ function Banner({ fx, legendary }: { fx: GiftFx; legendary?: boolean }) {
 }
 
 function Ordinary({ fx }: { fx: GiftFx }) {
-  const reduce = useReducedMotion();
+  // The most common gift animation of all — runs on every ordinary gift sent, so this is where
+  // weaker phones and the native app (data-lite) feel gifting lag the most.
+  const reduce = useReducedMotion() || (typeof document !== "undefined" && document.documentElement.hasAttribute("data-lite"));
   return (
     <motion.div className="pointer-events-none absolute inset-0 z-[60]" initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} aria-hidden={false}>
       <Banner fx={fx} />
@@ -254,7 +258,10 @@ function Ordinary({ fx }: { fx: GiftFx }) {
 }
 
 function Legendary({ fx }: { fx: GiftFx }) {
-  const reduce = useReducedMotion();
+  // Weaker phones and the native app (data-lite, set in layout.tsx) get the same simplified
+  // version as reduced-motion: the rotating rays and 26 separate particle animations are the
+  // heaviest thing a gift does, and it's exactly the kind of device gifting lag shows up on.
+  const reduce = useReducedMotion() || (typeof document !== "undefined" && document.documentElement.hasAttribute("data-lite"));
   return (
     <motion.div className="pointer-events-none absolute inset-0 z-[60] overflow-hidden" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }}>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgb(90_26_40/0.85),rgb(10_6_8/0.92)_70%)]" />
