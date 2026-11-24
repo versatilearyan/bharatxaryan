@@ -1,7 +1,7 @@
 "use client";
 
 import { NewbieRooms } from "@/components/newbie/NewbieUi";
-import { OfficialRooms } from "@/components/rooms/OfficialRoomsUi";
+import { OfficialPkRooms, OfficialRooms } from "@/components/rooms/OfficialRoomsUi";
 import { isGameTable, useLiveCounts } from "@/lib/app/live-counts";
 import { activeRooms, byOnline } from "@/lib/app/active-rooms";
 import { useEffect, useMemo, useState } from "react";
@@ -89,6 +89,7 @@ export function RoomsScreen() {
         <MyRoomTab onFind={() => setTop("All")} />
       ) : browsing ? (
         <>
+          <OfficialPkRooms className="mt-1" />
           <NewbieRooms className="mt-1" />
           <OfficialRooms />
           <LiveRooms />

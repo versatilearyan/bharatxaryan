@@ -17,7 +17,7 @@ const opts = { auth: true, forbiddenIsAccess: true } as const;
 export type TopupStatus = "REQUESTED" | "SUBMITTED" | "APPROVED" | "REJECTED" | "CANCELLED";
 /** name: what the admin calls the person who checks payments (Mukhiya ji, Munshi ji, ...). */
 export type TopupInfo = { enabled: boolean; name: string; upiId?: string; payeeName?: string; qrUrl?: string; note?: string };
-export type TopupRequest = { id: string; reference: string; status: TopupStatus; kind: "COIN_PACK" | "ROYAL"; plateName?: string; packName: string; amountInr: number; coins: number; utr?: string; rejectReason?: string; upiLink?: string };
+export type TopupRequest = { id: string; reference: string; status: TopupStatus; kind: "COIN_PACK" | "ROYAL"; plateName?: string; plateFont?: string; packName: string; amountInr: number; coins: number; utr?: string; rejectReason?: string; upiLink?: string };
 
 /** A profile title as the Royal Pack shows it. */
 export type RoyalTitle = { id: string; name: string; iconUrl?: string; colorFrom: string; colorTo: string; textColor: string };
@@ -77,7 +77,7 @@ function readRequest(raw: unknown): TopupRequest | null {
   const d = obj(raw);
   const id = d ? str(d.id) : undefined;
   if (!d || !id) return null;
-  return { id, reference: str(d.reference) ?? "", status: status(d.status), kind: d.kind === "ROYAL" ? "ROYAL" : "COIN_PACK", plateName: str(d.plateName), packName: str(d.packName) ?? "Coin pack", amountInr: num(d.amountInr), coins: num(d.coins), utr: str(d.utr), rejectReason: str(d.rejectReason), upiLink: str(d.upiLink) };
+  return { id, reference: str(d.reference) ?? "", status: status(d.status), kind: d.kind === "ROYAL" ? "ROYAL" : "COIN_PACK", plateName: str(d.plateName), plateFont: str(d.plateFont), packName: str(d.packName) ?? "Coin pack", amountInr: num(d.amountInr), coins: num(d.coins), utr: str(d.utr), rejectReason: str(d.rejectReason), upiLink: str(d.upiLink) };
 }
 
 export const manualTopupApi = {
@@ -108,8 +108,8 @@ export const manualTopupApi = {
       myTitle: my === "KING" || my === "QUEEN" ? my : null,
     };
   },
-  requestRoyal: async (plateName: string, title: "KING" | "QUEEN") => {
-    const r = readRequest(await api<unknown>("/api/v1/manual-topup/royal", { ...opts, method: "POST", body: { plateName, title } }));
+  requestRoyal: async (plateName: string, title: "KING" | "QUEEN", font?: string) => {
+    const r = readRequest(await api<unknown>("/api/v1/manual-topup/royal", { ...opts, method: "POST", body: { plateName, title, font } }));
     if (!r) throw new Error("The request was made, but the answer couldn't be read.");
     return r;
   },

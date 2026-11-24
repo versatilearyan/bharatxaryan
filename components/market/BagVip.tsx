@@ -45,6 +45,8 @@ export type BagEntry = {
   source?: string;
   tint: string;
   action?: { label: string; run: () => void; off?: boolean; disabled?: boolean };
+  /** A second button under the main one (e.g. "Customize" for your own name frame). */
+  extra?: { label: string; run: () => void };
   note?: string;
 };
 

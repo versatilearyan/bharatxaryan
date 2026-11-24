@@ -9,9 +9,12 @@ import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin } from "@/components/ui/kit";
 import { PLATE_MAX, plateLength, type RoyalFrame, type RoyalInfo, type RoyalTitle } from "@/lib/api/manual-topup";
 import { VIP_SETS, type EffectSet } from "@/lib/app/effects";
+import { NAME_FONTS, nameFace } from "@/lib/app/fonts";
 import { usePeople } from "@/lib/app/people";
 import { formatInr } from "@/lib/app/redpacket";
-import { ME_ID } from "@/lib/app/store";
+import { ME_ID, useApp } from "@/lib/app/store";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { customizeFrame, type BagReward } from "@/lib/api/rewards";
 
 /*
  * The Royal Pack, sold only through Munshi ji: the Royal frame with a name the buyer writes (up to 14 letters),
@@ -30,7 +33,7 @@ const daysText = (d: number) => (d <= 0 ? "for ever" : `${d} days`);
 const pill = (t: RoyalTitle) => ({ ...t, rarity: "ULTRA_RARE" });
 
 /** The Royal frame as a seat frame (the same fit a worn name frame gets), with `name` on its plate. */
-export function royalFrameSet(f: RoyalFrame, name: string): EffectSet {
+export function royalFrameSet(f: RoyalFrame, name: string, font?: string): EffectSet {
   return {
     ...VIP_SETS[0],
     frame: f.imageUrl,
@@ -39,15 +42,15 @@ export function royalFrameSet(f: RoyalFrame, name: string): EffectSet {
     frameScale: f.scale,
     frameY: f.y,
     frameSize: f.size,
-    plate: { name, x: f.plateX, y: f.plateY, w: f.plateW, h: f.plateH, color: f.color, stroke: f.stroke },
+    plate: { name, font, x: f.plateX, y: f.plateY, w: f.plateW, h: f.plateH, color: f.color, stroke: f.stroke },
   };
 }
 
 /** My avatar in the Royal frame, `box` px like a seat or profile picture. */
-export function RoyalAvatar({ frame, name, box }: { frame: RoyalFrame; name: string; box: number }) {
+export function RoyalAvatar({ frame, name, box, font }: { frame: RoyalFrame; name: string; box: number; font?: string }) {
   const person = usePeople();
   const me = person(ME_ID);
-  const set = useMemo(() => royalFrameSet(frame, name), [frame, name]);
+  const set = useMemo(() => royalFrameSet(frame, name, font), [frame, name, font]);
   const fit = frameFit(set, box);
   return (
     <span className="relative grid place-items-center" style={{ width: box, height: box, marginBottom: fit.drop }}>
@@ -59,7 +62,7 @@ export function RoyalAvatar({ frame, name, box }: { frame: RoyalFrame; name: str
 }
 
 /** A slice of a room: you on a seat between two empty ones, the way everyone in the room will see you. */
-export function RoyalSeatPreview({ frame, name }: { frame: RoyalFrame; name: string }) {
+export function RoyalSeatPreview({ frame, name, font }: { frame: RoyalFrame; name: string; font?: string }) {
   const person = usePeople();
   const me = person(ME_ID);
   const seat = 58;
@@ -77,7 +80,7 @@ export function RoyalSeatPreview({ frame, name }: { frame: RoyalFrame; name: str
           <span className="text-[10px] text-cream/40">Seat 1</span>
         </div>
         <div className="flex flex-col items-center gap-1">
-          <RoyalAvatar frame={frame} name={name} box={seat} />
+          <RoyalAvatar frame={frame} name={name} box={seat} font={font} />
           <span className="max-w-[90px] truncate text-[11px] font-semibold text-cream">{me.name}</span>
         </div>
         <div className="flex flex-col items-center gap-1 pt-1">
@@ -179,11 +182,12 @@ export function RoyalPackCard({ info, munshiName, onOpen }: { info: RoyalInfo; m
  * The Royal Pack step in Munshi ji's sheet: write the frame name (live preview, as it looks on a seat),
  * pick King / Queen only when the profile has no gender, then go on to pay.
  */
-export function RoyalPackStep({ info, munshiName, busy, initialName, onContinue, onBack }: { info: RoyalInfo; munshiName: string; busy: boolean; initialName?: string; onContinue: (plate: string, title: "KING" | "QUEEN") => void; onBack: () => void }) {
+export function RoyalPackStep({ info, munshiName, busy, initialName, initialFont, onContinue, onBack }: { info: RoyalInfo; munshiName: string; busy: boolean; initialName?: string; initialFont?: string; onContinue: (plate: string, title: "KING" | "QUEEN", font: string) => void; onBack: () => void }) {
   const person = usePeople();
   const me = person(ME_ID);
   const [name, setName] = useState(() => initialName ?? Array.from(me.name || "").slice(0, PLATE_MAX).join(""));
   const [pick, setPick] = useState<"KING" | "QUEEN" | null>(info.myTitle);
+  const [font, setFont] = useState<string>(initialFont ?? "default");
   const len = plateLength(name.trim());
   const ok = len >= 1 && len <= PLATE_MAX && pick !== null;
   if (!info.frame) return null;
@@ -193,11 +197,11 @@ export function RoyalPackStep({ info, munshiName, busy, initialName, onContinue,
       <div className="relative overflow-hidden rounded-3xl bg-[radial-gradient(120%_90%_at_50%_0%,#4b1f86_0%,#26113f_50%,#140a22_100%)] px-4 pb-4 pt-3 ring-1 ring-gold/40">
         <span className="foil-shimmer animate-shimmer pointer-events-none absolute inset-0 opacity-25" aria-hidden />
         <div className="relative grid place-items-center pb-1 pt-9" aria-label="Preview of your frame">
-          <RoyalAvatar frame={info.frame} name={shown} box={118} />
+          <RoyalAvatar frame={info.frame} name={shown} box={118} font={font} />
         </div>
       </div>
 
-      <RoyalSeatPreview frame={info.frame} name={shown} />
+      <RoyalSeatPreview frame={info.frame} name={shown} font={font} />
 
       <label className="block">
         <span className="mb-1 flex items-center justify-between text-[12px] font-semibold text-cream/70">
@@ -216,6 +220,8 @@ export function RoyalPackStep({ info, munshiName, busy, initialName, onContinue,
         />
         <span className="mt-1 block text-[11px] text-cream/45">Everyone sees this name on your frame, in rooms and on your profile.</span>
       </label>
+
+      <PlateFontPicker value={font} onChange={setFont} sample={shown} />
 
       {info.myTitle === null && (info.king || info.queen) ? (
         <div>
@@ -239,7 +245,7 @@ export function RoyalPackStep({ info, munshiName, busy, initialName, onContinue,
         <Contents info={info} which={pick} />
       </div>
 
-      <button type="button" disabled={!ok || busy} onClick={() => onContinue(name.trim(), pick ?? "KING")} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f6d27a] via-[#ffcf6b] to-[#f0a030] text-[15px] font-extrabold text-[#2a1600] disabled:opacity-40">
+      <button type="button" disabled={!ok || busy} onClick={() => onContinue(name.trim(), pick ?? "KING", font)} className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#f6d27a] via-[#ffcf6b] to-[#f0a030] text-[15px] font-extrabold text-[#2a1600] disabled:opacity-40">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Crown className="h-4 w-4" aria-hidden />} Continue · pay {formatInr(info.priceInr)}
       </button>
       <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-cream/45">
@@ -247,6 +253,94 @@ export function RoyalPackStep({ info, munshiName, busy, initialName, onContinue,
       </p>
       <button type="button" onClick={onBack} className="h-10 w-full rounded-full text-[13px] font-semibold text-cream/60">
         Back
+      </button>
+    </div>
+  );
+}
+
+/** The frame name's font: the same choices as the profile's "Name font", each shown in its own lettering. */
+export function PlateFontPicker({ value, onChange, sample }: { value: string; onChange: (font: string) => void; sample: string }) {
+  return (
+    <div>
+      <p className="mb-1.5 text-[12px] font-semibold text-cream/70">Font for your name</p>
+      <div className="grid grid-cols-2 gap-2">
+        {NAME_FONTS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            onClick={() => onChange(f.id)}
+            aria-pressed={value === f.id}
+            className={`rounded-2xl px-2 py-2.5 text-center ring-1 ${value === f.id ? "bg-gold/15 ring-gold" : "bg-surface ring-line"}`}
+          >
+            <span className="block truncate text-[16px] font-bold text-cream" style={nameFace(f.id)}>
+              {sample}
+            </span>
+            <span className="block text-[11px] text-muted">{f.label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Your own name frame from the Bag (the Royal frame): change the name on it and its font, with a live preview.
+ * The change shows everywhere at once (seats, profile) because rooms read the name and font from the server.
+ */
+export function FrameCustomizeSheet({ reward, onClose, onSaved }: { reward: BagReward | null; onClose: () => void; onSaved: () => void }) {
+  return (
+    <BottomSheet open={reward !== null} onClose={onClose} title="Customize your frame" tall>
+      {reward ? <FrameCustomizeForm key={reward.id} reward={reward} onClose={onClose} onSaved={onSaved} /> : null}
+    </BottomSheet>
+  );
+}
+
+function FrameCustomizeForm({ reward, onClose, onSaved }: { reward: BagReward; onClose: () => void; onSaved: () => void }) {
+  const { toast } = useApp();
+  const [name, setName] = useState(reward.plateName ?? "");
+  const [font, setFont] = useState(reward.plateFont ?? "default");
+  const [busy, setBusy] = useState(false);
+  const len = plateLength(name.trim());
+  const fit = reward.frameFit;
+  if (!fit || !reward.mediaUrl) return <p className="px-5 pb-6 text-[13px] text-muted">This frame can't be previewed.</p>;
+  const frame: RoyalFrame = { id: reward.id, name: reward.itemName, imageUrl: reward.mediaUrl, ...fit };
+  const shown = name.trim() || "Your name";
+  const save = async () => {
+    setBusy(true);
+    try {
+      await customizeFrame(reward.id, name.trim(), font);
+      toast("Your frame is updated", "gold");
+      onSaved();
+      onClose();
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : "Couldn't save. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="space-y-4 px-5 pb-6">
+      <div className="grid place-items-center rounded-3xl bg-[radial-gradient(120%_90%_at_50%_0%,#4b1f86_0%,#26113f_50%,#140a22_100%)] pb-3 pt-9 ring-1 ring-gold/40">
+        <RoyalAvatar frame={frame} name={shown} box={118} font={font} />
+      </div>
+      <RoyalSeatPreview frame={frame} name={shown} font={font} />
+      <label className="block">
+        <span className="mb-1 flex items-center justify-between text-[12px] font-semibold text-cream/70">
+          <span>Name on your frame</span>
+          <span className="text-cream/45">
+            {len}/{PLATE_MAX}
+          </span>
+        </span>
+        <input
+          value={name}
+          onChange={(e) => setName(Array.from(e.target.value.replace(/[\r\n\t]/g, "")).slice(0, PLATE_MAX).join(""))}
+          aria-label="Name on your frame"
+          className="h-12 w-full rounded-2xl border border-gold/40 bg-surface px-4 text-center font-display text-[17px] font-extrabold text-cream focus:border-gold focus:outline-none"
+        />
+      </label>
+      <PlateFontPicker value={font} onChange={setFont} sample={shown} />
+      <button type="button" disabled={busy || len < 1} onClick={() => void save()} className="flex h-12 w-full items-center justify-center rounded-full bg-gradient-to-r from-[#f6d27a] via-[#ffcf6b] to-[#f0a030] text-[15px] font-extrabold text-[#2a1600] disabled:opacity-40">
+        {busy ? "Saving…" : "Save"}
       </button>
     </div>
   );

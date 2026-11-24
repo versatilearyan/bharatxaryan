@@ -31,13 +31,18 @@ export type BagReward = {
   soundUrl: string | null;
   grantedAt: string;
   expiresAt: string | null;
+  /** A name frame bought or given with a chosen name (the Royal frame): its name, font and fit; the owner can change name and font. */
+  plateName?: string | null;
+  plateFont?: string | null;
+  customizable?: boolean;
+  frameFit?: { scale: number; y: number; size: number; plateX: number; plateY: number; plateW: number; plateH: number; color: string; stroke: string } | null;
 };
 
 export type RewardGoal = { ruleId: string; name: string; kind: "RANDOM" | "GUARANTEED"; coinThreshold: number; spent: number; remaining: number };
 
 /** One worn reward effect, as rooms and profiles send it. */
 /** A name frame: a frame with a plate that shows the wearer's account name. */
-export type NameFrameFx = { name: string; scale: number; size?: number; y: number; plateX: number; plateY: number; plateW: number; plateH: number; color: string; stroke: string };
+export type NameFrameFx = { name: string; font?: string; scale: number; size?: number; y: number; plateX: number; plateY: number; plateW: number; plateH: number; color: string; stroke: string };
 /** avatar (entries from the Shop): OVERLAY, SLOT, SLOT:<key> or NONE: how the wearer's picture shows. */
 export type WornEffect = { url: string; format: string | null; soundUrl: string | null; name: string | null; nameFrame?: NameFrameFx; avatar?: string; layoutLevel: number };
 export type RewardEffects = Partial<Record<RewardSlot, WornEffect>>;
@@ -95,7 +100,7 @@ export function readRewardEffects(raw: unknown): RewardEffects {
         soundUrl: mediaSrc(e.soundUrl),
         name: str(e.name),
         ...(str(e.avatar) ? { avatar: str(e.avatar)! } : {}),
-        nameFrame: nf ? { name: str(nf.name) ?? "", scale: n(nf.scale, 1.4), size: n(nf.size, 1.45), y: n(nf.y, 0.56), plateX: n(nf.plateX, 21), plateY: n(nf.plateY, 74), plateW: n(nf.plateW, 58), plateH: n(nf.plateH, 17), color: str(nf.color) ?? "#ffe9a8", stroke: str(nf.stroke) ?? "#0a2a80" } : undefined,
+        nameFrame: nf ? { name: str(nf.name) ?? "", font: str(nf.font) ?? undefined, scale: n(nf.scale, 1.4), size: n(nf.size, 1.45), y: n(nf.y, 0.56), plateX: n(nf.plateX, 21), plateY: n(nf.plateY, 74), plateW: n(nf.plateW, 58), plateH: n(nf.plateH, 17), color: str(nf.color) ?? "#ffe9a8", stroke: str(nf.stroke) ?? "#0a2a80" } : undefined,
         layoutLevel: Math.min(Math.max(n(e.layoutLevel, 1), 1), 11),
       };
     }
@@ -124,6 +129,14 @@ export function readBagReward(raw: unknown): BagReward | null {
     soundUrl: mediaSrc(o.soundUrl),
     grantedAt: str(o.grantedAt) ?? "",
     expiresAt: str(o.expiresAt),
+    plateName: str(o.plateName),
+    plateFont: str(o.plateFont),
+    customizable: o.customizable === true,
+    frameFit: (() => {
+      const f = obj(o.nameFrame);
+      if (!f) return null;
+      return { scale: num(f.scale) ?? 1.4, y: num(f.y) ?? 0.56, size: num(f.size) ?? 1.45, plateX: num(f.plateX) ?? 21, plateY: num(f.plateY) ?? 74, plateW: num(f.plateW) ?? 58, plateH: num(f.plateH) ?? 17, color: str(f.color) ?? "#ffe9a8", stroke: str(f.stroke) ?? "#0a2a80" };
+    })(),
   };
 }
 
@@ -142,6 +155,11 @@ export async function getMyRewards(): Promise<{ rewards: BagReward[]; goals: Rew
       })
     : [];
   return { rewards, goals };
+}
+
+/** Rename your custom name frame and pick its font. */
+export async function customizeFrame(id: string, plateName: string, font: string): Promise<BagReward | null> {
+  return readBagReward(await api<unknown>(`/api/v1/rewards/${encodeURIComponent(id)}/plate`, { ...opts, method: "PUT", body: { plateName, font } }));
 }
 
 export async function wearReward(id: string, on: boolean): Promise<BagReward | null> {

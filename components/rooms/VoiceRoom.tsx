@@ -39,7 +39,13 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
   return (
     <div ref={rootRef} className={`relative flex h-full min-h-0 flex-col overflow-hidden ${vip ? "bg-wine-2" : "bg-ink"}`}>
       {/* Backdrop: room cover fading into the room surface */}
-      {s.room.newbie ? (
+      {s.room.newbieBackground && /\.mp4(\?|#|$)/i.test(s.room.newbieBackground) ? (
+        // The room's own video background (an Official PK room, or a host at level 5+)
+        <div className="absolute inset-0" aria-hidden>
+          <video src={s.room.newbieBackground} autoPlay loop muted playsInline className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/45 to-black/85" />
+        </div>
+      ) : s.room.newbie || s.room.newbieBackground ? (
         <div className="absolute inset-0" aria-hidden style={{ backgroundImage: `linear-gradient(to bottom, rgba(10,6,3,0.12), rgba(10,6,3,0.5) 62%, rgba(10,6,3,0.88)), url(${s.room.newbieBackground ?? "/backgrounds/newbie-room.jpg"}), radial-gradient(120% 70% at 50% 0%, #6b4a1f 0%, #2a1a0c 50%, #0c0703 100%)`, backgroundSize: "cover", backgroundPosition: "center top" }} />
       ) : s.settings.background === "cover" ? (
         <div className="absolute inset-x-0 top-0 h-[58%]" aria-hidden>

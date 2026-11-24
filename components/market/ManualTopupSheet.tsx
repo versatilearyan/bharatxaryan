@@ -81,11 +81,11 @@ export function ManualTopupSheet({ open, onClose, packId, requestId, royal: want
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, packId, requestId, wantRoyal]);
 
-  const startRoyal = async (plate: string, title: "KING" | "QUEEN") => {
+  const startRoyal = async (plate: string, title: "KING" | "QUEEN", font?: string) => {
     setBusy(true);
     setError("");
     try {
-      const r = await manualTopupApi.requestRoyal(plate, title);
+      const r = await manualTopupApi.requestRoyal(plate, title, font);
       setCurrent(r);
       setStep("pay");
       void reload();
@@ -195,7 +195,7 @@ export function ManualTopupSheet({ open, onClose, packId, requestId, royal: want
 
             {step === "royal" ? (
               royal?.enabled && royal.frame ? (
-                <RoyalPackStep info={royal} munshiName={name} busy={busy} initialName={current?.kind === "ROYAL" ? current.plateName : undefined} onContinue={(p, t) => void startRoyal(p, t)} onBack={() => setStep("pick")} />
+                <RoyalPackStep info={royal} munshiName={name} busy={busy} initialName={current?.kind === "ROYAL" ? current.plateName : undefined} initialFont={current?.kind === "ROYAL" ? current.plateFont : undefined} onContinue={(p, t, f) => void startRoyal(p, t, f)} onBack={() => setStep("pick")} />
               ) : royal ? (
                 <p className="rounded-2xl bg-surface px-4 py-6 text-center text-[13px] text-muted ring-1 ring-line">The Royal Pack isn&apos;t on sale right now.</p>
               ) : (

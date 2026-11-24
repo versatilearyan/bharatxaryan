@@ -1,5 +1,6 @@
 "use client";
 
+import { ObserverBan, useIsObserver } from "./ObserverBan";
 import { NameText } from "@/components/ui/NameText";
 import { VipAvatar, VipBadge } from "@/components/effects/VipFx";
 import { useRoomFx } from "./useRoomFx";
@@ -66,6 +67,7 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
   const theirVip = useServerPeople()[id ?? ""]?.vip;
   const cardFx = (id && id !== ME_ID && pub.loadedFor === id && profileEffects(theirVip)) || roomFx;
   const close = () => s.openCard(null);
+  const observer = useIsObserver();
 
   useEffect(() => {
     if (!id) return;
@@ -298,6 +300,7 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
                 {p.name} hasn&apos;t {!membership.joined && !membership.followed ? "joined or followed" : !membership.joined ? "joined" : "followed"} this room yet, so they can&apos;t be made an admin.
               </p>
             ) : null}
+            {observer && id !== ME_ID && s.room.server ? <ObserverBan roomId={s.room.server.id} personId={id} name={p.name} onDone={close} /> : null}
             {!manage && s.canModerate && id !== ME_ID ? (
               <p className="mt-4 rounded-xl bg-[#f6f3f8] p-2.5 text-[11.5px] text-[#6d6575]">{role === "owner" ? "This is the room owner." : "Only the owner can manage another admin."}</p>
             ) : null}
