@@ -14,6 +14,7 @@ import { FamilyBar, FamilyBody, FamilyPeriodSwitch, useFamilyRanking, type Famil
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { PEOPLE } from "@/lib/app/data";
 import { CelebrityBoard } from "./CelebrityBoard";
+import { BffBoard } from "./BffBoard";
 import { RANK_PERIODS, RANK_TABS, periodShare, sampleScore, type RankPeriod, type RankTab } from "@/lib/app/market";
 import { cpApi, type CpCouple, type CpRankingRow } from "@/lib/api/cp";
 import { useMarket } from "@/lib/app/market-store";
@@ -242,16 +243,16 @@ export function RankingScreen() {
               PK
             </button>
           </div>
-          {tab === "family" ? (
+          {tab === "bff" ? null : tab === "family" ? (
             <FamilyPeriodSwitch period={famPeriod} onChange={setFamPeriod} />
           ) : (
             <div className="mx-4 my-2.5 flex rounded-full bg-black/30 p-1 ring-1 ring-white/10" role="tablist" aria-label="Period">
               {RANK_PERIODS.map((p) => (
-                <button key={p.id} type="button" role="tab" aria-selected={!(tab === "popularity" && celeb) && period === p.id} onClick={() => { setCeleb(false); setPeriod(p.id); }} className={`h-8 flex-1 rounded-full text-[12.5px] font-bold ${!(tab === "popularity" && celeb) && period === p.id ? "bg-cream text-ink" : "text-cream/65"}`}>
+                <button key={p.id} type="button" role="tab" aria-selected={!((tab === "popularity" || tab === "vip") && celeb) && period === p.id} onClick={() => { setCeleb(false); setPeriod(p.id); }} className={`h-8 flex-1 rounded-full text-[12.5px] font-bold ${!((tab === "popularity" || tab === "vip") && celeb) && period === p.id ? "bg-cream text-ink" : "text-cream/65"}`}>
                   {p.label}
                 </button>
               ))}
-              {tab === "popularity" && myId ? (
+              {(tab === "popularity" || tab === "vip") && myId ? (
                 <button type="button" role="tab" aria-selected={celeb} onClick={() => setCeleb(true)} className={`h-8 flex-1 rounded-full text-[12.5px] font-bold ${celeb ? "bg-gradient-to-r from-[#f6d27a] to-[#ffb84d] text-[#2a1600]" : "text-cream/65"}`}>
                   Celebrity
                 </button>
@@ -260,7 +261,7 @@ export function RankingScreen() {
           )}
         </header>
 
-        {tab === "family" ? <FamilyBody data={fam} /> : tab === "popularity" && celeb && myId ? <CelebrityBoard /> : <>
+        {tab === "bff" ? <BffBoard /> : tab === "family" ? <FamilyBody data={fam} /> : (tab === "popularity" || tab === "vip") && celeb && myId ? <CelebrityBoard key={tab} type={tab === "vip" ? "wealth" : "charm"} /> : <>
 
         {/* Podium: the top 3 in their leaderboard frames */}
         <div className="mt-2 grid grid-cols-[1fr_1.15fr_1fr] items-start gap-1 px-2">
@@ -309,7 +310,7 @@ export function RankingScreen() {
       </div>
 
       {/* Your own row, always visible */}
-      {tab === "family" ? <FamilyBar data={fam} /> : <div className="pb-safe flex items-center gap-3 border-t border-white/10 bg-ink-2 px-3 py-2.5">
+      {tab === "bff" || ((tab === "popularity" || tab === "vip") && celeb && myId) ? null : tab === "family" ? <FamilyBar data={fam} /> : <div className="pb-safe flex items-center gap-3 border-t border-white/10 bg-ink-2 px-3 py-2.5">
         <span className="w-6 text-center font-display text-[15px] font-extrabold text-cream/70">{me && me.value > 0 ? myIndex + 1 : "–"}</span>
         {meRow ? <Avatars r={meRow} size={40} /> : <PersonAvatar person={person(ME_ID)} size={40} />}
         <span className="min-w-0 flex-1">

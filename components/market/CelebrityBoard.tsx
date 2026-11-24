@@ -26,7 +26,7 @@ const monthLabel = (key: string) => {
   return new Date(y, m - 1, 1).toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 };
 
-export function CelebrityBoard() {
+export function CelebrityBoard({ type = "charm" }: { type?: "charm" | "wealth" }) {
   const { setSheet } = useApp();
   const [month, setMonth] = useState(() => monthKey(new Date()));
   const [days, setDays] = useState<Day[] | null>(null);
@@ -37,7 +37,7 @@ export function CelebrityBoard() {
     let live = true;
     setDays(null);
     setError("");
-    api<unknown>(`/api/v1/rankings/celebrity?month=${month}`, { auth: true })
+    api<unknown>(`/api/v1/rankings/celebrity?month=${month}&type=${type}`, { auth: true })
       .then((raw) => {
         if (!live) return;
         const d = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
@@ -62,7 +62,7 @@ export function CelebrityBoard() {
     return () => {
       live = false;
     };
-  }, [month]);
+  }, [month, type]);
 
   return (
     <div className="px-4 pb-6">
@@ -88,7 +88,7 @@ export function CelebrityBoard() {
           <Loader2 className="h-6 w-6 animate-spin text-gold" aria-label="Loading" />
         </p>
       ) : !days.length ? (
-        <p className="px-6 py-14 text-center text-[13px] text-cream/55">No celebrity yet this month. The person who receives the most Charm in a day becomes that day&apos;s celebrity.</p>
+        <p className="px-6 py-14 text-center text-[13px] text-cream/55">No celebrity yet this month. {type === "wealth" ? "The person who spends the most coins on gifts in a day becomes that day's VIP celebrity." : "The person who receives the most Charm in a day becomes that day's celebrity."}</p>
       ) : (
         <div className="grid grid-cols-3 gap-x-2.5 gap-y-4">
           {days.map((d) => {
