@@ -314,7 +314,8 @@ export function BagScreen() {
       ? { label: `Give to ${person(myCouple.a === ME_ID ? myCouple.b : myCouple.a).name}`, run: () => giveRing(ring.id) }
       : { label: "💍 Propose", run: () => (setOpen(null), setFinding(true)) };
 
-  const isRing = (b: OwnedShopItem) => /ring/i.test(b.categoryName ?? "");
+  // The server says which items are CP rings (incl. PK rings); older servers: by the category name
+  const isRing = (b: OwnedShopItem) => b.ring ?? /ring/i.test(b.categoryName ?? "");
   const ringAct = (b: OwnedShopItem): Entry["action"] =>
     !srv.signedIn || !isRing(b)
       ? undefined

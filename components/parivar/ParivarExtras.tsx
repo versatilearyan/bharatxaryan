@@ -713,7 +713,7 @@ export function GachaSheet({ p, open, onClose, onChanged, onGo }: Props & { onGo
                       );
                     })}
                   </div>
-                  <p className="relative mt-4 text-[10.5px] leading-snug text-cream/45">Coins and charm go to your wallet; funds and chests wait in the treasury; Kavach shields the whole Parivar.</p>
+                  <p className="relative mt-4 text-[10.5px] leading-snug text-cream/45">Coins and charm go to your wallet; funds and chests go to the Parivar treasury (only the Mukhiya sends a chest to the family); Kavach shields the whole Parivar.</p>
                   <button type="button" onClick={() => setWon(null)} className="relative mt-4 h-12 w-full rounded-full bg-gradient-to-b from-[#f6dc9c] to-[#c08f43] font-display text-[15px] font-extrabold text-[#2a1a0c] shadow-[0_10px_24px_-8px_rgba(240,205,130,0.6)] active:scale-[0.98]">
                     Collect
                   </button>
@@ -758,6 +758,8 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
   // Everything the Parivar has bought or won and not used yet (it shows even when the chest type can't be sent at this level)
   const store = useLoad(() => parivarExtra.inventory(p.id), [p.id, open], 15_000);
   const myChests = (store.data ?? []).filter((r) => r.kind === "CHEST" && r.qty > 0);
+  // The treasury's own chests (Gacha wins, shop): only the Mukhiya sends them (older servers: whoever may send chests)
+  const ownedOk = d.data?.canSendOwned ?? Boolean(d.data?.canSend);
   const now = useNow();
   const [busy, setBusy] = useState<string | null>(null);
   const [got, setGot] = useState<{ label: string } | null>(null);
@@ -782,18 +784,18 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
           <Loading error={d.error} retry={d.reload} />
         ) : (
           <>
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">In your Parivar&apos;s store</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">In the Parivar treasury</p>
             <ul className="mt-2 space-y-2">
-              {myChests.length === 0 ? <li className="rounded-2xl bg-surface p-4 text-center text-[12.5px] text-muted ring-1 ring-line">No chest bought yet. Buy one in the Parivar shop and it appears here.</li> : null}
+              {myChests.length === 0 ? <li className="rounded-2xl bg-surface p-4 text-center text-[12.5px] text-muted ring-1 ring-line">No chest in the treasury yet. Chests won in Gacha or bought in the Parivar shop come here.</li> : null}
               {myChests.map((r) => (
                 <li key={`${r.kind}${r.ref}`} className="flex flex-wrap items-center gap-3 rounded-2xl bg-gradient-to-r from-gold/12 to-surface p-3 ring-1 ring-gold/25">
                   <Glyph icon={Gift} size={42} />
                   <span className="min-w-0 flex-1">
                     <span className="block text-[13.5px] font-bold text-cream">{r.name ?? "Chest"}</span>
-                    <span className="text-[11.5px] text-muted">{d.data?.canSend ? "Kholo: poora Parivar apna hissa claim karega." : "Sirf Mukhiya ise kholega."}</span>
+                    <span className="text-[11.5px] text-muted">{ownedOk ? "Kholo: poora Parivar apna hissa claim karega." : "Treasury mein hai. Sirf Mukhiya ise Parivar ko bhej sakta hai."}</span>
                   </span>
                   <span className="rounded-full bg-gold/20 px-2 py-1 text-[11.5px] font-extrabold text-gold">×{n(r.qty)}</span>
-                  {d.data?.canSend ? (
+                  {ownedOk ? (
                     <Btn disabled={busy !== null} onClick={() => void act(`o${r.ref}`, () => parivarExtra.sendChest(p.id, String(r.ref)), `${r.name ?? "Chest"} khul gaya: sabko claim karne ko mila 🎁`)}>
                       Open
                     </Btn>
@@ -836,11 +838,11 @@ export function ChestsSheet({ p, open, onClose, onChanged }: Props) {
                   </li>
                 ))}
             </ul>
-            {d.data.canSend ? (
+            {d.data.canSend || ownedOk ? (
               <>
                 <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Send a chest to the Parivar</p>
                 <ul className="mt-2 space-y-2">
-                  {d.data.types.map((t) => (
+                  {d.data.types.filter((t) => (t.owned > 0 ? ownedOk : d.data!.canSend)).map((t) => (
                     <li key={t.id} className="flex items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line">
                       <Glyph icon={Gift} size={40} />
                       <span className="min-w-0 flex-1">
@@ -1016,7 +1018,6 @@ export function ChoriSheet({ p, open, onClose, onChanged }: Props) {
             ) : (
               <p className="mt-3 text-[12px] text-muted">
                 {c.successPercent}% chance · takes {c.takePercent}% of their treasury (up to {n(c.maxTake)}) · {c.attemptsLeft}/{c.dailyAttempts} attempts left today
-                {c.cooldownLeftSeconds > 0 ? ` · next try in ${countdown(new Date(now + c.cooldownLeftSeconds * 1000).toISOString(), now)}` : ""}
                 {c.failPenalty ? ` · a failed try costs ${n(c.failPenalty)} funds` : ""}
               </p>
             )}
@@ -1040,7 +1041,7 @@ export function ChoriSheet({ p, open, onClose, onChanged }: Props) {
                       </span>
                       <Btn
                         tone="danger"
-                        disabled={busy !== null || c.attemptsLeft < 1 || c.cooldownLeftSeconds > 0}
+                        disabled={busy !== null || c.attemptsLeft < 1}
                         onClick={async () => {
                           if (!window.confirm(`Try Chori on ${t.name}?`)) return;
                           setBusy(t.id);

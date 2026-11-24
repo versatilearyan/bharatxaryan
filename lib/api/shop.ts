@@ -144,7 +144,8 @@ export async function getShopProduct(id: string) {
 /* ---------------- buying with coins ---------------- */
 
 export type BuyResult = { productId: string; name: string; owned: number; coinsSpent: number; balance: number; currency?: ShopCurrency; pkCoins?: number; pkCoinsSpent?: number; validDays?: number };
-export type OwnedShopItem = ShopProduct & { quantity: number; lastBoughtAt?: string };
+/** ring: the server says it is a CP ring (Ring type, a ring category, or a PK ring): the Bag offers Add to CP / Propose. */
+export type OwnedShopItem = ShopProduct & { quantity: number; lastBoughtAt?: string; ring?: boolean };
 
 const newRequestId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
@@ -189,6 +190,8 @@ export async function getMyShopItems(): Promise<OwnedShopItem[]> {
         price: num(o.price),
         quantity: num(o.quantity) ?? 1,
         lastBoughtAt: str(o.lastBoughtAt),
+        wearSlot: str(o.wearSlot)?.toUpperCase(),
+        ring: typeof o.ring === "boolean" ? o.ring : undefined,
       },
     ];
   });

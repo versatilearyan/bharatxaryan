@@ -33,7 +33,9 @@ function cardArt(p: ShopProduct): { url?: string; type?: string; animated?: bool
 const RARITY_TINT: Record<string, string> = { common: "#aaa6b0", rare: "#7fdcff", epic: "#b48bff", legendary: "#e7bc72" };
 /** What kind of item it is, shown on PK cards (their category, PK, says nothing about it). */
 const TYPE_LABEL: Record<string, string> = { FRAME: "Frame", BUBBLE: "Chat bubble", ENTRY: "Entry", PROFILE: "Profile effect", BADGE: "Badge", RING: "Ring" };
-const typeOf = (p: ShopProduct) => (p.giftId ? "Gift" : p.wearSlot ? TYPE_LABEL[p.wearSlot] : undefined);
+/** A PK item left on automatic type whose name has the word "ring" is a CP ring too (same rule as the server). */
+const isPkRing = (p: ShopProduct) => p.wearSlot === "RING" || (!p.wearSlot && !p.giftId && /ring/i.test(p.name));
+const typeOf = (p: ShopProduct) => (p.giftId ? "Gift" : isPkRing(p) ? "Ring" : p.wearSlot ? TYPE_LABEL[p.wearSlot] : undefined);
 const rarityTint = (r?: string) => (r ? RARITY_TINT[r.toLowerCase()] : undefined) ?? "#aaa6b0";
 
 /** "all", "packets", or "cat:<category id>". */
@@ -156,7 +158,7 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
         setConfirm(null);
         if (r.currency === "PK_COINS") {
           setPk((x) => ({ balance: r.pkCoins ?? Math.max(0, (x?.balance ?? 0) - (p.price ?? 0)), itemDays: x?.itemDays ?? 7 }));
-          toast(p.wearSlot === "RING" ? `${p.name} is in your Bag. Use it to propose in CP.` : p.giftId ? `${p.name} is in your Package. Send it from the gift panel.` : `${p.name} is yours for ${r.validDays ?? daysOf(p)} days. Wear it from your Bag.`, "gold");
+          toast(isPkRing(p) ? `${p.name} is in your Bag. Use it to propose in CP.` : p.giftId ? `${p.name} is in your Package. Send it from the gift panel.` : `${p.name} is yours for ${r.validDays ?? daysOf(p)} days. Wear it from your Bag.`, "gold");
           return;
         }
         void refreshCoins();
