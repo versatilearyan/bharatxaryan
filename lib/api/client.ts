@@ -172,14 +172,23 @@ async function send<T>(path: string, options: Options): Promise<T> {
   try {
     return await sendOnce<T>(path, options);
   } catch (e) {
-    // 503 = every server connection was busy and nothing was done: wait as asked, then try once more
-    if (e instanceof ApiError && e.status === 503 && retrySafe(options)) {
-      await new Promise((r) => setTimeout(r, Math.min(5, Math.max(1, e.retryAfterSeconds ?? 2)) * 1000));
-      return sendOnce<T>(path, options);
+    // The server was very busy (503) or slow to answer (timeout): try again quietly, a few times, but only when a
+    // repeat is harmless (a read, or a write the server de-duplicates by requestId). The person never sees "busy".
+    let last = e;
+    for (let attempt = 1; attempt <= 3 && retrySafe(options) && busyOrSlow(last); attempt++) {
+      const wait = last instanceof ApiError && last.retryAfterSeconds ? last.retryAfterSeconds : attempt;
+      await new Promise((r) => setTimeout(r, Math.min(5, Math.max(1, wait)) * 1000));
+      try {
+        return await sendOnce<T>(path, options);
+      } catch (again) {
+        last = again;
+      }
     }
-    throw e;
+    throw last;
   }
 }
+
+const busyOrSlow = (e: unknown) => e instanceof ApiError && (e.status === 503 || e.code === "timeout");
 
 async function sendOnce<T>(path: string, options: Options): Promise<T> {
   try {
