@@ -37,7 +37,7 @@ export type RewardGoal = { ruleId: string; name: string; kind: "RANDOM" | "GUARA
 
 /** One worn reward effect, as rooms and profiles send it. */
 /** A name frame: a frame with a plate that shows the wearer's account name. */
-export type NameFrameFx = { name: string; scale: number; y: number; plateX: number; plateY: number; plateW: number; plateH: number; color: string; stroke: string };
+export type NameFrameFx = { name: string; scale: number; size?: number; y: number; plateX: number; plateY: number; plateW: number; plateH: number; color: string; stroke: string };
 /** avatar (entries from the Shop): OVERLAY, SLOT, SLOT:<key> or NONE: how the wearer's picture shows. */
 export type WornEffect = { url: string; format: string | null; soundUrl: string | null; name: string | null; nameFrame?: NameFrameFx; avatar?: string; layoutLevel: number };
 export type RewardEffects = Partial<Record<RewardSlot, WornEffect>>;
@@ -95,7 +95,7 @@ export function readRewardEffects(raw: unknown): RewardEffects {
         soundUrl: mediaSrc(e.soundUrl),
         name: str(e.name),
         ...(str(e.avatar) ? { avatar: str(e.avatar)! } : {}),
-        nameFrame: nf ? { name: str(nf.name) ?? "", scale: n(nf.scale, 1.4), y: n(nf.y, 0.56), plateX: n(nf.plateX, 21), plateY: n(nf.plateY, 74), plateW: n(nf.plateW, 58), plateH: n(nf.plateH, 17), color: str(nf.color) ?? "#ffe9a8", stroke: str(nf.stroke) ?? "#0a2a80" } : undefined,
+        nameFrame: nf ? { name: str(nf.name) ?? "", scale: n(nf.scale, 1.4), size: n(nf.size, 1.45), y: n(nf.y, 0.56), plateX: n(nf.plateX, 21), plateY: n(nf.plateY, 74), plateW: n(nf.plateW, 58), plateH: n(nf.plateH, 17), color: str(nf.color) ?? "#ffe9a8", stroke: str(nf.stroke) ?? "#0a2a80" } : undefined,
         layoutLevel: Math.min(Math.max(n(e.layoutLevel, 1), 1), 11),
       };
     }

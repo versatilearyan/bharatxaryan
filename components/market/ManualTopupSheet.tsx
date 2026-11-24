@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, Loader2, ShieldCheck, Smartphone } from "lucide-react";
+import { Check, Copy, Crown, Loader2, ShieldCheck, Smartphone } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Coin } from "@/components/ui/kit";
-import { manualTopupApi, type TopupInfo, type TopupRequest } from "@/lib/api/manual-topup";
+import { manualTopupApi, type RoyalInfo, type TopupInfo, type TopupRequest } from "@/lib/api/manual-topup";
+import { RoyalPackCard, RoyalPackStep, shortCoins } from "./RoyalPack";
 import { getWalletCoinPacks, type WalletCoinPack } from "@/lib/api/wallet";
 import { shrinkToJpeg } from "@/lib/app/chat-wallpaper";
 import { formatInr } from "@/lib/app/redpacket";
@@ -20,13 +21,14 @@ const inputClass = "h-11 w-full rounded-2xl border border-line bg-surface px-4 t
  * 3. Mukhiya ji checks the payment in the bank and approves: the coins arrive in the wallet and a message comes in the Mukhiya ji chat.
  * Everything that happens is also written in that chat (automated messages with a button that brings you back here).
  */
-export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: boolean; onClose: () => void; packId?: string; requestId?: string }) {
+export function ManualTopupSheet({ open, onClose, packId, requestId, royal: wantRoyal }: { open: boolean; onClose: () => void; packId?: string; requestId?: string; royal?: boolean }) {
   const { toast, setSheet } = useApp();
   const [info, setInfo] = useState<TopupInfo | null>(null);
   const [packs, setPacks] = useState<WalletCoinPack[] | null>(null);
+  const [royal, setRoyal] = useState<RoyalInfo | null>(null);
   const [mine, setMine] = useState<TopupRequest[]>([]);
   const [current, setCurrent] = useState<TopupRequest | null>(null);
-  const [step, setStep] = useState<"pick" | "pay" | "proof">("pick");
+  const [step, setStep] = useState<"pick" | "pay" | "proof" | "royal">("pick");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [utr, setUtr] = useState("");
@@ -59,7 +61,10 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
       const r = await reload();
       if (!live || !r) return;
       getWalletCoinPacks().then((p) => live && setPacks(p)).catch(() => live && setPacks([]));
-      if (requestId) {
+      manualTopupApi.royal().then((x) => live && setRoyal(x)).catch(() => undefined);
+      if (wantRoyal && r.i.enabled) {
+        setStep("royal");
+      } else if (requestId) {
         const found = r.m.find((x) => x.id === requestId);
         if (found) {
           setCurrent(found);
@@ -74,7 +79,22 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
     };
     // start is stable enough for opening; only re-run when the sheet opens or its target changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, packId, requestId]);
+  }, [open, packId, requestId, wantRoyal]);
+
+  const startRoyal = async (plate: string, title: "KING" | "QUEEN") => {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await manualTopupApi.requestRoyal(plate, title);
+      setCurrent(r);
+      setStep("pay");
+      void reload();
+    } catch (e) {
+      setError(errText(e, "Couldn't start the Royal Pack."));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   useEffect(
     () => () => {
@@ -157,7 +177,7 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
   const label = (s: TopupRequest["status"]) => (s === "SUBMITTED" ? `${name} is checking` : s === "APPROVED" ? "Coins added ✅" : s === "REJECTED" ? "Not verified" : s === "REQUESTED" ? "Waiting for your payment" : "Cancelled");
 
   return (
-    <BottomSheet open={open} onClose={onClose} title={`Pay ${name} by UPI`} tall>
+    <BottomSheet open={open} onClose={onClose} title={step === "royal" ? `👑 ${royal?.name ?? "Royal Pack"}` : `Pay ${name} by UPI`} tall>
       <div className="space-y-4 px-5 pb-6">
         {!info ? (
           <p className="grid place-items-center py-10" role="status">
@@ -173,15 +193,41 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
               </p>
             ) : null}
 
-            {step === "pay" && current ? (
+            {step === "royal" ? (
+              royal?.enabled && royal.frame ? (
+                <RoyalPackStep info={royal} munshiName={name} busy={busy} initialName={current?.kind === "ROYAL" ? current.plateName : undefined} onContinue={(p, t) => void startRoyal(p, t)} onBack={() => setStep("pick")} />
+              ) : royal ? (
+                <p className="rounded-2xl bg-surface px-4 py-6 text-center text-[13px] text-muted ring-1 ring-line">The Royal Pack isn&apos;t on sale right now.</p>
+              ) : (
+                <p className="grid place-items-center py-10" role="status">
+                  <Loader2 className="h-5 w-5 animate-spin text-gold" aria-label="Loading" />
+                </p>
+              )
+            ) : step === "pay" && current ? (
               <>
-                <div className="rounded-2xl bg-gradient-to-br from-[#4a3214] via-[#2a1a0c] to-[#1a1008] p-4 ring-1 ring-gold/40">
-                  <p className="text-[12px] text-gold/80">{current.packName}</p>
-                  <p className="mt-1 font-display text-[28px] font-extrabold text-cream">Pay {formatInr(current.amountInr)}</p>
-                  <p className="mt-0.5 flex items-center gap-1 text-[12.5px] text-cream/70">
-                    You get <Coin className="h-3.5 w-3.5" /> {current.coins.toLocaleString("en-IN")} coins
-                  </p>
-                </div>
+                {current.kind === "ROYAL" ? (
+                  <div className="rounded-2xl bg-[radial-gradient(120%_100%_at_15%_0%,#4b1f86_0%,#26113f_50%,#140a22_100%)] p-4 ring-1 ring-gold/50">
+                    <p className="flex items-center gap-1.5 text-[12px] font-bold text-gold">
+                      <Crown className="h-3.5 w-3.5" aria-hidden /> {current.packName}
+                    </p>
+                    <p className="mt-1 font-display text-[28px] font-extrabold text-cream">Pay {formatInr(current.amountInr)}</p>
+                    <p className="mt-0.5 text-[12.5px] text-cream/75">
+                      Frame name <b className="text-gold">{current.plateName}</b>
+                      {current.coins > 0 ? ` · ${shortCoins(current.coins)} coins` : ""} · 2 royal titles
+                    </p>
+                    <button type="button" onClick={() => setStep("royal")} className="mt-1 text-[12px] font-semibold text-gold underline">
+                      Change the name
+                    </button>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl bg-gradient-to-br from-[#4a3214] via-[#2a1a0c] to-[#1a1008] p-4 ring-1 ring-gold/40">
+                    <p className="text-[12px] text-gold/80">{current.packName}</p>
+                    <p className="mt-1 font-display text-[28px] font-extrabold text-cream">Pay {formatInr(current.amountInr)}</p>
+                    <p className="mt-0.5 flex items-center gap-1 text-[12.5px] text-cream/70">
+                      You get <Coin className="h-3.5 w-3.5" /> {current.coins.toLocaleString("en-IN")} coins
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-2 rounded-2xl bg-surface p-4 ring-1 ring-line">
                   <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">1. Pay this UPI ID</p>
                   <div className="flex items-center gap-2">
@@ -218,7 +264,7 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
             ) : step === "proof" && current ? (
               <>
                 <p className="text-[13px] text-cream/80">
-                  Send the <b>transaction ID (UTR)</b> and a <b>screenshot</b> of the payment for {formatInr(current.amountInr)}. {name} checks it in the bank, then your coins arrive.
+                  Send the <b>transaction ID (UTR)</b> and a <b>screenshot</b> of the payment for {formatInr(current.amountInr)}. {name} checks it in the bank, then {current.kind === "ROYAL" ? "gives you everything in the pack" : "your coins arrive"}.
                 </p>
                 <label className="block">
                   <span className="mb-1 block text-[12px] font-semibold text-cream/70">Transaction ID (UTR)</span>
@@ -252,7 +298,9 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
                         ? `We got your proof for ${formatInr(current.amountInr)} (${current.utr ?? ""}). ${name} will check it and message you in the chat. You can close this.`
                         : current.status === "REJECTED"
                           ? (current.rejectReason ?? "The payment couldn't be verified.")
-                          : "Your coins are in the wallet."}
+                          : current.kind === "ROYAL"
+                            ? "Your Royal frame, titles and coins are yours. Check the message from " + name + "."
+                            : "Your coins are in the wallet."}
                     </p>
                   </div>
                 ) : null}
@@ -269,6 +317,7 @@ export function ManualTopupSheet({ open, onClose, packId, requestId }: { open: b
                     ))}
                   </div>
                 ) : null}
+                {royal?.enabled ? <RoyalPackCard info={royal} munshiName={name} onOpen={() => setStep("royal")} /> : null}
                 <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Choose a coin pack</p>
                 {!packs ? (
                   <p className="grid place-items-center py-6" role="status">

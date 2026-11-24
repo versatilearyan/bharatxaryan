@@ -25,6 +25,8 @@ export type EffectSet = {
   tint: string;
   frameScale: number;
   frameY: number;
+  /** How big the frame is drawn around a seat / profile picture (frame width ÷ spot width). VIP frames use 1.45. */
+  frameSize?: number;
   bubbleBox: [number, number, number, number];
   entryRatio: string;
   entryText: [string, string];

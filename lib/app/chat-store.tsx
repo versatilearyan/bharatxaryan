@@ -349,7 +349,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           return { ...all, [m.conversationId]: rest };
         });
       // Sarpanch (official) messages also show as a notification banner
-      if (m.type === "SYSTEM" && m.senderId !== me) announceSarpanch({ id: m.id, title: m.title, text: m.text, imageUrl: m.imageUrl });
+      if (m.type === "SYSTEM" && m.senderId !== me) announceSarpanch({ id: m.id, title: m.title, text: m.text, imageUrl: m.imageUrl, fromId: m.senderId ?? undefined });
       const known = takeRef.current(m);
       // A chat that isn't in the list yet (someone new wrote): reload the list once
       if (!known) loadInboxRef.current(true);

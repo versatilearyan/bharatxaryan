@@ -10,7 +10,9 @@ import { SvgaAnim } from "./SvgaAnim";
  * window, and `drop` is the room to leave below for art that hangs lower
  * (like the VIP 1 ribbon) so it doesn't cover the name.
  */
-export function frameFit(set: EffectSet, box: number, k = 1.45) {
+export function frameFit(set: EffectSet, box: number, kIn = 1.45) {
+  // A name frame can say how big it is drawn (set in the admin panel); VIP frames use the usual size
+  const k = set.frameSize ?? kIn;
   const w = box * k;
   return {
     avatar: Math.round((box * k) / set.frameScale),
