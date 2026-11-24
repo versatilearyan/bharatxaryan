@@ -107,7 +107,7 @@ export function rewardFx(r: RewardEffects | undefined): Effects {
     const nf = r.FRAME.nameFrame;
     // A name frame brings its own fit and a plate for the wearer's name
     fx.frame = nf
-      ? as(r.FRAME.layoutLevel, { frame: r.FRAME.url, frameScale: nf.scale, frameY: nf.y, plate: { name: nf.name, x: nf.plateX, y: nf.plateY, w: nf.plateW, h: nf.plateH, color: nf.color, stroke: nf.stroke } })
+      ? as(r.FRAME.layoutLevel, { frame: r.FRAME.url, frameScale: nf.scale, frameY: nf.y, frameSize: nf.size, plate: { name: nf.name, x: nf.plateX, y: nf.plateY, w: nf.plateW, h: nf.plateH, color: nf.color, stroke: nf.stroke } })
       : as(r.FRAME.layoutLevel, { frame: r.FRAME.url });
   }
   if (r.BUBBLE) fx.bubble = as(r.BUBBLE.layoutLevel, { bubble: r.BUBBLE.url });

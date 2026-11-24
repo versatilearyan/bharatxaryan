@@ -9,12 +9,13 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { SERVER_USER_PREFIX } from "@/lib/app/server-rooms";
+import { SERVER_USER_PREFIX, useNameLookup, useServerPeople } from "@/lib/app/server-rooms";
 import { useApp } from "@/lib/app/store";
 import { OfficialTick, sarpanchApi } from "./Sarpanch";
 
 export const SARPANCH_EVENT = "panchayat:sarpanch-message";
-export type SarpanchNotice = { id: string; title?: string; text?: string; imageUrl?: string };
+/** fromId: the official account that wrote it (Sarpanch, Munshi ji for payments, Daroga), so the banner shows the right name. */
+export type SarpanchNotice = { id: string; title?: string; text?: string; imageUrl?: string; fromId?: string };
 
 /** Called by the chat store when a SYSTEM message arrives. */
 export function announceSarpanch(n: SarpanchNotice) {
@@ -35,6 +36,14 @@ export function SarpanchBanner() {
   const { push } = useApp();
   const [n, setN] = useState<SarpanchNotice | null>(null);
   const [face, setFace] = useState<string | undefined>(sarpanch?.avatarUrl);
+  const people = useServerPeople();
+  const lookup = useNameLookup();
+  // Another official account (Munshi ji, Daroga): its own name, not "Sarpanch"
+  const otherId = n?.fromId && /^\d+$/.test(n.fromId) && n.fromId !== sarpanch?.userId ? n.fromId : undefined;
+  const otherName = otherId ? people[`${SERVER_USER_PREFIX}${otherId}`]?.name : undefined;
+  useEffect(() => {
+    if (otherId) lookup([`${SERVER_USER_PREFIX}${otherId}`]);
+  }, [otherId, lookup]);
 
   useEffect(() => {
     let t: number | undefined;
@@ -66,7 +75,8 @@ export function SarpanchBanner() {
     } catch {
       /* ignore */
     }
-    if (sarpanch) push({ kind: "conversation", personId: `${SERVER_USER_PREFIX}${sarpanch.userId}` });
+    if (otherId) push({ kind: "conversation", personId: `${SERVER_USER_PREFIX}${otherId}` });
+    else if (sarpanch) push({ kind: "conversation", personId: `${SERVER_USER_PREFIX}${sarpanch.userId}` });
     else push({ kind: "sarpanch" });
   };
 
@@ -83,7 +93,9 @@ export function SarpanchBanner() {
         >
           <div className="pointer-events-auto mt-2 w-full max-w-[440px] overflow-hidden rounded-3xl bg-gradient-to-r from-[#4a1626] via-[#2c1622] to-[#1c1824] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.9)] ring-1 ring-gold/40">
             <button type="button" onClick={open} className="flex w-full items-start gap-3 p-3 text-left">
-              {face ? (
+              {otherId ? (
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gold/20 font-display text-lg font-bold text-gold ring-2 ring-gold">{(otherName ?? "M").charAt(0)}</span>
+              ) : face ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={face} alt="" className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-gold" />
               ) : (
@@ -91,7 +103,7 @@ export function SarpanchBanner() {
               )}
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1 text-[12px] font-bold text-gold">
-                  Sarpanch <OfficialTick className="h-3.5 w-3.5" />
+                  {otherId ? (otherName ?? "Panchayat") : "Sarpanch"} <OfficialTick className="h-3.5 w-3.5" />
                 </span>
                 {n.title ? <span className="block truncate text-[14px] font-bold text-cream">{n.title}</span> : null}
                 {n.text ? <span className="line-clamp-2 text-[12.5px] leading-snug text-cream/80">{n.text}</span> : null}

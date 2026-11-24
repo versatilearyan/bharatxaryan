@@ -41,7 +41,8 @@ import { looksLikeGameCode } from "@/lib/api/invites";
 import { lazySheet } from "@/components/ui/lazySheet";
 import { ManualTopupSheet } from "@/components/market/ManualTopupSheet";
 import { TicketSheet } from "@/components/market/TicketSheet";
-import { manualTopupApi } from "@/lib/api/manual-topup";
+import { manualTopupApi, type RoyalInfo } from "@/lib/api/manual-topup";
+import { RoyalPackCard } from "@/components/market/RoyalPack";
 
 /** App-level bottom sheets opened from Home, Discover, Profile and rooms. */
 export function GlobalSheets() {
@@ -55,7 +56,7 @@ export function GlobalSheets() {
       <FriendsSheet open={sheet?.kind === "friends"} onClose={close} tab={sheet?.kind === "friends" ? sheet.tab : undefined} />
       <CoinsSheet open={sheet?.kind === "coins"} onClose={close} />
       <Tickets open={sheet?.kind === "ticket"} onClose={close} ticketId={sheet?.kind === "ticket" ? sheet.ticketId : undefined} />
-      <ManualTopup open={sheet?.kind === "topup"} onClose={close} packId={sheet?.kind === "topup" ? sheet.packId : undefined} requestId={sheet?.kind === "topup" ? sheet.requestId : undefined} />
+      <ManualTopup open={sheet?.kind === "topup"} onClose={close} packId={sheet?.kind === "topup" ? sheet.packId : undefined} requestId={sheet?.kind === "topup" ? sheet.requestId : undefined} royal={sheet?.kind === "topup" ? sheet.royal : undefined} />
       <GameSheet gameId={sheet?.kind === "game" ? sheet.gameId : null} onClose={close} />
       <EditProfileSheet open={sheet?.kind === "edit-profile"} onClose={close} />
       <FindUserSheet open={sheet?.kind === "find-user"} onClose={close} />
@@ -297,10 +298,13 @@ function CoinsSheetImpl({ open, onClose }: { open: boolean; onClose: () => void 
   // Manual UPI top-up (when Google Pay / Paytm doesn't like the gateway): shown when the admin switched it on. Not in the Play Store build.
   const [manualOn, setManualOn] = useState(false);
   const [manualName, setManualName] = useState("Mukhiya ji");
+  // The Royal Pack: sold only through Munshi ji, highlighted at the top of the coin box
+  const [royal, setRoyal] = useState<RoyalInfo | null>(null);
   useEffect(() => {
     if (!open || !signedIn) return;
     let live = true;
     manualTopupApi.info().then((i) => { if (live) { setManualOn(i.enabled); setManualName(i.name); } }).catch(() => undefined);
+    manualTopupApi.royal().then((r) => live && setRoyal(r)).catch(() => undefined);
     return () => {
       live = false;
     };
@@ -345,6 +349,7 @@ function CoinsSheetImpl({ open, onClose }: { open: boolean; onClose: () => void 
           </p>
           <p className="relative mt-1 text-[11.5px] text-cream/60">Send gifts, red packets and more in any room</p>
         </div>
+        {manualOn && royal?.enabled ? <RoyalPackCard info={royal} munshiName={manualName} onOpen={() => setSheet({ kind: "topup", royal: true })} /> : null}
         <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Recharge coins</p>
         <button type="button" onClick={() => setSheet({ kind: "ticket" })} className="mt-2 w-full rounded-2xl bg-cream/[0.06] px-4 py-2.5 text-left text-[12.5px] font-semibold text-cream/80 ring-1 ring-white/10">
           Payment problem? <span className="underline">Raise a ticket</span>
