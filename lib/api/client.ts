@@ -164,7 +164,24 @@ export function api<T>(path: string, options: Options = {}): Promise<T> {
   return call;
 }
 
+/** Safe to send twice: a read, or a write the server de-duplicates by its requestId (gifts, purchases ...). */
+const retrySafe = (options: Options) =>
+  (options.method ?? "GET") === "GET" || Boolean(options.body && typeof options.body === "object" && !(options.body instanceof FormData) && "requestId" in (options.body as Record<string, unknown>));
+
 async function send<T>(path: string, options: Options): Promise<T> {
+  try {
+    return await sendOnce<T>(path, options);
+  } catch (e) {
+    // 503 = every server connection was busy and nothing was done: wait as asked, then try once more
+    if (e instanceof ApiError && e.status === 503 && retrySafe(options)) {
+      await new Promise((r) => setTimeout(r, Math.min(5, Math.max(1, e.retryAfterSeconds ?? 2)) * 1000));
+      return sendOnce<T>(path, options);
+    }
+    throw e;
+  }
+}
+
+async function sendOnce<T>(path: string, options: Options): Promise<T> {
   try {
     return await request<T>(path, options);
   } catch (e) {
@@ -244,7 +261,7 @@ async function request<T>(path: string, { method = "GET", body, auth = false, ti
     onUnauthorized?.("rejected");
     throw new ApiError("Your session has ended. Please sign in again.", res.status, "unauthorized", fields);
   }
-  throw new ApiError(friendly(res.status, message), res.status, res.status === 401 ? "unauthorized" : res.status === 403 ? "forbidden" : "http", fields, res.status === 429 ? retryAfterOf(res) : undefined);
+  throw new ApiError(friendly(res.status, message), res.status, res.status === 401 ? "unauthorized" : res.status === 403 ? "forbidden" : "http", fields, res.status === 429 || res.status === 503 ? retryAfterOf(res) : undefined);
 }
 
 /** Pull a message and field errors out of the common Spring Boot error shapes. */
