@@ -14,7 +14,7 @@ export function assetTypeOf(url: string | undefined, given?: string): ShopAssetT
   const path = url.split(/[?#]/)[0].toLowerCase();
   const ext = path.slice(path.lastIndexOf(".") + 1);
   if (ext === "svga") return "SVGA";
-  if (ext === "mp4") return "MP4";
+  if (ext === "mp4" || ext === "webm" || ext === "mov" || ext === "m4v") return "MP4";
   if (ext === "svg") return "SVG";
   return "IMAGE";
 }
@@ -54,7 +54,8 @@ function useNearViewport<T extends Element>(margin = "200px") {
  * of looping. Anything that can't load shows a quiet placeholder. Give it a
  * key of the URL so a new asset starts fresh.
  */
-export function ShopProductAsset({ url, type, name, className = "" }: { url?: string; type?: string; name: string; className?: string }) {
+/** animated: the link is an animation (GIF / animated WEBP …): shown as it is, never flattened by the backdrop cutout. */
+export function ShopProductAsset({ url, type, name, className = "", animated = false }: { url?: string; type?: string; name: string; className?: string; animated?: boolean }) {
   const kind = assetTypeOf(url, type);
   const reduced = useReducedMotion();
   const [box, near] = useNearViewport<HTMLDivElement>();
@@ -62,14 +63,14 @@ export function ShopProductAsset({ url, type, name, className = "" }: { url?: st
   // Photos uploaded with a black or white/checkered backdrop: show them with it removed
   const [imgSrc, setImgSrc] = useState<string | null>(null);
   useEffect(() => {
-    if (!url || kind !== "IMAGE" || !near || imgSrc) return;
+    if (!url || kind !== "IMAGE" || animated || !near || imgSrc) return;
     let live = true;
     cutoutSrc(url).then((s) => live && setImgSrc(s));
     return () => {
       live = false;
     };
-  }, [url, kind, near, imgSrc]);
-  const src = kind === "IMAGE" ? imgSrc : url;
+  }, [url, kind, animated, near, imgSrc]);
+  const src = kind === "IMAGE" && !animated ? imgSrc : url;
 
   const fallback = (
     <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted" role="img" aria-label={`${name}: picture unavailable`}>

@@ -104,7 +104,7 @@ function sharpen(player: import("svga").Player, canvas: HTMLCanvasElement, size:
 /** What kind of file a link is, from its extension (admin uploads can be SVGA, MP4 or a picture). */
 export function mediaKind(src: string): "svga" | "mp4" | "image" {
   const path = src.split(/[?#]/)[0].toLowerCase();
-  if (path.endsWith(".mp4")) return "mp4";
+  if (/\.(mp4|webm|mov|m4v)$/.test(path)) return "mp4";
   if (/\.(png|jpe?g|webp|gif|avif)$/.test(path)) return "image";
   return "svga";
 }

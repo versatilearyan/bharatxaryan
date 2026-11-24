@@ -20,12 +20,12 @@ import { PkCoin, formatPk } from "./PkCoin";
 import { giftById } from "@/lib/app/data";
 
 /** What a Shop card shows: the item's own animation, else (for a Gift item) the gift's animation, else its picture. */
-function cardArt(p: ShopProduct): { url?: string; type?: string } {
-  if (p.animationUrl) return { url: p.animationUrl };
+function cardArt(p: ShopProduct): { url?: string; type?: string; animated?: boolean } {
+  if (p.animationUrl) return { url: p.animationUrl, animated: true };
   if (p.giftId) {
     const g = giftById(p.giftId);
     const anim = g.svga?.src ?? g.video?.src;
-    if (anim) return { url: anim };
+    if (anim) return { url: anim, animated: true };
   }
   return { url: p.assetUrl, type: p.assetType };
 }
