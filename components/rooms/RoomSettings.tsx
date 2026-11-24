@@ -10,7 +10,7 @@ import { CATEGORIES } from "@/lib/app/data";
 import { formatPoints } from "@/lib/app/levels";
 import { usePeople } from "@/lib/app/people";
 import { GOLD_NAME_VIP } from "@/lib/app/levels";
-import { getRoomById } from "@/lib/api/voice-rooms";
+import { clearRoomBackground, getRoomById, uploadRoomBackground } from "@/lib/api/voice-rooms";
 import { newbieApi } from "@/lib/api/newbie";
 import { roomStateApi, type RoomBanRow } from "@/lib/api/room-state";
 import { BottomSheet } from "@/components/ui/BottomSheet";
@@ -383,6 +383,7 @@ export function RoomSettingsScreen({ s }: { s: RoomSession }) {
               />
             </Group>
             {s.room.newbie ? <ExtraSeatsGroup s={s} locked={locked} /> : s.room.official ? <ExtraSeatsToggle s={s} locked={locked} /> : null}
+            {s.room.newbie ? null : <RoomBackgroundGroup s={s} locked={locked} />}
             <BlockedGroup s={s} locked={locked} />
             <Group>
               <SwitchRow label="Manage event" hint="Shows an event banner in the room" on={st.event} onChange={(v) => s.updateSettings({ event: v })} locked={locked} />
@@ -515,6 +516,64 @@ function ExtraSeatsToggle({ s, locked }: { s: RoomSession; locked: boolean }) {
 }
 
 /** Newbie Welcome Rooms: the host opens or closes the 6 extra welcome seats. The server decides who may and resizes the seats. */
+/** Any room's own background (picture, GIF, WEBP or MP4 up to 100 MB): owner or admin at level 5+, or an Official PK host. */
+function RoomBackgroundGroup({ s, locked }: { s: RoomSession; locked: boolean }) {
+  const { applyRoom } = useServerRooms();
+  const { toast } = useApp();
+  const person = usePeople();
+  const [busy, setBusy] = useState(false);
+  const id = s.room.server?.id;
+  if (!id) return null;
+  const myLevel = person(ME_ID).level ?? 0;
+  const allowed = Boolean(s.room.officialPk) || myLevel >= 5;
+  const pick = async (file: File | undefined) => {
+    if (!file || busy) return;
+    if (file.size > 100 * 1024 * 1024) return toast("The background can be at most 100 MB.", "error");
+    setBusy(true);
+    try {
+      await uploadRoomBackground(id, file);
+      applyRoom(await getRoomById(id));
+      toast("Room background changed", "gold");
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : "Couldn't change the background.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const reset = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await clearRoomBackground(id);
+      applyRoom(await getRoomById(id));
+      toast("Background removed", "gold");
+    } catch (e) {
+      toast(e instanceof Error && e.message ? e.message : "Couldn't remove the background.", "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Group>
+      <div className="flex min-h-[58px] items-center gap-3 px-5">
+        <span className="flex-1">
+          <span className="block text-[15px] text-cream">Room background</span>
+          <span className="block text-[12px] text-cream/50">{allowed ? "Picture, GIF or video (MP4), up to 100 MB" : "Unlocks at level 5"}</span>
+        </span>
+        <label className={`rounded-full bg-gold px-3.5 py-1.5 text-[12.5px] font-bold text-ink ${locked || busy || !allowed ? "opacity-50" : "cursor-pointer"}`}>
+          {busy ? "Uploading…" : "Upload"}
+          <input type="file" accept="image/*,video/mp4" className="sr-only" disabled={locked || busy || !allowed} onChange={(e) => { void pick(e.target.files?.[0]); e.target.value = ""; }} />
+        </label>
+        {s.room.newbieBackground ? (
+          <button type="button" disabled={locked || busy} onClick={() => void reset()} className="rounded-full px-3 py-1.5 text-[12.5px] font-semibold text-cream/70 ring-1 ring-white/15 disabled:opacity-50">
+            Remove
+          </button>
+        ) : null}
+      </div>
+    </Group>
+  );
+}
+
 function ExtraSeatsGroup({ s, locked }: { s: RoomSession; locked: boolean }) {
   const { applyRoom } = useServerRooms();
   const { toast } = useApp();

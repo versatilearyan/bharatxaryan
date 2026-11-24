@@ -3,6 +3,8 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { bubbleFit, type EffectSet, type VipSet } from "@/lib/app/effects";
 import { SvgaAnim } from "./SvgaAnim";
+import { nameFace } from "@/lib/app/fonts";
+import type { NameFont } from "@/lib/app/types";
 
 /**
  * Fits a VIP frame to a spot of `box` px (a seat, a profile picture): every
@@ -48,7 +50,7 @@ function NamePlate({ plate, frameWidth, frameY }: { plate: NonNullable<EffectSet
     <span className="pointer-events-none absolute left-1/2 top-1/2 z-[2] max-w-none" style={{ width: frameWidth, height: frameWidth, transform: `translate(-50%, -${frameY * 100}%)` }} aria-hidden>
       <span
         className="absolute grid place-items-center overflow-hidden text-center font-display font-black leading-none"
-        style={{ left: `${plate.x}%`, top: `${plate.y}%`, width: `${plate.w}%`, height: `${plate.h}%`, color: plate.color, fontSize: fs, WebkitTextStroke: `${Math.max(0.5, fs * 0.08)}px ${plate.stroke}`, paintOrder: "stroke fill", textShadow: `0 ${Math.max(1, fs * 0.06)}px 0 ${plate.stroke}`, whiteSpace: "nowrap" }}
+        style={{ ...nameFace(plate.font as NameFont | undefined), left: `${plate.x}%`, top: `${plate.y}%`, width: `${plate.w}%`, height: `${plate.h}%`, color: plate.color, fontSize: fs, WebkitTextStroke: `${Math.max(0.5, fs * 0.08)}px ${plate.stroke}`, paintOrder: "stroke fill", textShadow: `0 ${Math.max(1, fs * 0.06)}px 0 ${plate.stroke}`, whiteSpace: "nowrap" }}
       >
         {name}
       </span>

@@ -28,6 +28,7 @@ import { useRewards } from "@/lib/app/rewards-store";
 import { getMyShopItems, type OwnedShopItem } from "@/lib/api/shop";
 import { treasureApi, type TreasureMine } from "@/lib/api/parivar";
 import { ShopProductAsset } from "./ShopProductAsset";
+import { FrameCustomizeSheet } from "./RoyalPack";
 import { CpRing } from "./CpRing";
 import { useEffect as useEffectBag } from "react";
 import { rewardTypeText } from "./RewardWon";
@@ -55,6 +56,7 @@ export function BagScreen() {
   const [proposeRing, setProposeRing] = useState<{ id: string; name: string } | null>(null);
 
   const [open, setOpen] = useState<string | null>(null);
+  const [customizing, setCustomizing] = useState<import("@/lib/api/rewards").BagReward | null>(null);
   const person = usePeople();
   const me = person(ME_ID);
   // Signed in to the backend: VIP decorations and red packets come from the server
@@ -156,6 +158,8 @@ export function BagScreen() {
       tint: "from-[#4a2a6b] to-[#1d1430]",
       note: r.slot ? SLOT_NOTE[r.slot] : "Kept in your Bag.",
       action: r.slot ? (r.equipped ? { label: "Take off", run: () => void wearServer(r.id, false, r.itemName), off: true } : { label: "Wear", run: () => void wearServer(r.id, true, r.itemName) }) : undefined,
+      // Your own name frame (the Royal frame): change its name and font
+      extra: r.customizable && r.frameFit ? { label: "Customize name & font", run: () => setCustomizing(r) } : undefined,
     }));
   const rewardGifts: Entry[] = Object.values(
     rw.rewards
@@ -514,10 +518,16 @@ export function BagScreen() {
                 {current.action.label}
               </button>
             ) : null}
+            {current.extra ? (
+              <button type="button" onClick={() => { const run = current.extra!.run; setOpen(null); run(); }} className="mt-2 h-11 w-full rounded-full bg-cream/10 text-[14px] font-bold text-gold ring-1 ring-gold/40">
+                {current.extra.label}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </BottomSheet>
       <FindCpSheet open={finding} onClose={() => setFinding(false)} />
+      <FrameCustomizeSheet reward={customizing} onClose={() => setCustomizing(null)} onSaved={() => void rw.refresh()} />
       {proposeRing ? <ProposeFromBagSheet open onClose={() => setProposeRing(null)} ringId={proposeRing.id} ringName={proposeRing.name} /> : null}
     </div>
   );

@@ -412,6 +412,17 @@ export function uploadRoomCover(roomId: string, file: Blob): Promise<VoiceRoom> 
   return roomAnswer(api<unknown>(`${path(roomId)}/cover`, { method: "POST", auth: true, forbiddenIsAccess: true, body: form, timeoutMs: 60_000 }));
 }
 
+/** Owner and admins (level 5+, or an Official PK host): the room's background, a picture, GIF, WEBP or MP4 up to 100 MB. */
+export function uploadRoomBackground(roomId: string, file: File): Promise<VoiceRoom> {
+  const form = new FormData();
+  form.append("file", file, file.name);
+  return roomAnswer(api<unknown>(`${path(roomId)}/background`, { method: "POST", auth: true, forbiddenIsAccess: true, body: form, timeoutMs: 600_000 }));
+}
+
+export function clearRoomBackground(roomId: string): Promise<VoiceRoom> {
+  return roomAnswer(api<unknown>(`${path(roomId)}/background`, { method: "DELETE", auth: true, forbiddenIsAccess: true }));
+}
+
 /** Owner and admins: the room's current password (null when there's none). */
 export async function getRoomPassword(roomId: string): Promise<string | null> {
   const d = one(await api<unknown>(`${path(roomId)}/settings/private`, { auth: true, forbiddenIsAccess: true }));
