@@ -1,5 +1,7 @@
 "use client";
 
+import { SmoothVideo } from "@/components/ui/SmoothVideo";
+import { PhotoViewer } from "@/components/ui/PhotoViewer";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, Globe2, Heart, ImagePlus, Lock, MessageCircle, MoreHorizontal, Play, Send, Trash2, Users, Video, X } from "lucide-react";
@@ -48,6 +50,7 @@ export function MomentsScreen({ personId }: { personId?: string }) {
   const [composing, setComposing] = useState(false);
   const [commentsFor, setCommentsFor] = useState<Moment | null>(null);
   const [viewer, setViewer] = useState<{ list: Moment["media"]; i: number } | null>(null);
+  const closeViewer = useCallback(() => setViewer(null), []);
   const sentinel = useRef<HTMLDivElement>(null);
 
   const load = useCallback(
@@ -195,7 +198,7 @@ export function MomentsScreen({ personId }: { personId?: string }) {
         }}
       />
       <CommentsSheet moment={commentsFor} onClose={() => setCommentsFor(null)} onCount={(id, n) => patch(id, { commentCount: n })} />
-      <AnimatePresence>{viewer ? <MediaViewer list={viewer.list} start={viewer.i} onClose={() => setViewer(null)} /> : null}</AnimatePresence>
+      <PhotoViewer open={Boolean(viewer)} onClose={closeViewer} label="Photos">{viewer ? <MediaViewer list={viewer.list} start={viewer.i} /> : null}</PhotoViewer>
     </div>
   );
 }
@@ -231,7 +234,7 @@ function MediaGrid({ media, onOpen }: { media: Moment["media"]; onOpen: (i: numb
   if (media[0]?.type === "VIDEO")
     return (
       <div className="mt-2.5 overflow-hidden rounded-2xl bg-black">
-        <video src={media[0].url} controls playsInline preload="metadata" className="max-h-[420px] w-full" />
+        <SmoothVideo src={media[0].url} className="aspect-[4/5] max-h-[420px] w-full" />
       </div>
     );
   const n = media.length;
@@ -248,14 +251,14 @@ function MediaGrid({ media, onOpen }: { media: Moment["media"]; onOpen: (i: numb
   );
 }
 
-function MediaViewer({ list, start, onClose }: { list: Moment["media"]; start: number; onClose: () => void }) {
+function MediaViewer({ list, start }: { list: Moment["media"]; start: number }) {
   const [i, setI] = useState(start);
   const m = list[i];
   return (
-    <motion.div className="fixed inset-0 z-[95] flex items-center justify-center bg-black/95" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} role="dialog" aria-label="Photos">
+    <>
       <motion.div className="flex h-full w-full items-center justify-center" drag="x" dragConstraints={{ left: 0, right: 0 }} onDragEnd={(_, info) => (info.offset.x < -60 ? setI((x) => Math.min(list.length - 1, x + 1)) : info.offset.x > 60 ? setI((x) => Math.max(0, x - 1)) : null)}>
         {m?.type === "VIDEO" ? (
-          <video src={m.url} controls autoPlay playsInline className="max-h-full max-w-full" />
+          <SmoothVideo key={m.url} src={m.url} sound fit="contain" className="h-full w-full" />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <motion.img key={m?.url} src={m?.url} alt="" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className="max-h-full max-w-full object-contain" draggable={false} />
@@ -268,10 +271,7 @@ function MediaViewer({ list, start, onClose }: { list: Moment["media"]; start: n
           ))}
         </span>
       ) : null}
-      <button type="button" onClick={onClose} aria-label="Close" className="absolute right-4 top-[calc(var(--st)+14px)] grid h-10 w-10 place-items-center rounded-full bg-white/15 text-white">
-        <X className="h-5 w-5" />
-      </button>
-    </motion.div>
+    </>
   );
 }
 

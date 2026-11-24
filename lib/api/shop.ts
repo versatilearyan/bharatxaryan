@@ -34,6 +34,10 @@ export type ShopProduct = {
   rarity?: string;
   assetUrl?: string;
   assetType?: ShopAssetType;
+  /** An animation the admin added (SVGA / MP4): the Shop card plays it instead of the still picture. */
+  animationUrl?: string;
+  /** A Gift item: buying it puts this gift in the Package. */
+  giftId?: string;
   displayOrder?: number;
   /** Days a bought item lasts (0 = forever). */
   validDays?: number;
@@ -95,6 +99,8 @@ function readProduct(raw: unknown): ShopProduct | null {
     rarity: str(r.rarity),
     assetUrl: str(r.assetUrl),
     assetType: readAssetType(r.assetType),
+    animationUrl: str(r.animationUrl),
+    giftId: str(r.giftId),
     displayOrder: num(r.displayOrder),
     validDays: num(r.validDays),
     active: bool(r.active),

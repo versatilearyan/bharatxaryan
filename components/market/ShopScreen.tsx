@@ -17,6 +17,18 @@ import { ApiError } from "@/lib/api/client";
 import { buyShopProduct, getShopCategories, getShopProduct, getShopProducts, type ShopCategory, type ShopProduct } from "@/lib/api/shop";
 import { getPkMe } from "@/lib/api/pk-coins";
 import { PkCoin, formatPk } from "./PkCoin";
+import { giftById } from "@/lib/app/data";
+
+/** What a Shop card shows: the item's own animation, else (for a Gift item) the gift's animation, else its picture. */
+function cardArt(p: ShopProduct): { url?: string; type?: string } {
+  if (p.animationUrl) return { url: p.animationUrl };
+  if (p.giftId) {
+    const g = giftById(p.giftId);
+    const anim = g.svga?.src ?? g.video?.src;
+    if (anim) return { url: anim };
+  }
+  return { url: p.assetUrl, type: p.assetType };
+}
 
 const RARITY_TINT: Record<string, string> = { common: "#aaa6b0", rare: "#7fdcff", epic: "#b48bff", legendary: "#e7bc72" };
 const rarityTint = (r?: string) => (r ? RARITY_TINT[r.toLowerCase()] : undefined) ?? "#aaa6b0";
@@ -237,7 +249,7 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
                 ) : (
                   <span className="h-[15px]" />
                 )}
-                <ShopProductAsset key={p.assetUrl ?? "none"} url={p.assetUrl} type={p.assetType} name={p.name} className="my-1 max-w-[108px]" />
+                <ShopProductAsset key={cardArt(p).url ?? "none"} {...cardArt(p)} name={p.name} className="my-1 max-w-[108px]" />
                 <span className="line-clamp-1 font-display text-[15px] font-bold text-cream">{p.name}</span>
                 {p.description && <span className="line-clamp-2 text-center text-[11px] text-muted">{p.description}</span>}
               </button>
@@ -252,7 +264,7 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
           <div className="px-5 pb-6">
             <div className="flex items-center gap-3 rounded-2xl bg-surface p-3 ring-1 ring-line">
               <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-black/20">
-                <ShopProductAsset url={confirm.assetUrl} type={confirm.assetType} name={confirm.name} className="h-full w-full" />
+                <ShopProductAsset key={cardArt(confirm).url ?? "none"} {...cardArt(confirm)} name={confirm.name} className="h-full w-full" />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[15px] font-bold text-cream">{confirm.name}</span>
@@ -346,7 +358,7 @@ function ProductSheet({ id, preview, onClose, onBuy }: { id: string | null; prev
         )
       ) : (
         <div className="flex flex-col items-center pb-2">
-          <ShopProductAsset key={p.assetUrl ?? "none"} url={p.assetUrl} type={p.assetType} name={p.name} className="max-w-[200px]" />
+          <ShopProductAsset key={cardArt(p).url ?? "none"} {...cardArt(p)} name={p.name} className="max-w-[200px]" />
           <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-[11px] font-bold">
             {p.rarity && (
               <span className="rounded-full bg-black/30 px-2.5 py-1 uppercase tracking-[0.12em]" style={{ color: rarityTint(p.rarity) }}>

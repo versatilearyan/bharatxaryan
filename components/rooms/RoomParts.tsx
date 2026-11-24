@@ -2,7 +2,8 @@
 
 import { NameText } from "@/components/ui/NameText";
 import { openReport } from "@/components/safety/Safety";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { PhotoViewer, ViewerImage } from "@/components/ui/PhotoViewer";
 import { useLiveCounts } from "@/lib/app/live-counts";
 import { NewbieBadge } from "@/components/newbie/NewbieBadge";
 import { useIsNewbie } from "@/lib/app/newbie";
@@ -812,6 +813,7 @@ function ChatLine({ m, fxFor }: { m: RoomMessage; fxFor: ReturnType<typeof useRo
 /** A photo in the room chat: a rounded thumbnail that opens full screen. */
 function ChatPhoto({ src }: { src: string }) {
   const [open, setOpen] = useState(false);
+  const closePhoto = useCallback(() => setOpen(false), []);
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   return (
@@ -825,17 +827,9 @@ function ChatPhoto({ src }: { src: string }) {
         )}
         {!loaded && !failed ? <span className="absolute inset-0 animate-pulse bg-white/[0.06]" aria-hidden /> : null}
       </button>
-      <AnimatePresence>
-        {open ? (
-          <motion.div className="fixed inset-0 z-[95] grid place-items-center bg-black/90 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setOpen(false)} role="dialog" aria-label="Photo">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <motion.img src={src} alt="Photo in chat" className="max-h-full max-w-full rounded-xl object-contain" initial={{ scale: 0.92 }} animate={{ scale: 1 }} exit={{ scale: 0.92 }} />
-            <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="absolute right-4 top-[calc(var(--st)+14px)] grid h-9 w-9 place-items-center rounded-full bg-white/15 text-white">
-              <X className="h-5 w-5" />
-            </button>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      <PhotoViewer open={open} onClose={closePhoto}>
+        <ViewerImage src={src} alt="Photo in chat" />
+      </PhotoViewer>
     </>
   );
 }

@@ -8,6 +8,7 @@
 import { NameText } from "@/components/ui/NameText";
 import { openReport } from "@/components/safety/Safety";
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { PhotoViewer, ViewerImage } from "@/components/ui/PhotoViewer";
 import { AnimatePresence, motion } from "framer-motion";
 import { getRoomById } from "@/lib/api/voice-rooms";
 import { invitePreview, parseInvite } from "@/lib/api/invites";
@@ -67,6 +68,7 @@ function ChatImage({ conversationId, messageId }: { conversationId: string; mess
   const [tick, setTick] = useState(0);
   const [shown, setShown] = useState(false);
   const [zoom, setZoom] = useState(false);
+  const closeZoom = useCallback(() => setZoom(false), []);
   // Only download when it's about to be seen
   useEffect(() => {
     const el = box.current;
@@ -109,17 +111,9 @@ function ChatImage({ conversationId, messageId }: { conversationId: string; mess
       ) : (
         <span className="absolute inset-0 animate-pulse bg-gradient-to-br from-white/[0.06] via-white/[0.12] to-white/[0.04]" aria-label="Loading image" />
       )}
-      <AnimatePresence>
-        {zoom && url ? (
-          <motion.span className="fixed inset-0 z-[95] grid place-items-center bg-black/90 p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setZoom(false)} role="dialog" aria-label="Photo">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <motion.img src={url} alt="Photo" className="max-h-full max-w-full rounded-xl object-contain" initial={{ scale: 0.92 }} animate={{ scale: 1 }} exit={{ scale: 0.92 }} />
-            <span className="absolute right-4 top-[calc(var(--st)+14px)] grid h-9 w-9 place-items-center rounded-full bg-white/15 text-white" aria-hidden>
-              <X className="h-5 w-5" />
-            </span>
-          </motion.span>
-        ) : null}
-      </AnimatePresence>
+      <PhotoViewer open={Boolean(zoom && url)} onClose={closeZoom}>
+        {url ? <ViewerImage src={url} /> : null}
+      </PhotoViewer>
     </span>
   );
 }
