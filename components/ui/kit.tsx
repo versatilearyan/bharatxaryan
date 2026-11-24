@@ -5,8 +5,10 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { motion, type HTMLMotionProps } from "framer-motion";
 import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 
+/** Short coin amounts for tight spots: 9,999 · 12.5K · 560K · 1.2M · 12.3B. */
+const shortAmount = (n: number, d: number, unit: string) => `${(n / d).toFixed(n / d >= 100 ? 0 : 1).replace(/\.0$/, "")}${unit}`;
 export const formatCoins = (n: number) =>
-  n >= 100_000 ? `${(n / 1000).toFixed(0)}K` : n >= 10_000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K` : n.toLocaleString("en-IN");
+  n >= 1e9 ? shortAmount(n, 1e9, "B") : n >= 1e6 ? shortAmount(n, 1e6, "M") : n >= 10_000 ? shortAmount(n, 1e3, "K") : n.toLocaleString("en-IN");
 
 export const formatCount = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}K` : String(n));
 

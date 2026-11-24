@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Armchair, Gift, Sparkles, Users } from "lucide-react";
+import { Armchair, BadgeCheck, Gift, Sparkles, Users } from "lucide-react";
 import { NewbieBadge } from "./NewbieBadge";
 import { Seat } from "@/components/rooms/RoomParts";
 import { useSeatScale } from "@/components/rooms/useSeatScale";
@@ -17,81 +17,131 @@ export { NewbieBadge };
 
 /* ------------------------------------------------------------------ the top of Home and Rooms */
 
-function HostAvatar({ r, size = 54 }: { r: NewbieRoom; size?: number }) {
+/** The host's photo inside a ring that fills up as the room fills (gold, or coral when full). */
+function FillRing({ r, fill, full, size }: { r: NewbieRoom; fill: number; full: boolean; size: number }) {
+  const stroke = 3.5;
+  const rad = size / 2 - stroke / 2;
+  const len = 2 * Math.PI * rad;
+  const inner = size - stroke * 2 - 6;
   return (
-    <span className="relative shrink-0" style={{ width: size, height: size }}>
-      <span className="block overflow-hidden rounded-full bg-gradient-to-br from-[#f6d899] via-[#e7bc72] to-[#b8862f] p-[2px] shadow-[0_0_18px_rgba(231,188,114,0.55)]">
-        {r.host.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={r.host.avatarUrl} alt="" className="block rounded-full bg-[#1a0f08] object-cover" style={{ width: size - 4, height: size - 4 }} />
-        ) : (
-          <span className="grid place-items-center rounded-full bg-[#2a1520] font-bold text-gold" style={{ width: size - 4, height: size - 4, fontSize: size * 0.4 }}>
-            {(r.host.name ?? "H").slice(0, 1).toUpperCase()}
-          </span>
-        )}
-      </span>
-      <span className={`absolute right-0 bottom-0 h-3.5 w-3.5 rounded-full ring-2 ring-[#1a0f08] ${r.host.online ? "bg-[#3ddc84]" : "bg-[#7a7380]"}`} title={r.host.online ? "Host is online" : "Host is away"} />
+    <span className="relative grid shrink-0 place-items-center" style={{ width: size, height: size }}>
+      <span aria-hidden className="absolute inset-1 rounded-full bg-gold/25 blur-md" />
+      <svg aria-hidden className="absolute inset-0 -rotate-90" width={size} height={size}>
+        <circle cx={size / 2} cy={size / 2} r={rad} fill="none" stroke="rgba(231,188,114,0.18)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={rad} fill="none" stroke={full ? "#ff8a7a" : "url(#nb-ring)"} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={len} strokeDashoffset={len * (1 - Math.max(fill, 4) / 100)} />
+        <defs>
+          <linearGradient id="nb-ring" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#fff1c9" />
+            <stop offset="100%" stopColor="#f5b347" />
+          </linearGradient>
+        </defs>
+      </svg>
+      {r.host.avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={r.host.avatarUrl} alt="" className="relative rounded-full bg-[#2a1520] object-cover" style={{ width: inner, height: inner }} />
+      ) : (
+        <span className="relative grid place-items-center rounded-full bg-[#2a1520] font-bold text-gold" style={{ width: inner, height: inner, fontSize: inner * 0.4 }}>
+          {(r.host.name ?? "H").slice(0, 1).toUpperCase()}
+        </span>
+      )}
+      <span className={`absolute right-1 bottom-1 h-3.5 w-3.5 rounded-full ring-[2.5px] ring-[#2a0d16] ${r.host.online ? "bg-[#3ddc84]" : "bg-[#8a8290]"}`} title={r.host.online ? "Host is online" : "Host is away"} />
     </span>
   );
 }
 
-function RoomCard({ r, mine }: { r: NewbieRoom; mine: boolean }) {
+/**
+ * A warm "sunrise" welcome card: the host's photo in a ring that fills as the room fills, a NEW ribbon,
+ * the host's name and a big friendly button. Tall when several rooms sit side by side, wide when there's one.
+ */
+function RoomCard({ r, mine, wide }: { r: NewbieRoom; mine: boolean; wide: boolean }) {
   const { openRoom } = useApp();
+  const full = r.seatsFree <= 0;
+  const capacity = Math.max(r.capacity || 0, r.joined + Math.max(0, r.seatsFree), 1);
+  const fill = Math.min(100, Math.round((r.joined / capacity) * 100));
+  const cta = full ? "Room full" : mine ? "Wapas jao" : "Namaste 🙏 Join";
+  const button = (
+    <span className={`relative block rounded-full py-2 text-center text-[12.5px] font-extrabold ${full ? "bg-cream/10 text-cream/45" : "bg-gradient-to-b from-[#f6d899] to-[#c9954a] text-[#2a1a0c] shadow-[0_4px_0_#8a5a1f,0_10px_18px_-8px_rgba(231,188,114,0.6)]"}`}>{cta}</span>
+  );
+  const stats = (
+    <span className="flex flex-wrap items-center gap-1.5 text-[10.5px] font-bold text-cream/85">
+      <span className="inline-flex items-center gap-1 rounded-full bg-black/30 px-2 py-0.5 ring-1 ring-gold/25">
+        <Users className="h-3 w-3 text-gold" aria-hidden /> {r.joined}/{capacity}
+      </span>
+      {r.newbiesInside ? (
+        <span className="inline-flex items-center gap-1 rounded-full bg-black/30 px-2 py-0.5 ring-1 ring-gold/25">
+          <Sparkles className="h-3 w-3 text-gold" aria-hidden /> {r.newbiesInside} new
+        </span>
+      ) : null}
+    </span>
+  );
   return (
     <motion.button
       type="button"
       whileTap={{ scale: 0.97 }}
+      whileHover={{ y: -2 }}
       onClick={() => openRoom(serverRoomAppId(String(r.roomId)))}
-      aria-label={`${r.name}, hosted by ${r.host.name ?? "a host"}`}
-      className="pn-glow-gold relative w-[262px] shrink-0 overflow-hidden rounded-[26px] bg-gradient-to-br from-[#fff0c2] via-[#e7bc72] to-[#9a6f2c] p-[1.5px] text-left"
+      aria-label={`${r.name}, hosted by ${r.host.name ?? "a host"}. ${r.joined} in room, ${full ? "full" : `${r.seatsFree} spots free`}`}
+      className={`relative shrink-0 snap-start overflow-hidden rounded-[24px] bg-gradient-to-b from-[#6b1f30] via-[#3d1220] to-[#1a0b11] text-left ring-1 ring-gold/40 shadow-[0_16px_30px_-18px_rgba(231,188,114,0.6)] ${wide ? "w-full p-3.5" : "w-[158px] p-3"}`}
     >
-      <span className="relative block overflow-hidden rounded-[25px] bg-gradient-to-br from-[#2a1a10] via-[#1b1109] to-[#120a06] p-3.5">
-        <span aria-hidden className="pointer-events-none absolute -top-12 -right-10 h-36 w-36 rounded-full bg-gold/25 blur-3xl" />
-        <span className="relative flex items-center justify-between">
-          <span className="flex items-center gap-1.5">
-            <NewbieBadge className="!text-[10px] !px-2 !py-0.5" />
-            <span className="rounded-full bg-gold/15 px-2 py-0.5 text-[9.5px] font-black uppercase tracking-wider text-gold ring-1 ring-gold/40">Sarpanch</span>
-          </span>
-          <span className="text-[11px] font-bold text-cream/45">#{r.number}</span>
-        </span>
-        <span className="relative mt-3 flex items-center gap-3">
-          <HostAvatar r={r} />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate font-display text-[16px] leading-tight font-extrabold text-cream">{r.host.name ?? "Host"}</span>
-            <span className="mt-0.5 flex items-center gap-1 text-[11.5px] font-semibold text-gold">HOST · {r.host.online ? "Online" : "Away"}</span>
-          </span>
-        </span>
-        <span className="relative mt-3 flex flex-wrap gap-1.5">
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-semibold text-cream/85">
-            <Users className="h-3 w-3 text-gold" aria-hidden /> {r.joined} in room
-          </span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-semibold text-cream/85">🌱 {r.newbiesInside} new</span>
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/[0.08] px-2.5 py-1 text-[11px] font-semibold text-cream/85">{r.seatsFree > 0 ? `${r.seatsFree} spots free` : "Full"}</span>
-        </span>
-        <span className="relative mt-3.5 flex h-10 items-center justify-center rounded-full bg-gradient-to-b from-[#f6d899] to-[#d9a84f] text-[13.5px] font-extrabold text-[#2a1a0c]">{mine ? "Join your welcome room" : "Join & say hi"}</span>
+      {/* sun glow, soft rays and dotted texture */}
+      <span className="foil-shimmer animate-shimmer pointer-events-none absolute inset-0 opacity-30" aria-hidden />
+      <span aria-hidden className="pointer-events-none absolute -top-14 left-1/2 h-36 w-36 -translate-x-1/2 rounded-full bg-gold/20 blur-2xl" />
+      <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.12] [background-image:radial-gradient(rgba(246,216,153,0.9)_1px,transparent_1.2px)] [background-size:12px_12px] [mask-image:linear-gradient(to_bottom,black,transparent_75%)]" />
+      {/* NEW ribbon */}
+      <span className={`absolute top-2.5 ${wide ? "right-2.5" : "left-1/2 -translate-x-1/2"} inline-flex items-center gap-1 rounded-full bg-gradient-to-b from-[#f6d899] to-[#c9954a] px-2 py-0.5 text-[9px] font-black tracking-[0.16em] text-[#2a1a0c] uppercase`}>
+        <Sparkles className="h-2.5 w-2.5" aria-hidden /> New
       </span>
+      {wide ? (
+        <span className="relative flex items-center gap-3">
+          <FillRing r={r} fill={fill} full={full} size={72} />
+          <span className="min-w-0 flex-1">
+            <span className="text-[10px] font-black tracking-[0.16em] text-gold/80 uppercase">Welcome host</span>
+            <span className="mt-0.5 flex items-center gap-1">
+              <span className="truncate font-display text-[19px] leading-tight font-black text-foil">{r.host.name ?? "Host"}</span>
+              <BadgeCheck className="h-4 w-4 shrink-0 text-gold" aria-label="Official Sarpanch host" />
+            </span>
+            <span className="mt-1.5 block">{stats}</span>
+          </span>
+        </span>
+      ) : (
+        <span className="relative flex flex-col items-center pt-6 text-center">
+          <FillRing r={r} fill={fill} full={full} size={76} />
+          <span className="mt-2 text-[9.5px] font-black tracking-[0.16em] text-gold/80 uppercase">Welcome host</span>
+          <span className="mt-0.5 flex max-w-full items-center gap-1">
+            <span className="truncate font-display text-[16px] leading-tight font-black text-foil">{r.host.name ?? "Host"}</span>
+            <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-gold" aria-label="Official Sarpanch host" />
+          </span>
+          <span className="mt-2">{stats}</span>
+        </span>
+      )}
+      <span className="relative mt-3 block">{button}</span>
     </motion.button>
   );
 }
 
-/** 🌟 NEWBIE WELCOME ROOMS: the open welcome rooms, at the very top. Nothing shows while there are none. */
+/** NEWBIE WELCOME ROOMS: the open welcome rooms, at the very top. Nothing shows while there are none. */
 export function NewbieRooms({ className = "mt-3" }: { className?: string }) {
   const rooms = useNewbieRooms();
   const me = useNewbieMe();
   if (!rooms.length) return null;
+  const wide = rooms.length === 1;
   return (
     <section className={className} aria-labelledby="newbie-h">
-      <div className="mb-2.5 flex items-center justify-between px-4">
-        <h2 id="newbie-h" className="bg-gradient-to-r from-[#f6d899] via-[#e7bc72] to-[#d9a84f] bg-clip-text font-display text-[15px] font-extrabold tracking-[0.12em] text-transparent">
-          🌟 NEWBIE WELCOME ROOMS
-        </h2>
-        <span className="flex items-center gap-1.5 text-[11px] font-bold text-cream/55">
+      <div className="mb-3 flex items-end justify-between gap-3 px-4">
+        <span className="min-w-0">
+          <h2 id="newbie-h" className="flex items-center gap-2 font-display text-[21px] font-black tracking-tight text-cream">
+            <span aria-hidden className="h-5 w-1.5 rounded-full bg-gradient-to-b from-[#f6d899] to-[#c9954a]" />
+            Naye ho? Namaste! 🙏
+          </h2>
+          <span className="mt-0.5 block truncate pl-3.5 text-[12px] text-cream/60">Welcome rooms with friendly hosts</span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-black/30 px-2.5 py-1 text-[11px] font-bold text-gold ring-1 ring-gold/30">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#3ddc84]" aria-hidden /> {rooms.length} open
         </span>
       </div>
-      <div className="no-scrollbar flex gap-3 overflow-x-auto px-4 pb-1">
+      <div className={`no-scrollbar flex gap-3 px-4 pb-1 ${wide ? "" : "snap-x snap-mandatory overflow-x-auto scroll-px-4"}`}>
         {rooms.map((r) => (
-          <RoomCard key={r.roomId} r={r} mine={me?.roomId === String(r.roomId)} />
+          <RoomCard key={r.roomId} r={r} mine={me?.roomId === String(r.roomId)} wide={wide} />
         ))}
       </div>
     </section>

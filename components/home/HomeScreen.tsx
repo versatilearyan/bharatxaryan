@@ -3,7 +3,7 @@
 import { eventCenterOn } from "@/lib/api/events";
 import { Hut3D, Mic3D } from "@/components/art/Icons3D";
 import { RoomCover } from "@/components/rooms/RoomCover";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Bell, ChevronRight, Crown, Flame, MonitorPlay, Play, Plus, Radio, UsersRound } from "lucide-react";
 import { activeRooms } from "@/lib/app/active-rooms";
@@ -57,25 +57,26 @@ function Greeting() {
         {when}, <span className="bg-gradient-to-r from-[#ffd86b] via-[#ff9ad5] to-[#b9a3ff] bg-clip-text text-transparent">{first}</span> 🙏
       </h1>
       <p className="mt-1 text-[13px] text-cream/65">Aaj kya karein? Gaddaar pakdo ya kisi room me baat karo.</p>
-      <div className="mt-3 grid grid-cols-2 gap-2.5">
-        <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={() => push({ kind: "gaddar" })} className="flex items-center gap-2.5 rounded-[20px] bg-gradient-to-br from-[#7c4dff] to-[#ff3d8b] p-3.5 text-left shadow-[0_10px_24px_-10px_rgba(255,61,139,0.7),inset_0_1px_0_rgba(255,255,255,0.35)] ring-1 ring-white/25">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]" aria-hidden>
-            <Hut3D size={38} />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-[13.5px] font-extrabold text-white">Gaddaar khelo</span>
-            <span className="block text-[11px] text-white/80">Bina room, seedha game</span>
-          </span>
-        </motion.button>
-        <motion.button type="button" whileTap={{ scale: 0.96 }} onClick={() => setTab("rooms")} className="flex items-center gap-2.5 rounded-[20px] bg-gradient-to-br from-[#14b8a6] to-[#2563eb] p-3.5 text-left shadow-[0_10px_24px_-10px_rgba(20,184,166,0.7),inset_0_1px_0_rgba(255,255,255,0.35)] ring-1 ring-white/25">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]" aria-hidden>
-            <Mic3D size={38} />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-[13.5px] font-extrabold text-white">Rooms me jao</span>
-            <span className="block text-[11px] text-white/80">Live baat-cheet</span>
-          </span>
-        </motion.button>
+      <div className="mt-3.5 grid grid-cols-2 gap-3">
+        <QuickTile
+          onClick={() => push({ kind: "gaddar" })}
+          title="Gaddaar khelo"
+          sub="Bina room, seedha game"
+          tag="Game"
+          art={<Hut3D size={74} />}
+          bg="from-[#ff6a3d] via-[#d9264f] to-[#6b0f2e]"
+          glow="rgba(255,106,61,0.55)"
+        />
+        <QuickTile
+          onClick={() => setTab("rooms")}
+          title="Rooms me jao"
+          sub="Live baat-cheet"
+          tag="Live"
+          live
+          art={<Mic3D size={74} />}
+          bg="from-[#8b5cf6] via-[#5b2bd6] to-[#1e0f5c]"
+          glow="rgba(139,92,246,0.55)"
+        />
       </div>
     </section>
   );
@@ -375,5 +376,48 @@ function RecommendedFriends() {
         })}
       </div>
     </section>
+  );
+}
+
+/** A tall, poster-like shortcut tile: bold colour, a big 3D icon floating at the top right, the title at the bottom. */
+function QuickTile({ onClick, title, sub, tag, live = false, art, bg, glow }: { onClick: () => void; title: string; sub: string; tag: string; live?: boolean; art: ReactNode; bg: string; glow: string }) {
+  return (
+    <motion.button
+      type="button"
+      whileTap={{ scale: 0.95 }}
+      whileHover={{ y: -2 }}
+      onClick={onClick}
+      aria-label={`${title}, ${sub}`}
+      className={`group relative flex h-[132px] flex-col justify-end overflow-hidden rounded-[24px] bg-gradient-to-br ${bg} p-3 pb-3.5 text-left ring-1 ring-white/20`}
+      style={{ boxShadow: `0 14px 28px -14px ${glow}, inset 0 1px 0 rgba(255,255,255,0.35)` }}
+    >
+      {/* soft light and dotted texture */}
+      <span aria-hidden className="pointer-events-none absolute -top-10 -right-8 h-32 w-32 rounded-full bg-white/25 blur-2xl" />
+      <span aria-hidden className="pointer-events-none absolute inset-0 opacity-[0.18] [background-image:radial-gradient(rgba(255,255,255,0.9)_1px,transparent_1.2px)] [background-size:12px_12px] [mask-image:linear-gradient(to_bottom,black,transparent_70%)]" />
+      <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/45 to-transparent" />
+      {/* the 3D icon, tilted and floating */}
+      <motion.span
+        aria-hidden
+        className="absolute -top-1 -right-2 drop-shadow-[0_10px_14px_rgba(0,0,0,0.45)]"
+        animate={{ y: [0, -4, 0], rotate: [8, 4, 8] }}
+        transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
+      >
+        {art}
+      </motion.span>
+      {/* small tag */}
+      <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-black/30 px-2 py-0.5 text-[9.5px] font-black tracking-[0.14em] text-white uppercase ring-1 ring-white/25 backdrop-blur-sm">
+        {live ? (
+          <span className="relative flex h-1.5 w-1.5" aria-hidden>
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#4ade80]/70" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#4ade80]" />
+          </span>
+        ) : null}
+        {tag}
+      </span>
+      <span className="relative block">
+        <span className="block font-display text-[16.5px] leading-tight font-black whitespace-nowrap text-white [text-shadow:0_2px_6px_rgba(0,0,0,0.35)]">{title}</span>
+        <span className="mt-1 block truncate text-[11px] font-semibold text-white/85">{sub}</span>
+      </span>
+    </motion.button>
   );
 }

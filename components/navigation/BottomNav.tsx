@@ -25,7 +25,7 @@ export function BottomNav() {
 
   return (
     <nav aria-label="Main" className="pb-safe pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pb-2">
-      <ul className="pointer-events-auto grid h-[66px] grid-cols-5 rounded-[26px] bg-[#1a1030]/90 px-1 ring-1 ring-white/15 backdrop-blur-xl shadow-[0_18px_40px_-10px_rgba(124,77,255,0.6)]">
+      <ul className="pointer-events-auto grid h-[66px] grid-cols-5 rounded-[26px] bg-[#1c0d14]/92 px-1 ring-1 ring-gold/25 backdrop-blur-xl shadow-[0_18px_40px_-14px_rgba(231,188,114,0.4)]">
         {TABS.map(({ id, label, icon: Icon }) => {
           const active = tab === id;
           return (
@@ -40,12 +40,12 @@ export function BottomNav() {
                   {active ? (
                     <motion.span
                       layoutId="nav-pill"
-                      className="absolute inset-0 rounded-2xl bg-gradient-to-br from-[#7c4dff] to-[#ff3d8b] shadow-[0_5px_0_#4a1f9e,0_12px_20px_-6px_rgba(255,61,139,0.7)]"
+                      className="absolute inset-0 rounded-2xl bg-gradient-to-b from-[#f6d899] to-[#c9954a] shadow-[0_4px_0_#8a5a1f,0_10px_18px_-6px_rgba(231,188,114,0.7)]"
                       transition={{ type: "spring", stiffness: 500, damping: 36 }}
                     />
                   ) : null}
                   <motion.span animate={{ scale: active ? 1.08 : 1 }} className="relative">
-                    <Icon className={`h-[22px] w-[22px] ${active ? "text-white" : "text-white/55"}`} strokeWidth={active ? 2.6 : 2} aria-hidden />
+                    <Icon className={`h-[22px] w-[22px] ${active ? "text-[#2a1a0c]" : "text-cream/55"}`} strokeWidth={active ? 2.6 : 2} aria-hidden />
                   </motion.span>
                   {id === "profile" && newVisitors > 0 ? <span className="absolute right-2.5 top-0.5 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-ink" aria-label={`${newVisitors} new visitors`} /> : null}
                   {id === "chat" && unread > 0 ? (
@@ -54,7 +54,7 @@ export function BottomNav() {
                     </span>
                   ) : null}
                 </span>
-                <span className={`text-[10.5px] font-extrabold ${active ? "text-white" : "text-white/55"}`}>{label}</span>
+                <span className={`text-[10.5px] font-extrabold ${active ? "text-gold" : "text-cream/55"}`}>{label}</span>
               </button>
             </li>
           );

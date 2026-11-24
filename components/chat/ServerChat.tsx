@@ -165,7 +165,7 @@ function InboxRow({ c, onOpen }: { c: ChatConversation; onOpen: (personId: strin
               )}
             </span>
           ) : p ? (
-            <span className={`block rounded-full ${p.vip ? "p-[2px] bg-gradient-to-tr from-[#f2a516] via-[#ffe58a] to-[#f2a516]" : ""}`}>
+            <span className={`flex rounded-full ${p.vip ? "p-[2px] bg-gradient-to-tr from-[#f2a516] via-[#ffe58a] to-[#f2a516]" : ""}`}>
               <PersonAvatar person={p} size={p.vip ? 48 : 52} />
             </span>
           ) : (
