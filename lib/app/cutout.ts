@@ -167,10 +167,40 @@ function cutout(img: HTMLImageElement): string | null {
 }
 
 /** A data URL of the picture with its flat backdrop removed, or the original URL when that can't be done. */
+/**
+ * True for a GIF, or a WEBP whose header says it is animated (VP8X flags, animation bit). Reads only the first bytes.
+ * A canvas keeps just the first frame, so animated pictures must never go through the cutout.
+ */
+async function isAnimated(url: string): Promise<boolean> {
+  const path = url.split(/[?#]/)[0].toLowerCase();
+  if (path.endsWith(".gif")) return true;
+  if (!path.endsWith(".webp")) return false;
+  try {
+    const res = await fetch(url, { headers: { Range: "bytes=0-63" } });
+    const reader = res.body?.getReader();
+    if (!reader) return false;
+    const { value } = await reader.read();
+    void reader.cancel().catch(() => undefined);
+    if (!value || value.length < 21) return false;
+    const tag = String.fromCharCode(value[12], value[13], value[14], value[15]);
+    return tag === "VP8X" && (value[20] & 0x02) !== 0;
+  } catch {
+    return true; // unsure: show it as uploaded rather than risk freezing an animation
+  }
+}
+
 export function cutoutSrc(url: string): Promise<string> {
   let job = cache.get(url);
   if (!job) {
-    job = new Promise<string>((resolve) => {
+    job = isAnimated(url).then((animated) => (animated ? url : flatCutout(url)));
+    cache.set(url, job);
+  }
+  return job;
+}
+
+function flatCutout(url: string): Promise<string> {
+  {
+    return new Promise<string>((resolve) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.decoding = "async";
@@ -184,7 +214,5 @@ export function cutoutSrc(url: string): Promise<string> {
       img.onerror = () => resolve(url);
       img.src = url;
     });
-    cache.set(url, job);
   }
-  return job;
 }

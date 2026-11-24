@@ -12,7 +12,7 @@ import { signOutLocally, type AuthUser } from "@/lib/auth/auth";
 import { api, freshToken, setUnauthorizedHandler, takeSuspensionNotice } from "@/lib/api/client";
 import { getMyCoinBalance } from "@/lib/api/wallet";
 import { subscribe } from "@/lib/realtime/stomp";
-import { getMyRoomRelations, getRoomPassword, rememberRoomPassword, setRoomFollow, setRoomMembership } from "@/lib/api/voice-rooms";
+import { checkRoomPassword, getMyRoomRelations, getRoomPassword, rememberRoomPassword, setRoomFollow, setRoomMembership } from "@/lib/api/voice-rooms";
 import { msUntilExpiry, myUserIdFromToken, readToken } from "@/lib/auth/token";
 import { tagsApi, type ServerTag } from "@/lib/api/room-games";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -74,7 +74,7 @@ export type Sheet =
   | { kind: "tasks" }
   | { kind: "friends"; tab?: "friends" | "following" | "followers" }
   | { kind: "coins" }
-  | { kind: "topup"; packId?: string; requestId?: string; royal?: boolean }
+  | { kind: "topup"; packId?: string; requestId?: string; royal?: boolean; vipPlanId?: number }
   | { kind: "ticket"; ticketId?: string }
   | { kind: "game"; gameId: GameId }
   | { kind: "edit-profile" }
@@ -603,7 +603,18 @@ function useAppState() {
             if (room.vip && vip.level < 1) push({ kind: "vip-entry", roomId });
             else enterRoom(roomId);
           })
-          .catch(() => setSheet({ kind: "room-password", roomId }));
+          .catch(() =>
+            // Not an owner/admin: the server may still let this account skip the password (co-owner, staff
+            // internal ID). An empty check is never counted as a wrong guess; otherwise the usual prompt.
+            checkRoomPassword(serverId, "")
+              .then((ok) => {
+                if (!ok) return setSheet({ kind: "room-password", roomId });
+                unlockRoom(roomId);
+                if (room.vip && vip.level < 1) push({ kind: "vip-entry", roomId });
+                else enterRoom(roomId);
+              })
+              .catch(() => setSheet({ kind: "room-password", roomId })),
+          );
         return;
       }
       if (needsPassword) setSheet({ kind: "room-password", roomId });

@@ -31,6 +31,9 @@ function cardArt(p: ShopProduct): { url?: string; type?: string; animated?: bool
 }
 
 const RARITY_TINT: Record<string, string> = { common: "#aaa6b0", rare: "#7fdcff", epic: "#b48bff", legendary: "#e7bc72" };
+/** What kind of item it is, shown on PK cards (their category, PK, says nothing about it). */
+const TYPE_LABEL: Record<string, string> = { FRAME: "Frame", BUBBLE: "Chat bubble", ENTRY: "Entry", PROFILE: "Profile effect", BADGE: "Badge", RING: "Ring" };
+const typeOf = (p: ShopProduct) => (p.giftId ? "Gift" : p.wearSlot ? TYPE_LABEL[p.wearSlot] : undefined);
 const rarityTint = (r?: string) => (r ? RARITY_TINT[r.toLowerCase()] : undefined) ?? "#aaa6b0";
 
 /** "all", "packets", or "cat:<category id>". */
@@ -153,7 +156,7 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
         setConfirm(null);
         if (r.currency === "PK_COINS") {
           setPk((x) => ({ balance: r.pkCoins ?? Math.max(0, (x?.balance ?? 0) - (p.price ?? 0)), itemDays: x?.itemDays ?? 7 }));
-          toast(`${p.name} is yours for ${r.validDays ?? daysOf(p)} days. Wear it from your Bag.`, "gold");
+          toast(p.wearSlot === "RING" ? `${p.name} is in your Bag. Use it to propose in CP.` : p.giftId ? `${p.name} is in your Package. Send it from the gift panel.` : `${p.name} is yours for ${r.validDays ?? daysOf(p)} days. Wear it from your Bag.`, "gold");
           return;
         }
         void refreshCoins();
@@ -242,9 +245,10 @@ export function ShopScreen({ initialTab, initialPay }: { initialTab?: ShopTab; i
             <div key={p.id} className="flex flex-col items-center rounded-3xl bg-surface p-3 ring-1 ring-line">
               <button type="button" onClick={() => setOpenId(p.id)} className="flex w-full flex-col items-center" aria-label={`See ${p.name}`}>
                 {p.rarity || daysOf(p) ? (
-                  <span className="text-[10.5px] font-extrabold uppercase tracking-[0.14em]" style={{ color: p.rarity ? rarityTint(p.rarity) : "#f5c451" }}>
+                  <span className="text-center text-[10.5px] font-extrabold uppercase tracking-[0.14em]" style={{ color: p.rarity ? rarityTint(p.rarity) : "#f5c451" }}>
                     {p.rarity ?? ""}
                     {daysOf(p) ? `${p.rarity ? " · " : ""}${daysOf(p)} days` : ""}
+                    {isPk(p) && typeOf(p) ? ` · ${typeOf(p)}` : ""}
                   </span>
                 ) : (
                   <span className="h-[15px]" />

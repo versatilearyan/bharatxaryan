@@ -7,6 +7,7 @@ import { SunsetScene } from "@/components/art/SunsetScene";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, DemoNote, ScreenHeader } from "@/components/ui/kit";
 import { getVipPlans, type VipPlan } from "@/lib/api/vip-plans";
+import { manualTopupApi } from "@/lib/api/manual-topup";
 import { COINS_PER_GROWTH, VIP_PRICE_INR, VIP_THRESHOLDS, formatPoints, vipLevel } from "@/lib/app/levels";
 import { useMe } from "@/lib/app/me-store";
 import { CheckoutSheet } from "@/components/market/CheckoutSheet";
@@ -26,7 +27,19 @@ const THEMES = [
 
 /** VIP benefits and tiers. VIP is a monthly subscription paid at checkout; levels grow with coins spent while VIP. */
 export function VipBenefits() {
-  const { pop, profile, vip: localVip, vipUntil, buyVip, endVip, setTab, toast } = useApp();
+  const { pop, profile, vip: localVip, vipUntil, buyVip, endVip, setTab, toast, setSheet } = useApp();
+  // Munshi ji (manual UPI): when it is on, VIP can also be paid by UPI and is turned on when the payment is approved
+  const [munshi, setMunshi] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    manualTopupApi
+      .info()
+      .then((i) => live && setMunshi(i.enabled ? i.name : null))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
   // Signed in: your VIP level and growth points are the server's (every 100 coins spent while VIP)
   const me = useMe();
   useEffect(() => me.refresh(true), []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -117,6 +130,16 @@ export function VipBenefits() {
           <p className="relative mt-1.5 text-center text-[11px] text-cream/55">
             {vip.level ? `VIP ends ${until}. Renewing adds ${plan?.days ?? VIP_DAYS} days.` : `${plan?.days ?? VIP_DAYS} days of VIP 1. Higher levels come from growth.`}
           </p>
+          {munshi && plan ? (
+            <button
+              type="button"
+              onClick={() => setSheet({ kind: "topup", vipPlanId: plan.id })}
+              className="relative mt-2 w-full rounded-full bg-emerald-500/15 py-2.5 text-center text-[12.5px] font-bold text-emerald-200 ring-1 ring-emerald-400/30"
+            >
+              Pay by UPI through {munshi} · {formatInr(plan.priceInRupees)}
+              <span className="block text-[10.5px] font-semibold text-emerald-200/70">VIP turns on by itself when the payment is approved</span>
+            </button>
+          ) : null}
           {vip.level && !signedIn ? (
             <button type="button" onClick={endVip} className="relative mx-auto mt-1 block text-[11.5px] font-bold text-cream/60 underline underline-offset-2 hover:text-cream">
               End VIP now (demo)

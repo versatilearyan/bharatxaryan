@@ -21,7 +21,7 @@ const inputClass = "h-11 w-full rounded-2xl border border-line bg-surface px-4 t
  * 3. Mukhiya ji checks the payment in the bank and approves: the coins arrive in the wallet and a message comes in the Mukhiya ji chat.
  * Everything that happens is also written in that chat (automated messages with a button that brings you back here).
  */
-export function ManualTopupSheet({ open, onClose, packId, requestId, royal: wantRoyal }: { open: boolean; onClose: () => void; packId?: string; requestId?: string; royal?: boolean }) {
+export function ManualTopupSheet({ open, onClose, packId, requestId, royal: wantRoyal, vipPlanId }: { open: boolean; onClose: () => void; packId?: string; requestId?: string; royal?: boolean; vipPlanId?: number }) {
   const { toast, setSheet } = useApp();
   const [info, setInfo] = useState<TopupInfo | null>(null);
   const [packs, setPacks] = useState<WalletCoinPack[] | null>(null);
@@ -70,6 +70,8 @@ export function ManualTopupSheet({ open, onClose, packId, requestId, royal: want
           setCurrent(found);
           setStep(found.status === "REQUESTED" ? "pay" : "pick");
         }
+      } else if (vipPlanId && r.i.enabled) {
+        void startVip(vipPlanId);
       } else if (packId && r.i.enabled) {
         void start(packId);
       }
@@ -79,7 +81,22 @@ export function ManualTopupSheet({ open, onClose, packId, requestId, royal: want
     };
     // start is stable enough for opening; only re-run when the sheet opens or its target changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, packId, requestId, wantRoyal]);
+  }, [open, packId, requestId, wantRoyal, vipPlanId]);
+
+  const startVip = async (planId: number) => {
+    setBusy(true);
+    setError("");
+    try {
+      const r = await manualTopupApi.requestVip(planId);
+      setCurrent(r);
+      setStep("pay");
+      void reload();
+    } catch (e) {
+      setError(errText(e, "Couldn't start the VIP request."));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const startRoyal = async (plate: string, title: "KING" | "QUEEN", font?: string) => {
     setBusy(true);

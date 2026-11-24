@@ -56,7 +56,7 @@ export function GlobalSheets() {
       <FriendsSheet open={sheet?.kind === "friends"} onClose={close} tab={sheet?.kind === "friends" ? sheet.tab : undefined} />
       <CoinsSheet open={sheet?.kind === "coins"} onClose={close} />
       <Tickets open={sheet?.kind === "ticket"} onClose={close} ticketId={sheet?.kind === "ticket" ? sheet.ticketId : undefined} />
-      <ManualTopup open={sheet?.kind === "topup"} onClose={close} packId={sheet?.kind === "topup" ? sheet.packId : undefined} requestId={sheet?.kind === "topup" ? sheet.requestId : undefined} royal={sheet?.kind === "topup" ? sheet.royal : undefined} />
+      <ManualTopup open={sheet?.kind === "topup"} onClose={close} packId={sheet?.kind === "topup" ? sheet.packId : undefined} requestId={sheet?.kind === "topup" ? sheet.requestId : undefined} royal={sheet?.kind === "topup" ? sheet.royal : undefined} vipPlanId={sheet?.kind === "topup" ? sheet.vipPlanId : undefined} />
       <GameSheet gameId={sheet?.kind === "game" ? sheet.gameId : null} onClose={close} />
       <EditProfileSheet open={sheet?.kind === "edit-profile"} onClose={close} />
       <FindUserSheet open={sheet?.kind === "find-user"} onClose={close} />

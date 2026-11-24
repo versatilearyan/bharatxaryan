@@ -38,6 +38,8 @@ export type ShopProduct = {
   animationUrl?: string;
   /** A Gift item: buying it puts this gift in the Package. */
   giftId?: string;
+  /** What the item is (FRAME, BUBBLE, ENTRY, PROFILE, BADGE, RING, NONE); empty = worked out from the category name. */
+  wearSlot?: string;
   displayOrder?: number;
   /** Days a bought item lasts (0 = forever). */
   validDays?: number;
@@ -101,6 +103,7 @@ function readProduct(raw: unknown): ShopProduct | null {
     assetType: readAssetType(r.assetType),
     animationUrl: str(r.animationUrl),
     giftId: str(r.giftId),
+    wearSlot: str(r.wearSlot)?.toUpperCase(),
     displayOrder: num(r.displayOrder),
     validDays: num(r.validDays),
     active: bool(r.active),

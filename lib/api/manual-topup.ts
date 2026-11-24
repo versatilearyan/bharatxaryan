@@ -113,6 +113,12 @@ export const manualTopupApi = {
     if (!r) throw new Error("The request was made, but the answer couldn't be read.");
     return r;
   },
+  /** VIP through Munshi ji: approved = the plan's days of VIP, given by themselves. */
+  requestVip: async (planId: number) => {
+    const r = readRequest(await api<unknown>("/api/v1/manual-topup/vip", { ...opts, method: "POST", body: { planId } }));
+    if (!r) throw new Error("The request was made, but the answer couldn't be read.");
+    return r;
+  },
   mine: async (): Promise<TopupRequest[]> => {
     const raw = await api<unknown>("/api/v1/manual-topup/mine", opts);
     return Array.isArray(raw) ? raw.flatMap((x) => readRequest(x) ?? []) : [];
