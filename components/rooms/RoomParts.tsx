@@ -260,7 +260,6 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
   const p = id ? person(id) : null;
   const closed = s.closedSeats.includes(index);
   const seatMuted = s.mutedSeats.includes(index);
-  const muted = id ? (id === ME_ID ? s.muted : s.forceMuted.includes(id) || seatMuted) : false;
   const { fxFor } = useRoomFx(s);
   // The NEWBIE tag, shown under the names in welcome rooms
   const newbieFlag = useIsNewbie(s.room.newbie ? id : null);
@@ -345,14 +344,13 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
               {/* Animated seat frame (SVGA) fitted to the seat: the avatar shrinks into the frame's window */}
               <span className="relative grid place-items-center" style={{ width: size, height: size, marginBottom: frameFit(frame, size).drop }}>
                 <VipFrame set={frame} size={frameFit(frame, size).avatar} onError={() => setFailedFrame(frame.frame)}>
-                  <PersonAvatar person={{ ...p, frame: "none" }} size={frameFit(frame, size).avatar} speaking={speaking} muted={muted} />
+                  <PersonAvatar person={{ ...p, frame: "none" }} size={frameFit(frame, size).avatar} speaking={speaking} />
                 </VipFrame>
               </span>
             </>
           ) : (
-            <PersonAvatar person={p} size={size} speaking={speaking} muted={muted} />
+            <PersonAvatar person={p} size={size} speaking={speaking} />
           )}
-          {role ? <RoleBadge role={role} className="absolute -bottom-1.5 left-1/2 -translate-x-1/2" /> : null}
         </motion.button>
       ) : owner ? (
         <motion.button
@@ -427,28 +425,9 @@ function useWidth<T extends HTMLElement>() {
   return [ref, width] as const;
 }
 
-/** The glowing heartbeat line between two paired seats, on a soft band joining them. */
-function Heartbeat({ gap, size, live, linked }: { gap: number; size: number; live: boolean; linked: boolean }) {
-  if (!linked) return <span style={{ width: gap }} className="shrink-0" />;
-  return (
-    <span className="relative z-0 flex shrink-0 items-center justify-center" style={{ width: gap, height: size }} aria-hidden>
-      {/* Band behind the line, reaching under both seats */}
-      <span className="absolute top-1/2 -translate-y-1/2 bg-gradient-to-r from-black/5 via-black/25 to-black/5" style={{ left: -size / 2, right: -size / 2, height: size * 0.75 }} />
-      <svg viewBox="0 0 48 20" className={`relative ${live ? "text-pink" : "text-cream/80"}`} style={{ width: gap, height: gap * 0.42, filter: `drop-shadow(0 0 ${live ? 4 : 3}px ${live ? "rgb(255 104 124 / 0.9)" : "rgb(255 255 255 / 0.55)"})` }}>
-        <motion.path
-          d="M0 10 H13 L16 6 L19.5 17 L23.5 2 L27 15 L30 9 L33 12 H48"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          initial={false}
-          animate={live ? { pathLength: [0.15, 1, 1], opacity: [0.7, 1, 0.7] } : { pathLength: 1, opacity: 1 }}
-          transition={live ? { duration: 1.4, repeat: Infinity, ease: "easeInOut" } : { duration: 0 }}
-        />
-      </svg>
-    </span>
-  );
+/** The space between two paired seats. The heartbeat link is gone: an even gap, wide enough for seat frames and names. */
+function Heartbeat({ gap }: { gap: number; size: number; live: boolean; linked: boolean }) {
+  return <span style={{ width: gap }} className="shrink-0" aria-hidden />;
 }
 
 /** CP level / tag between this pair's right seat and the first seat of the pair beside it, in the gap between the pairs. */
@@ -504,8 +483,9 @@ export function SeatLayout({ s, gold = false, scale = 1, grid = false }: { s: Ro
   // A little smaller seats with more room between people, so the row doesn't look crowded
   const big = Math.round(80 * k);
   const small = Math.round(56 * k);
-  const bigGap = Math.round(54 * k);
-  const smallGap = Math.round(38 * k);
+  const bigGap = Math.round(60 * k);
+  // Same gap inside a pair and between pairs, so every seat is evenly spaced with room for frames, names and tags
+  const smallGap = Math.round(42 * k);
   const rest = s.seats.map((_, i) => i).slice(2);
   const pairs: [number, number | undefined][] = [];
   for (let i = 0; i < rest.length; i += 2) pairs.push([rest[i], rest[i + 1]]);
@@ -515,7 +495,7 @@ export function SeatLayout({ s, gold = false, scale = 1, grid = false }: { s: Ro
   return (
     <div ref={ref} className="w-full">
       <Pair s={s} a={0} b={s.seats.length > 1 ? 1 : undefined} size={big} gap={bigGap} gold={gold} linked={partner !== "off"} />
-      <div className="relative flex flex-wrap justify-center" style={{ columnGap: Math.round(38 * k), rowGap: Math.round(26 * k), marginTop: Math.round(20 * k) }}>
+      <div className="relative flex flex-wrap justify-center" style={{ columnGap: smallGap, rowGap: Math.round(30 * k), marginTop: Math.round(22 * k) }}>
         {/* Multiplayer PK: the left pairs are red, the right pairs blue */}
         {team ? (
           <>
@@ -540,7 +520,7 @@ export function PkArena({ s, gold = false, scale = 1 }: { s: RoomSession; gold?:
   const k = (Math.min(width, 430) / REF_WIDTH) * scale;
   const big = Math.round(80 * k);
   const small = Math.round(56 * k);
-  const gap = Math.round(38 * k);
+  const gap = Math.round(42 * k);
   const n = s.seats.length;
   const has = (i: number) => (i < n ? i : undefined);
   // Two rows of two linked pairs; the PK seats are the outer ends of the bottom row
