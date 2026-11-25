@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { InfoPage } from "@/components/sections/InfoPage";
+import { OperatorBox, PolicyLinks } from "@/components/sections/LegalBits";
+import { LEGAL } from "@/lib/site";
 
 export const metadata: Metadata = { title: "Privacy Policy — Panchayat" };
 
@@ -9,8 +11,12 @@ const H = ({ children }: { children: string }) => <h2 className="pt-4 font-displ
 export default function PrivacyPage() {
   return (
     <InfoPage title="Privacy Policy">
-      <p className="text-sm">Last updated: 12 November 2026</p>
-      <p>Panchayat is a voice-room and chat app. This page explains what we collect, why, and the choices you have.</p>
+      <p className="text-sm">Last updated: {LEGAL.updated}</p>
+      <p>
+        {LEGAL.brand} ({LEGAL.website} and the {LEGAL.brand} app) is owned and operated by <b className="text-cream">{LEGAL.legalName}</b>, {LEGAL.businessType}, India,
+        who is responsible for your personal data. This page explains what we collect, why, and the choices you have.
+      </p>
+      <OperatorBox />
 
       <H>What we collect</H>
       <ul className="list-disc space-y-1.5 pl-6">
@@ -21,6 +27,10 @@ export default function PrivacyPage() {
         <li>Approximate location, only if you turn on Nearby: your position is rounded to about 1 km and used to show other people a rough distance such as &ldquo;3 km&rdquo;. We never show your exact location, and turning Nearby off erases it.</li>
         <li>Device and usage data: app version, device type, and basic logs we need to keep the service secure and working.</li>
         <li>In the Android app: a push notification token for your phone (so we can notify you of messages, gifts and follows), and your Google Play purchase records when you buy coins or VIP.</li>
+        <li>
+          Payments: when you buy something we keep the order, amount, status and transaction ID. Card and bank details are entered on our payment partner&apos;s
+          (PayU) secure page and are never stored by us. For UPI payments with proof, we keep the transaction ID (UTR) and the screenshot you send.
+        </li>
       </ul>
 
       <H>How we use it</H>
@@ -63,8 +73,15 @@ export default function PrivacyPage() {
         .
       </p>
 
+      <H>Your rights and grievances</H>
+      <p>
+        You can ask to see, correct or delete your personal data. For any privacy question or complaint, write to the grievance officer, {LEGAL.legalName}, at{" "}
+        {LEGAL.email}. We reply within 2 working days and resolve complaints within 30 days.
+      </p>
+
       <H>Changes</H>
       <p>If we change this policy we will update the date above and, for big changes, tell you in the app.</p>
+      <PolicyLinks />
     </InfoPage>
   );
 }

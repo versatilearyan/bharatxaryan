@@ -68,12 +68,37 @@ export function Footer() {
                 </li>
                 <li>
                   <Link href="/terms" className="text-sm text-muted transition-colors hover:text-cream">
-                    Terms
+                    Terms &amp; Conditions
                   </Link>
                 </li>
                 <li>
                   <Link href="/child-safety" className="text-sm text-muted transition-colors hover:text-cream">
                     Child Safety
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/refund-policy" className="text-sm text-muted transition-colors hover:text-cream">
+                    Refund &amp; Cancellation
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/shipping-policy" className="text-sm text-muted transition-colors hover:text-cream">
+                    Shipping &amp; Delivery
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/pricing" className="text-sm text-muted transition-colors hover:text-cream">
+                    Products &amp; Pricing
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/about-us" className="text-sm text-muted transition-colors hover:text-cream">
+                    About Us
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="text-sm text-muted transition-colors hover:text-cream">
+                    Contact Us
                   </Link>
                 </li>
               </ul>

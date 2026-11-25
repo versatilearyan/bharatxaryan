@@ -47,3 +47,25 @@ export const SOCIAL_LINKS: { label: string; href: string | null }[] = [
 
 /** Public contact email. `null` until an official address exists. */
 export const CONTACT_EMAIL: string | null = "support@panchayat.world";
+
+/**
+ * LEGAL / BUSINESS DETAILS (shown on Terms, Privacy, Refund, Shipping, Contact and About; payment gateways check them).
+ * Fill these EXACTLY as they are on the owner's Aadhaar card. Never put the Aadhaar NUMBER here.
+ */
+export const LEGAL = {
+  /** The person who runs Panchayat, as on Aadhaar. */
+  legalName: "Aryan",
+  businessType: "Individual (sole proprietor)",
+  brand: "Panchayat",
+  website: "https://panchayat.world",
+  email: "support@panchayat.world",
+  /** Public support phone number, e.g. "+91 98xxxxxxxx". null = not shown. */
+  phone: null as string | null,
+  /** Full postal address as on Aadhaar (house, street, area, city, district, state, PIN). null = not shown. */
+  address: null as string | null,
+  supportHours: "Monday to Saturday, 10:00 am to 7:00 pm (IST)",
+  /** Days within which a refund request must be raised, and in which approved refunds are processed. */
+  refundRequestDays: 7,
+  refundProcessDays: 7,
+  updated: "25 November 2026",
+};
