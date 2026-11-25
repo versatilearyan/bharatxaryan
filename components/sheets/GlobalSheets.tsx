@@ -298,12 +298,14 @@ function CoinsSheetImpl({ open, onClose }: { open: boolean; onClose: () => void 
   // Manual UPI top-up (when Google Pay / Paytm doesn't like the gateway): shown when the admin switched it on. Not in the Play Store build.
   const [manualOn, setManualOn] = useState(false);
   const [manualName, setManualName] = useState("Mukhiya ji");
+  // Online payment closed by the admin: coin packs go straight to Munshi ji
+  const [gatewayClosed, setGatewayClosed] = useState(false);
   // The Royal Pack: sold only through Munshi ji, highlighted at the top of the coin box
   const [royal, setRoyal] = useState<RoyalInfo | null>(null);
   useEffect(() => {
     if (!open || !signedIn) return;
     let live = true;
-    manualTopupApi.info().then((i) => { if (live) { setManualOn(i.enabled); setManualName(i.name); } }).catch(() => undefined);
+    manualTopupApi.info().then((i) => { if (live) { setManualOn(i.enabled); setManualName(i.name); setGatewayClosed(Boolean(i.gatewayClosed)); } }).catch(() => undefined);
     manualTopupApi.royal().then((r) => live && setRoyal(r)).catch(() => undefined);
     return () => {
       live = false;
@@ -315,6 +317,7 @@ function CoinsSheetImpl({ open, onClose }: { open: boolean; onClose: () => void 
   const needSignIn = () => toast("Sign in to buy coins and red packets.");
   const buyPack = (p: (typeof packs)[number]) => {
     if (!signedIn) return needSignIn();
+    if (gatewayClosed) return setSheet({ kind: "topup", packId: p.id });
     const img = walletImageSrc(p.imageUrl);
     setCheckout({
       id: `pack-${p.id}`,
@@ -354,7 +357,11 @@ function CoinsSheetImpl({ open, onClose }: { open: boolean; onClose: () => void 
         <button type="button" onClick={() => setSheet({ kind: "ticket" })} className="mt-2 w-full rounded-2xl bg-cream/[0.06] px-4 py-2.5 text-left text-[12.5px] font-semibold text-cream/80 ring-1 ring-white/10">
           Payment problem? <span className="underline">Raise a ticket</span>
         </button>
-        {manualOn ? (
+        {gatewayClosed ? (
+          <p className="mt-2 rounded-2xl bg-[#3a2a10] px-4 py-2.5 text-[12.5px] font-semibold text-gold ring-1 ring-gold/35">
+            Online payment band hai abhi. Koi bhi pack chuno: {manualName} ko UPI se pay karo, phir proof bhejo.
+          </p>
+        ) : manualOn ? (
           <button type="button" onClick={() => setSheet({ kind: "topup" })} className="mt-2 w-full rounded-2xl bg-emerald-500/10 px-4 py-2.5 text-left text-[12.5px] font-semibold text-emerald-200 ring-1 ring-emerald-400/25">
             Problem paying with Google Pay / Paytm? <span className="underline">Pay {manualName} by UPI</span>
           </button>

@@ -63,10 +63,12 @@ export function CheckoutSheet({ item, onClose }: { item: CheckoutItem | null; on
   const { setSheet } = useApp();
   const [manualOn, setManualOn] = useState(false);
   const [manualName, setManualName] = useState("Mukhiya ji");
+  // The admin closed online payment for now: this sheet sends people to Munshi ji instead of PayU
+  const [gatewayClosed, setGatewayClosed] = useState(false);
   useEffect(() => {
-    if (!item || item.purchase?.purpose !== "COIN_PACK") return;
+    if (!item) return;
     let live = true;
-    manualTopupApi.info().then((i) => { if (live) { setManualOn(i.enabled); setManualName(i.name); } }).catch(() => undefined);
+    manualTopupApi.info().then((i) => { if (live) { setManualOn(i.enabled); setManualName(i.name); setGatewayClosed(Boolean(i.gatewayClosed)); } }).catch(() => undefined);
     return () => {
       live = false;
     };
@@ -222,6 +224,31 @@ export function CheckoutSheet({ item, onClose }: { item: CheckoutItem | null; on
                 <p role="status" className="rounded-2xl bg-surface p-4 text-[13px] leading-snug text-cream/85 ring-1 ring-line">
                   Sign in to buy this. Payments go through your Panchayat account so the item reaches your wallet.
                 </p>
+              ) : gatewayClosed ? (
+                // Online payment closed by the admin: one clear way to pay, through Munshi ji (UPI QR + proof)
+                <div className="space-y-3">
+                  <div role="status" className="rounded-2xl bg-[#3a2a10] p-4 text-center ring-1 ring-gold/35">
+                    <p className="font-display text-[16px] font-bold text-gold">Online payment band hai abhi</p>
+                    <p className="mt-1 text-[12.5px] leading-snug text-cream/80">
+                      {purchase.purpose === "RED_PACKET"
+                        ? `Red packets abhi nahi mil rahe. Coins ${manualName} se UPI pe le sakte ho.`
+                        : `${manualName} ko UPI se pay karo: QR scan karo, phir payment ka proof bhejo. Approve hote hi sab mil jaayega.`}
+                    </p>
+                  </div>
+                  <motion.button
+                    type="button"
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => {
+                      onClose();
+                      if (purchase.purpose === "COIN_PACK") setSheet({ kind: "topup", packId: purchase.productId });
+                      else if (purchase.purpose === "VIP") setSheet({ kind: "topup", vipPlanId: Number(purchase.productId) });
+                      else setSheet({ kind: "topup" });
+                    }}
+                    className="flex h-13 w-full items-center justify-center gap-2 rounded-full bg-emerald-500 text-[15.5px] font-bold text-white"
+                  >
+                    Pay {manualName} by UPI {purchase.purpose === "RED_PACKET" ? "(coins)" : `· ${formatInr(it.inr)}`}
+                  </motion.button>
+                </div>
               ) : native ? (
                 <>
                   <div className="space-y-1.5 rounded-2xl bg-surface p-4 text-[13px] ring-1 ring-line">

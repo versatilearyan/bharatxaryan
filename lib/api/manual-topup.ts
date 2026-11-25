@@ -16,8 +16,9 @@ const opts = { auth: true, forbiddenIsAccess: true } as const;
 
 export type TopupStatus = "REQUESTED" | "SUBMITTED" | "APPROVED" | "REJECTED" | "CANCELLED";
 /** name: what the admin calls the person who checks payments (Mukhiya ji, Munshi ji, ...). */
-export type TopupInfo = { enabled: boolean; name: string; upiId?: string; payeeName?: string; qrUrl?: string; note?: string };
-export type TopupRequest = { id: string; reference: string; status: TopupStatus; kind: "COIN_PACK" | "ROYAL"; plateName?: string; plateFont?: string; packName: string; amountInr: number; coins: number; utr?: string; rejectReason?: string; upiLink?: string };
+/** gatewayClosed: the admin closed online payment (PayU) for now: every purchase goes through Munshi ji. */
+export type TopupInfo = { enabled: boolean; name: string; upiId?: string; payeeName?: string; qrUrl?: string; note?: string; gatewayClosed?: boolean };
+export type TopupRequest = { id: string; reference: string; status: TopupStatus; kind: "COIN_PACK" | "ROYAL" | "VIP"; plateName?: string; plateFont?: string; packName: string; amountInr: number; coins: number; utr?: string; rejectReason?: string; upiLink?: string };
 
 /** A profile title as the Royal Pack shows it. */
 export type RoyalTitle = { id: string; name: string; iconUrl?: string; colorFrom: string; colorTo: string; textColor: string };
@@ -77,13 +78,13 @@ function readRequest(raw: unknown): TopupRequest | null {
   const d = obj(raw);
   const id = d ? str(d.id) : undefined;
   if (!d || !id) return null;
-  return { id, reference: str(d.reference) ?? "", status: status(d.status), kind: d.kind === "ROYAL" ? "ROYAL" : "COIN_PACK", plateName: str(d.plateName), plateFont: str(d.plateFont), packName: str(d.packName) ?? "Coin pack", amountInr: num(d.amountInr), coins: num(d.coins), utr: str(d.utr), rejectReason: str(d.rejectReason), upiLink: str(d.upiLink) };
+  return { id, reference: str(d.reference) ?? "", status: status(d.status), kind: d.kind === "ROYAL" ? "ROYAL" : d.kind === "VIP" ? "VIP" : "COIN_PACK", plateName: str(d.plateName), plateFont: str(d.plateFont), packName: str(d.packName) ?? "Coin pack", amountInr: num(d.amountInr), coins: num(d.coins), utr: str(d.utr), rejectReason: str(d.rejectReason), upiLink: str(d.upiLink) };
 }
 
 export const manualTopupApi = {
   info: async (): Promise<TopupInfo> => {
     const d = obj(await api<unknown>("/api/v1/manual-topup/info", opts));
-    return { enabled: d?.enabled === true, name: str(d?.name) ?? "Mukhiya ji", upiId: str(d?.upiId), payeeName: str(d?.payeeName), qrUrl: str(d?.qrUrl), note: str(d?.note) };
+    return { enabled: d?.enabled === true, name: str(d?.name) ?? "Mukhiya ji", upiId: str(d?.upiId), payeeName: str(d?.payeeName), qrUrl: str(d?.qrUrl), note: str(d?.note), gatewayClosed: d?.gatewayClosed === true };
   },
   request: async (packId: string) => {
     const r = readRequest(await api<unknown>("/api/v1/manual-topup/requests", { ...opts, method: "POST", body: { packId } }));
