@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { createPortal } from "react-dom";
 import { Armchair, Power, Swords, Trophy, Users, Zap } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
@@ -115,6 +116,7 @@ export function PkPanel({ s }: { s: RoomSession }) {
   const clock = `${String(Math.floor(left / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
   return (
     <motion.section initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="relative z-10 mx-3 mt-2" aria-label="PK">
+      <PkStartSplash pk={pk} />
       {/* Score bar */}
       <div className="relative z-[1] flex h-7 overflow-hidden rounded-full bg-white/10 ring-1 ring-white/10">
         <motion.span className="flex items-center pl-2 text-[13px] font-extrabold text-white" style={{ background: `linear-gradient(90deg, #ff2d6a, ${SIDE.red.solid})` }} animate={{ width: `${Math.min(92, Math.max(8, share * 100))}%` }} transition={{ type: "spring", stiffness: 120, damping: 20 }}>
@@ -192,3 +194,84 @@ export function PkSeatTag({ side }: { side: PkSide }) {
   );
 }
 export const CreatePkSheet = lazySheet(CreatePkSheetImpl);
+
+/**
+ * The moment a PK starts: a full-screen "RED VS BLUE" splash. The two sides sweep in from the left and right, VS slams
+ * down in the middle with a flash and lightning, then "PK START!" and it all clears (about 2.6 s). Shown to everyone
+ * when the PK goes live, and also to someone who arrives in the first few seconds; never again mid-fight.
+ */
+export function PkStartSplash({ pk }: { pk: Pk }) {
+  const [show, setShow] = useState(false);
+  // Drawn inside the app frame (#main), like the bottom sheets, so on a computer it covers the app's phone screen only
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  useEffect(() => setHost(document.getElementById("main")), []);
+  const prev = useRef<Pk["phase"] | null>(null);
+  useEffect(() => {
+    const was = prev.current;
+    prev.current = pk.phase;
+    if (pk.phase !== "live" || was === "live") return;
+    // Arrived while already live: only if it began a moment ago
+    const startedAt = pk.endsAt - pk.minutes * 60_000;
+    if (was === null && Date.now() - startedAt > 3000) return;
+    setShow(true);
+    const t = window.setTimeout(() => setShow(false), 2700);
+    return () => window.clearTimeout(t);
+  }, [pk.phase, pk.endsAt, pk.minutes]);
+  const sideText = "font-display text-[44px] font-black italic tracking-tight text-white drop-shadow-[0_4px_0_rgba(0,0,0,0.35)]";
+  const splash = (
+    <AnimatePresence>
+      {show ? (
+        <motion.div key="pk-start" className={`pointer-events-none ${host ? "absolute" : "fixed"} inset-0 z-[80] overflow-hidden`} initial={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }} aria-live="polite" aria-label="PK started: Red versus Blue">
+          {/* dim the room */}
+          <motion.div className="absolute inset-0 bg-black/55" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }} />
+          {/* red sweeps in from the left, blue from the right, meeting on a diagonal */}
+          <motion.div
+            className="absolute inset-y-[30%] left-0 flex w-[62%] items-center justify-start pl-[8%]"
+            style={{ background: `linear-gradient(90deg, #b0123f, ${SIDE.red.solid})`, clipPath: "polygon(0 0, 100% 0, 84% 100%, 0 100%)", boxShadow: "0 0 40px rgba(255,79,123,0.7)" }}
+            initial={{ x: "-110%" }}
+            animate={{ x: ["-110%", "0%", "-3%", "0%"] }}
+            transition={{ duration: 0.55, times: [0, 0.7, 0.85, 1], ease: "easeOut" }}
+          >
+            <motion.span className={sideText} initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35, duration: 0.3 }}>
+              RED
+            </motion.span>
+          </motion.div>
+          <motion.div
+            className="absolute inset-y-[30%] right-0 flex w-[62%] items-center justify-end pr-[8%]"
+            style={{ background: `linear-gradient(90deg, ${SIDE.blue.solid}, #0d4fc4)`, clipPath: "polygon(16% 0, 100% 0, 100% 100%, 0 100%)", boxShadow: "0 0 40px rgba(61,155,255,0.7)" }}
+            initial={{ x: "110%" }}
+            animate={{ x: ["110%", "0%", "3%", "0%"] }}
+            transition={{ duration: 0.55, times: [0, 0.7, 0.85, 1], ease: "easeOut" }}
+          >
+            <motion.span className={sideText} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.35, duration: 0.3 }}>
+              BLUE
+            </motion.span>
+          </motion.div>
+          {/* impact flash */}
+          <motion.div className="absolute inset-0 bg-white" initial={{ opacity: 0 }} animate={{ opacity: [0, 0.85, 0] }} transition={{ delay: 0.5, duration: 0.35 }} />
+          {/* shock ring */}
+          <motion.span className="absolute top-1/2 left-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-[#ffd36e]" initial={{ opacity: 0, scale: 0.2 }} animate={{ opacity: [0, 1, 0], scale: [0.2, 2.4] }} transition={{ delay: 0.55, duration: 0.6, ease: "easeOut" }} />
+          {/* VS slams down */}
+          <motion.div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" initial={{ scale: 4, opacity: 0, rotate: -20 }} animate={{ scale: [4, 0.85, 1.1, 1], opacity: [0, 1, 1, 1], rotate: [-20, 6, -3, 0] }} transition={{ delay: 0.45, duration: 0.5, times: [0, 0.5, 0.75, 1] }}>
+            <motion.div animate={{ scale: [1, 1.08, 1], rotate: [0, -2, 2, 0] }} transition={{ delay: 1, duration: 0.5, repeat: 2 }} className="relative grid place-items-center">
+              <Zap className="absolute h-28 w-28 fill-[#ffd36e] text-[#ffb020] opacity-90 drop-shadow-[0_0_18px_#ffd36e]" aria-hidden />
+              <span className="relative font-display text-[64px] font-black italic leading-none text-white [text-shadow:0_0_14px_rgba(255,211,110,0.95),0_5px_0_#8a5a1f]">VS</span>
+            </motion.div>
+          </motion.div>
+          {/* sparks */}
+          {Array.from({ length: 14 }, (_, i) => {
+            const a = (i / 14) * Math.PI * 2;
+            return (
+              <motion.span key={i} className="absolute top-1/2 left-1/2 h-1.5 w-6 rounded-full bg-[#ffe9a8]" style={{ rotate: `${(a * 180) / Math.PI}deg` }} initial={{ opacity: 0, x: 0, y: 0 }} animate={{ opacity: [0, 1, 0], x: Math.cos(a) * 170, y: Math.sin(a) * 170 }} transition={{ delay: 0.55, duration: 0.6, ease: "easeOut" }} />
+            );
+          })}
+          {/* PK START! */}
+          <motion.div className="absolute inset-x-0 top-[72%] text-center" initial={{ opacity: 0, y: 20, scale: 0.6 }} animate={{ opacity: [0, 1, 1], y: 0, scale: [0.6, 1.15, 1] }} transition={{ delay: 1.05, duration: 0.45 }}>
+            <span className="inline-block rounded-full bg-gradient-to-b from-[#fff3c4] to-[#f0b43a] px-6 py-2 font-display text-[22px] font-black tracking-wide text-[#5a1a00] shadow-[0_6px_24px_rgba(255,190,60,0.6)]">PK START!</span>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+  return host ? createPortal(splash, host) : splash;
+}

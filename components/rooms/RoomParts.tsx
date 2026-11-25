@@ -272,8 +272,10 @@ export function Seat({ s, index, size = 56, gold = false, numbered = false }: { 
   // Owner's seat while the owner is out of the room: their photo stays, dimmed, with "Leave" on it
   const ownerAway = isOwnerSeat && !id && !closed && s.room.hostId !== ME_ID && !s.onlineIds.includes(s.room.hostId);
   const owner = ownerAway ? person(s.room.hostId) : null;
+
   const pkNow = usePkState()?.pk;
-  const pkSide = pkNow ? sideOfSeat(pkNow.mode, index) : null;
+  // The red / blue "PK" tag shows while the PK is being set up; once it starts, the seats are clean
+  const pkSide = pkNow && pkNow.phase === "ready" ? sideOfSeat(pkNow.mode, index) : null;
 
   const nameSize = size >= 70 ? 15 : size < 50 ? 11 : 12.5;
   const nameW = Math.round(Math.min(Math.max(72, size * 1.3), size * 1.6));
