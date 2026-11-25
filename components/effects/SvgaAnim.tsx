@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { cachedUrl, keyOf, peek, warm } from "@/lib/app/anim-cache";
 
 type Video = Awaited<ReturnType<import("svga").Parser["load"]>>;
 
@@ -11,28 +12,61 @@ let parser: import("svga").Parser | null = null;
 const cache = new Map<string, Promise<Video>>();
 let queue: Promise<unknown> = Promise.resolve();
 
-/** Download and parse a file ahead of time, so it can play the moment it's shown. */
+/**
+ * Get a file ready ahead of time, so it plays the moment it's shown: every kind is stored on the phone (anim-cache), and
+ * an SVGA is also decoded in memory.
+ */
 export function preloadSvga(src: string) {
-  // Videos and pictures are fetched by the browser itself; only SVGA needs parsing ahead
   const path = src.split(/[?#]/)[0].toLowerCase();
-  if (path.endsWith(".mp4") || /\.(png|jpe?g|webp|gif|avif)$/.test(path)) return Promise.resolve(undefined);
+  if (/\.(mp4|webm|mov|m4v)$/.test(path) || /\.(png|jpe?g|webp|gif|avif)$/.test(path)) return warm(src).then(() => undefined);
   return load(src);
 }
 
 async function load(src: string) {
-  let p = cache.get(src);
+  // Keyed by the file's path: the same file under a newer signed link is not downloaded or decoded again
+  const key = keyOf(src);
+  let p = cache.get(key);
   if (!p) {
+    // The download (or the copy already on the phone) runs outside the parser's one-at-a-time line
+    const local = cachedUrl(src);
     p = queue.then(() =>
-      import("svga").then(({ Parser }) => {
+      import("svga").then(async ({ Parser }) => {
         parser ??= new Parser();
-        return parser.load(src);
+        const url = await local;
+        try {
+          return await parser.load(url);
+        } catch (e) {
+          // A local copy that won't decode: try the server's file once
+          if (url !== src) return parser.load(src);
+          throw e;
+        }
       }),
     );
     queue = p.catch(() => undefined);
-    p.catch(() => cache.delete(src));
-    cache.set(src, p);
+    p.catch(() => cache.delete(key));
+    cache.set(key, p);
   }
   return p;
+}
+
+/**
+ * The local copy's link when the file is already on the phone (plays instantly, no download); otherwise the server link,
+ * played straight away while a copy is stored for next time. null for a moment while checking (a few milliseconds).
+ */
+function useLocalSrc(src: string): string | null {
+  const [shown, setShown] = useState<{ for: string; url: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    peek(src).then((hit) => {
+      if (!live) return;
+      setShown({ for: src, url: hit ?? src });
+      if (!hit) void warm(src);
+    });
+    return () => {
+      live = false;
+    };
+  }, [src]);
+  return shown && shown.for === src ? shown.url : null;
 }
 
 /**
@@ -206,10 +240,11 @@ export function SvgaAnim(props: { src: string; loop?: number; className?: string
 /** An MP4 effect: muted (sound plays separately), inline, looping when `loop` is 0. */
 function Mp4Anim({ src, loop = 0, className = "", style, onEnd, onReady, onError }: { src: string; loop?: number; className?: string; style?: CSSProperties; onEnd?: () => void; onReady?: () => void; onError?: () => void }) {
   const [failed, setFailed] = useState(false);
-  if (failed) return null;
+  const url = useLocalSrc(src);
+  if (failed || !url) return null;
   return (
     <video
-      src={src}
+      src={url}
       className={`object-contain ${className}`}
       style={style}
       autoPlay
@@ -239,11 +274,12 @@ function ImageAnim({ src, loop = 0, className = "", style, onEnd, onReady, onErr
     const t = window.setTimeout(() => endRef.current?.(), 3000);
     return () => window.clearTimeout(t);
   }, [src, loop]);
-  if (failed) return null;
+  const url = useLocalSrc(src);
+  if (failed || !url) return null;
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={url}
       alt=""
       className={`object-contain ${className}`}
       style={style}

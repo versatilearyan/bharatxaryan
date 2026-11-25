@@ -10,7 +10,8 @@
  */
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { getGiftCatalog, getGiftCategories, getMyRewards, wearReward, type BagReward, type RewardGoal } from "@/lib/api/rewards";
-import { setGiftCategories, setServerGifts, subscribeGifts } from "./data";
+import { giftsOnSale, setGiftCategories, setServerGifts, subscribeGifts } from "./data";
+import { preloadAll } from "./anim-cache";
 
 /* ---------------- gift catalog ---------------- */
 
@@ -43,7 +44,9 @@ export function useGiftsVersion() {
 /** Mounted once in the app shell. */
 export function useGiftCatalogLoader() {
   useEffect(() => {
-    void loadGiftCatalog();
+    // Once the gift list is in, store every gift's animation on the phone in the background, so even the first gift
+    // in a room plays instantly (anim-cache: 2 at a time, good connection only, stops when storage runs low)
+    void loadGiftCatalog().then(() => preloadAll(giftsOnSale().flatMap((g) => [g.svga?.src, g.video?.src])));
     const t = window.setInterval(() => void loadGiftCatalog(), 5 * 60_000);
     const onFocus = () => document.visibilityState === "visible" && void loadGiftCatalog();
     document.addEventListener("visibilitychange", onFocus);
