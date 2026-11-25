@@ -916,7 +916,7 @@ function EmojiSheetImpl({ open, onClose, s, onInsert }: { open: boolean; onClose
             </motion.button>
           ))}
         </div>
-        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Bear stickers</p>
+        <p className="mt-4 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Panda stickers</p>
         <div className="mt-2 grid grid-cols-5 gap-2">
           {STICKER_EMOTES.map((st) => (
             <motion.button

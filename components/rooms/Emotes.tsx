@@ -20,29 +20,54 @@ const DICE = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
 const RPS: Record<string, string> = { rock: "✊", paper: "✋", scissors: "✌️" };
 
 /**
- * Bear stickers: 17 picture emotes. Each one is drawn inside the person's seat (their profile picture is covered for a
+ * Panda stickers: 42 picture emotes. Each one is drawn inside the person's seat (their profile picture is covered for a
  * moment) and moves in its own way, with little floating pieces around it. The pictures are in /public/emotes.
- * The server just passes the id on ("bear-1" ... "bear-17").
+ * The server just passes the id on ("bear-1" ... "bear-42"); the ids keep the old "bear-" names so nothing changes there.
  */
 type Move = "sway" | "wave" | "bob" | "shake" | "pulse" | "jump" | "pop" | "zoom" | "tilt" | "slide";
 export const STICKER_EMOTES: { id: string; label: string; move: Move; fx: string[]; caption?: string }[] = [
-  { id: "bear-1", label: "Shy", move: "sway", fx: ["💖", "✨"] },
-  { id: "bear-2", label: "Hi", move: "wave", fx: ["👋", "✨"] },
-  { id: "bear-3", label: "Thanks", move: "bob", fx: ["🙏", "💛"] },
-  { id: "bear-4", label: "Haha", move: "shake", fx: ["😂", "💧"] },
-  { id: "bear-5", label: "Kiss", move: "pulse", fx: ["💋", "💖"] },
-  { id: "bear-6", label: "Oops", move: "tilt", fx: ["😅", "💧"] },
-  { id: "bear-7", label: "Naughty", move: "slide", fx: ["😏", "✨"] },
-  { id: "bear-8", label: "Hooray", move: "jump", fx: ["🎉", "✨", "💖"] },
-  { id: "bear-9", label: "Super", move: "pop", fx: ["👍", "✨"] },
-  { id: "bear-10", label: "Power", move: "zoom", fx: ["⚡", "✨"] },
-  { id: "bear-11", label: "Please", move: "sway", fx: ["🥺", "💖"] },
-  { id: "bear-12", label: "Hello", move: "wave", fx: ["💫", "💖"] },
-  { id: "bear-13", label: "Cool", move: "slide", fx: ["😎", "❄️", "✨"] },
-  { id: "bear-14", label: "Gale milna", move: "pulse", fx: ["🤗", "💖", "💖"], caption: "Gale milna 🤗" },
-  { id: "bear-15", label: "I love you", move: "pulse", fx: ["❤️", "💖", "💕"], caption: "I love you ❤️" },
-  { id: "bear-16", label: "DJ", move: "bob", fx: ["🎧", "🎵", "✨"], caption: "DJ time 🎧" },
-  { id: "bear-17", label: "Gussa", move: "shake", fx: ["🔥", "💢", "😤"], caption: "Gussa 😤" },
+  { id: "bear-1", label: "Boss", move: "zoom", fx: ["👑", "✨"] },
+  { id: "bear-2", label: "Love", move: "pulse", fx: ["💖", "💕"] },
+  { id: "bear-3", label: "Cool", move: "slide", fx: ["😎", "✨"] },
+  { id: "bear-4", label: "Peek", move: "bob", fx: ["👀", "✨"] },
+  { id: "bear-5", label: "Gaming", move: "bob", fx: ["🎵", "🎧", "🎶"] },
+  { id: "bear-6", label: "Cuddle", move: "sway", fx: ["💕", "💖"] },
+  { id: "bear-7", label: "Angry", move: "shake", fx: ["💢", "🔥"] },
+  { id: "bear-8", label: "Hug", move: "pulse", fx: ["🤗", "💖"] },
+  { id: "bear-9", label: "Aww", move: "sway", fx: ["🥺", "💖"] },
+  { id: "bear-10", label: "Kiss", move: "pulse", fx: ["💋", "💖"] },
+  { id: "bear-11", label: "Crying", move: "shake", fx: ["💧", "😭"] },
+  { id: "bear-12", label: "Huh?", move: "tilt", fx: ["❓", "❔"] },
+  { id: "bear-13", label: "Swag", move: "slide", fx: ["😎", "✨"] },
+  { id: "bear-14", label: "Hide", move: "slide", fx: ["👀", "💨"] },
+  { id: "bear-15", label: "Chill", move: "bob", fx: ["🧋", "✨"] },
+  { id: "bear-16", label: "Sleep", move: "bob", fx: ["💤", "🌙"] },
+  { id: "bear-17", label: "Mysterious", move: "tilt", fx: ["🌑", "✨"] },
+  { id: "bear-18", label: "Blessed", move: "jump", fx: ["😇", "✨"] },
+  { id: "bear-19", label: "Devil", move: "shake", fx: ["😈", "🔥"] },
+  { id: "bear-20", label: "Romantic", move: "sway", fx: ["🌹", "💖"] },
+  { id: "bear-21", label: "Heart Eyes", move: "pulse", fx: ["😍", "💖", "💕"] },
+  { id: "bear-22", label: "LOL", move: "shake", fx: ["😂", "💧"] },
+  { id: "bear-23", label: "Shout", move: "zoom", fx: ["📢", "💥"] },
+  { id: "bear-24", label: "Mad", move: "shake", fx: ["💢", "😤"] },
+  { id: "bear-25", label: "Sad", move: "tilt", fx: ["💧", "☁️"] },
+  { id: "bear-26", label: "Thinking", move: "tilt", fx: ["🤔", "❓"] },
+  { id: "bear-27", label: "Facepalm", move: "tilt", fx: ["🤦", "💨"] },
+  { id: "bear-28", label: "No", move: "shake", fx: ["🚫", "❌"] },
+  { id: "bear-29", label: "OK", move: "pop", fx: ["👌", "✨"] },
+  { id: "bear-30", label: "Peek2", move: "slide", fx: ["👀", "✨"] },
+  { id: "bear-31", label: "Broken", move: "shake", fx: ["💔", "💧"] },
+  { id: "bear-32", label: "Legend", move: "zoom", fx: ["👑", "🌟", "✨"] },
+  { id: "bear-33", label: "Strong", move: "jump", fx: ["💪", "✨"] },
+  { id: "bear-34", label: "Good Job", move: "pop", fx: ["👍", "✨"] },
+  { id: "bear-35", label: "Gift", move: "jump", fx: ["🎁", "✨", "💖"] },
+  { id: "bear-36", label: "Eat", move: "bob", fx: ["🍜", "✨"] },
+  { id: "bear-37", label: "Drink", move: "bob", fx: ["🧋", "✨"] },
+  { id: "bear-38", label: "Popcorn", move: "bob", fx: ["🍿", "✨"] },
+  { id: "bear-39", label: "Cheer", move: "jump", fx: ["🎉", "✨", "🎊"] },
+  { id: "bear-40", label: "Please", move: "sway", fx: ["🙏", "🥺"] },
+  { id: "bear-41", label: "Bye", move: "wave", fx: ["👋", "💖"] },
+  { id: "bear-42", label: "Good Night", move: "sway", fx: ["🌙", "⭐", "💤"] },
 ];
 
 export const isSticker = (e: string) => STICKER_EMOTES.some((x) => x.id === e);
