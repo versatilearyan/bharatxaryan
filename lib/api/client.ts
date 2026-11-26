@@ -97,7 +97,7 @@ async function callRefresh(stale: Stored): Promise<Stored | null> {
     res = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, { method: "POST", headers, body: JSON.stringify({ refreshToken: now.refreshToken }) });
   } catch {
     // Offline or server down: not a sign-out, the session may still be good
-    throw new ApiError("We're doing a quick update behind the scenes — sorry for the interruption! Please try again in a minute or two. Thanks for your patience.", 0, "network");
+    throw new ApiError("Couldn't connect. Please check your connection and try again.", 0, "network");
   }
   if (res.status === 401 || res.status === 400) {
     // The session ended (expired, signed out elsewhere, or already used)
@@ -188,7 +188,7 @@ async function send<T>(path: string, options: Options): Promise<T> {
   }
 }
 
-const busyOrSlow = (e: unknown) => e instanceof ApiError && (e.status === 503 || e.code === "timeout");
+const busyOrSlow = (e: unknown) => e instanceof ApiError && (e.status === 502 || e.status === 503 || e.status === 504 || e.code === "timeout" || e.code === "network");
 
 async function sendOnce<T>(path: string, options: Options): Promise<T> {
   try {
@@ -231,10 +231,10 @@ async function request<T>(path: string, { method = "GET", body, auth = false, ti
   try {
     res = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body), signal: ctrl.signal });
   } catch (e) {
-    if (ctrl.signal.aborted) throw new ApiError("The server is taking too long to answer. Try again.", 0, "timeout");
+    if (ctrl.signal.aborted) throw new ApiError("Connection is slow right now. Please try again in a moment.", 0, "timeout");
     // fetch rejects without detail for offline, DNS, a stopped ngrok tunnel and CORS blocks alike
     void e;
-    throw new ApiError("We're doing a quick update behind the scenes — sorry for the interruption! Please try again in a minute or two. Thanks for your patience.", 0, "network");
+    throw new ApiError("Couldn't connect. Please check your connection and try again.", 0, "network");
   } finally {
     clearTimeout(timer);
   }
@@ -298,7 +298,9 @@ function readError(data: unknown): { message: string; fields: Record<string, str
 /** Show the backend's own message for client errors, but never anything that looks internal. */
 function friendly(status: number, message: string) {
   const internal = !message || message.length > 160 || /exception|stack|sql|jdbc|hibernate|smtp|at [\w.$]+\(|org\.|java\./i.test(message);
-  if (status >= 500) return "We're doing a quick update behind the scenes — sorry for the interruption! Please try again in a minute or two. Thanks for your patience.";
+  // Busy / gateway problems (the app has already retried quietly): a neutral message that blames nobody
+  if (status === 502 || status === 503 || status === 504) return "Connection is slow right now. Please try again in a moment.";
+  if (status >= 500) return "Something went wrong. Please try again in a moment.";
   if (status === 413) return "That file is too large for the server. Choose a smaller file.";
   if (status === 415) return "The server doesn't accept that file type. Use a JPG, PNG or WebP image.";
   if (status === 429) return internal ? "Too many attempts. Wait a little and try again." : message;
