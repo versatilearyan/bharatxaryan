@@ -7,13 +7,12 @@
  *   3. else a running game asks "Leave the game?" first, and only closes it once you confirm,
  *   4. else the top screen closes (profile, chat, ...),
  *   5. else you go to the Home tab,
- *   6. on Home, the first Back says "Press back again to exit" and the second one leaves.
+ *   6. on Home, Back never closes the app or the website: it stays on Home (like Instagram) and scrolls the page back to the top.
  * It keeps one extra browser-history entry above the page, so a Back press comes to us (popstate) instead of closing the page.
  */
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app/store";
 import { runTopBack, useBackClose } from "@/lib/app/back";
-import { isNativeApp, nativeEmit } from "@/lib/native/bridge";
 import { Modal } from "@/components/ui/Modal";
 
 export function BackNavigation() {
@@ -77,14 +76,12 @@ export function BackNavigation() {
         keep();
         return;
       }
-      if (Date.now() < armedUntil.current) {
-        // The second Back in a row on Home: leave
-        if (isNativeApp()) nativeEmit("exitApp");
-        else window.history.back();
-        return;
-      }
-      armedUntil.current = Date.now() + 2200;
-      act.current.toast("Press back again to exit");
+      // On Home: never leave the app or the website. Stay here and go back to the top of the page.
+      armedUntil.current = 0;
+      document.querySelectorAll<HTMLElement>(".app-scroll, main, [data-scroll-root]").forEach((el) => {
+        if (el.scrollTop > 0) el.scrollTo({ top: 0, behavior: "smooth" });
+      });
+      if (window.scrollY > 0) window.scrollTo({ top: 0, behavior: "smooth" });
       keep();
     };
     window.addEventListener("popstate", onPop);
