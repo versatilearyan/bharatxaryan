@@ -361,6 +361,8 @@ export async function createRoom(payload: CreateVoiceRoomRequest): Promise<Voice
     isPrivate: payload.isPrivate,
     maxParticipants: payload.maxParticipants,
     ...(payload.description?.trim() ? { description: payload.description.trim() } : {}),
+    // A temporary room (closes when its owner leaves). Without this the server made every room permanent.
+    ...(payload.temporary ? { temporary: true } : {}),
   };
   const r = readVoiceRoom(await api<unknown>("/api/v1/voice-rooms", { method: "POST", auth: true, body, forbiddenIsAccess: true }));
   if (!r) throw new ApiError("The room was created, but the server's answer couldn't be read. Refresh the room list.", 200, "http");

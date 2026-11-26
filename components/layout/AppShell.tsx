@@ -63,6 +63,7 @@ const ReferScreen = dynamic(() => import("@/components/rewards/ReferScreen").the
 const LudoScreen = dynamic(() => import("@/components/games/ludo/LudoScreen").then((m) => m.LudoScreen), { ssr: false });
 const GamesHub = dynamic(() => import("@/components/games/GamesHub").then((m) => m.GamesHub), { ssr: false });
 const HillScreen = dynamic(() => import("@/components/games/hill/HillScreen").then((m) => m.HillScreen), { ssr: false });
+const CoopScreen = dynamic(() => import("@/components/games/coop/CoopScreen").then((m) => m.CoopScreen), { ssr: false });
 const RmcsScreen = dynamic(() => import("@/components/games/rmcs/RmcsScreen").then((m) => m.RmcsScreen), { ssr: false });
 const GaddarScreen = dynamic(() => import("@/components/games/gaddar/GaddarScreen").then((m) => m.GaddarScreen), { ssr: false });
 const NearbyScreen = dynamic(() => import("@/components/discover/NearbyScreen").then((m) => m.NearbyScreen), { ssr: false });
@@ -279,6 +280,8 @@ function ScreenView({ screen }: { screen: Screen }) {
       return <HillScreen />;
     case "rmcs":
       return <RmcsScreen roomId={screen.roomId} table={screen.table} />;
+    case "coop":
+      return <CoopScreen code={screen.code} />;
     case "gaddar":
       return <GaddarScreen roomId={screen.roomId} table={screen.table} />;
     case "refer":

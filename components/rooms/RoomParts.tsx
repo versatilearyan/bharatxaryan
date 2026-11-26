@@ -40,6 +40,7 @@ import { MentionPicker, MentionText, mentions, useMentionAlerts } from "./Mentio
 import { CpLink, useCpLevelBetween } from "./RoomSocial";
 import { ChatInviteSheet } from "@/components/social/Invites";
 import { lazySheet } from "@/components/ui/lazySheet";
+import { publicRoomId } from "@/lib/app/public-ids";
 
 /* ------------------------------------------------------------------ */
 /* Top bar                                                             */
@@ -1170,6 +1171,16 @@ function RoomMenuSheetImpl({ open, onClose, s, extra, onInvite }: { open: boolea
               onClick={() => {
                 onClose();
                 push({ kind: "rmcs", roomId: s.room.server!.id });
+              }}
+            />
+          ) : null}
+          {s.room.server ? (
+            <Item
+              icon={<span className="text-[19px] leading-none">🧑‍🤝‍🧑</span>}
+              label="Co-op 3D"
+              onClick={() => {
+                onClose();
+                push({ kind: "coop", code: publicRoomId(s.room.server!.id) });
               }}
             />
           ) : null}

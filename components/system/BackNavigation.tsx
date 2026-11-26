@@ -56,8 +56,8 @@ export function BackNavigation() {
       }
       if (v.stack.length) {
         // Inside a game, a back gesture never throws you out of it by itself: it asks "Leave the game?" first
-        const top = v.stack[v.stack.length - 1] as { kind: string; roomId?: string; table?: string };
-        const inGame = top.kind === "hill" || top.kind === "chess" || ((top.kind === "ludo" || top.kind === "jackaroo" || top.kind === "gaddar" || top.kind === "rmcs") && Boolean(top.roomId || top.table));
+        const top = v.stack[v.stack.length - 1] as { kind: string; roomId?: string; table?: string; code?: string };
+        const inGame = top.kind === "hill" || top.kind === "chess" || ((top.kind === "ludo" || top.kind === "jackaroo" || top.kind === "gaddar" || top.kind === "rmcs") && Boolean(top.roomId || top.table)) || (top.kind === "coop" && Boolean(top.code));
         if (inGame) {
           act.current.setConfirmLeaveGame(true);
           return true;
