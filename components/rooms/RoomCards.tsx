@@ -5,7 +5,7 @@ import { usePublicProfile } from "@/components/profile/usePublicProfile";
 import { onMicIn, useLiveCounts } from "@/lib/app/live-counts";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { motion } from "framer-motion";
-import { Crown, Gavel, Lock, Mic, MonitorPlay, UsersRound } from "lucide-react";
+import { Crown, Gavel, Heart, Lock, Mic, MonitorPlay, UsersRound } from "lucide-react";
 import { CharmBadge } from "@/components/ui/CharmBadge";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { LiveDot, Pill, formatCount } from "@/components/ui/kit";
@@ -13,6 +13,10 @@ import { usePeople } from "@/lib/app/people";
 import { useApp } from "@/lib/app/store";
 import type { Room, RoomType } from "@/lib/app/types";
 import { nameFace } from "@/lib/app/fonts";
+import { coupleNames, coupleOfRoom } from "@/lib/app/couple-room";
+
+/** A Couple Room shows its names without the 💞 (the Couple Room tag says it). */
+const shownName = (room: Room) => (coupleOfRoom(room) ? coupleNames(room) : room.name);
 
 export const ROOM_TYPE_LABEL: Record<RoomType, string> = { voice: "Voice", watch: "YouTube", kharidari: "Kharidari" };
 export const ROOM_TYPE_ICON = { voice: Mic, watch: MonitorPlay, kharidari: Gavel } as const;
@@ -62,6 +66,19 @@ function OnlineNow({ n, mic }: { n: number; mic: number }) {
 }
 
 /** Horizontal list row, like "Popular rooms" in the reference. */
+/** "💞 Couple Room": a room only its two partners can go in; everyone else can see it. */
+function CoupleRoomTag({ className = "" }: { className?: string }) {
+  return (
+    <span className={`inline-flex shrink-0 items-center gap-1 rounded-md p-[1px] shadow-[0_1px_6px_rgba(255,92,138,0.45)] ${className}`} style={{ background: "linear-gradient(90deg,#fff1c9,#e7bc72,#9a6a26)" }} aria-label="Couple Room, only for the couple">
+      <span className="inline-flex items-center gap-1 rounded-[5px] bg-gradient-to-r from-[#8a1f45] to-[#3a0f24] px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-[#ffe1ec]">
+        <Heart className="h-2.5 w-2.5 fill-[#ff5c8a] text-[#ff5c8a]" aria-hidden />
+        Couple Room
+        <Lock className="h-2.5 w-2.5 text-[#f6d899]" aria-hidden />
+      </span>
+    </span>
+  );
+}
+
 export function RoomRow({ room }: { room: Room }) {
   // The host's real name and photo (not "User 9"), loaded once
   usePublicProfile(room.server && room.hostId.startsWith("srv-user:") ? room.hostId : "");
@@ -89,8 +106,9 @@ export function RoomRow({ room }: { room: Room }) {
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className={`truncate font-display text-[17px] font-black ${room.vip ? "gold-shine pr-1" : "text-cream"}`} style={nameFace(room.settings?.nameFont)}>{room.name}</span>
+          <span className={`truncate font-display text-[17px] font-black ${room.vip ? "gold-shine pr-1" : "text-cream"}`} style={nameFace(room.settings?.nameFont)}>{shownName(room)}</span>
           {room.official ? <OfficialBadge /> : null}
+          {coupleOfRoom(room) ? <CoupleRoomTag /> : null}
           {room.officialPk ? <OfficialPkBadge title={room.officialPkTitle} /> : null}
           {room.isPrivate || room.password ? <Lock className="h-3.5 w-3.5 shrink-0 text-muted" aria-label={room.password ? "Password" : "Private"} /> : null}
         </span>
@@ -167,8 +185,9 @@ export function RoomCard({ room, wide = false }: { room: Room; wide?: boolean })
         <Icon className="h-3.5 w-3.5" aria-hidden />
       </span>
       <span className="absolute inset-x-0 bottom-0 p-3">
-        <span className={`line-clamp-2 font-display text-[15px] font-bold leading-tight ${room.vip ? "gold-shine pr-1" : "text-cream"}`} style={nameFace(room.settings?.nameFont)}>{room.name}</span>
+        <span className={`line-clamp-2 font-display text-[15px] font-bold leading-tight ${room.vip ? "gold-shine pr-1" : "text-cream"}`} style={nameFace(room.settings?.nameFont)}>{shownName(room)}</span>
         {room.official ? <OfficialBadge className="mt-1" /> : null}
+        {coupleOfRoom(room) ? <CoupleRoomTag className="mt-1" /> : null}
         {room.officialPk ? <OfficialPkBadge title={room.officialPkTitle} className="ml-1 mt-1" /> : null}
         <span className="mt-1.5 flex items-center gap-1.5 text-[11px] text-cream/75">
           <PersonAvatar person={host} size={18} />

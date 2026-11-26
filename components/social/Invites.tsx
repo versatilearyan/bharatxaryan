@@ -13,6 +13,8 @@ import { useChat } from "@/lib/app/chat-store";
 import { serverRoomAppId, useServerRooms } from "@/lib/app/server-rooms";
 import { useApp } from "@/lib/app/store";
 import { lazySheet } from "@/components/ui/lazySheet";
+import { coupleNames, mayEnterCoupleRoom } from "@/lib/app/couple-room";
+import { myUserIdFromToken } from "@/lib/auth/token";
 
 const errText = (e: unknown, f: string) => (e instanceof Error && e.message ? e.message : f);
 
@@ -29,6 +31,11 @@ export function useJoinFromInvite() {
       if (activeRoomId !== appId) {
         if (invite) rememberRoomPassword(roomId, invite);
         const v = await getRoomById(roomId);
+        // A Couple Room is only for its two partners, even with an invite
+        if (!mayEnterCoupleRoom({ name: v.name, settings: v.settings, hostId: "" }, myUserIdFromToken())) {
+          toast(`💞 ${coupleNames(v)}'s Couple Room is only for the two of them`);
+          return;
+        }
         addCreated(v);
         unlockRoom(appId);
         enterRoom(appId);

@@ -18,9 +18,14 @@ import { LiveVoiceBar } from "./LiveVoiceBar";
 import { BACKGROUNDS } from "./RoomSettings";
 import { NewbieSeatLayout, NewbieWelcome } from "@/components/newbie/NewbieUi";
 import type { RoomSession } from "./useRoomSession";
+import { CoupleBackdrop, CoupleSceneSheet, CoupleStage, coupleSceneOf, isCoupleRoom } from "./CoupleRoom";
+import { giftCategories, giftCategoryKind } from "@/lib/app/data";
 
 export function VoiceRoom({ s }: { s: RoomSession }) {
-  const [sheet, setSheet] = useState<null | "gift" | "emoji" | "menu" | "invite" | "pk" | "music">(null);
+  const [sheet, setSheet] = useState<null | "gift" | "emoji" | "menu" | "invite" | "pk" | "music" | "scene">(null);
+  // A Couple Room (made from the Love Home): its own animated scene, two big seats and the CP gifts tab first
+  const couple = isCoupleRoom(s);
+  const cpCategory = couple ? giftCategories().find((c) => giftCategoryKind(c) === "CP") : undefined;
   const pkOn = Boolean(usePkState()?.pk);
   const songs = useSongRequests(s.room.server?.id ?? null);
   const arena = usePkState()?.pk?.mode === "1v1";
@@ -39,7 +44,9 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
   return (
     <div ref={rootRef} className={`relative flex h-full min-h-0 flex-col overflow-hidden ${vip ? "bg-wine-2" : "bg-ink"}`}>
       {/* Backdrop: room cover fading into the room surface */}
-      {s.room.newbieBackground && /\.mp4(\?|#|$)/i.test(s.room.newbieBackground) ? (
+      {couple ? (
+        <CoupleBackdrop scene={coupleSceneOf(s)} />
+      ) : s.room.newbieBackground && /\.mp4(\?|#|$)/i.test(s.room.newbieBackground) ? (
         // The room's own video background (an Official PK room, or a host at level 5+)
         <div className="absolute inset-0" aria-hidden>
           <video src={s.room.newbieBackground} autoPlay loop muted playsInline className="h-full w-full object-cover" />
@@ -55,8 +62,8 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
       ) : (
         <div className="absolute inset-0" style={{ background: BACKGROUNDS.find((b) => b.id === s.settings.background)?.css }} aria-hidden />
       )}
-      {vip ? <VipDecor /> : null}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_28%_at_12%_0%,rgba(124,77,255,0.30),transparent),radial-gradient(60%_26%_at_100%_8%,rgba(255,61,139,0.24),transparent),radial-gradient(80%_24%_at_50%_100%,rgba(20,184,166,0.14),transparent)]" aria-hidden />
+      {vip && !couple ? <VipDecor /> : null}
+      <div className={`pointer-events-none absolute inset-0 ${couple ? "hidden" : ""} bg-[radial-gradient(70%_28%_at_12%_0%,rgba(124,77,255,0.30),transparent),radial-gradient(60%_26%_at_100%_8%,rgba(255,61,139,0.24),transparent),radial-gradient(80%_24%_at_50%_100%,rgba(20,184,166,0.14),transparent)]`} aria-hidden />
 
       <RoomTopBar s={s} onMenu={() => s.setPanel("online")} />
 
@@ -79,7 +86,7 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
         {s.roomOpen ? (
           <>
             {/* Slightly smaller seats leave more room for the chat */}
-            {arena ? <PkArena s={s} gold={vip} scale={seatScale} /> : s.room.newbie ? <NewbieSeatLayout s={s} scale={seatScale} /> : <SeatLayout s={s} gold={vip} scale={seatScale} />}
+            {couple ? <CoupleStage s={s} scale={seatScale} onScene={() => setSheet("scene")} onInvite={() => setSheet("invite")} /> : arena ? <PkArena s={s} gold={vip} scale={seatScale} /> : s.room.newbie ? <NewbieSeatLayout s={s} scale={seatScale} /> : <SeatLayout s={s} gold={vip} scale={seatScale} />}
           </>
         ) : (
           <ClosedRoomCard s={s} />
@@ -117,7 +124,8 @@ export function VoiceRoom({ s }: { s: RoomSession }) {
       </div>
 
       <NewbieWelcome s={s} />
-      <GiftPanel open={sheet === "gift"} onClose={close} s={s} />
+      <GiftPanel open={sheet === "gift"} onClose={close} s={s} initialCategory={cpCategory} />
+      {couple ? <CoupleSceneSheet s={s} open={sheet === "scene"} onClose={close} /> : null}
       <CreatePkSheet open={sheet === "pk"} onClose={close} />
       <MusicSheet open={sheet === "music"} onClose={close} canControl={s.canModerate} requests={songs} />
       <EmojiSheet open={sheet === "emoji"} onClose={close} s={s} onInsert={(e) => setDraft((d) => d + e)} />

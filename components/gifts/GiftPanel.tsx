@@ -42,7 +42,7 @@ function LuckyNote({ open }: { open: boolean }) {
   );
 }
 
-function GiftPanelImpl({ open, onClose, s, initialTo }: { open: boolean; onClose: () => void; s: RoomSession; initialTo?: string }) {
+function GiftPanelImpl({ open, onClose, s, initialTo, initialCategory }: { open: boolean; onClose: () => void; s: RoomSession; initialTo?: string; /** Open on this tab (a Couple Room opens on the CP gifts). */ initialCategory?: GiftCategory }) {
   const { coins, setSheet, toast } = useApp();
   const { pkg: localPkg, takePackage } = useMarket();
   // Backend rooms: the server's gifts (admin panel) and the gifts in your server Bag (won as rewards)
@@ -74,6 +74,9 @@ function GiftPanelImpl({ open, onClose, s, initialTo }: { open: boolean; onClose
     if (open && initialTo) setTo(initialTo);
   }, [open, initialTo]);
   const [cat, setCat] = useState<GiftCategory | "Package">(GIFT_CATEGORIES[0] ?? "Package");
+  useEffect(() => {
+    if (open && initialCategory) setCat(initialCategory);
+  }, [open, initialCategory]);
   const [gift, setGift] = useState<GiftId>(() => giftsOnSale()[0]?.id ?? ("city-fireworks" as GiftId));
   const [qty, setQty] = useState(1);
   /** Big animated gifts are announced to all of Panchayat with this message. */

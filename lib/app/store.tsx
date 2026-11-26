@@ -21,6 +21,7 @@ import { GOLD_NAME_VIP, POINTS_PER_COIN, growthFor, roomExpLevel, roomLevel, vip
 import { EXP_SOURCES, FRIEND_EXP, TASK_EXP, charmFromCoins, charmInfo, giftEarnings, dayKey, expToNext, sampleCharm, type ExpSource } from "./progress";
 import { GUARD_PER_DAY, MY_SAMPLE_RECEIVED, sampleGuardians, sampleReceived } from "./social";
 import { friendsApi } from "@/lib/api/social";
+import { coupleNames, coupleOfRoom, mayEnterCoupleRoom } from "./couple-room";
 import { SAMPLE_TAGS, TAG_THEME_IDS, applyTagTypes, isRelationship, pairKey, relationshipById, useTagTypes, tagLevel, tokenFor, type RelationshipId, type Tag } from "./tags";
 import type { RedPacketId } from "./redpacket";
 import type { Conversation, Cover, GameId, GiftId, Notice, Profile, Room, RoomRole, RoomSettings, RoomType } from "./types";
@@ -588,6 +589,13 @@ function useAppState() {
         setRoomOpen(true);
         return;
       }
+      // A Couple Room is only for its two partners: anyone else sees whose it is, on the couple's Love Home
+      if (!mayEnterCoupleRoom(room, myUserIdFromToken())) {
+        const cp = coupleOfRoom(room);
+        toast(`💞 ${coupleNames(room)}'s Couple Room is only for the two of them`);
+        if (cp?.a) push({ kind: "love-home", personId: `srv-user:${cp.a}` });
+        return;
+      }
       const iAmAdmin = (roomMeta.admins[room.id] ?? room.admins ?? []).includes("me");
       const needsPassword = room.password && room.hostId !== "me" && !iAmAdmin && !unlocked.includes(roomId);
       if (needsPassword && room.server) {
@@ -621,7 +629,7 @@ function useAppState() {
       else if (room.vip && vip.level < 1) push({ kind: "vip-entry", roomId });
       else enterRoom(roomId);
     },
-    [roomById, push, enterRoom, activeRoomId, vip.level, unlocked, roomMeta.admins, unlockRoom],
+    [roomById, push, enterRoom, activeRoomId, vip.level, unlocked, roomMeta.admins, unlockRoom, toast],
   );
 
   const minimizeRoom = useCallback(() => setRoomOpen(false), []);

@@ -7,6 +7,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { CpRing } from "./CpRing";
 import { badgeOf } from "@/lib/app/cp-badges";
 import { forgetRoomCp } from "@/components/rooms/RoomSocial";
+import { CoupleRoomBadge, CoupleRoomButton } from "@/components/rooms/CoupleRoom";
 import { BadgeImg, CpBadgeCollection, CpCharmCard, CpCharmHistory, CpLevelUp } from "./CpCharm";
 import { Coin } from "@/components/ui/kit";
 import { CP_QUEUE, cpApi, daysOf, nextMilestone, type CpBlessing, type CpCouple, type CpPerson, type CpProposal, type CpRingInfo } from "@/lib/api/cp";
@@ -286,6 +287,9 @@ export function ServerLoveHome({ personId }: { personId: string }) {
         <Stat big={mark ? String(mark.left) : "∞"} label={mark ? `days to Day ${mark.day}` : "all milestones"} accent />
         <Stat big={c.rings.length.toLocaleString("en-IN")} label="rings" />
       </div>
+
+      {/* The couple's private room */}
+      {iAmIn ? <CoupleRoomButton coupleId={c.id} a={c.a} b={c.b} names={[A?.name ?? "You", B?.name ?? "Partner"]} /> : <CoupleRoomBadge coupleId={c.id} names={[A?.name ?? "…", B?.name ?? "…"]} />}
 
       {/* CP level, badge and Charm */}
       <CpCharmCard c={c} onBadges={() => setBadgesOpen(true)} onHistory={() => setHistoryOpen(true)} />
