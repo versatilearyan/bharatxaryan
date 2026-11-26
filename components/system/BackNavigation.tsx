@@ -7,12 +7,14 @@
  *   3. else a running game asks "Leave the game?" first, and only closes it once you confirm,
  *   4. else the top screen closes (profile, chat, ...),
  *   5. else you go to the Home tab,
- *   6. on Home, Back never closes the app or the website: it stays on Home (like Instagram) and scrolls the page back to the top.
+ *   6. on Home, Back never closes anything: in the Android app it goes to the phone's home screen (the app keeps running in
+ *      the background, like Instagram, and opens again right where you were); on the website it stays on Home and scrolls up.
  * It keeps one extra browser-history entry above the page, so a Back press comes to us (popstate) instead of closing the page.
  */
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/lib/app/store";
 import { runTopBack, useBackClose } from "@/lib/app/back";
+import { isNativeApp, nativeEmit } from "@/lib/native/bridge";
 import { Modal } from "@/components/ui/Modal";
 
 export function BackNavigation() {
@@ -76,8 +78,15 @@ export function BackNavigation() {
         keep();
         return;
       }
-      // On Home: never leave the app or the website. Stay here and go back to the top of the page.
+      // On Home: never close the app or leave the website
       armedUntil.current = 0;
+      if (isNativeApp()) {
+        // The app goes to the phone's home screen and keeps running (open it again: same place)
+        nativeEmit("minimizeApp");
+        keep();
+        return;
+      }
+      // Website: stay here and go back to the top of the page
       document.querySelectorAll<HTMLElement>(".app-scroll, main, [data-scroll-root]").forEach((el) => {
         if (el.scrollTop > 0) el.scrollTo({ top: 0, behavior: "smooth" });
       });
