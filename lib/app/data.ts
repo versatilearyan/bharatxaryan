@@ -36,7 +36,7 @@ export const CATEGORIES = ["Chai Adda", "Music", "Gaming", "Bollywood", "Cricket
 export const ROOMS: Room[] = [];
 
 export const GAMES: Game[] = [
-  { id: "coop", name: "Co-op Adventure", players: "2 players", online: 0, tag: "NEW", blurb: "Do dost, ek mission: 3D duniya me bhaago, koodo, ek doosre ko upar uthao aur puzzles saath me solve karo. Poore game me voice chat, hug, photo aur romantic spots. Akele koi level khatam nahi hota!" },
+  { id: "coop", name: "Duo Dash", players: "2 players · couple", online: 0, tag: "NEW", blurb: "Do dil, ek mission. 3D duniya me saath bhaago, ek doosre ko upar uthao, missions poore karo aur finish par sawaal ka jawab saath do. Voice chat, hug, photo aur couple ranking!" },
   { id: "gaddar", name: "Gaddaar", players: "4 to 10 players", online: 3120, tag: "NEW", blurb: "Gaon ka Gaddaar: ek gaddaar gaon me chhupa hai. Kaam poore karo, sabotage aur surang se bacho, aur Sarpanch ki baithak me gaddaar ko pehchano. Sirf text, bina mic. Bina room ke seedha khelo." },
   { id: "hill", name: "Pahadi Daud", players: "Solo", online: 0, tag: "NEW", blurb: "Akele khelo: jeep ko pahadi par chadhao, sadak ke coins (10, 5, 10, 5) uthao aur ulat mat jana. Jitne coins uthaoge sab seedha aapke wallet me jayenge." },
   { id: "rmcs", name: "Raja Mantri Chor Sipahi", players: "4 ya 5 players", online: 2640, tag: "NEW", blurb: "Raja, Mantri, Sipahi, Chor: chhupe patte, bluff aur point. 4-5 chair ki 3D table par khelo, chat aur emotes ke saath. Code se dost ko bulao." },

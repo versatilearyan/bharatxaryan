@@ -64,7 +64,7 @@ export type Screen =
   | { kind: "ludo"; roomId?: string }
   | { kind: "gaddar"; roomId?: string; table?: string }
   | { kind: "rmcs"; roomId?: string; table?: string }
-  /** Co-op Adventure. code = the 7-digit voice room ID shared by the game and its voice (no code: start screen). */
+  /** Duo Dash. code = the game code (no code: the start screen). */
   | { kind: "coop"; code?: string }
   | { kind: "hill" }
   | { kind: "games" }

@@ -486,7 +486,7 @@ function GameSheet({ gameId, onClose }: { gameId: GameId | null; onClose: () => 
                 {g.id === "hill"
                   ? "Akele khelo. Jo coins uthaoge wo wallet me jayenge."
                   : g.id === "coop"
-                  ? "Dost ke saath 3D co-op. Game ke beech voice chat chalti rehti hai."
+                  ? "Partner ke saath 3D couple game. Voice chat game ke andar hi."
                   : g.id === "rmcs"
                   ? "Voice room ke table par chalta hai: mic, chat aur emotes ke saath."
                   : g.id === "gaddar"
