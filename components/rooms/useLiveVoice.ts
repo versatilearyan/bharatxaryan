@@ -264,7 +264,18 @@ function applySpeakerTo(room: Room, on: boolean, musicMuted: boolean, heard: (id
   playPaused();
 }
 
-export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
+/**
+ * highQuality: the room's "High Quality Mode". On: your voice goes out at 96 kbps (HD); off: 48 kbps (less data).
+ * Takes effect the next time your mic turns on.
+ */
+export function useLiveVoice(serverRoomId: string | null, highQuality = true): LiveVoice | null {
+  const hqRef = useRef(highQuality);
+  hqRef.current = highQuality;
+  // The owner switched High Quality Mode while connected: the next time a mic turns on it uses the new quality
+  useEffect(() => {
+    const opts = roomRef.current?.options?.publishDefaults;
+    if (opts) opts.audioPreset = highQuality ? AudioPresets.musicHighQuality : AudioPresets.music;
+  }, [highQuality]);
   const [status, setStatus] = useState<VoiceStatus>("idle");
   const [joined, setJoined] = useState(false);
   /** The room the backend has let you into, across a manual Retry. */
@@ -301,7 +312,15 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
     // disconnectOnPageLeave: by default the SDK ends the call on pagehide and on Chrome's
     // "freeze" event, which Android fires when you switch apps, and it stays ended.
     // Unmounting (Exit) still disconnects, and a page that's gone is dropped by the server.
-    const room = new Room({ adaptiveStream: false, dynacast: false, disconnectOnPageLeave: false, audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    const room = new Room({
+      adaptiveStream: false,
+      dynacast: false,
+      disconnectOnPageLeave: false,
+      // Clear voice: the phone's echo canceller, noise suppression and level control, mono at 48 kHz
+      audioCaptureDefaults: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1, sampleRate: 48000 },
+      // HD voice in High Quality Mode; RED re-sends a little so lost packets don't cut words, DTX sends almost nothing in silence
+      publishDefaults: { audioPreset: hqRef.current ? AudioPresets.musicHighQuality : AudioPresets.music, dtx: true, red: true },
+    });
     roomRef.current = room;
     if (joinedRoom.current !== serverRoomId) {
       joinedRoom.current = null;
@@ -336,6 +355,8 @@ export function useLiveVoice(serverRoomId: string | null): LiveVoice | null {
     room
       .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: { identity: string }) => {
         if (track.kind !== Track.Kind.Audio) return;
+        // Never two players for one voice (a resubscribe after a reconnect used to add a second one: double sound)
+        track.detach().forEach((old) => old.remove());
         const el = track.attach();
         // Other people's songs: silent for listeners who turned music off
         if (pub.trackName?.startsWith(MUSIC_PREFIX)) {

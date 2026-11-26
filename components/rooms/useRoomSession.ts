@@ -68,7 +68,7 @@ export function useRoomSession(room: Room) {
   const person = usePeople();
   /** Backend rooms have real voice over LiveKit, and no simulated crowd. */
   const live = Boolean(room.server);
-  const voice = useLiveVoice(room.server?.id ?? null);
+  const voice = useLiveVoice(room.server?.id ?? null, settingsOf(room).highQuality !== false);
   const { myId: myServerId, applyRoom, applyRoomPoints } = useServerRooms();
   /** Backend rooms: who is in the room (participants API) merged with who is connected (LiveKit). */
   const participants = useRoomParticipants(room.server?.id ?? null, voice, myServerId);
