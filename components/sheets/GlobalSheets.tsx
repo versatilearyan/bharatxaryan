@@ -7,8 +7,9 @@ import { nameTone } from "@/lib/app/fonts";
 import { useMarket } from "@/lib/app/market-store";
 import { RoomCover } from "@/components/rooms/RoomCover";
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Bell, Copy, DoorOpen, Gift, Hash, MessageCircle, Radio, SearchX, Sparkles, UserCheck, UserPlus } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useBackClose } from "@/lib/app/back";
+import { Bell, ChevronLeft, Copy, DoorOpen, Gift, Hash, MessageCircle, Radio, SearchX, Sparkles, UserCheck, UserPlus } from "lucide-react";
 import { GameArt } from "@/components/art/GameArt";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { CharmBadge } from "@/components/ui/CharmBadge";
@@ -38,6 +39,7 @@ import { FriendsPanel } from "@/components/social/FriendsPanel";
 import { useJoinGameByCode } from "@/components/social/Invites";
 import { ServerTasks } from "./ServerTasks";
 import { ServerNotificationsSheet } from "./ServerNotifications";
+import { FriendButton } from "@/components/social/FriendButton";
 import { looksLikeGameCode } from "@/lib/api/invites";
 import { lazySheet } from "@/components/ui/lazySheet";
 import { ManualTopupSheet } from "@/components/market/ManualTopupSheet";
@@ -110,9 +112,13 @@ function PersonSheet({ personId, onClose }: { personId: string | null; onClose: 
             }}
           />
           <div className="mt-5 grid grid-cols-2 gap-2">
-            <Button variant={profile.following.includes(p.id) ? "soft" : "primary"} onClick={() => toggleFollow(p.id)}>
-              <UserPlus className="h-4 w-4" /> {profile.following.includes(p.id) ? "Following" : "Follow"}
-            </Button>
+            {p.id.startsWith("srv-user:") ? (
+              <FriendButton userId={p.id.slice(9)} />
+            ) : (
+              <Button variant={profile.following.includes(p.id) ? "soft" : "primary"} onClick={() => toggleFollow(p.id)}>
+                <UserPlus className="h-4 w-4" /> {profile.following.includes(p.id) ? "Following" : "Follow"}
+              </Button>
+            )}
             <Button variant="soft" onClick={() => openConversation(p.id)}>
               <MessageCircle className="h-4 w-4" /> Message
             </Button>
@@ -225,26 +231,12 @@ function TasksSheetImpl({ open, onClose }: { open: boolean; onClose: () => void 
   );
 }
 
-function FriendsSheetImpl({ open, onClose, tab }: { open: boolean; onClose: () => void; tab?: "friends" | "following" | "followers" }) {
+function FriendsSheetImpl({ open, onClose, tab }: { open: boolean; onClose: () => void; tab?: "friends" | "requests" | "find" | "following" | "followers" }) {
   const { profile, rooms, openRoom, openConversation, setSheet, session } = useApp();
   const friends = PEOPLE.filter((p) => profile.following.includes(p.id));
   // Signed in: friends, following, followers and activity come from the server
-  if (session)
-    return (
-      <BottomSheet
-        open={open}
-        onClose={onClose}
-        title="Friends"
-        tall
-        headerRight={
-          <button type="button" onClick={() => setSheet({ kind: "find-user" })} className="flex items-center gap-1 rounded-full bg-coral/15 px-3 py-1.5 text-[12px] font-bold text-pink">
-            <UserPlus className="h-3.5 w-3.5" /> Add by ID
-          </button>
-        }
-      >
-        {open ? <FriendsPanel key={tab ?? "friends"} onClose={onClose} initialTab={tab} /> : null}
-      </BottomSheet>
-    );
+  // Signed in: a full screen (Friends · Requests · Find People)
+  if (session) return <FriendsScreen open={open} onClose={onClose} tab={tab} />;
   return (
     <BottomSheet
       open={open}
@@ -803,3 +795,34 @@ const FriendsSheet = lazySheet(FriendsSheetImpl);
 const JoinRoomSheet = lazySheet(JoinRoomSheetImpl);
 const ManualTopup = lazySheet(ManualTopupSheet);
 const Tickets = lazySheet(TicketSheet);
+
+/** Friends as a full screen that slides in; the phone's Back button closes it. */
+function FriendsScreen({ open, onClose, tab }: { open: boolean; onClose: () => void; tab?: "friends" | "requests" | "find" | "following" | "followers" }) {
+  useBackClose(open, onClose);
+  return (
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          className="absolute inset-0 z-[70] flex flex-col bg-[radial-gradient(130%_55%_at_50%_0%,#4a1626_0%,#2a1430_42%,#141018_100%)]"
+          initial={{ x: "100%" }}
+          animate={{ x: 0 }}
+          exit={{ x: "100%" }}
+          transition={{ type: "spring", stiffness: 380, damping: 38 }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Friends"
+        >
+          <header className="pt-safe flex shrink-0 items-center gap-3 px-4 pb-3 pt-3">
+            <button type="button" onClick={onClose} aria-label="Back" className="grid h-11 w-11 place-items-center rounded-full bg-black/30 text-cream ring-1 ring-gold/25">
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <h1 className="bg-gradient-to-r from-[#fff1c9] via-gold to-[#ffb37a] bg-clip-text font-display text-[24px] font-extrabold text-transparent">Friends</h1>
+          </header>
+          <div className="app-scroll min-h-0 flex-1 pb-[calc(var(--sb,0px)+24px)]">
+            <FriendsPanel key={tab ?? "friends"} onClose={onClose} initialTab={tab} />
+          </div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
+  );
+}

@@ -10,6 +10,7 @@ import { ServerProposeSheet, useCpEvents } from "@/components/market/ServerCp";
 import { CpRing } from "@/components/market/CpRing";
 import { ProfileCpPill } from "@/components/rooms/RoomSocial";
 import { PhotoViewer } from "@/components/ui/PhotoViewer";
+import { FriendButton } from "@/components/social/FriendButton";
 import { ProfileFamilyPanel, ProfileMomentsPanel } from "@/components/profile/ProfileSocialPanels";
 import { myUserIdFromToken } from "@/lib/auth/token";
 import { CpBannerPill } from "@/components/market/CpParts";
@@ -774,14 +775,18 @@ export function UserProfileScreen({ personId }: { personId: string }) {
         <UserProfileBody personId={personId} charmPoints={pub.data?.charmPoints} backendProfile={pub.isBackendUser} />
       </div>
       <div className="pb-safe flex gap-2.5 border-t border-gold/15 bg-gradient-to-t from-[#1b1020] to-[#24131f] px-4 py-3">
-        <button
-          type="button"
-          onClick={() => toggleFollow(personId)}
-          className={`flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full text-[14px] font-bold ${following ? "bg-cream/10 text-cream ring-1 ring-gold/20" : "bg-gradient-to-r from-coral to-gold text-white shadow-[0_8px_24px_-10px_rgba(244,81,91,0.8)]"}`}
-        >
-          {following ? <Check className="h-4 w-4" aria-hidden /> : <UserPlus className="h-4 w-4" aria-hidden />}
-          {following ? "Following" : "Follow"}
-        </button>
+        {personId.startsWith("srv-user:") ? (
+          <FriendButton userId={personId.slice(9)} className="flex-1 text-[14px]" />
+        ) : (
+          <button
+            type="button"
+            onClick={() => toggleFollow(personId)}
+            className={`flex h-11 flex-1 items-center justify-center gap-1.5 rounded-full text-[14px] font-bold ${following ? "bg-cream/10 text-cream ring-1 ring-gold/20" : "bg-gradient-to-r from-coral to-gold text-white shadow-[0_8px_24px_-10px_rgba(244,81,91,0.8)]"}`}
+          >
+            {following ? <Check className="h-4 w-4" aria-hidden /> : <UserPlus className="h-4 w-4" aria-hidden />}
+            {following ? "Following" : "Follow"}
+          </button>
+        )}
         <button type="button" onClick={() => openConversation(personId)} aria-label="Message" className="grid h-11 w-11 place-items-center rounded-full bg-[#2c1622] text-cream ring-1 ring-gold/25">
           <MessageCircle className="h-5 w-5" />
         </button>

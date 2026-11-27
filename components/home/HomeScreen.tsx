@@ -38,7 +38,6 @@ export function HomeScreen() {
       <HomeFestival />
       <NewbieRooms />
       <OfficialRooms />
-      <Shortcuts />
       <GameModes />
       <FeaturedVip />
       <PopularRooms />
@@ -61,6 +60,10 @@ function Greeting() {
         {when}, <span className="bg-gradient-to-r from-[#ffd86b] via-[#ff9ad5] to-[#b9a3ff] bg-clip-text text-transparent">{first}</span> 🙏
       </h1>
       <p className="mt-1 text-[13px] text-cream/65">Aaj kya karein? Gaddaar pakdo ya kisi room me baat karo.</p>
+      {/* Ranking · Tasks · Friends right under the greeting */}
+      <div className="-mx-4">
+        <Shortcuts />
+      </div>
       <div className="mt-3.5 grid grid-cols-2 gap-3">
         <QuickTile
           onClick={() => push({ kind: "gaddar" })}
@@ -147,6 +150,8 @@ function Shortcuts() {
   }, []);
   const person = usePeople();
   const online = PEOPLE.filter((p) => p.online && profile.following.includes(p.id));
+  // Friend requests waiting for you: a count on Friends, and it opens straight to Requests
+  const requests = useActivity().friends?.incomingCount ?? 0;
   const items = [
     ...(eventsOn
       ? [
@@ -171,7 +176,8 @@ function Shortcuts() {
     },
     {
       label: "Friends",
-      onClick: () => setSheet({ kind: "friends" }),
+      onClick: () => setSheet(requests ? { kind: "friends", tab: "requests" } : { kind: "friends" }),
+      count: requests,
       art: (
         <ShortcutIcon kind="friends">
           <span className="flex -space-x-3">
@@ -190,7 +196,11 @@ function Shortcuts() {
           <span aria-hidden className="pointer-events-none absolute -top-8 left-1/2 h-16 w-16 -translate-x-1/2 rounded-full bg-gold/15 blur-2xl" />
           <span className="relative h-[54px] w-[54px]">
             <span className="block origin-top-left scale-[0.82]">{it.art}</span>
-            {it.dot ? <span className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-[#0c0b10]" /> : null}
+            {"count" in it && it.count ? (
+              <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-coral px-1 text-[10.5px] font-black text-white ring-2 ring-[#0c0b10]">{it.count > 99 ? "99+" : it.count}</span>
+            ) : "dot" in it && it.dot ? (
+              <span className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-[#0c0b10]" />
+            ) : null}
           </span>
           <span className="relative text-[12.5px] font-bold tracking-wide text-cream/90">{it.label}</span>
         </motion.button>

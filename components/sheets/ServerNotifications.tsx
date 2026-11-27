@@ -8,7 +8,7 @@
  */
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Bell, ChevronRight, Heart, MessageCircle, Play, Reply } from "lucide-react";
+import { Bell, ChevronRight, Heart, MessageCircle, Play, Reply, UserCheck, UserPlus } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { markActivitySeen, refreshActivity, useActivity, type Activity } from "@/lib/app/activity-store";
 import { useServerUnread } from "@/lib/app/chat-store";
@@ -32,8 +32,14 @@ const KIND = {
 } as const;
 
 export function ServerNotificationsSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { setTab, push } = useApp();
-  const { items, seenAt, fresh } = useActivity();
+  const { setTab, push, setSheet, openProfile } = useApp();
+  const { items, seenAt, fresh, friends } = useActivity();
+  const incoming = friends?.incoming ?? [];
+  const accepted = friends?.accepted ?? [];
+  const openRequests = () => {
+    markActivitySeen();
+    setSheet({ kind: "friends", tab: "requests" });
+  };
   const unreadChats = useServerUnread() ?? 0;
   useEffect(() => {
     if (open) refreshActivity(true);
@@ -84,6 +90,71 @@ export function ServerNotificationsSheet({ open, onClose }: { open: boolean; onC
           </span>
           <ChevronRight className="h-5 w-5 text-cream/40" aria-hidden />
         </motion.button>
+
+        {/* Friend requests */}
+        <motion.button
+          type="button"
+          whileTap={{ scale: 0.98 }}
+          onClick={openRequests}
+          className={`mt-2.5 flex w-full items-center gap-3 rounded-2xl p-3 text-left ring-1 ${incoming.length ? "bg-gradient-to-r from-[#4a1626] via-[#2c1622] to-[#1c1824] ring-gold/35" : "bg-white/[0.04] ring-white/10"}`}
+        >
+          <span className="relative flex h-11 w-11 shrink-0 items-center">
+            {incoming.length ? (
+              incoming.slice(0, 2).map((p, i) => (
+                <span key={p.userId} className={`absolute h-9 w-9 overflow-hidden rounded-full ring-2 ring-[#2a1420] ${i ? "left-3.5 top-2.5" : "left-0 top-0"}`}>
+                  <span className="grid h-full w-full place-items-center bg-gradient-to-br from-[#7b5cff] to-coral text-[13px] font-bold text-white">{p.name.slice(0, 1).toUpperCase()}</span>
+                  {p.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.avatarUrl} alt="" onError={(e) => (e.currentTarget.style.display = "none")} className="absolute inset-0 h-full w-full object-cover" />
+                  ) : null}
+                </span>
+              ))
+            ) : (
+              <span className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-b from-[#f6d899] to-[#d9a84f] text-[#2a1a0c]">
+                <UserPlus className="h-5 w-5" aria-hidden />
+              </span>
+            )}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-display text-[15px] font-extrabold text-cream">
+              {incoming.length ? `${incoming.length} friend request${incoming.length === 1 ? "" : "s"}` : "Friend requests"}
+            </span>
+            <span className="block truncate text-[12px] text-cream/60">{incoming.length ? (incoming.length > 1 ? `${incoming[0].name} aur ${incoming.length - 1} log aapke friend banna chahte hain` : `${incoming[0].name} aapka friend banna chahta hai`) : "Koi nayi request nahi"}</span>
+          </span>
+          {incoming.some((p) => p.at > seenAt) ? <span className="h-2 w-2 shrink-0 rounded-full bg-coral" aria-label="New" /> : null}
+          <ChevronRight className="h-5 w-5 text-cream/40" aria-hidden />
+        </motion.button>
+
+        {accepted.length ? (
+          <ul className="mt-2.5 space-y-1.5">
+            {accepted.slice(0, 5).map((p) => {
+              const isNew = p.at > seenAt;
+              return (
+                <li key={`acc-${p.userId}`}>
+                  <button type="button" onClick={() => (close(), openProfile(`srv-user:${p.userId}`))} className={`flex w-full items-center gap-3 rounded-2xl px-2.5 py-2.5 text-left ${isNew ? "bg-gold/[0.09] ring-1 ring-gold/25" : ""}`}>
+                    <span className="relative h-11 w-11 shrink-0">
+                      <span className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-[#7b5cff] to-coral font-bold text-white ring-2 ring-gold/30">{p.name.slice(0, 1).toUpperCase()}</span>
+                      {p.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={p.avatarUrl} alt="" onError={(e) => (e.currentTarget.style.display = "none")} className="absolute inset-0 h-11 w-11 rounded-full object-cover ring-2 ring-gold/30" />
+                      ) : null}
+                      <span className="absolute -bottom-0.5 -right-0.5 grid h-5 w-5 place-items-center rounded-full bg-[#3ddc97] text-white ring-2 ring-[#1c0d14]">
+                        <UserCheck className="h-3 w-3" aria-hidden />
+                      </span>
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13.5px] leading-snug text-cream">
+                        <b className="font-extrabold">{p.name}</b> <span className="text-cream/75">accepted your friend request 🤝</span>
+                      </span>
+                      <span className="mt-0.5 block text-[11px] text-muted">{ago(p.at)}</span>
+                    </span>
+                    {isNew ? <span className="h-2 w-2 shrink-0 rounded-full bg-coral" aria-label="New" /> : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : null}
 
         {/* Moments activity */}
         <p className="mb-1 mt-5 px-1 text-[11px] font-bold uppercase tracking-[0.16em] text-gold/80">Moments</p>

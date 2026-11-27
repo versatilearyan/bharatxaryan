@@ -25,6 +25,7 @@ const opts = { auth: true, forbiddenIsAccess: true } as const;
 export type FriendRoom = { roomId: string; roomCode?: number; name: string; type?: string; coverUrl?: string; game?: string };
 export type FriendCard = { userId: string; publicId?: string; name: string; avatarUrl?: string; online: boolean; lastSeenAt?: number; room?: FriendRoom };
 export type FriendList = { kind: string; friendsCount: number; followers: number; followingCount: number; onlineCount: number; people: FriendCard[] };
+export type FriendRequests = { incoming: (FriendCard & { at: number })[]; sent: (FriendCard & { at: number })[]; accepted: (FriendCard & { at: number })[]; incomingCount: number };
 export type FollowStatus = { following: boolean; followsYou: boolean; friends: boolean; followers: number; followingCount: number; friendsCount: number };
 export type FriendActivity = { type: "MOMENT" | "CP" | "GIFT" | "ROOM"; user: { userId: string; name: string; avatarUrl?: string }; ref?: string; detail?: string; at: number };
 
@@ -54,6 +55,16 @@ export const friendsApi = {
   status: async (userId: string) => status(await api<unknown>(`/api/v1/friends/${encodeURIComponent(userId)}/status`, opts)),
   follow: async (userId: string) => status(await api<unknown>(`/api/v1/friends/${encodeURIComponent(userId)}/follow`, { ...opts, method: "POST" })),
   unfollow: async (userId: string) => status(await api<unknown>(`/api/v1/friends/${encodeURIComponent(userId)}/unfollow`, { ...opts, method: "POST" })),
+  /** Reject someone's friend request. */
+  decline: async (userId: string) => status(await api<unknown>(`/api/v1/friends/${encodeURIComponent(userId)}/decline`, { ...opts, method: "POST" })),
+  /** No longer friends (both sides). */
+  unfriend: async (userId: string) => status(await api<unknown>(`/api/v1/friends/${encodeURIComponent(userId)}/unfriend`, { ...opts, method: "POST" })),
+  /** Friend requests: who asked you, who you asked, and who accepted lately. */
+  async requests(): Promise<FriendRequests> {
+    const d = obj(await api<unknown>("/api/v1/friends/requests", opts)) ?? {};
+    const list = (v: unknown) => arr(v).map((x) => ({ ...card(x), at: num(obj(x)?.at) }));
+    return { incoming: list(d.incoming), sent: list(d.sent), accepted: list(d.accepted), incomingCount: num(d.incomingCount) };
+  },
   async activity(limit = 40): Promise<FriendActivity[]> {
     return arr(await api<unknown>(`/api/v1/friends/activity?limit=${limit}`, opts)).flatMap((x) => {
       const o = obj(x);

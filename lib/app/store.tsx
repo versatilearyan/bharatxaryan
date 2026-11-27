@@ -74,7 +74,7 @@ export type Sheet =
   | { kind: "person"; personId: string }
   | { kind: "notifications" }
   | { kind: "tasks" }
-  | { kind: "friends"; tab?: "friends" | "following" | "followers" }
+  | { kind: "friends"; tab?: "friends" | "requests" | "find" | "following" | "followers" }
   | { kind: "coins" }
   | { kind: "topup"; packId?: string; requestId?: string; royal?: boolean; vipPlanId?: number }
   | { kind: "ticket"; ticketId?: string }
@@ -494,8 +494,11 @@ function useAppState() {
     syncLevel();
     const t = window.setInterval(syncLevel, 60_000);
     const un = subscribe("/user/queue/notify", (body) => {
-      const b = body && typeof body === "object" ? (body as { type?: unknown }) : null;
+      const b = body && typeof body === "object" ? (body as { type?: unknown; byName?: unknown }) : null;
       if (b?.type === "LEVEL_UP") syncLevel();
+      const who = typeof b?.byName === "string" ? b.byName : "Someone";
+      if (b?.type === "FOLLOWED") toast(`${who} ne friend request bheji 🤝`);
+      if (b?.type === "FRIEND_NEW") toast(`${who} ne aapki friend request accept ki 🎉`, "gold");
     });
     return () => {
       window.clearInterval(t);

@@ -31,6 +31,8 @@ import type { RoomSession } from "./useRoomSession";
 import { nameFace } from "@/lib/app/fonts";
 import { notify } from "@/lib/app/notify";
 import { LevelPill } from "@/components/profile/IdTags";
+import { FriendButton, ProposeButton, useCanPropose } from "@/components/social/FriendButton";
+import { ServerProposeSheet } from "@/components/market/ServerCp";
 
 /** Sheets and cards shared by every room mode: profile card, seat menu, room info, people. */
 export function RoomOverlays({ s }: { s: RoomSession }) {
@@ -212,9 +214,13 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
               </div>
             ) : (
             <div className="mt-4 grid grid-cols-3 gap-2">
-              <button type="button" onClick={() => toggleFollow(id)} className={`flex h-11 items-center justify-center gap-1.5 rounded-full text-[13px] font-bold ${following ? "bg-[#f1edf4] text-[#3a3340]" : "bg-coral text-white"}`}>
-                {following ? <Check className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />} {following ? "Following" : "Follow"}
-              </button>
+              {id.startsWith("srv-user:") ? (
+                <FriendButton userId={id.slice(9)} light />
+              ) : (
+                <button type="button" onClick={() => toggleFollow(id)} className={`flex h-11 items-center justify-center gap-1.5 rounded-full text-[13px] font-bold ${following ? "bg-[#f1edf4] text-[#3a3340]" : "bg-coral text-white"}`}>
+                  {following ? <Check className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />} {following ? "Following" : "Follow"}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -238,6 +244,7 @@ function RoomProfileCard({ s, onGift }: { s: RoomSession; onGift: (id: string) =
               </button>
             </div>
             )}
+            {!me && id.startsWith("srv-user:") ? <CardPropose userId={id.slice(9)} name={p.name} /> : null}
 
             {me && onMic ? (
               <div className="mt-4 border-t border-black/[0.06] pt-3">
@@ -508,5 +515,18 @@ export function SeatInvitePrompt({ s }: { s: RoomSession }) {
         </div>
       ) : null}
     </AnimatePresence>
+  );
+}
+
+/** Propose with a ring, only when neither of you has a CP. */
+function CardPropose({ userId, name }: { userId: string; name: string }) {
+  const can = useCanPropose(userId);
+  const [open, setOpen] = useState(false);
+  if (!can) return null;
+  return (
+    <>
+      <ProposeButton light onPropose={() => setOpen(true)} />
+      <ServerProposeSheet open={open} onClose={() => setOpen(false)} toUserId={userId} toName={name} />
+    </>
   );
 }
