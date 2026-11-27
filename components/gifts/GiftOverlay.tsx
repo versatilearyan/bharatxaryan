@@ -462,7 +462,7 @@ export function GiftOverlay() {
 /**
  * In a room, while the phone is idle: download and parse the big SVGA gifts ahead of time (one by one), so when
  * someone sends one it plays at once instead of stalling. Only on a fast connection (4G / Wi-Fi), never with Data Saver;
- * 8 gifts in HD, 3 in Smooth graphics.
+ * 8 gifts, 4 on weaker phones.
  */
 function GiftWarmup() {
   const { activeRoomId } = useApp();
@@ -475,7 +475,7 @@ function GiftWarmup() {
       .filter((g) => g.svga?.src)
       .sort((a, b) => b.cost - a.cost)
       // weaker phones keep fewer parsed animations in memory
-      .slice(0, isLite() ? 3 : 8)
+      .slice(0, isLite() ? 4 : 8)
       .map((g) => g.svga!.src);
     const idle = (f: () => void) => ((window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 400)))(f, { timeout: 3000 });
     const next = (i: number) => {

@@ -147,12 +147,12 @@ html[data-native] #main {
   html[data-lite] [class*="blur-3xl"] {
     --tw-blur: blur(12px) !important;
   }
-  /* Smooth graphics: endless decorative CSS loops stop (loading spinners keep turning) */
-  html[data-lite] .animate-ping,
-  html[data-lite] .animate-pulse:not([aria-busy]),
-  html[data-lite] .animate-bounce,
-  html[data-lite] .animate-shimmer,
-  html[data-lite] .foil-shimmer {
+  /* Smooth graphics (chosen in Profile): endless decorative CSS loops stop (loading spinners keep turning) */
+  html[data-calm] .animate-ping,
+  html[data-calm] .animate-pulse:not([aria-busy]),
+  html[data-calm] .animate-bounce,
+  html[data-calm] .animate-shimmer,
+  html[data-calm] .foil-shimmer {
     animation: none !important;
   }
   /* Long lists: rows outside the screen aren't laid out or painted until they scroll near */
@@ -418,7 +418,7 @@ html[data-lite] .pn-skeleton, html[data-lite] .pn-glow-gold { animation: none; }
 /* ------------------------------------------------------------------
    The foil shimmer sweep, drawn by the GPU: the highlight is its own layer that slides (transform) instead of the
    background being moved (background-position repaints the whole card every frame: that kept phones busy and warm).
-   Unlayered so it wins over the animate-shimmer utility. Smooth graphics: no sweep at all.
+   Same look as before. Unlayered so it wins over the animate-shimmer utility. Smooth graphics (by choice): no sweep.
    ------------------------------------------------------------------ */
 .foil-shimmer {
   background-image: none;
@@ -446,6 +446,6 @@ html[data-lite] .pn-skeleton, html[data-lite] .pn-glow-gold { animation: none; }
   from { transform: translateX(-100%); }
   to { transform: translateX(50%); }
 }
-html[data-lite] .foil-shimmer::before {
+html[data-calm] .foil-shimmer::before {
   animation: none !important;
 }

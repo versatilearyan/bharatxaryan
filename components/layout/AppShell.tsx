@@ -124,13 +124,13 @@ export function AppShell() {
 
 function Frame() {
   const { activeRoomId, roomOpen, signedIn, setTab } = useApp();
-  // Smooth graphics (battery saver): moving / scaling loops everywhere stop; gifts, sheets and photos opt back in
-  const { lite } = useGraphics();
+  // Smooth graphics (chosen by the person): moving / scaling loops stop; gifts, sheets and photos opt back in
+  const { calm } = useGraphics();
   // Screens add this to their bottom padding so the mini player never covers content
   const mini = activeRoomId && !roomOpen ? "64px" : "0px";
   return (
     <>
-      <MotionConfig reducedMotion={lite ? "always" : "user"}>
+      <MotionConfig reducedMotion={calm ? "always" : "user"}>
       <div className="app-frame flex h-[100dvh] w-full justify-center overflow-clip bg-ink min-[480px]:bg-[radial-gradient(circle_at_50%_0%,#2a2a30,#18181b_70%)]">
         <div
           id="main"

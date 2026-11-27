@@ -241,7 +241,7 @@ function LinkRow({ href, icon, label }: { href: string; icon: React.ReactNode; l
 
 /** Graphics: Auto (the phone decides), HD, or Smooth (battery saver). Voice quality never changes with this. */
 function GraphicsRow() {
-  const { mode, lite } = useGraphics();
+  const { mode } = useGraphics();
   const opts: { id: GraphicsMode; label: string }[] = [
     { id: "auto", label: "Auto" },
     { id: "hd", label: "HD" },
@@ -255,7 +255,7 @@ function GraphicsRow() {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[14px] font-medium text-cream">Graphics</span>
-          <span className="block text-[11.5px] text-muted">{mode === "auto" ? `Auto: abhi ${lite ? "Smooth (battery saver)" : "HD"}` : mode === "hd" ? "Sabse sharp animations" : "Battery bachao, phone thanda, sab smooth"}</span>
+          <span className="block text-[11.5px] text-muted">{mode === "auto" ? "Phone ke hisaab se, bina lag" : mode === "hd" ? "Har phone par full quality" : "Battery saver: chalti sajawat ruk jaati hai"}</span>
         </span>
       </div>
       <div role="radiogroup" aria-label="Graphics" className="mt-2.5 grid grid-cols-3 gap-1 rounded-full bg-black/30 p-1 ring-1 ring-gold/20">

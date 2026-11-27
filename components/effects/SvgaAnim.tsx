@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { isLite } from "@/lib/app/graphics";
+import { isCalm, isLite } from "@/lib/app/graphics";
 
 type Video = Awaited<ReturnType<import("svga").Parser["load"]>>;
 
@@ -80,9 +80,12 @@ function sharpen(player: import("svga").Player, canvas: HTMLCanvasElement, size:
   const ofs = (player as unknown as { ofsCanvas?: HTMLCanvasElement | OffscreenCanvas }).ofsCanvas;
   if (!ofs || typeof ofs.getContext !== "function") return;
   const shown = Math.max(canvas.clientWidth / size.width, canvas.clientHeight / size.height);
-  // Smooth graphics (battery saver / weaker phones): fewer pixels per frame, so big gifts never stutter or heat the phone
+  // Weaker phones draw fewer pixels per frame (same animation, same colours), so big gifts never stutter or heat the phone
+  const calm = isCalm();
   const lite = isLite();
-  let k = Math.min(lite ? 1.5 : 3, (window.devicePixelRatio || 1) * shown, Math.sqrt((lite ? LITE_CANVAS_PIXELS : MAX_CANVAS_PIXELS) / (size.width * size.height)));
+  const maxScale = calm ? 1.5 : lite ? 2 : 3;
+  const budget = calm ? LITE_CANVAS_PIXELS : lite ? 1_800_000 : MAX_CANVAS_PIXELS;
+  let k = Math.min(maxScale, (window.devicePixelRatio || 1) * shown, Math.sqrt(budget / (size.width * size.height)));
   if (!Number.isFinite(k) || k <= 1.05) return;
   k = Math.round(k * 100) / 100;
   canvas.width = Math.round(size.width * k);
