@@ -87,10 +87,11 @@ export function PlayersHint({ n }: { n: number }) {
 }
 
 /** The small card for the Home screen: just the picture, the name and a status, one tap to open. */
-export function GameMini({ g, live, onOpen, index = 0 }: { g: Game; live?: number; onOpen: () => void; index?: number }) {
-  return (
-    <motion.button type="button" whileTap={{ scale: 0.95 }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 6) * 0.04 }} onClick={onOpen} aria-label={`${g.name}, ${g.players}`} className="relative block h-[132px] w-[116px] shrink-0 snap-start overflow-hidden rounded-[20px] text-left ring-1 ring-white/20 shadow-[0_10px_22px_-12px_rgba(0,0,0,0.9)]">
+export function GameMini({ g, live, onOpen, index = 0, highlight = false }: { g: Game; live?: number; onOpen: () => void; index?: number; highlight?: boolean }) {
+  const card = (
+    <motion.button type="button" whileTap={{ scale: 0.95 }} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 6) * 0.04 }} onClick={onOpen} aria-label={highlight ? `${g.name}, ${g.players}, new for you` : `${g.name}, ${g.players}`} className={`relative block h-[132px] w-[116px] shrink-0 snap-start overflow-hidden rounded-[20px] text-left shadow-[0_10px_22px_-12px_rgba(0,0,0,0.9)] ${highlight ? "ring-2 ring-[#ffd84d]" : "ring-1 ring-white/20"}`}>
       <GameArt id={g.id} />
+      {highlight ? <span className="foil-shimmer animate-shimmer pointer-events-none absolute inset-0 z-[1] opacity-40" aria-hidden /> : null}
       <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
       <span className="absolute left-1.5 top-1.5 flex gap-1">
         {g.tag === "NEW" ? <span className="rounded-full bg-[#3fbf7f] px-1.5 py-0.5 text-[8.5px] font-black uppercase text-white">New</span> : null}
@@ -98,6 +99,29 @@ export function GameMini({ g, live, onOpen, index = 0 }: { g: Game; live?: numbe
         {live ? <span className="rounded-full bg-black/65 px-1.5 py-0.5 text-[8.5px] font-black text-[#7dff9a]">● {live}</span> : null}
       </span>
       <span className="absolute inset-x-2 bottom-1.5 block truncate font-display text-[13px] font-black leading-tight text-white drop-shadow">{g.name}</span>
+      {highlight ? (
+        <motion.span
+          className="absolute right-1.5 top-1.5 z-[2] rounded-full bg-[#ffd84d] px-1.5 py-0.5 text-[9px] font-black uppercase text-[#2a1200] shadow"
+          animate={{ scale: [1, 1.12, 1] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          aria-hidden
+        >
+          Khelo!
+        </motion.span>
+      ) : null}
     </motion.button>
+  );
+  if (!highlight) return card;
+  // a soft golden glow that breathes around the card until it is opened once
+  return (
+    <span className="relative block shrink-0 snap-start rounded-[22px]">
+      <motion.span
+        className="pointer-events-none absolute -inset-1 rounded-[24px] bg-[#ffd84d]/45 blur-md"
+        animate={{ opacity: [0.35, 0.95, 0.35] }}
+        transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+        aria-hidden
+      />
+      {card}
+    </span>
   );
 }

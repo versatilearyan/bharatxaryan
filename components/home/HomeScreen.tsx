@@ -15,7 +15,7 @@ import { Logo } from "@/components/brand/Logo";
 import { FestivalBanner } from "@/components/festival/FestivalBanner";
 import { GameMini } from "@/components/games/GameCards";
 import { CoinBalance, SectionHeader } from "@/components/ui/premium";
-import { rememberPlayed, useGameLive } from "@/lib/games/live";
+import { rememberPlayed, useGameHighlights, useGameLive } from "@/lib/games/live";
 import type { Game } from "@/lib/app/types";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, Pill, SectionTitle, formatCoins, formatCount } from "@/components/ui/kit";
@@ -189,17 +189,30 @@ function Shortcuts() {
 function GameModes() {
   const { setSheet, push } = useApp();
   const live = useGameLive();
+  const hl = useGameHighlights(PLAYABLE.filter((g) => g.tag === "NEW").map((g) => g.id));
   const open = (g: Game) => {
     rememberPlayed(g.id);
     setSheet({ kind: "game", gameId: g.id });
   };
   return (
     <section className="mt-6" aria-labelledby="games-h">
-      <SectionHeader title={<span id="games-h">Game Modes</span>} icon={<Flame className="h-4.5 w-4.5 text-gold" aria-hidden />} />
-      <ul className="no-scrollbar flex scroll-pl-4 snap-x gap-2.5 overflow-x-auto px-4 pb-1">
+      <SectionHeader
+        title={
+          <span id="games-h" className="inline-flex items-center gap-2">
+            Game Modes
+            {hl?.fresh ? (
+              <motion.span className="rounded-full bg-[#ffd84d] px-2 py-0.5 font-sans text-[10.5px] font-black text-[#2a1200]" animate={{ y: [0, -3, 0] }} transition={{ duration: 1.1, repeat: Infinity }}>
+                Naye ho? Game try karo 👇
+              </motion.span>
+            ) : null}
+          </span>
+        }
+        icon={<Flame className="h-4.5 w-4.5 text-gold" aria-hidden />}
+      />
+      <ul className="no-scrollbar flex scroll-pl-4 snap-x gap-2.5 overflow-x-auto px-4 pb-2 pt-1">
         {PLAYABLE.map((g, i) => (
           <li key={g.id}>
-            <GameMini g={g} live={live?.[g.id]} index={i} onOpen={() => open(g)} />
+            <GameMini g={g} live={live?.[g.id]} index={i} onOpen={() => open(g)} highlight={hl?.glow.has(g.id) ?? false} />
           </li>
         ))}
         <li>

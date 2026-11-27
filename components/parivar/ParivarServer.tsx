@@ -68,7 +68,8 @@ function Avatar({ name, url, size = 36 }: { name: string; url?: string; size?: n
 
 /* ---------------------------- Discover and ranking ---------------------------- */
 
-export function ParivarListScreen() {
+/** `embedded`: shown inside the Discover tab (no back header; room for the bottom bar). */
+export function ParivarListScreen({ embedded = false }: { embedded?: boolean } = {}) {
   const { pop, push, toast } = useApp();
   const [view, setView] = useState<"list" | "weekly" | "total">("list");
   const [searching, setSearching] = useState(false);
@@ -108,8 +109,8 @@ export function ParivarListScreen() {
 
   if (me && !me.enabled) {
     return (
-      <div className="app-scroll h-full pb-8" style={backdropStyle("parivar")}>
-        <ScreenHeader title="Parivar" onBack={pop} />
+      <div className={`app-scroll h-full ${embedded ? "pb-[calc(110px+var(--mini,0px)+var(--sb))]" : "pb-8"}`} style={embedded ? undefined : backdropStyle("parivar")}>
+        {embedded ? null : <ScreenHeader title="Parivar" onBack={pop} />}
         <div className="px-8 pt-24 text-center">
           <Glyph icon={UsersRound} size={72} className="mx-auto" />
           <p className="mt-2 font-display text-[22px] font-extrabold text-cream">Parivar is coming soon</p>
@@ -128,8 +129,8 @@ export function ParivarListScreen() {
   ];
 
   return (
-    <div className="app-scroll h-full pb-8" style={backdropStyle("parivar")}>
-      <ScreenHeader title="Parivar" onBack={pop} />
+    <div className={`app-scroll h-full ${embedded ? "pb-[calc(110px+var(--mini,0px)+var(--sb))] pt-3" : "pb-8"}`} style={embedded ? undefined : backdropStyle("parivar")}>
+      {embedded ? null : <ScreenHeader title="Parivar" onBack={pop} />}
       <div className="mx-4 grid grid-cols-4 gap-2.5 pb-4">
         {actions.map((a) => (
           <button key={a.key} type="button" onClick={a.run} className="flex flex-col items-center gap-2 transition active:scale-95">

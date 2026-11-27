@@ -38,7 +38,8 @@ type Scope = "all" | "friends";
  * Moments: a feed of posts with text, photos (up to 9) or a video, with
  * likes and comments. personId: only that person's Moments.
  */
-export function MomentsScreen({ personId }: { personId?: string }) {
+/** `embedded`: shown inside the Discover tab (no back button or title; room for the bottom bar). */
+export function MomentsScreen({ personId, embedded = false }: { personId?: string; embedded?: boolean }) {
   const { pop, session, toast, openProfile } = useApp();
   const uid = personId === "me" ? (myUserIdFromToken() ?? undefined) : personId?.startsWith("srv-user:") ? personId.slice(9) : undefined;
   const mineOnly = personId === "me";
@@ -107,12 +108,16 @@ export function MomentsScreen({ personId }: { personId?: string }) {
 
   return (
     <div className="relative flex h-full flex-col bg-[radial-gradient(130%_55%_at_50%_0%,#4a1626_0%,#2a1430_42%,#141018_100%)]">
-      <Toran />
-      <header className="relative flex items-center gap-2 px-3 pb-2 pt-[calc(var(--st)+10px)]">
-        <button type="button" onClick={pop} aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full text-cream">
-          <ChevronLeft className="h-6 w-6" />
-        </button>
-        <h1 className="flex-1 bg-gradient-to-r from-[#fff1c9] via-gold to-[#ffb37a] bg-clip-text font-display text-[22px] font-extrabold text-transparent">Moments</h1>
+      {embedded ? null : <Toran />}
+      <header className={`relative flex items-center gap-2 px-3 pb-2 ${embedded ? "justify-end pt-2" : "pt-[calc(var(--st)+10px)]"}`}>
+        {embedded ? null : (
+          <>
+            <button type="button" onClick={pop} aria-label="Back" className="grid h-10 w-10 place-items-center rounded-full text-cream">
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+            <h1 className="flex-1 bg-gradient-to-r from-[#fff1c9] via-gold to-[#ffb37a] bg-clip-text font-display text-[22px] font-extrabold text-transparent">Moments</h1>
+          </>
+        )}
         {!uid ? (
           <div className="flex rounded-full bg-black/35 p-1 ring-1 ring-gold/20">
             {(["all", "friends"] as const).map((s) => (
@@ -125,7 +130,7 @@ export function MomentsScreen({ personId }: { personId?: string }) {
         ) : null}
       </header>
 
-      <div className="app-scroll min-h-0 flex-1 pb-28">
+      <div className={`app-scroll min-h-0 flex-1 ${embedded ? "pb-[calc(150px+var(--mini,0px)+var(--sb))]" : "pb-28"}`}>
         {!session ? <p className="px-6 py-16 text-center text-[13px] text-muted">Sign in to see and post Moments.</p> : null}
         {error ? (
           <button type="button" onClick={() => void load(false)} className="mx-4 mt-3 block w-[calc(100%-2rem)] rounded-2xl bg-coral/10 p-3 text-center text-[13px] text-coral">
@@ -183,7 +188,7 @@ export function MomentsScreen({ personId }: { personId?: string }) {
       </div>
 
       {session && (!uid || mineOnly) ? (
-        <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => setComposing(true)} className="absolute bottom-[calc(var(--sb)+20px)] right-5 flex h-14 items-center gap-2 rounded-full bg-gradient-to-r from-coral to-gold px-5 font-bold text-white shadow-[0_10px_30px_-8px_rgba(255,120,90,0.7)]">
+        <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => setComposing(true)} className={`absolute ${embedded ? "bottom-[calc(var(--sb)+var(--mini,0px)+96px)]" : "bottom-[calc(var(--sb)+20px)]"} right-5 flex h-14 items-center gap-2 rounded-full bg-gradient-to-r from-coral to-gold px-5 font-bold text-white shadow-[0_10px_30px_-8px_rgba(255,120,90,0.7)]`}>
           <ImagePlus className="h-5 w-5" /> Post
         </motion.button>
       ) : null}
