@@ -37,6 +37,7 @@ import { LevelPill } from "@/components/profile/IdTags";
 import { FriendsPanel } from "@/components/social/FriendsPanel";
 import { useJoinGameByCode } from "@/components/social/Invites";
 import { ServerTasks } from "./ServerTasks";
+import { ServerNotificationsSheet } from "./ServerNotifications";
 import { looksLikeGameCode } from "@/lib/api/invites";
 import { lazySheet } from "@/components/ui/lazySheet";
 import { ManualTopupSheet } from "@/components/market/ManualTopupSheet";
@@ -132,7 +133,9 @@ function PersonSheet({ personId, onClose }: { personId: string | null; onClose: 
 }
 
 function NotificationsSheetImpl({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { notices, markNoticesRead } = useApp();
+  const { notices, markNoticesRead, session } = useApp();
+  // Signed in: real notifications (unread messages, likes and comments on your Moments)
+  if (session) return <ServerNotificationsSheet open={open} onClose={onClose} />;
   const icon = { gift: Gift, room: Radio, friend: UserPlus, system: Sparkles };
   return (
     <BottomSheet

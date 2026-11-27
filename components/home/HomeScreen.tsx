@@ -16,6 +16,8 @@ import { FestivalBanner } from "@/components/festival/FestivalBanner";
 import { GameMini } from "@/components/games/GameCards";
 import { CoinBalance, SectionHeader } from "@/components/ui/premium";
 import { rememberPlayed, useGameHighlights, useGameLive } from "@/lib/games/live";
+import { useActivity } from "@/lib/app/activity-store";
+import { useServerUnread } from "@/lib/app/chat-store";
 import type { Game } from "@/lib/app/types";
 import { PersonAvatar } from "@/components/ui/PersonAvatar";
 import { Coin, Pill, SectionTitle, formatCoins, formatCount } from "@/components/ui/kit";
@@ -93,8 +95,11 @@ export function CoinPill() {
 }
 
 function TopBar() {
-  const { profile, notices, setSheet, setTab } = useApp();
-  const unread = notices.filter((n) => !n.read).length;
+  const { profile, notices, setSheet, setTab, session } = useApp();
+  const activity = useActivity();
+  const chats = useServerUnread() ?? 0;
+  // Signed in: new likes / comments / replies on your Moments plus unread messages; otherwise the sample list
+  const unread = session ? activity.fresh + chats : notices.filter((n) => !n.read).length;
   return (
     <header className="pt-safe sticky top-0 z-20 bg-gradient-to-b from-[#160b1e]/95 via-[#160b1e]/85 to-[#160b1e]/40 backdrop-blur-xl">
       <div className="flex h-[60px] items-center gap-2 px-4">
@@ -110,7 +115,13 @@ function TopBar() {
           aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
         >
           <Bell className="h-[21px] w-[21px]" />
-          {unread ? <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-ink" /> : null}
+          {unread ? (
+            session ? (
+              <span className="absolute -right-0.5 -top-0.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-coral px-1 text-[10px] font-black text-white ring-2 ring-ink">{unread > 99 ? "99+" : unread}</span>
+            ) : (
+              <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-coral ring-2 ring-ink" />
+            )
+          ) : null}
         </button>
         <button type="button" onClick={() => setTab("profile")} aria-label="Your profile" className="rounded-full">
           <PersonAvatar person={{ id: "me", look: profile.look, photo: profile.photo, frame: profile.frame }} size={34} />
