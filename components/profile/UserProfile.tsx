@@ -9,6 +9,7 @@ import { cpApi, daysOf, type CpCouple } from "@/lib/api/cp";
 import { ServerProposeSheet, useCpEvents } from "@/components/market/ServerCp";
 import { CpRing } from "@/components/market/CpRing";
 import { ProfileCpPill } from "@/components/rooms/RoomSocial";
+import { ProfileFamilyPanel, ProfileMomentsPanel } from "@/components/profile/ProfileSocialPanels";
 import { myUserIdFromToken } from "@/lib/auth/token";
 import { CpBannerPill } from "@/components/market/CpParts";
 import { SvgaAnim, preloadSvga } from "@/components/effects/SvgaAnim";
@@ -236,6 +237,9 @@ export function UserProfileBody({ personId, charmPoints, backendProfile = false 
         </button>
       ) : null}
 
+      {/* Their Moments (server users) */}
+      <ProfileMomentsPanel personId={personId} />
+
       {/* Guard */}
       <Panel title="Guard" meta={guards.length ? `${guards.length} protecting` : undefined} onOpen={() => push({ kind: "guard", personId })}>
         <div className="flex items-center gap-3">
@@ -305,7 +309,8 @@ export function UserProfileBody({ personId, charmPoints, backendProfile = false 
         )}
       </Panel>
 
-      {PARIVAR_ENABLED ? <ParivarPanel personId={personId} /> : null}
+      {/* Their Family (Parivar) from the server; the old local panel only for demo people */}
+      {app.session && (personId === ME_ID || personId.startsWith("srv-user:")) ? <ProfileFamilyPanel personId={personId} /> : PARIVAR_ENABLED ? <ParivarPanel personId={personId} /> : null}
 
       {/* Rooms */}
       <Panel title="Rooms" meta={roomList.length ? String(roomList.length) : undefined} onOpen={() => push({ kind: "user-rooms", personId })}>
