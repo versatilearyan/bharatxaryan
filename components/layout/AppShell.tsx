@@ -46,6 +46,8 @@ import { Toasts } from "@/components/ui/Toasts";
 import { AuthFlow } from "@/components/auth/AuthFlow";
 import { FestivalBackground } from "@/components/festival/FestivalBackground";
 import { FestivalPopup } from "@/components/festival/FestivalPopup";
+import { MotionConfig } from "framer-motion";
+import { useGraphics } from "@/lib/app/graphics";
 
 /** The voice room (and the LiveKit voice library, about 560 KB) only downloads once someone joins a room, and is fetched quietly in the background a few seconds after the app opens. */
 const loadRoomHost = () => import("@/components/rooms/ActiveRoomHost").then((m) => m.ActiveRoomHost);
@@ -122,10 +124,13 @@ export function AppShell() {
 
 function Frame() {
   const { activeRoomId, roomOpen, signedIn, setTab } = useApp();
+  // Smooth graphics (battery saver): moving / scaling loops everywhere stop; gifts, sheets and photos opt back in
+  const { lite } = useGraphics();
   // Screens add this to their bottom padding so the mini player never covers content
   const mini = activeRoomId && !roomOpen ? "64px" : "0px";
   return (
     <>
+      <MotionConfig reducedMotion={lite ? "always" : "user"}>
       <div className="app-frame flex h-[100dvh] w-full justify-center overflow-clip bg-ink min-[480px]:bg-[radial-gradient(circle_at_50%_0%,#2a2a30,#18181b_70%)]">
         <div
           id="main"
@@ -169,6 +174,7 @@ function Frame() {
           <Toasts />
         </div>
       </div>
+      </MotionConfig>
     </>
   );
 }

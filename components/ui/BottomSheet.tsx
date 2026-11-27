@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useDragControls } from "framer-motion";
 import { X } from "lucide-react";
 import { useBackClose } from "@/lib/app/back";
+import { MotionOn } from "@/components/ui/MotionOn";
 
 type Props = {
   open: boolean;
@@ -22,7 +23,7 @@ type Props = {
  * Bottom sheet that lives inside the mobile app container (absolute, not fixed),
  * so on desktop it stays within the centered app instead of spanning the window.
  */
-export function BottomSheet({ open, onClose, title, children, className = "", tall = false, headerRight }: Props) {
+function BottomSheetInner({ open, onClose, title, children, className = "", tall = false, headerRight }: Props) {
   const titleId = useId();
   const drag = useDragControls();
   useBackClose(open, onClose);
@@ -90,4 +91,13 @@ export function BottomSheet({ open, onClose, title, children, className = "", ta
     </AnimatePresence>
   );
   return host ? createPortal(sheet, host) : sheet;
+}
+
+/** Stays animated in Smooth graphics too (see MotionOn). */
+export function BottomSheet(props: Parameters<typeof BottomSheetInner>[0]) {
+  return (
+    <MotionOn>
+      <BottomSheetInner {...props} />
+    </MotionOn>
+  );
 }

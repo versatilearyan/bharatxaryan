@@ -5,13 +5,14 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, X } from "lucide-react";
 import { useBackClose } from "@/lib/app/back";
+import { MotionOn } from "@/components/ui/MotionOn";
 
 /**
  * Full-screen photo view used everywhere (room chat, messages, Moments). Always easy to leave: a Back arrow at the
  * top left, an X at the top right, the phone's Back button, Esc, or a tap outside the picture. Drawn on the page's
  * own layer (portal), so a parent that moves or scales can never trap it half-way on screen.
  */
-export function PhotoViewer({ open, onClose, children, label = "Photo" }: { open: boolean; onClose: () => void; children: ReactNode; label?: string }) {
+function PhotoViewerInner({ open, onClose, children, label = "Photo" }: { open: boolean; onClose: () => void; children: ReactNode; label?: string }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   useBackClose(open, onClose);
@@ -56,5 +57,14 @@ export function ViewerImage({ src, alt = "Photo" }: { src: string; alt?: string 
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <motion.img src={src} alt={alt} draggable={false} initial={{ scale: 0.94, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="max-h-full max-w-full select-none object-contain" />
+  );
+}
+
+/** Stays animated in Smooth graphics too (see MotionOn). */
+export function PhotoViewer(props: Parameters<typeof PhotoViewerInner>[0]) {
+  return (
+    <MotionOn>
+      <PhotoViewerInner {...props} />
+    </MotionOn>
   );
 }

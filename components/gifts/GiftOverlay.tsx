@@ -3,17 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { GiftArt } from "@/components/art/GiftArt";
-import { SvgaAnim } from "@/components/effects/SvgaAnim";
-import { giftById } from "@/lib/app/data";
+import { SvgaAnim, preloadSvga } from "@/components/effects/SvgaAnim";
+import { giftById, giftsOnSale } from "@/lib/app/data";
 import { Coin } from "@/components/ui/kit";
 import { COMBO_MS, useApp, type GiftCombo, type GiftFx } from "@/lib/app/store";
+import { MotionOn } from "@/components/ui/MotionOn";
+import { isLite } from "@/lib/app/graphics";
 
 /**
  * Plays the gift animation above everything in the app.
  * Ordinary gifts pop and float with sparkles; legendary gifts take over the
  * screen with golden rays, a burst of particles and a royal banner.
  */
-export function GiftOverlay() {
+function GiftOverlayInner() {
   const { giftFx: anyFx, clearGiftFx, giftCombo, clearCombo, roomOpen, activeRoomId } = useApp();
   // A gift sent in a voice room plays only while that room is open on screen (not on the tabs, other screens or when the room is minimised)
   const inRoom = roomOpen && !!activeRoomId;
@@ -445,4 +447,52 @@ function SvgaGift({ fx, onDone }: { fx: GiftFx; onDone: () => void }) {
       </button>
     </motion.div>
   );
+}
+
+/** Stays animated in Smooth graphics too (see MotionOn). */
+export function GiftOverlay() {
+  return (
+    <MotionOn>
+      <GiftOverlayInner />
+      <GiftWarmup />
+    </MotionOn>
+  );
+}
+
+/**
+ * In a room, while the phone is idle: download and parse the big SVGA gifts ahead of time (one by one), so when
+ * someone sends one it plays at once instead of stalling. Only on a fast connection (4G / Wi-Fi), never with Data Saver;
+ * 8 gifts in HD, 3 in Smooth graphics.
+ */
+function GiftWarmup() {
+  const { activeRoomId } = useApp();
+  useEffect(() => {
+    if (!activeRoomId) return;
+    const c = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (c?.saveData || (c?.effectiveType && c.effectiveType !== "4g")) return;
+    let stop = false;
+    const list = giftsOnSale()
+      .filter((g) => g.svga?.src)
+      .sort((a, b) => b.cost - a.cost)
+      // weaker phones keep fewer parsed animations in memory
+      .slice(0, isLite() ? 3 : 8)
+      .map((g) => g.svga!.src);
+    const idle = (f: () => void) => ((window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number }).requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 400)))(f, { timeout: 3000 });
+    const next = (i: number) => {
+      if (stop || i >= list.length) return;
+      idle(() => {
+        if (stop) return;
+        preloadSvga(list[i])
+          .catch(() => undefined)
+          .finally(() => next(i + 1));
+      });
+    };
+    // let the room itself load first
+    const t = window.setTimeout(() => next(0), 4000);
+    return () => {
+      stop = true;
+      window.clearTimeout(t);
+    };
+  }, [activeRoomId]);
+  return null;
 }

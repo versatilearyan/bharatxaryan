@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { isLite } from "@/lib/app/graphics";
 
 type Video = Awaited<ReturnType<import("svga").Parser["load"]>>;
 
@@ -61,6 +62,8 @@ export function warnSvga(src: string, e: unknown) {
 
 /** Never draw an animation bigger than this many canvas pixels (about 1080×2340 at 3×), to keep phones smooth. */
 const MAX_CANVAS_PIXELS = 3_200_000;
+/** In Smooth graphics: about a 720p screen at 1.5×. */
+const LITE_CANVAS_PIXELS = 1_100_000;
 
 /**
  * The player draws every frame at the file's own size (setSize in svga 2.1.1),
@@ -77,7 +80,9 @@ function sharpen(player: import("svga").Player, canvas: HTMLCanvasElement, size:
   const ofs = (player as unknown as { ofsCanvas?: HTMLCanvasElement | OffscreenCanvas }).ofsCanvas;
   if (!ofs || typeof ofs.getContext !== "function") return;
   const shown = Math.max(canvas.clientWidth / size.width, canvas.clientHeight / size.height);
-  let k = Math.min(3, (window.devicePixelRatio || 1) * shown, Math.sqrt(MAX_CANVAS_PIXELS / (size.width * size.height)));
+  // Smooth graphics (battery saver / weaker phones): fewer pixels per frame, so big gifts never stutter or heat the phone
+  const lite = isLite();
+  let k = Math.min(lite ? 1.5 : 3, (window.devicePixelRatio || 1) * shown, Math.sqrt((lite ? LITE_CANVAS_PIXELS : MAX_CANVAS_PIXELS) / (size.width * size.height)));
   if (!Number.isFinite(k) || k <= 1.05) return;
   k = Math.round(k * 100) / 100;
   canvas.width = Math.round(size.width * k);

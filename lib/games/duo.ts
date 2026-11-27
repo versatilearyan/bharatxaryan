@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Room, RoomEvent, Track, AudioPresets, type RemoteTrack } from "livekit-client";
 import { api } from "@/lib/api/client";
+import { duckRoomVoice } from "@/lib/app/voice-duck";
 
 export type DuoRing = { id: string; name: string; rarity: string; imageUrl?: string; qty: number };
 export type DuoSession = { code: string; ticket: string; gameServer?: string; voice: { url: string; room: string; token: string }; rings?: DuoRing[] };
@@ -85,6 +86,8 @@ export function useDuoVoice(session: DuoSession | null): DuoVoice {
       .on(RoomEvent.Reconnected, () => setState("on"))
       .on(RoomEvent.Disconnected, () => !cancelled && setState("off"));
     setState("connecting");
+    // One voice at a time: the voice room you're in goes quiet while this call is on
+    const unduck = duckRoomVoice();
     void (async () => {
       try {
         await room.connect(session.voice.url, session.voice.token, { autoSubscribe: true });
@@ -99,6 +102,7 @@ export function useDuoVoice(session: DuoSession | null): DuoVoice {
     })();
     return () => {
       cancelled = true;
+      unduck();
       void room.disconnect(true);
       box.remove();
       roomRef.current = null;

@@ -3,7 +3,7 @@
 import { BagIcon, RankingIcon, ShopIcon, VisitorsIcon } from "@/components/art/ProfileIcons";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, ChevronRight, Crown, Download, Eye, FileText, Gift, Info, MessageCircle, Pencil, RotateCw, LogOut, Shield, Smartphone, Trash2, Volume2 } from "lucide-react";
+import { Bell, ChevronRight, Crown, Download, Eye, FileText, Gift, Sparkles, Info, MessageCircle, Pencil, RotateCw, LogOut, Shield, Smartphone, Trash2, Volume2 } from "lucide-react";
 import { DeleteAccountSheet } from "@/components/profile/DeleteAccountSheet";
 import { setNotifyPrefs, useNotifyPrefs, notify as ping } from "@/lib/app/notify";
 import { getPrivacy, setShowOnline } from "@/lib/api/chat";
@@ -20,6 +20,7 @@ import { useVisitorStats } from "./ServerVisitors";
 import { useMe } from "@/lib/app/me-store";
 import { useIsNativeApp } from "@/components/system/AppDownloadBanner";
 import { coinText, useReferralRates } from "@/lib/api/referral-rates";
+import { setGraphicsMode, useGraphics, type GraphicsMode } from "@/lib/app/graphics";
 
 export function ProfileScreen() {
   const { profile, coins, setSheet, push, toast, signOut, session, vip: appVip } = useApp();
@@ -173,6 +174,7 @@ export function ProfileScreen() {
           label="Vibration"
           right={<Toggle checked={alerts.vibrate} onChange={(v) => { setNotifyPrefs({ vibrate: v }); if (v) ping("alert"); toast(v ? "Vibration on" : "Vibration off"); }} label="Vibration" />}
         />
+        <GraphicsRow />
         <Row
           icon={<Gift className="h-4.5 w-4.5" />}
           label="Server gift notifications"
@@ -234,5 +236,35 @@ function LinkRow({ href, icon, label }: { href: string; icon: React.ReactNode; l
       <span className="flex-1 text-[14px] font-medium text-cream">{label}</span>
       <ChevronRight className="h-4 w-4 text-muted" aria-hidden />
     </Link>
+  );
+}
+
+/** Graphics: Auto (the phone decides), HD, or Smooth (battery saver). Voice quality never changes with this. */
+function GraphicsRow() {
+  const { mode, lite } = useGraphics();
+  const opts: { id: GraphicsMode; label: string }[] = [
+    { id: "auto", label: "Auto" },
+    { id: "hd", label: "HD" },
+    { id: "smooth", label: "Smooth" },
+  ];
+  return (
+    <div className="border-b border-line px-4 py-3">
+      <div className="flex items-center gap-3">
+        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-cream/[0.07] text-cream/85">
+          <Sparkles className="h-4.5 w-4.5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-medium text-cream">Graphics</span>
+          <span className="block text-[11.5px] text-muted">{mode === "auto" ? `Auto: abhi ${lite ? "Smooth (battery saver)" : "HD"}` : mode === "hd" ? "Sabse sharp animations" : "Battery bachao, phone thanda, sab smooth"}</span>
+        </span>
+      </div>
+      <div role="radiogroup" aria-label="Graphics" className="mt-2.5 grid grid-cols-3 gap-1 rounded-full bg-black/30 p-1 ring-1 ring-gold/20">
+        {opts.map((o) => (
+          <button key={o.id} type="button" role="radio" aria-checked={mode === o.id} onClick={() => setGraphicsMode(o.id)} className={`h-8 rounded-full text-[12.5px] font-bold transition-colors ${mode === o.id ? "bg-gradient-to-b from-[#f6d899] to-[#d9a84f] text-[#2a1a0c]" : "text-cream/70"}`}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

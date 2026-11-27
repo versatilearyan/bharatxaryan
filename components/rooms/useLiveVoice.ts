@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AudioPresets, ConnectionError, ConnectionErrorReason, ConnectionState, DisconnectReason, MediaDeviceFailure, Room, RoomEvent, Track, type LocalTrackPublication, type Participant, type RemoteTrack, type RemoteTrackPublication } from "livekit-client";
 import { joinRoom, roomErrorText } from "@/lib/api/voice-rooms";
 import { reportVoiceMetric } from "@/lib/api/voice-metrics";
+import { isVoiceDucked, onVoiceDuck } from "@/lib/app/voice-duck";
 
 /**
  * Real voice for a backend room over LiveKit.
@@ -350,7 +351,7 @@ export function useLiveVoice(serverRoomId: string | null, highQuality = true): L
       setPeople((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
       setMicOn(room.localParticipant.isMicrophoneEnabled);
     };
-    const applySpeaker = () => applySpeakerTo(room, speakerRef.current, remoteMusicMuted.current, heardMusic);
+    const applySpeaker = () => applySpeakerTo(room, speakerRef.current && !isVoiceDucked(), remoteMusicMuted.current, heardMusic);
 
     room
       .on(RoomEvent.TrackSubscribed, (track: RemoteTrack, pub: RemoteTrackPublication, participant: { identity: string }) => {
@@ -366,7 +367,7 @@ export function useLiveVoice(serverRoomId: string | null, highQuality = true): L
           el.muted = remoteMusicMuted.current || !heardMusic(participant.identity);
         }
         audioBox.appendChild(el);
-        if (!speakerRef.current) pub.setEnabled(false);
+        if (!speakerRef.current || isVoiceDucked()) pub.setEnabled(false);
         applySpeaker();
         sync();
       })
@@ -723,9 +724,22 @@ export function useLiveVoice(serverRoomId: string | null, highQuality = true): L
   const setSpeaker = useCallback((on: boolean) => {
     speakerRef.current = on;
     const room = roomRef.current;
-    if (room) applySpeakerTo(room, on, remoteMusicMuted.current, heardMusic);
+    if (room) applySpeakerTo(room, on && !isVoiceDucked(), remoteMusicMuted.current, heardMusic);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Another call (Duo Dash voice) took over: the room goes quiet and your room mic turns off; its sound comes back after
+  useEffect(
+    () =>
+      onVoiceDuck((ducked) => {
+        const room = roomRef.current;
+        if (!room) return;
+        if (ducked && room.localParticipant.isMicrophoneEnabled) void room.localParticipant.setMicrophoneEnabled(false).catch(() => undefined);
+        applySpeakerTo(room, speakerRef.current && !ducked, remoteMusicMuted.current, heardMusic);
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const startAudio = useCallback(() => {
     const room = roomRef.current;

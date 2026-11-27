@@ -10,6 +10,7 @@ import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { Check, Move, X, ZoomIn } from "lucide-react";
 import { useBackClose } from "@/lib/app/back";
+import { MotionOn } from "@/components/ui/MotionOn";
 
 type Props = {
   file: File | null;
@@ -23,7 +24,7 @@ type Props = {
   onDone: (file: File) => void;
 };
 
-export function ImageCropper({ file, aspect, round = false, maxOut, title, onCancel, onDone }: Props) {
+function ImageCropperInner({ file, aspect, round = false, maxOut, title, onCancel, onDone }: Props) {
   const [url, setUrl] = useState<string | null>(null);
   const [nat, setNat] = useState<{ w: number; h: number } | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -166,5 +167,14 @@ export function ImageCropper({ file, aspect, round = false, maxOut, title, onCan
       </div>
     </motion.div>,
     document.body,
+  );
+}
+
+/** Stays animated in Smooth graphics too (see MotionOn). */
+export function ImageCropper(props: Parameters<typeof ImageCropperInner>[0]) {
+  return (
+    <MotionOn>
+      <ImageCropperInner {...props} />
+    </MotionOn>
   );
 }

@@ -11,6 +11,7 @@ import { Providers } from "@/components/Providers";
 import { VersionGuard } from "@/components/system/VersionGuard";
 import { MaintenanceGuard, AnnouncementBanner } from "@/components/system/MaintenanceGuard";
 import { SITE } from "@/lib/site";
+import { GRAPHICS_HEAD_SCRIPT } from "@/lib/app/graphics-head";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
@@ -42,16 +43,15 @@ export const viewport: Viewport = {
 };
 
 /**
- * Marks the page before it draws: data-native inside the Android app, and data-lite on the app and on phones that struggle
- * (little memory or few cores). Lite pages skip the most expensive effects (see globals.css).
+ * Marks the page before it draws: data-native inside the Android app, and data-lite (Smooth graphics) on the app, on phones
+ * that struggle (little memory or few cores), with Data Saver, or when chosen in Profile → Graphics (lib/app/graphics.ts).
  */
-const LITE_SCRIPT = `(function(){try{var d=document.documentElement,u=navigator.userAgent||"",n=/PanchayatApp[/]/.test(u),m=navigator.deviceMemory||8,c=navigator.hardwareConcurrency||8,p=/Android|iPhone|iPad|Mobile/i.test(u);if(n)d.setAttribute("data-native","1");if(n||(p&&(m<=4||c<=4)))d.setAttribute("data-lite","1")}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: LITE_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: GRAPHICS_HEAD_SCRIPT }} />
       </head>
       <body>
         <a
