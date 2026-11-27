@@ -90,11 +90,14 @@ export function useCpLevelBetween(a: string | null | undefined, b: string | null
 }
 
 /** Between two CP partners sitting side by side: their CP level badge (level 1 to 10), centred on the seats. */
-export function CpLink({ gap, size, level }: { gap: number; size: number; level: number }) {
+export function CpLink({ gap, size, level, onOpen }: { gap: number; size: number; level: number; onOpen?: () => void }) {
   const icon = Math.round(Math.max(30, Math.min(gap * 2.3, size * 0.95)));
   const b = badgeOf(level);
   return (
-    <span className="relative z-20 flex shrink-0 items-center justify-center" style={{ width: gap, height: size }} role="img" aria-label={`CP level ${level}, ${b.name}`}>
+    <span className="relative z-20 flex shrink-0 items-center justify-center" style={{ width: gap, height: size }} role={onOpen ? undefined : "img"} aria-label={onOpen ? undefined : `CP level ${level}, ${b.name}`}>
+      {onOpen ? (
+        <button type="button" onClick={(e) => (e.stopPropagation(), onOpen())} aria-label={`Open CP space, level ${level}, ${b.name}`} className="pointer-events-auto absolute left-1/2 top-1/2 z-[2] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ width: icon, height: icon }} />
+      ) : null}
       <motion.span className="relative grid place-items-center" style={{ width: icon, height: icon }} animate={{ y: [0, -2, 0] }} transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}>
         <span className="absolute inset-[12%] rounded-full bg-[#ff7fa8]/35 blur-md" aria-hidden />
         {/* eslint-disable-next-line @next/next/no-img-element */}

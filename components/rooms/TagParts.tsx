@@ -24,7 +24,7 @@ export function useTagTitle() {
  * the tag's colour that touches both avatars, the relationship badge in the middle with little white wings, and a few
  * candy bubbles floating around it. It sits above the seats and reaches each avatar's rim, whatever the name widths.
  */
-export function TagLink({ tag, gap, size }: { tag: Tag; gap: number; size: number }) {
+export function TagLink({ tag, gap, size, onOpen }: { tag: Tag; gap: number; size: number; onOpen?: () => void }) {
   const rel = relationshipById(tag.relation);
   const lv = tagLevel(tag.intimacy).level;
   const col = tagColors(tag);
@@ -38,7 +38,10 @@ export function TagLink({ tag, gap, size }: { tag: Tag; gap: number; size: numbe
   // From the avatar's rim (x 0) arching up and down into the badge (x 100)
   const half = "M2 24 C18 4 46 4 66 16 C78 23 90 24 98 21";
   return (
-    <span className="pointer-events-none relative z-20 flex shrink-0 items-center justify-center" style={{ width: gap, height: size }} aria-label={`${rel.label} tag, level ${lv}`} role="img">
+    <span className="pointer-events-none relative z-20 flex shrink-0 items-center justify-center" style={{ width: gap, height: size }} aria-label={onOpen ? undefined : `${rel.label} tag, level ${lv}`} role={onOpen ? undefined : "img"}>
+      {onOpen ? (
+        <button type="button" onClick={(e) => (e.stopPropagation(), onOpen())} aria-label={`Open BFF space, ${rel.label} level ${lv}`} className="pointer-events-auto absolute left-1/2 top-1/2 z-[2] -translate-x-1/2 -translate-y-1/2 rounded-full" style={{ width: icon * 1.6, height: icon * 1.2 }} />
+      ) : null}
       {/* Two mirrored halves: from each avatar's rim up over the badge, so both sides always look the same */}
       {(["left", "right"] as const).map((side) => (
         <svg

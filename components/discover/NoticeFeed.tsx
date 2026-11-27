@@ -4,7 +4,7 @@
  * Discover → Notice: every Sarpanch announcement as a full card (category chip, date and number, title, the
  * Sarpanch team line, the text with "Read more", picture and button). The server writes them; this only shows them.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { CalendarDays, Megaphone } from "lucide-react";
 import { OfficialTick, sarpanchApi, useOpenAction, type Notice } from "@/components/sarpanch/Sarpanch";
@@ -66,7 +66,13 @@ export function NoticeFeed() {
 function NoticeCard({ n, number, index }: { n: Notice; number: number; index: number }) {
   const open = useOpenAction();
   const [more, setMore] = useState(false);
-  const long = (n.body?.length ?? 0) > 170 || (n.body?.split("\n").length ?? 0) > 4;
+  // "Read more" only when the text really runs past four lines
+  const text = useRef<HTMLParagraphElement>(null);
+  const [long, setLong] = useState(false);
+  useLayoutEffect(() => {
+    const el = text.current;
+    if (el && !more) setLong(el.scrollHeight > el.clientHeight + 2);
+  }, [n.body, more]);
   return (
     <motion.li
       initial={{ opacity: 0, y: 10 }}
@@ -92,7 +98,7 @@ function NoticeCard({ n, number, index }: { n: Notice; number: number; index: nu
       </div>
       {n.body ? (
         <div className="px-4 pt-2">
-          <p className={`whitespace-pre-line text-[13.5px] leading-relaxed text-cream/80 ${more ? "" : "line-clamp-4"}`}>{n.body}</p>
+          <p ref={text} className={`whitespace-pre-line text-[13.5px] leading-relaxed text-cream/80 ${more ? "" : "line-clamp-4"}`}>{n.body}</p>
           {long ? (
             <button type="button" onClick={() => setMore((v) => !v)} className="mt-1.5 text-[12px] font-bold text-gold">
               {more ? "Show less" : "Read more"}

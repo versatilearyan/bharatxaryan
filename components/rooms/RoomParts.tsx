@@ -432,6 +432,22 @@ function Heartbeat({ gap }: { gap: number; size: number; live: boolean; linked: 
   return <span style={{ width: gap }} className="shrink-0" aria-hidden />;
 }
 
+/** Tapping the CP heart opens that couple's CP space; tapping a BFF tag opens the BFF space. The room keeps playing (minimised). */
+function useOpenLinks(personId: string | null | undefined) {
+  const { minimizeRoom, push, openIntimateSpace } = useApp();
+  if (!personId) return { cp: undefined, tag: undefined };
+  return {
+    cp: () => {
+      minimizeRoom();
+      push({ kind: "love-home", personId });
+    },
+    tag: () => {
+      minimizeRoom();
+      openIntimateSpace(personId);
+    },
+  };
+}
+
 /** CP level / tag between this pair's right seat and the first seat of the pair beside it, in the gap between the pairs. */
 function EdgeLink({ s, from, to, gap, size }: { s: RoomSession; from: number; to: number; gap: number; size: number }) {
   const { tagBetween } = useApp();
@@ -439,10 +455,11 @@ function EdgeLink({ s, from, to, gap, size }: { s: RoomSession; from: number; to
   const y = s.seats[to];
   const tag = x && y ? tagBetween(x, y) : null;
   const cpLevel = useCpLevelBetween(x, y);
+  const links = useOpenLinks(x);
   if (!cpLevel && !tag) return null;
   return (
     <span className="pointer-events-none absolute top-0 z-20" style={{ left: "100%", width: gap }}>
-      {cpLevel ? <CpLink gap={gap} size={size} level={cpLevel} /> : tag ? <TagLink tag={tag} gap={gap} size={size} /> : null}
+      {cpLevel ? <CpLink gap={gap} size={size} level={cpLevel} onOpen={links.cp} /> : tag ? <TagLink tag={tag} gap={gap} size={size} onOpen={links.tag} /> : null}
     </span>
   );
 }
@@ -455,6 +472,7 @@ export function Pair({ s, a, b, size, gap, gold, linked, numbered = false, next,
   const tag = x && y ? tagBetween(x, y) : null;
   // CP partners sitting side by side get the winged heart between them
   const cpLevel = useCpLevelBetween(x, y);
+  const links = useOpenLinks(x);
   return (
     <div className="relative flex items-start justify-center">
       {next !== undefined && b !== undefined && edgeGap > 0 ? <EdgeLink s={s} from={b} to={next} gap={edgeGap} size={size} /> : null}
@@ -463,7 +481,7 @@ export function Pair({ s, a, b, size, gap, gold, linked, numbered = false, next,
       </div>
       {b !== undefined ? (
         <>
-          {cpLevel ? <CpLink gap={gap} size={size} level={cpLevel} /> : tag ? <TagLink tag={tag} gap={gap} size={size} /> : <Heartbeat gap={gap} size={size} live={Boolean(x && y)} linked={linked} />}
+          {cpLevel ? <CpLink gap={gap} size={size} level={cpLevel} onOpen={links.cp} /> : tag ? <TagLink tag={tag} gap={gap} size={size} onOpen={links.tag} /> : <Heartbeat gap={gap} size={size} live={Boolean(x && y)} linked={linked} />}
           <div className="relative z-10">
             <Seat s={s} index={b} size={size} gold={gold} numbered={numbered} />
           </div>

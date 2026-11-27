@@ -277,7 +277,9 @@ export function UserProfileBody({ personId, charmPoints, backendProfile = false 
         {tags.length ? (
           <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
             {tags.map((t) => (
-              <BffChip key={t.id} tag={t} viewer={personId} />
+              <button key={t.id} type="button" onClick={() => app.openIntimateSpace(personId)} className="shrink-0 rounded-full" aria-label="Open BFF space">
+                <BffChip tag={t} viewer={personId} />
+              </button>
             ))}
           </div>
         ) : (
@@ -360,7 +362,7 @@ function ServerCpPanel({ personId }: { personId: string }) {
       {c === undefined ? (
         <div className="h-10 animate-pulse rounded-xl bg-cream/[0.06]" />
       ) : c ? (
-        <div className="flex items-center gap-3">
+        <button type="button" onClick={() => push({ kind: "love-home", personId })} aria-label="Open CP space" className="flex w-full items-center gap-3 text-left">
           <span className="relative flex items-center">
             {[A, B].map((x, i) =>
               x?.avatarUrl ? (
@@ -383,7 +385,7 @@ function ServerCpPanel({ personId }: { personId: string }) {
             </span>
           </p>
           <BadgeImg level={c.level} size={46} />
-        </div>
+        </button>
       ) : (
         <div className="flex items-center gap-3">
           <p className="min-w-0 flex-1 text-[12px] leading-snug text-muted">{mine ? "No CP yet. Open someone's profile and propose with a ring." : `${name} doesn't have a CP yet.`}</p>
