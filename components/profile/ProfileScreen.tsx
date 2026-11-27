@@ -3,7 +3,7 @@
 import { BagIcon, RankingIcon, ShopIcon, VisitorsIcon } from "@/components/art/ProfileIcons";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, ChevronRight, Crown, Download, Eye, FileText, Info, MessageCircle, Pencil, RotateCw, LogOut, Shield, Smartphone, Trash2, Volume2 } from "lucide-react";
+import { Bell, ChevronRight, Crown, Download, Eye, FileText, Gift, Info, MessageCircle, Pencil, RotateCw, LogOut, Shield, Smartphone, Trash2, Volume2 } from "lucide-react";
 import { DeleteAccountSheet } from "@/components/profile/DeleteAccountSheet";
 import { setNotifyPrefs, useNotifyPrefs, notify as ping } from "@/lib/app/notify";
 import { getPrivacy, setShowOnline } from "@/lib/api/chat";
@@ -172,6 +172,11 @@ export function ProfileScreen() {
           icon={<Smartphone className="h-4.5 w-4.5" />}
           label="Vibration"
           right={<Toggle checked={alerts.vibrate} onChange={(v) => { setNotifyPrefs({ vibrate: v }); if (v) ping("alert"); toast(v ? "Vibration on" : "Vibration off"); }} label="Vibration" />}
+        />
+        <Row
+          icon={<Gift className="h-4.5 w-4.5" />}
+          label="Server gift notifications"
+          right={<Toggle checked={alerts.giftNews} onChange={(v) => { setNotifyPrefs({ giftNews: v }); toast(v ? "Server gift notifications on" : "Server gift notifications off (only your own gifts show)"); }} label="Server gift notifications" />}
         />
         <Row
           icon={<Eye className="h-4.5 w-4.5" />}

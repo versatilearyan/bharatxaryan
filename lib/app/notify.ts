@@ -13,11 +13,12 @@
  */
 import { useSyncExternalStore } from "react";
 
-export type NotifyPrefs = { sound: boolean; vibrate: boolean };
+/** giftNews: the server-wide banner when someone sends a big gift (off = only gifts you sent or got). */
+export type NotifyPrefs = { sound: boolean; vibrate: boolean; giftNews: boolean };
 export type NotifyKind = "message" | "invite" | "alert";
 
 const KEY = "panchayat.notify.v1";
-const DEFAULTS: NotifyPrefs = { sound: true, vibrate: true };
+const DEFAULTS: NotifyPrefs = { sound: true, vibrate: true, giftNews: true };
 let prefs: NotifyPrefs = DEFAULTS;
 let loaded = false;
 const listeners = new Set<() => void>();
@@ -29,7 +30,7 @@ function load() {
     const raw = window.localStorage.getItem(KEY);
     if (raw) {
       const p = JSON.parse(raw) as Partial<NotifyPrefs>;
-      prefs = { sound: p.sound !== false, vibrate: p.vibrate !== false };
+      prefs = { sound: p.sound !== false, vibrate: p.vibrate !== false, giftNews: p.giftNews !== false };
     }
   } catch {
     /* private mode: keep the defaults */

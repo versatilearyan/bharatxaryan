@@ -7,6 +7,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { GIFTS, PEOPLE } from "./data";
 import { ME_ID, useApp } from "./store";
 import type { GiftId } from "./types";
+import { getNotifyPrefs } from "./notify";
 
 /**
  * Server-wide gift news: when anyone sends Sunset Romance, Crystal Palace or
@@ -63,6 +64,8 @@ function useGiftNewsState() {
         const pid = (u: unknown) => (myId && String(u) === myId ? ME_ID : `srv-user:${String(u)}`);
         const fromId = pid(b.fromUserId);
         const toId = pid(b.toUserId);
+        // Turned off in Profile → Settings: only banners for gifts you sent or got
+        if (!getNotifyPrefs().giftNews && fromId !== ME_ID && toId !== ME_ID) return;
         const people: Record<string, { name?: string; avatarUrl?: string }> = {};
         if (fromId !== ME_ID) people[fromId] = { name: typeof b.fromName === "string" ? b.fromName : undefined, avatarUrl: typeof b.fromAvatar === "string" ? b.fromAvatar : undefined };
         if (toId !== ME_ID) people[toId] = { name: typeof b.toName === "string" ? b.toName : undefined, avatarUrl: typeof b.toAvatar === "string" ? b.toAvatar : undefined };
