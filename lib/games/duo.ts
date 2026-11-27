@@ -8,9 +8,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Room, RoomEvent, Track, AudioPresets, type RemoteTrack } from "livekit-client";
 import { api } from "@/lib/api/client";
 
-export type DuoSession = { code: string; ticket: string; gameServer?: string; voice: { url: string; room: string; token: string } };
+export type DuoRing = { id: string; name: string; rarity: string; imageUrl?: string; qty: number };
+export type DuoSession = { code: string; ticket: string; gameServer?: string; voice: { url: string; room: string; token: string }; rings?: DuoRing[] };
 export type DuoPerson = { id: string; name: string; avatarUrl?: string };
-export type DuoCouple = { rank: number; a: DuoPerson; b: DuoPerson; bestLevel: number; levelsDone: number; stars: number; coins: number; coupleMoments: number };
+export type DuoCouple = { rank: number; a: DuoPerson; b: DuoPerson; bestLevel: number; levelsDone: number; stars: number; coins: number; coupleMoments: number; engaged?: boolean };
+export type DuoMatch = { state: "idle" | "waiting" | "matched"; code?: string; partner?: DuoPerson; waitingSeconds?: number; lookingNow?: number };
 
 const opts = { auth: true, forbiddenIsAccess: true } as const;
 
@@ -20,6 +22,9 @@ export const duoApi = {
     const d = await api<{ couples?: DuoCouple[] }>(`/api/v1/duo/leaderboard?period=${period}`, opts);
     return Array.isArray(d?.couples) ? d.couples : [];
   },
+  matchJoin: (gender?: "male" | "female") => api<DuoMatch>("/api/v1/duo/match", { ...opts, method: "POST", body: gender ? { gender } : {} }),
+  matchStatus: () => api<DuoMatch>("/api/v1/duo/match", opts),
+  matchLeave: () => api<DuoMatch>("/api/v1/duo/match", { ...opts, method: "DELETE" }),
 };
 
 /** A fresh 6-digit game code. */

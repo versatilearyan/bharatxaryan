@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, Copy, Heart, Loader2, Maximize2, Mic, MicOff, Play, RotateCw, Sparkles, Trophy, Users } from "lucide-react";
 import { useApp } from "@/lib/app/store";
 import { coopServerUrl, preloadCoop, COOP_BASE } from "@/lib/games/coop";
-import { duoApi, newDuoCode, useDuoVoice, type DuoCouple, type DuoSession } from "@/lib/games/duo";
+import { duoApi, newDuoCode, useDuoVoice, type DuoCouple, type DuoMatch, type DuoSession } from "@/lib/games/duo";
 
 const NEON = "bg-[radial-gradient(120%_80%_at_20%_0%,#5b16b8_0%,#1b0738_45%,#07020f_100%)]";
 const msg = (e: unknown, d = "Nahi hua.") => (e instanceof Error && e.message ? e.message : d);
@@ -120,6 +120,7 @@ function DuoStart() {
             <Play className="h-6 w-6 fill-white" /> Start a duo
           </button>
           <p className="text-center text-[12.5px] font-bold text-white/70">Tumhe ek 6-digit code milega. Partner usse judega. Voice chat game me hi chalega.</p>
+          <Matchmaking onMatched={(c) => replaceTop({ kind: "coop", code: c })} />
           <div className="rounded-2xl bg-white/[0.07] p-4 ring-1 ring-[#8b5cf6]/50">
             <p className="flex items-center gap-1.5 text-[14px] font-black uppercase tracking-wide">
               <Users className="h-4 w-4 text-[#c6ff3d]" /> Partner ka code
@@ -136,6 +137,90 @@ function DuoStart() {
         <Ranking />
       ) : (
         <Guide />
+      )}
+    </div>
+  );
+}
+
+/** Singles: find someone of the other gender who is looking right now; on a match the game opens for both. */
+function Matchmaking({ onMatched }: { onMatched: (code: string) => void }) {
+  const { profile, toast } = useApp();
+  const [m, setM] = useState<DuoMatch | null>(null);
+  const [askGender, setAskGender] = useState(false);
+  const looking = m?.state === "waiting" || m?.state === "matched";
+  useEffect(() => {
+    if (m?.state !== "waiting") return;
+    const t = window.setInterval(() => {
+      duoApi.matchStatus().then(setM).catch(() => undefined);
+    }, 2000);
+    return () => window.clearInterval(t);
+  }, [m?.state]);
+  useEffect(() => {
+    if (m?.state === "matched" && m.code) {
+      const t = window.setTimeout(() => onMatched(m.code!), 2200);
+      return () => window.clearTimeout(t);
+    }
+  }, [m, onMatched]);
+  useEffect(() => () => void duoApi.matchLeave().catch(() => undefined), []);
+  const start = async (gender?: "male" | "female") => {
+    try {
+      setAskGender(false);
+      setM(await duoApi.matchJoin(gender ?? (profile.gender as "male" | "female" | undefined)));
+    } catch (e) {
+      const t = msg(e);
+      if (/boy or girl/i.test(t)) setAskGender(true);
+      else toast(t, "error");
+    }
+  };
+  const stop = () => {
+    void duoApi.matchLeave().catch(() => undefined);
+    setM(null);
+  };
+  if (m?.state === "matched" && m.partner) {
+    return (
+      <div className="rounded-2xl bg-gradient-to-r from-[#ff3d8b]/40 to-[#8b5cf6]/40 p-4 text-center ring-2 ring-[#ff3d8b]">
+        <p className="font-display text-[20px] font-black uppercase italic text-[#c6ff3d]">It&apos;s a match! 💘</p>
+        <div className="mt-2 flex items-center justify-center gap-3">
+          <Avatar p={{ name: profile.name || "You", avatarUrl: undefined }} size={54} ring="#ff7a2f" />
+          <Heart className="h-7 w-7 animate-pulse fill-[#ff3d8b] text-[#ff3d8b]" />
+          <Avatar p={m.partner} size={54} ring="#3da5ff" />
+        </div>
+        <p className="mt-2 text-[15px] font-extrabold">{m.partner.name}</p>
+        <p className="text-[12px] text-white/70">Game khul raha hai...</p>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-2xl bg-white/[0.07] p-4 ring-1 ring-[#ff3d8b]/50">
+      <p className="text-[14px] font-black uppercase tracking-wide">💘 Single ho? Partner dhoondo</p>
+      <p className="mt-1 text-[12px] text-white/70">Ladke ka match ladki se (aur ladki ka ladke se) jo abhi dhoondh rahe hain. Saath me duniya explore karo!</p>
+      {askGender ? (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => void start("male")} className="h-11 rounded-xl bg-[#ff7a2f] text-[14px] font-black uppercase">
+            Main ladka hoon
+          </button>
+          <button type="button" onClick={() => void start("female")} className="h-11 rounded-xl bg-[#3da5ff] text-[14px] font-black uppercase">
+            Main ladki hoon
+          </button>
+        </div>
+      ) : looking ? (
+        <div className="mt-3 flex items-center gap-3">
+          <span className="relative grid h-11 w-11 place-items-center">
+            <span className="absolute inset-0 animate-ping rounded-full bg-[#ff3d8b]/40" />
+            <Heart className="h-6 w-6 fill-[#ff3d8b] text-[#ff3d8b]" />
+          </span>
+          <span className="flex-1 text-[13px] font-bold">
+            Dhoondh rahe hain... {m?.waitingSeconds ?? 0}s
+            <span className="block text-[11.5px] font-semibold text-white/60">{m?.lookingNow ? `${m.lookingNow} log abhi dhoondh rahe hain` : "Thoda ruko, koi aata hi hoga"}</span>
+          </span>
+          <button type="button" onClick={stop} className="h-10 rounded-xl bg-white/15 px-4 text-[13px] font-black uppercase">
+            Stop
+          </button>
+        </div>
+      ) : (
+        <button type="button" onClick={() => void start()} className="mt-3 h-12 w-full rounded-xl bg-gradient-to-r from-[#ff3d8b] to-[#8b5cf6] text-[15px] font-black uppercase italic">
+          Find a partner
+        </button>
       )}
     </div>
   );
@@ -187,6 +272,7 @@ function Ranking() {
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[14.5px] font-extrabold">
                 {r.a.name} <span className="text-[#ff3d8b]">♥</span> {r.b.name}
+                {r.engaged ? <span className="ml-1" title="CP couple">💍</span> : null}
               </span>
               <span className="block text-[11.5px] font-bold text-white/60">
                 {r.stars} stars · {r.coins} coins · {r.coupleMoments} moments
@@ -211,6 +297,8 @@ function Guide() {
     ["💞", "Couple moments", "Har level me ek romantic spot hai: dono saath khade ho to hearts! Love button: Wave, Heart, Hug, Kiss. Hug/Kiss sirf tab jab partner Accept kare."],
     ["📝", "Missions", "Har level me 3 missions screen par dikhte hain (coins, no fall, time, hug...). Har mission +5 coins."],
     ["❓", "Final question", "Finish par ek sawaal aata hai. Dono ka sahi jawab = level complete!"],
+    ["💍", "Propose with a ring", "Love → Propose: apni Bag ki CP ring chuno (Shop se khareedi hui). Partner YES bole to tum Panchayat me CP ban jaate ho, aur game me dono ke haath me wahi ring dikhti hai."],
+    ["💘", "Single ho?", "Find a partner: ladka-ladki ka match hota hai jo abhi dhoondh rahe hain. Match hote hi game shuru. Hug, kiss aur propose sirf dono ki marzi se."],
     ["🎙️", "Voice & chat", "Game me voice chat ON rehta hai (sirf tum dono). Chat button se jaldi messages bhejo."],
     ["📸", "Photo", "Photo button se couple photo, seedha downloads me."],
     ["🏆", "Ranking", "Jo couple sabse aage level tak gaya, wo upar. Barabar ho to stars, phir coins."],
@@ -308,6 +396,7 @@ function DuoGame({ code }: { code: string }) {
   if (profile.gender === "female") q.set("character", "girl");
   else if (profile.gender === "male") q.set("character", "boy");
   if (session?.ticket) q.set("ticket", session.ticket);
+  if (session?.rings?.length) q.set("rings", JSON.stringify(session.rings.map((r) => ({ id: r.id, name: r.name, rarity: r.rarity, qty: r.qty }))));
   const src = `${COOP_BASE}index.html?${q.toString()}`;
   const ready = (loaded >= 1 || waitedLong) && sessionTried;
 
