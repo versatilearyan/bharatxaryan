@@ -16,6 +16,9 @@ import type { ChatMessage } from "@/lib/api/chat";
 import { SERVER_USER_PREFIX } from "@/lib/app/server-rooms";
 import { useApp } from "@/lib/app/store";
 import { ScreenHeader } from "@/components/ui/kit";
+import { searchServer } from "@/lib/api/search";
+import { useJoinFromInvite } from "@/components/social/Invites";
+import type { GameId } from "@/lib/app/types";
 
 export type Notice = { id: string; title?: string; body?: string; imageUrl?: string; actionLabel?: string; actionUrl?: string; category?: string; at?: string };
 export type SarpanchProfile = {
@@ -73,8 +76,38 @@ const ago = (iso?: string) => {
 };
 
 /** Opens a Sarpanch action link (/wallet, /bag, /vip, /cp, /rooms, /shop, or a web link). */
+/** Someone's profile from their 7-digit app ID (as written in a notice: @1234567 or /user/1234567). */
+export function useOpenByPublicId() {
+  const { openProfile, toast } = useApp();
+  return async (publicId: string) => {
+    try {
+      const { users } = await searchServer(publicId);
+      const u = users.find((x) => x.publicId === publicId) ?? users[0];
+      if (u) openProfile(`srv-user:${u.id}`);
+      else toast("That ID wasn't found.", "error");
+    } catch {
+      toast("Couldn't open that profile.", "error");
+    }
+  };
+}
+
+const GAME_LINKS: Record<string, GameId> = { coop: "coop", duo: "coop", "duo-dash": "coop", gaddar: "gaddar", rmcs: "rmcs", ludo: "ludo", jackaroo: "jackaroo", chess: "chess" };
+
 export function useOpenAction() {
   const { push, setSheet, setTab } = useApp();
+  const openId = useOpenByPublicId();
+  const joinRoom = useJoinFromInvite();
+  const { toast } = useApp();
+  /** A room from its ID as people see it (searched like the Discover search box). */
+  const openRoomByCode = async (code: string) => {
+    try {
+      const { rooms } = await searchServer(code);
+      if (rooms[0]) await joinRoom(rooms[0].id);
+      else toast("That room isn't open.", "error");
+    } catch {
+      toast("Couldn't open that room.", "error");
+    }
+  };
   return (url?: string) => {
     if (!url) return;
     if (/^https:\/\//i.test(url)) {
@@ -82,6 +115,20 @@ export function useOpenAction() {
       return;
     }
     const path = url.split("?")[0].toLowerCase();
+    const parts = path.replace(/^panchayat:\/\//, "/").split("/").filter(Boolean);
+    // A game: /game/coop (Duo Dash), /game/gaddar, /game/ludo ...
+    if (parts[0] === "game" && parts[1] && GAME_LINKS[parts[1]]) {
+      const g = GAME_LINKS[parts[1]];
+      if (g === "coop") push({ kind: "coop" });
+      else if (g === "gaddar") push({ kind: "gaddar" });
+      else setSheet({ kind: "game", gameId: g });
+      return;
+    }
+    // Someone's profile: /user/1234567; a room: /room/1234567
+    if (parts[0] === "user" && parts[1]) return void openId(parts[1]);
+    if (parts[0] === "room" && parts[1]) return void openRoomByCode(parts[1]);
+    if (path.startsWith("/friends")) return setSheet({ kind: "friends", tab: parts[1] === "requests" ? "requests" : undefined });
+    if (path.startsWith("/notifications")) return setSheet({ kind: "notifications" });
     if (path.startsWith("/ticket")) setSheet({ kind: "ticket", ticketId: new URLSearchParams(url.split("?")[1] ?? "").get("id") ?? undefined });
     else if (path.startsWith("/topup")) setSheet({ kind: "topup", requestId: new URLSearchParams(url.split("?")[1] ?? "").get("id") ?? undefined });
     else if (path.startsWith("/wallet") || path.startsWith("/coins")) setSheet({ kind: "coins" });
