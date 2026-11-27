@@ -9,6 +9,7 @@ import { cpApi, daysOf, type CpCouple } from "@/lib/api/cp";
 import { ServerProposeSheet, useCpEvents } from "@/components/market/ServerCp";
 import { CpRing } from "@/components/market/CpRing";
 import { ProfileCpPill } from "@/components/rooms/RoomSocial";
+import { PhotoViewer } from "@/components/ui/PhotoViewer";
 import { ProfileFamilyPanel, ProfileMomentsPanel } from "@/components/profile/ProfileSocialPanels";
 import { myUserIdFromToken } from "@/lib/auth/token";
 import { CpBannerPill } from "@/components/market/CpParts";
@@ -80,6 +81,9 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, char
   const p = person(personId);
   // VIP cosmetics from this person's own profile response (yours: GET /users/me; theirs: GET /users/{id}/profile)
   const fx = useProfileFx(personId, p.vip, vipFresh);
+  const [zoom, setZoom] = useState(false);
+  const [zoomBroken, setZoomBroken] = useState(false);
+  const closeZoom = useCallback(() => setZoom(false), []);
   const mine = personId === ME_ID;
   const meNewbie = useNewbieMe();
   const otherNewbie = useIsNewbie(mine ? null : personId);
@@ -116,12 +120,23 @@ export function ProfileHero({ personId, topLeft, topRight, vipFresh = true, char
         </div>
       </div>
       <div className="relative -mt-14 px-4">
-        <VipAvatar
-          frame={fx.frame}
-          size={96}
-          framedStyle={(drop) => ({ marginLeft: 24, marginBottom: drop + 8 })}
-          render={(s, framed) => (framed ? <PersonAvatar person={{ ...p, frame: "none" }} size={s} className="rounded-full" /> : <PersonAvatar person={p} size={s} className="rounded-full ring-4 ring-ink" />)}
-        />
+        {/* Tap the profile picture to see it full screen */}
+        <button type="button" onClick={() => setZoom(true)} aria-label={`See ${mine ? "your" : `${p.name}'s`} profile picture`} className="block rounded-full text-left">
+          <VipAvatar
+            frame={fx.frame}
+            size={96}
+            framedStyle={(drop) => ({ marginLeft: 24, marginBottom: drop + 8 })}
+            render={(s, framed) => (framed ? <PersonAvatar person={{ ...p, frame: "none" }} size={s} className="rounded-full" /> : <PersonAvatar person={p} size={s} className="rounded-full ring-4 ring-ink" />)}
+          />
+        </button>
+        <PhotoViewer open={zoom} onClose={closeZoom} label={`${p.name}'s profile picture`}>
+          {p.photo && !zoomBroken ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={p.photo} alt={`${p.name}'s profile picture`} onError={() => setZoomBroken(true)} className="max-h-full max-w-full object-contain" />
+          ) : (
+            <PersonAvatar person={{ ...p, frame: "none" }} size={280} className="rounded-full" />
+          )}
+        </PhotoViewer>
         {banned ? (
           // A banned ID says so on its profile, for everyone to see
           <div className="mt-3 flex items-center gap-2 rounded-2xl bg-gradient-to-r from-[#5a0d16] to-[#2a0a10] px-3 py-2 ring-1 ring-[#ff6b6b]/50" role="status">

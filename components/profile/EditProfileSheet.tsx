@@ -10,6 +10,7 @@ import { NAME_FONTS, nameFace } from "@/lib/app/fonts";
 import { useApp } from "@/lib/app/store";
 import { useMe } from "@/lib/app/me-store";
 import { shrinkForUpload } from "@/lib/app/shrink-image";
+import { ImageCropper } from "@/components/ui/ImageCropper";
 import { ApiError } from "@/lib/api/client";
 import { API_GENDERS, MEDIA_MAX_MB, mediaFileError, type MediaKind, BIO_MAX, FAVORITE_GAMES_MAX, GENDER_LABELS, genderFromApi, validateProfileUpdate, type ApiGender, type UpdateProfileRequest } from "@/lib/api/users";
 import { MIN_AGE, ageOn } from "@/components/auth/AuthFlow";
@@ -218,7 +219,10 @@ function EditProfileSheetImpl({ open, onClose }: { open: boolean; onClose: () =>
   const mediaOf = (kind: "photo" | "banner"): MediaKind => (kind === "photo" ? "avatar" : "banner");
   const savedUrl = (kind: "photo" | "banner") => (kind === "photo" ? me.profile.data?.avatarUrl : me.profile.data?.bannerUrl);
 
-  /** Check the file, make it small (lib/app/shrink-image.ts) and show it as a preview; it's uploaded on Save. */
+  /** A picked image waits here while it is being cropped (moved up / down, zoomed). */
+  const [cropping, setCropping] = useState<{ kind: "photo" | "banner"; file: File } | null>(null);
+
+  /** Check the file, then open the cropper; the cropped picture is made small and shown as a preview. */
   const pickImage = async (picked: File | undefined, kind: "photo" | "banner") => {
     if (!picked) return;
     const bad = mediaFileError(picked, mediaOf(kind));
@@ -226,6 +230,12 @@ function EditProfileSheetImpl({ open, onClose }: { open: boolean; onClose: () =>
       toast(bad, "error");
       return;
     }
+    setCropping({ kind, file: picked });
+  };
+
+  /** After cropping: make it small (lib/app/shrink-image.ts) and show it as a preview; it's uploaded on Save. */
+  const applyCropped = async (picked: File, kind: "photo" | "banner") => {
+    setCropping(null);
     let file: File;
     try {
       file = await shrinkForUpload(picked, mediaOf(kind));
@@ -318,6 +328,15 @@ function EditProfileSheetImpl({ open, onClose }: { open: boolean; onClose: () =>
           <p className="mt-2 text-[11px] text-muted">Tap the picture or banner to choose an image. JPG, PNG or WebP: picture up to {MEDIA_MAX_MB.avatar} MB, banner up to {MEDIA_MAX_MB.banner} MB. They upload when you tap Save.</p>
           <input ref={photoInput} type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Upload profile picture" data-testid="photo-input" onChange={(e) => { void pickImage(e.target.files?.[0], "photo"); e.target.value = ""; }} />
           <input ref={bannerInput} type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Upload banner" data-testid="banner-input" onChange={(e) => { void pickImage(e.target.files?.[0], "banner"); e.target.value = ""; }} />
+          <ImageCropper
+            file={cropping?.file ?? null}
+            aspect={cropping?.kind === "banner" ? 2.5 : 1}
+            round={cropping?.kind === "photo"}
+            maxOut={cropping?.kind === "banner" ? 1600 : 1024}
+            title={cropping?.kind === "banner" ? "Banner adjust karo" : "Photo adjust karo"}
+            onCancel={() => setCropping(null)}
+            onDone={(f) => cropping && void applyCropped(f, cropping.kind)}
+          />
         </div>
 
         <p className="!mt-6 text-[12px] font-bold text-cream">

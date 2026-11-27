@@ -16,6 +16,16 @@ import { lazySheet } from "@/components/ui/lazySheet";
 
 const errText = (e: unknown, f: string) => (e instanceof Error && e.message ? e.message : f);
 
+/** "Last seen 5m ago" for someone offline ("Offline" when the server has no time). */
+function lastSeen(at?: number): string {
+  if (!at) return "Offline";
+  const m = Math.max(1, Math.round((Date.now() - at) / 60000));
+  if (m < 60) return `Last seen ${m}m ago`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `Last seen ${h}h ago`;
+  return `Last seen ${Math.round(h / 24)}d ago`;
+}
+
 /**
  * Join a room from an invite (or a game code): a password room lets you in
  * with the invite instead of the password. Then, for a game, open the table.
@@ -193,6 +203,21 @@ function ChatInviteSheetImpl({ open, onClose, kind, roomId, gameId, code, title,
   const chats = (chat.inbox.data ?? []).filter((c) => c.requestState !== "PENDING" && !c.blockedByMe && !c.blockedMe);
   const inChats = new Set(chats.map((c) => c.otherUserId).filter(Boolean));
   const others = friends.filter((f) => !inChats.has(f.userId));
+  // One list of people (chats + friends), online first; groups after them
+  const friendById = new Map(friends.map((f) => [f.userId, f]));
+  type Person = { k: string; name: string; avatar?: string; online: boolean; lastSeenAt?: number; send: () => void };
+  const people: Person[] = [
+    ...chats
+      .filter((c) => c.kind !== "GROUP")
+      .map((c) => {
+        const f = c.otherUserId ? friendById.get(c.otherUserId) : undefined;
+        return { k: `c${c.id}`, name: c.otherName ?? f?.name ?? "Chat", avatar: c.otherAvatarUrl ?? f?.avatarUrl, online: Boolean(c.otherOnline || f?.online), lastSeenAt: f?.lastSeenAt, send: () => void send(`c${c.id}`, async () => c.id) };
+      }),
+    ...others.map((f) => ({ k: `f${f.userId}`, name: f.name, avatar: f.avatarUrl, online: f.online, lastSeenAt: f.lastSeenAt, send: () => void send(`f${f.userId}`, () => chat.conversationWith(f.userId)) })),
+  ];
+  const online = people.filter((x) => x.online);
+  const offline = people.filter((x) => !x.online);
+  const groups = chats.filter((c) => c.kind === "GROUP");
 
   const send = async (key: string, conversation: () => Promise<string>) => {
     if (sent[key]) return;
@@ -213,21 +238,26 @@ function ChatInviteSheetImpl({ open, onClose, kind, roomId, gameId, code, title,
     }
   };
 
-  const Row = ({ k, name, avatar, group, sub, onSend }: { k: string; name: string; avatar?: string; group?: boolean; sub?: string; onSend: () => void }) => (
-    <li className="flex items-center gap-3 px-5 py-2">
+  const Row = ({ k, name, avatar, group, sub, online, onSend }: { k: string; name: string; avatar?: string; group?: boolean; sub?: string; online?: boolean; onSend: () => void }) => (
+    <li className={`flex items-center gap-3 px-5 py-2 ${online === false ? "opacity-75" : ""}`}>
       {group ? (
-        <span className="grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-[#7b5cff] to-[#f4515b] text-white">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#7b5cff] to-[#f4515b] text-white">
           <Users className="h-5 w-5" />
         </span>
-      ) : avatar ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={avatar} alt="" className="h-11 w-11 rounded-full object-cover" />
       ) : (
-        <span className="grid h-11 w-11 place-items-center rounded-full bg-surface font-bold text-cream">{name.slice(0, 1)}</span>
+        <span className="relative h-11 w-11 shrink-0">
+          {/* the first letter sits under the photo, so a broken photo still shows something */}
+          <span className={`grid h-11 w-11 place-items-center rounded-full bg-gradient-to-br from-[#5a2a3a] to-[#2a1520] font-bold text-gold ring-2 ${online ? "ring-[#3ddc97]" : "ring-white/10"}`}>{name.slice(0, 1).toUpperCase()}</span>
+          {avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatar} alt="" onError={(e) => (e.currentTarget.style.display = "none")} className={`absolute inset-0 h-11 w-11 rounded-full object-cover ring-2 ${online ? "ring-[#3ddc97]" : "ring-white/10"}`} />
+          ) : null}
+          {online ? <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-[#3ddc97] ring-2 ring-[#1c1824]" aria-hidden /> : null}
+        </span>
       )}
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[14px] font-semibold text-cream">{name}</span>
-        {sub ? <span className="block truncate text-[11.5px] text-muted">{sub}</span> : null}
+        {sub ? <span className={`block truncate text-[11.5px] ${online ? "font-semibold text-[#3ddc97]" : "text-muted"}`}>{sub}</span> : null}
       </span>
       <motion.button whileTap={{ scale: 0.92 }} type="button" disabled={Boolean(sent[k])} onClick={onSend} className={`flex h-8 items-center gap-1 rounded-full px-3.5 text-[12px] font-bold ${sent[k] === "sent" ? "bg-speak/20 text-speak" : "bg-coral text-white"} disabled:opacity-90`}>
         {sent[k] === "sent" ? (
@@ -265,23 +295,40 @@ function ChatInviteSheetImpl({ open, onClose, kind, roomId, gameId, code, title,
           </button>
         </div>
       ) : null}
-      <p className="px-5 pb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Chats</p>
-      <ul>
-        {chats.length === 0 ? <li className="px-5 py-3 text-[13px] text-muted">No chats yet.</li> : null}
-        {chats.map((c) => (
-          <Row key={`c${c.id}`} k={`c${c.id}`} name={c.otherName ?? "Chat"} avatar={c.otherAvatarUrl} group={c.kind === "GROUP"} sub={c.kind === "GROUP" ? `${c.memberCount ?? ""} members` : c.otherOnline ? "Online" : undefined} onSend={() => void send(`c${c.id}`, async () => c.id)} />
-        ))}
-      </ul>
-      {others.length ? (
+      {people.length + groups.length === 0 ? <p className="px-5 py-3 text-[13px] text-muted">Abhi koi chat ya friend nahi.</p> : null}
+      {online.length ? (
         <>
-          <p className="px-5 pb-1 pt-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Friends</p>
-          <ul className="pb-6">
-            {others.map((f) => (
-              <Row key={`f${f.userId}`} k={`f${f.userId}`} name={f.name} avatar={f.avatarUrl} sub={f.online ? "Online" : undefined} onSend={() => void send(`f${f.userId}`, () => chat.conversationWith(f.userId))} />
+          <p className="flex items-center gap-1.5 px-5 pb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#3ddc97]">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-[#3ddc97]" aria-hidden /> Online · {online.length}
+          </p>
+          <ul>
+            {online.map((x) => (
+              <Row key={x.k} k={x.k} name={x.name} avatar={x.avatar} online sub="Online" onSend={x.send} />
             ))}
           </ul>
         </>
       ) : null}
+      {offline.length ? (
+        <>
+          <p className="px-5 pb-1 pt-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Offline · {offline.length}</p>
+          <ul>
+            {offline.map((x) => (
+              <Row key={x.k} k={x.k} name={x.name} avatar={x.avatar} online={false} sub={lastSeen(x.lastSeenAt)} onSend={x.send} />
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {groups.length ? (
+        <>
+          <p className="px-5 pb-1 pt-3 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Groups</p>
+          <ul>
+            {groups.map((c) => (
+              <Row key={`c${c.id}`} k={`c${c.id}`} name={c.otherName ?? "Group"} group sub={`${c.memberCount ?? ""} members`} onSend={() => void send(`c${c.id}`, async () => c.id)} />
+            ))}
+          </ul>
+        </>
+      ) : null}
+      <div className="h-6" />
     </BottomSheet>
   );
 }
