@@ -20,6 +20,7 @@ import { useApp } from "@/lib/app/store";
 import { myUserIdFromToken } from "@/lib/auth/token";
 import { subscribe } from "@/lib/realtime/stomp";
 import { Dice, LudoBoard, rotationFor } from "./LudoBoard";
+import { serverRoomAppId } from "@/lib/app/server-rooms";
 
 const BG = "bg-[radial-gradient(130%_80%_at_50%_0%,#4a1626_0%,#2a1430_45%,#141018_100%)]";
 /** Screen corner for a seat once the board is turned so `mine` is bottom left. */
@@ -47,7 +48,12 @@ export function LudoScreen({ roomId }: { roomId?: string }) {
 }
 
 function LudoTable({ roomId }: { roomId: string }) {
-  const { pop, toast, refreshCoins } = useApp();
+  const { pop, toast, refreshCoins, activeRoomId, leaveRoom } = useApp();
+  /** Leaving the game leaves its table room too (a temporary room closes when its maker leaves). */
+  const leaveTable = () => {
+    if (roomId && activeRoomId === serverRoomAppId(roomId)) leaveRoom();
+    pop();
+  };
   const myId = myUserIdFromToken();
   const voice = useActiveVoice();
   const [g, setG] = useState<LudoGame | null | undefined>(undefined);
@@ -197,7 +203,12 @@ function LudoTable({ roomId }: { roomId: string }) {
           type="button"
           onClick={() => {
             if (g?.status === "PLAYING" && !window.confirm(g.pot > 0 ? "Leave the game? You lose your stake." : "Leave the game?")) return;
-            if (g) void act(() => ludoApi.leave(g.id));
+            if (g)
+              void act(async () => {
+                const x = await ludoApi.leave(g.id);
+                leaveTable();
+                return x;
+              });
           }}
           aria-label="Leave the table"
           className="grid h-9 w-9 place-items-center rounded-full bg-black/35 text-cream"

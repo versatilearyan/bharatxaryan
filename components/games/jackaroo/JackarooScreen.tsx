@@ -11,6 +11,7 @@ import { notify } from "@/lib/app/notify";
 import { useApp } from "@/lib/app/store";
 import { myUserIdFromToken } from "@/lib/auth/token";
 import { subscribe } from "@/lib/realtime/stomp";
+import { serverRoomAppId } from "@/lib/app/server-rooms";
 
 const COLORS = ["#ff5c7a", "#4fb3ff", "#ffd166", "#5ee6a5"];
 const DEEP = ["#b3203f", "#1f6fc0", "#c79a1f", "#1f9a63"];
@@ -52,7 +53,12 @@ const suitOf = (card: string) => ({ S: "♠", H: "♥", D: "♦", C: "♣" })[ca
  * everyone's marbles moving live, your cards, the turn timer, and the result.
  */
 export function JackarooScreen({ roomId }: { roomId?: string }) {
-  const { pop, toast } = useApp();
+  const { pop, toast, activeRoomId, leaveRoom } = useApp();
+  /** Leaving the game leaves its table room too (a temporary room closes when its maker leaves). */
+  const leaveTable = () => {
+    if (roomId && activeRoomId === serverRoomAppId(roomId)) leaveRoom();
+    pop();
+  };
   const myId = myUserIdFromToken();
   const [game, setGame] = useState<JGame | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -187,7 +193,14 @@ export function JackarooScreen({ roomId }: { roomId?: string }) {
           <HelpCircle className="h-5 w-5" />
         </button>
         {inGame && game && game.status !== "FINISHED" ? (
-          <button type="button" disabled={busy} onClick={() => act(() => jackarooApi.leave(game.id))} aria-label="Leave the game" className="grid h-10 w-10 place-items-center rounded-full bg-black/30 text-cream/80">
+          <button type="button" disabled={busy} onClick={() =>
+              act(async () => {
+                const x = await jackarooApi.leave(game.id);
+                leaveTable();
+                return x;
+              })
+            }
+            aria-label="Leave the game" className="grid h-10 w-10 place-items-center rounded-full bg-black/30 text-cream/80">
             <LogOut className="h-5 w-5" />
           </button>
         ) : null}

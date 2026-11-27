@@ -30,8 +30,8 @@ export function GameLobby({ title, art, blurb, game = "ludo" }: { title: string;
   const create = async () => {
     setBusy("create");
     try {
-      const v = await createRoom({ name: `${profile.name || "My"}'s ${title} table`.slice(0, 60), roomType: "VOICE", isPrivate: false, maxParticipants: 12 });
-      // A game table is temporary: it closes when you leave it
+      // A game table is a temporary room: the server closes it when its maker leaves (it was made permanent before)
+      const v = await createRoom({ name: `${profile.name || "My"}'s ${title} table`.slice(0, 60), roomType: "VOICE", isPrivate: false, maxParticipants: 12, temporary: true });
       rememberPrefs(v.id, { permanent: false, category: "Gaming" });
       addCreated(v);
       await joinRoom(v.id).catch(() => undefined);
