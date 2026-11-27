@@ -1,6 +1,7 @@
 import { useId } from "react";
 import type { GameId } from "@/lib/app/types";
 import { GaddarTileArt } from "./GaddarHero";
+import { DuoTileArt } from "./DuoDashArt";
 import { HillTileArt, ChessTileArt, JackarooTileArt, LudoTileArt, RmcsTileArt } from "./GameCovers";
 
 /** Original illustrations for each game card. Square, full-bleed SVG. */
@@ -191,30 +192,7 @@ function renderArt(id: GameId, g: (n: string) => string, u: (n: string) => strin
     case "rmcs":
       return <RmcsTileArt />;
     case "coop":
-      return (
-        <>
-          <defs>
-            <linearGradient id={g("coopSky")} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#5aa9ff" />
-              <stop offset="100%" stopColor="#d8f0ff" />
-            </linearGradient>
-          </defs>
-          <rect width="120" height="120" fill={u("coopSky")} />
-          <rect x="0" y="86" width="120" height="34" fill="#3fa7e0" />
-          <rect x="8" y="70" width="44" height="22" rx="3" fill="#9b6b43" />
-          <rect x="6" y="66" width="48" height="8" rx="3" fill="#6cc24a" />
-          <rect x="66" y="52" width="46" height="40" rx="3" fill="#9b6b43" />
-          <rect x="64" y="48" width="50" height="8" rx="3" fill="#6cc24a" />
-          <rect x="24" y="44" width="12" height="22" rx="6" fill="#ff7a2f" />
-          <circle cx="30" cy="38" r="8" fill="#e2aa82" />
-          <path d="M22 36 q8 -12 16 0 z" fill="#24160f" />
-          <rect x="82" y="26" width="12" height="22" rx="6" fill="#3da5ff" />
-          <circle cx="88" cy="20" r="8" fill="#e2aa82" />
-          <path d="M80 19 q8 -13 16 0 z" fill="#2b1830" />
-          <circle cx="95" cy="13" r="3.5" fill="#2b1830" />
-          <path d="M57 28 c-4 -6 -12 -1 -6 6 l6 5 l6 -5 c6 -7 -2 -12 -6 -6 z" fill="#ff4f8b" />
-        </>
-      );
+      return <DuoTileArt />;
     case "jackaroo":
       return <JackarooTileArt />;
     case "cards":
