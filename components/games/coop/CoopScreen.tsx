@@ -8,7 +8,7 @@
  *    a mic button, the code to share, and a "turn your phone" prompt when it is held upright.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, Copy, Heart, Loader2, Maximize2, Mic, MicOff, Play, RotateCw, Sparkles, Trophy, Users } from "lucide-react";
+import { ChevronLeft, Copy, Heart, Loader2, Maximize2, Mic, MicOff, Play, Sparkles, Trophy, Users } from "lucide-react";
 import { useApp } from "@/lib/app/store";
 import { coopServerUrl, preloadCoop, COOP_BASE } from "@/lib/games/coop";
 import { duoApi, newDuoCode, useDuoVoice, type DuoCouple, type DuoMatch, type DuoSession } from "@/lib/games/duo";
@@ -324,7 +324,9 @@ function DuoGame({ code }: { code: string }) {
   const { pop, profile, toast } = useApp();
   const loaded = useLoad();
   const box = useRef<HTMLDivElement>(null);
+  /** A phone held upright: the game is turned sideways for it (landscape), see `rotated` below. */
   const [portrait, setPortrait] = useState(false);
+  const [view, setView] = useState({ w: 0, h: 0 });
   const [waitedLong, setWaitedLong] = useState(false);
   const [session, setSession] = useState<DuoSession | null>(null);
   const [sessionTried, setSessionTried] = useState(false);
@@ -351,11 +353,43 @@ function DuoGame({ code }: { code: string }) {
   }, [code, toast]);
 
   useEffect(() => {
-    const check = () => setPortrait(window.innerHeight > window.innerWidth && window.matchMedia("(pointer: coarse)").matches);
+    const check = () => {
+      setView({ w: window.innerWidth, h: window.innerHeight });
+      setPortrait(window.innerHeight > window.innerWidth && window.matchMedia("(pointer: coarse)").matches);
+    };
     check();
     window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
+    window.addEventListener("orientationchange", check);
+    screen.orientation?.addEventListener?.("change", check);
+    return () => {
+      window.removeEventListener("resize", check);
+      window.removeEventListener("orientationchange", check);
+      screen.orientation?.removeEventListener?.("change", check);
+    };
   }, []);
+  // Landscape by itself: full screen + orientation lock where the phone allows it (Android browsers);
+  // everywhere else (iPhone, the Android app) the game is turned sideways on screen while the phone is upright.
+  useEffect(() => {
+    void (async () => {
+      try {
+        if (!window.matchMedia("(pointer: coarse)").matches) return;
+        if (!document.fullscreenElement) await box.current?.requestFullscreen?.({ navigationUI: "hide" });
+        const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+        await o.lock?.("landscape");
+      } catch {
+        /* not allowed without a tap here: the sideways view below takes over */
+      }
+    })();
+    return () => {
+      try {
+        (screen.orientation as ScreenOrientation & { unlock?: () => void }).unlock?.();
+        if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+      } catch {
+        /* nothing to undo */
+      }
+    };
+  }, []);
+  const rotated = portrait && view.w > 0;
 
   const share = useCallback(async () => {
     const text = `Duo Dash khelo mere saath on Panchayat! Code: ${code}`;
@@ -403,6 +437,12 @@ function DuoGame({ code }: { code: string }) {
   return (
     // fixed to the whole window: on a computer the app is a phone-width column, the game should not be
     <div ref={box} className="fixed inset-0 z-[60] overflow-hidden bg-black">
+    {/* Phone upright: the whole game (and its buttons) turned 90° inside to fill the screen in landscape; taps still
+        land right. Inside the full-screen box, because a full-screen element itself can't be transformed. */}
+    <div
+      className={rotated ? "absolute" : "absolute inset-0"}
+      style={rotated ? { top: 0, left: view.w, width: view.h, height: view.w, transform: "rotate(90deg)", transformOrigin: "top left" } : undefined}
+    >
       {ready ? <iframe title="Duo Dash" src={src} className="h-full w-full border-0" allow="fullscreen; autoplay; clipboard-write; gamepad" allowFullScreen /> : null}
 
       <div className="pointer-events-none absolute left-2 top-1/2 flex -translate-y-1/2 flex-col gap-2">
@@ -446,16 +486,7 @@ function DuoGame({ code }: { code: string }) {
         </div>
       ) : null}
 
-      {portrait ? (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-[#07020f]/94 p-8 text-center text-white">
-          <RotateCw className="h-14 w-14 animate-spin text-[#c6ff3d] [animation-duration:2.5s]" aria-hidden />
-          <p className="font-display text-[22px] font-black uppercase italic">Phone ghumao</p>
-          <p className="text-[13px] text-white/75">Duo Dash landscape me khelte hain. Voice chalta rahega.</p>
-          <button type="button" onClick={() => void fullscreen()} className="rounded-full bg-gradient-to-r from-[#ff3d8b] to-[#8b5cf6] px-6 py-3 text-[14px] font-black uppercase">
-            Full screen
-          </button>
-        </div>
-      ) : null}
+    </div>
     </div>
   );
 }
