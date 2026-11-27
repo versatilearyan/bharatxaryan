@@ -13,6 +13,7 @@ import { NewbieRooms } from "@/components/newbie/NewbieUi";
 import { ShortcutIcon } from "@/components/art/ShortcutIcon";
 import { Logo } from "@/components/brand/Logo";
 import { FestivalBanner } from "@/components/festival/FestivalBanner";
+import { DuoPromo } from "./DuoPromo";
 import { GameMini } from "@/components/games/GameCards";
 import { CoinBalance, SectionHeader } from "@/components/ui/premium";
 import { rememberPlayed, useGameHighlights, useGameLive } from "@/lib/games/live";
@@ -33,6 +34,7 @@ export function HomeScreen() {
     <div className="app-scroll aurora h-full pb-[calc(100px+var(--mini,0px)+var(--sb))]">
       <TopBar />
       <Greeting />
+      <DuoPromo />
       <HomeFestival />
       <NewbieRooms />
       <OfficialRooms />
